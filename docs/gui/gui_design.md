@@ -1,2 +1,2 @@
-# Details zur GUI-Komponente (Platzhalter)
+# Details regarding the GUI-Component (Placeholder)
 TODO
