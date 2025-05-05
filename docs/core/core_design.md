@@ -1,2 +1,2 @@
-# Details zur CAM-Core-Engine (Platzhalter)
+# Details regarding the CAM-Core-Engine (Placeholder)
 TODO
