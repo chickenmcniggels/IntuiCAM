@@ -1,1 +1,29 @@
+name: CI
 
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        compiler: [gcc, clang, msvc]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --config Release
+      - name: Run Tests
+        run: |
+          cd build
+          ctest --output-on-failure
+      - name: Run clang-format check
+        run: |
+          git diff --exit-code -- . ':(exclude)**/.github/**'
