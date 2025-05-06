@@ -20,7 +20,18 @@ This document outlines the high-level design and module structure of **IntuiCAM*
 IntuiCAM/                   # Root of the repo
 ├── core/                   # C++ CAM Engine (library)
 │   ├── include/            # Public headers (Core API)
+|   │   ├── IntuiCAMCore/
+|   |   │   ├── io/
+|   |   |   │   ├── StepLoader.h
+│   |   |   |   └── ...
+|   |   │   ├── path/
+|   |   |   │   ├── RoughingTurningPath.h
+│   |   |   |   └── ...
+|   |   │   ├── Core.h
 │   ├── src/                # Implementation files
+|   │   ├── io/
+|   |   │   ├── StepLoader.cpp
+|   |   │   └── ...
 │   └── tests/              # Core-specific unit tests
 ├── gui/                    # Qt-based frontend application
 │   ├── src/                # Widgets, viewports, controllers
