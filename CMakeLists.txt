@@ -6,12 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Find Qt6 Core to get common CMake APIs (e.g. qt_standard_project_setup)
-find_package(Qt6 REQUIRED COMPONENTS Core)         # Qt6.9.0 or later is assumed
-qt_standard_project_setup()                        # Enable Qt auto-moc/uic, etc.:contentReference[oaicite:0]{index=0}
-
-# Optionally, specify Qt version requirements (uncomment if needed)
-# qt_standard_project_setup(REQUIRES 6.5)          # Ensure at least Qt 6.5 for new behaviors
+add_definitions(-D_USE_MATH_DEFINES)  # Define _USE_MATH_DEFINES for math constants
 
 # Add subdirectories for modules
 add_subdirectory(core)

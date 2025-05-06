@@ -1,4 +1,4 @@
-#include "IntuiCAMCore/Core.h"
+#include "../core/include/IntuiCAMCore/Core.h"
 #include <cassert>
 
 int main() {

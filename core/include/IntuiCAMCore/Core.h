@@ -2,6 +2,7 @@
 #define INTUICAM_CORE_H
 
 #include <string>
+#include <TopoDS_Edge.hxx>
 #include <vector>
 
 namespace IntuiCAM {
@@ -9,6 +10,8 @@ namespace Core {
 
 /// Simple stub interface for CAM core
 class CAMEngine {
+private:
+    TopoDS_Shape my_shape;
 public:
     CAMEngine();
     ~CAMEngine();
