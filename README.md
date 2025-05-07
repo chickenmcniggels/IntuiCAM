@@ -3,7 +3,7 @@
 [![Build Status](https://img.shields.io/github/actions/workflow/status/your-org/IntuiCAM/ci.yml?branch=main)](https://github.com/your-org/IntuiCAM/actions)  
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
-**IntuiCAM** is an open-source CAM application initially focused on CNC turning. It will provide an intuitive desktop GUI for generating reliable toolpaths—and a standalone **C++ Core library** for CAM processing, complete with Python bindings to enable seamless integration in other workflows and applications.
+**IntuiCAM** will be an open-source CAM application initially focused on CNC turning. It will provide an intuitive desktop GUI for generating reliable toolpaths—and a standalone **C++ Core library** for CAM processing, complete with Python bindings to enable seamless integration in other workflows and applications.
 
 ---
 
@@ -34,8 +34,8 @@
 ### Prerequisites
 
 - C++17-capable compiler (GCC ≥ 9, Clang ≥ 10, MSVC ≥ 2019)  
-- CMake ≥ 3.16  
-- Qt 5.15+ (or Qt 6)  
+- CMake 
+- Qt 6  
 - OpenCASCADE (OCCT)  
 - pybind11  
 
