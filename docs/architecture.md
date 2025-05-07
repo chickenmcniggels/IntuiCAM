@@ -74,15 +74,24 @@ IntuiCAM/                   # Root of the repo
 * **Framework**: Qt
 * **Responsibilities**:
 
-  * 3D viewport (OpenCASCADE Viewer or QOpenGLWidget)
+  * 3D viewport
   * Interactive setup wizard (import → axis → stock → tools → operations)
   * Parameter panels and real-time preview
   * Progress dialogs and error reporting
-* **Design**:
 
+* **Design**:
   * Model–View–Controller (MVC) pattern
   * Communicates with Core via C++ API
 
+### 3.5 Simulation & Verification
+
+* **Path** (`/gui/simulation`)
+* **Responsibilities**:
+
+  * Stepped material-ablation simulation (2D bitmap or voxel-based)
+  * Collision detection (tool vs. stock vs. chuck)
+  * Visualization mesh output
+ 
 ### 3.3 Plugin & Scripting (`/plugins` + Core bindings)
 
 * **Mechanism**:
@@ -105,14 +114,7 @@ IntuiCAM/                   # Root of the repo
   * Optional: usage-based billing hooks
 * **Design**: Decoupled; Core functionality must work offline.
 
-### 3.5 Simulation & Verification (future)
 
-* **Plugin module** (`/plugins/simulator`)
-* **Responsibilities**:
-
-  * Stepped material-ablation simulation (2D bitmap or voxel-based)
-  * Collision detection (tool vs. stock vs. chuck)
-  * Visualization mesh output
 
 ### 3.6 Command-Line Interface (CLI)
 
@@ -156,7 +158,7 @@ IntuiCAM/                   # Root of the repo
 * **Observer/Signal–Slot** for UI updates on model changes
 * **Factory** for creating operations/toolpath strategies
 * **Strategy** for interchangeable CAM algorithms
-* **Facade** for exposing simplified Core API to GUI/CLI
+* **Facade** for exposing Core API to GUI/CLI
 
 ---
 
