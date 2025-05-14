@@ -1,21 +1,61 @@
-#include "./../include/IntuiCAMCore/io/StepLoader.h"
+#include "io/StepLoader.h"
+
+// OpenCASCADE includes
 #include <STEPControl_Reader.hxx>
-#include <IFSelect_ReturnStatus.hxx>
+#include <TopoDS_Shape.hxx>
+#include <BRep_Builder.hxx>
+#include <TopoDS_Compound.hxx>
+#include <Message_ProgressRange.hxx>
 
-using namespace IntuiCAM::Core::IO;
+namespace IntuiCAM {
+namespace IO {
 
-bool StepLoader::loadStep(const std::string& filePath, TopoDS_Shape& outShape) {
-    STEPControl_Reader reader;
-    if (IFSelect_ReturnStatus status = reader.ReadFile(filePath.c_str()); status != IFSelect_RetDone) {
-        return false;  // Failed to read the file (file not found or invalid format)
-    }
-
-    // Transfer all roots from the STEP file into OpenCASCADE shapes
-    if (reader.TransferRoots() <= 0) {
-        return false;  // No transferable roots found or translation failed
-    }
-
-    // Collect the results into one shape (could be a compound of multiple parts)
-    outShape = reader.OneShape();
-    return !outShape.IsNull();
+StepLoader::StepLoader() {
 }
+
+StepLoader::~StepLoader() {
+}
+
+bool StepLoader::loadFile(const std::string& filename) {
+    try {
+        STEPControl_Reader reader;
+        
+        // Configure reader
+        reader.SetNameMode(true);
+        
+        // Read the STEP file
+        Message_ProgressRange progressRange;
+        IFSelect_ReturnStatus status = reader.ReadFile(filename.c_str());
+        
+        if (status != IFSelect_RetDone) {
+            return false;
+        }
+        
+        // Transfer shapes
+        reader.TransferRoots(progressRange);
+        
+        // Create a compound to store all shapes
+        BRep_Builder builder;
+        TopoDS_Compound compound;
+        builder.MakeCompound(compound);
+        
+        // Get all shapes from the reader
+        for (int i = 1; i <= reader.NbShapes(); i++) {
+            const TopoDS_Shape& shape = reader.Shape(i);
+            builder.Add(compound, shape);
+        }
+        
+        // Store the compound as our model
+        m_model = compound;
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+TopoDS_Shape StepLoader::getModel() const {
+    return m_model;
+}
+
+} // namespace IO
+} // namespace IntuiCAM 

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RCC>
+    <qresource prefix="/">
+        <file>icons/new.png</file>
+        <file>icons/open.png</file>
+        <file>icons/save.png</file>
+        <file>icons/exit.png</file>
+        <file>icons/about.png</file>
+        <file>icons/app_icon.png</file>
+        <file>images/splash.png</file>
+    </qresource>
+</RCC> 

@@ -1,0 +1,15 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Find dependencies
+find_dependency(OpenCASCADE REQUIRED)
+
+# If Qt is required by your core library, uncomment the next line
+# find_dependency(Qt6 REQUIRED COMPONENTS Core)
+
+# Include exported targets
+include("${CMAKE_CURRENT_LIST_DIR}/IntuiCAMTargets.cmake")
+
+# Define the core target and any other exported targets
+check_required_components(IntuiCAMCore) 
