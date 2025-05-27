@@ -1,0 +1,13 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource>
+        <!-- Resources will be added here -->
+    </qresource>
+    <qresource prefix="/icons">
+        <!-- Basic application icons would go here -->
+        <!-- For now, these will reference built-in Qt standard icons -->
+    </qresource>
+    <qresource prefix="/images">
+        <!-- Application images would go here -->
+    </qresource>
+</RCC> 

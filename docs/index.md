@@ -9,8 +9,14 @@ Whether you’re a user looking to generate your first turning job or a develope
 - [Installation](installation.md)  
   Step-by-step guide to build and install IntuiCAM on Windows, macOS, or Linux.
 
+- [Windows Setup Guide](windows_setup.md)  
+  Comprehensive Windows-specific setup guide with tested configuration and troubleshooting.
+
 - [Getting Started](getting_started.md)  
   Quick tutorial to import a model, define your setup, and generate your first toolpaths.
+
+- [Chuck Management User Guide](user_guide_chuck.md)  
+  Complete guide to using the 3-jaw chuck management and workpiece alignment features.
 
 - [Architecture Overview](architecture.md)  
   High-level description of IntuiCAM’s modular design, outlining how the core engine, GUI, and plugins interact.
@@ -20,6 +26,9 @@ Whether you’re a user looking to generate your first turning job or a develope
 
 - [GUI Design](gui/gui_design.md)  
   Details of the Qt-based frontend: UI patterns, viewports, workflow controls, and extensibility.
+
+- [Chuck Management Technical Reference](gui/chuck_management.md)  
+  Technical documentation for the chuck management system architecture and implementation.
 
 - [Development Guide](development.md)  
   Coding standards, project conventions, testing strategy, and guidelines for contributing code or documentation.

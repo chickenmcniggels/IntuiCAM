@@ -1,0 +1,1008 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						7,
+						8
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-3a731c2801f509c50383.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						3
+					]
+				},
+				{
+					"build" : "core",
+					"childIndexes" : 
+					[
+						2,
+						3,
+						4,
+						5,
+						6
+					],
+					"jsonFile" : "directory-core-Debug-e3757ce4a321da3133c4.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "core"
+				},
+				{
+					"build" : "core/common",
+					"jsonFile" : "directory-core.common-Debug-26c0bb7d6645978fac3a.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/common",
+					"targetIndexes" : 
+					[
+						4
+					]
+				},
+				{
+					"build" : "core/geometry",
+					"jsonFile" : "directory-core.geometry-Debug-fbab4174417ad0c59569.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/geometry",
+					"targetIndexes" : 
+					[
+						5
+					]
+				},
+				{
+					"build" : "core/toolpath",
+					"jsonFile" : "directory-core.toolpath-Debug-ff90f3d05c6169fcc215.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/toolpath",
+					"targetIndexes" : 
+					[
+						8
+					]
+				},
+				{
+					"build" : "core/postprocessor",
+					"jsonFile" : "directory-core.postprocessor-Debug-1c21dc3b0e5412b3d54e.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/postprocessor",
+					"targetIndexes" : 
+					[
+						6
+					]
+				},
+				{
+					"build" : "core/simulation",
+					"jsonFile" : "directory-core.simulation-Debug-22ee5dde68ba3159c7f0.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/simulation",
+					"targetIndexes" : 
+					[
+						7
+					]
+				},
+				{
+					"build" : "gui",
+					"jsonFile" : "directory-gui-Debug-7b85fb46da2567f2394e.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "gui",
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"build" : "cli",
+					"jsonFile" : "directory-cli-Debug-0e5b512f3162713acc7f.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "cli",
+					"targetIndexes" : 
+					[
+						1
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					],
+					"name" : "IntuiCAM",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ALL_BUILD-Debug-b3b9e95024eb73429721.json",
+					"name" : "ALL_BUILD",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 8,
+					"id" : "IntuiCAMCli::@434c77fc11d56e0cadb1",
+					"jsonFile" : "target-IntuiCAMCli-Debug-390d5f976e4a63ae038e.json",
+					"name" : "IntuiCAMCli",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 7,
+					"id" : "IntuiCAMGui::@35f413a6cfe5475b20aa",
+					"jsonFile" : "target-IntuiCAMGui-Debug-d0bcd8c7f29e3f271499.json",
+					"name" : "IntuiCAMGui",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ZERO_CHECK-Debug-e9f58c13a480783c4a1c.json",
+					"name" : "ZERO_CHECK",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "intuicam_core_common::@6908cb15cd5477424af9",
+					"jsonFile" : "target-intuicam_core_common-Debug-7d1a6ce0fbb1806c260d.json",
+					"name" : "intuicam_core_common",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "intuicam_core_geometry::@ed398e0ce3be0621840b",
+					"jsonFile" : "target-intuicam_core_geometry-Debug-02ea6c82ef027a292a99.json",
+					"name" : "intuicam_core_geometry",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 5,
+					"id" : "intuicam_core_postprocessor::@5d2fddf615fa909547e0",
+					"jsonFile" : "target-intuicam_core_postprocessor-Debug-757ce49d20d5cd9ded06.json",
+					"name" : "intuicam_core_postprocessor",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "intuicam_core_simulation::@e9863fed3e6a3709ab7e",
+					"jsonFile" : "target-intuicam_core_simulation-Debug-f60b0b81c899f9581a89.json",
+					"name" : "intuicam_core_simulation",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "intuicam_core_toolpath::@a1b418a76df8b866ba15",
+					"jsonFile" : "target-intuicam_core_toolpath-Debug-e30fe609c5bcc6696070.json",
+					"name" : "intuicam_core_toolpath",
+					"projectIndex" : 0
+				}
+			]
+		},
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						7,
+						8
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Release-7e3f7d92bb1c9ff83984.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						3
+					]
+				},
+				{
+					"build" : "core",
+					"childIndexes" : 
+					[
+						2,
+						3,
+						4,
+						5,
+						6
+					],
+					"jsonFile" : "directory-core-Release-e3757ce4a321da3133c4.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "core"
+				},
+				{
+					"build" : "core/common",
+					"jsonFile" : "directory-core.common-Release-26c0bb7d6645978fac3a.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/common",
+					"targetIndexes" : 
+					[
+						4
+					]
+				},
+				{
+					"build" : "core/geometry",
+					"jsonFile" : "directory-core.geometry-Release-fbab4174417ad0c59569.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/geometry",
+					"targetIndexes" : 
+					[
+						5
+					]
+				},
+				{
+					"build" : "core/toolpath",
+					"jsonFile" : "directory-core.toolpath-Release-ff90f3d05c6169fcc215.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/toolpath",
+					"targetIndexes" : 
+					[
+						8
+					]
+				},
+				{
+					"build" : "core/postprocessor",
+					"jsonFile" : "directory-core.postprocessor-Release-1c21dc3b0e5412b3d54e.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/postprocessor",
+					"targetIndexes" : 
+					[
+						6
+					]
+				},
+				{
+					"build" : "core/simulation",
+					"jsonFile" : "directory-core.simulation-Release-22ee5dde68ba3159c7f0.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/simulation",
+					"targetIndexes" : 
+					[
+						7
+					]
+				},
+				{
+					"build" : "gui",
+					"jsonFile" : "directory-gui-Release-7b85fb46da2567f2394e.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "gui",
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"build" : "cli",
+					"jsonFile" : "directory-cli-Release-0e5b512f3162713acc7f.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "cli",
+					"targetIndexes" : 
+					[
+						1
+					]
+				}
+			],
+			"name" : "Release",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					],
+					"name" : "IntuiCAM",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ALL_BUILD-Release-b3b9e95024eb73429721.json",
+					"name" : "ALL_BUILD",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 8,
+					"id" : "IntuiCAMCli::@434c77fc11d56e0cadb1",
+					"jsonFile" : "target-IntuiCAMCli-Release-bb34d7868ffc5bf94f77.json",
+					"name" : "IntuiCAMCli",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 7,
+					"id" : "IntuiCAMGui::@35f413a6cfe5475b20aa",
+					"jsonFile" : "target-IntuiCAMGui-Release-28fd2f336addc2a0a1b2.json",
+					"name" : "IntuiCAMGui",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ZERO_CHECK-Release-e9f58c13a480783c4a1c.json",
+					"name" : "ZERO_CHECK",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "intuicam_core_common::@6908cb15cd5477424af9",
+					"jsonFile" : "target-intuicam_core_common-Release-90920d1b6fbc3033fba6.json",
+					"name" : "intuicam_core_common",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "intuicam_core_geometry::@ed398e0ce3be0621840b",
+					"jsonFile" : "target-intuicam_core_geometry-Release-97711f8d1052a672c3d5.json",
+					"name" : "intuicam_core_geometry",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 5,
+					"id" : "intuicam_core_postprocessor::@5d2fddf615fa909547e0",
+					"jsonFile" : "target-intuicam_core_postprocessor-Release-67db9e284e8afe1ea22c.json",
+					"name" : "intuicam_core_postprocessor",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "intuicam_core_simulation::@e9863fed3e6a3709ab7e",
+					"jsonFile" : "target-intuicam_core_simulation-Release-7f60c794a075eb0d7649.json",
+					"name" : "intuicam_core_simulation",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "intuicam_core_toolpath::@a1b418a76df8b866ba15",
+					"jsonFile" : "target-intuicam_core_toolpath-Release-40313eded95664594aa7.json",
+					"name" : "intuicam_core_toolpath",
+					"projectIndex" : 0
+				}
+			]
+		},
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						7,
+						8
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-MinSizeRel-8f88bc3fa5fa99b50645.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						3
+					]
+				},
+				{
+					"build" : "core",
+					"childIndexes" : 
+					[
+						2,
+						3,
+						4,
+						5,
+						6
+					],
+					"jsonFile" : "directory-core-MinSizeRel-e3757ce4a321da3133c4.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "core"
+				},
+				{
+					"build" : "core/common",
+					"jsonFile" : "directory-core.common-MinSizeRel-26c0bb7d6645978fac3a.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/common",
+					"targetIndexes" : 
+					[
+						4
+					]
+				},
+				{
+					"build" : "core/geometry",
+					"jsonFile" : "directory-core.geometry-MinSizeRel-fbab4174417ad0c59569.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/geometry",
+					"targetIndexes" : 
+					[
+						5
+					]
+				},
+				{
+					"build" : "core/toolpath",
+					"jsonFile" : "directory-core.toolpath-MinSizeRel-ff90f3d05c6169fcc215.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/toolpath",
+					"targetIndexes" : 
+					[
+						8
+					]
+				},
+				{
+					"build" : "core/postprocessor",
+					"jsonFile" : "directory-core.postprocessor-MinSizeRel-1c21dc3b0e5412b3d54e.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/postprocessor",
+					"targetIndexes" : 
+					[
+						6
+					]
+				},
+				{
+					"build" : "core/simulation",
+					"jsonFile" : "directory-core.simulation-MinSizeRel-22ee5dde68ba3159c7f0.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/simulation",
+					"targetIndexes" : 
+					[
+						7
+					]
+				},
+				{
+					"build" : "gui",
+					"jsonFile" : "directory-gui-MinSizeRel-7b85fb46da2567f2394e.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "gui",
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"build" : "cli",
+					"jsonFile" : "directory-cli-MinSizeRel-0e5b512f3162713acc7f.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "cli",
+					"targetIndexes" : 
+					[
+						1
+					]
+				}
+			],
+			"name" : "MinSizeRel",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					],
+					"name" : "IntuiCAM",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ALL_BUILD-MinSizeRel-b3b9e95024eb73429721.json",
+					"name" : "ALL_BUILD",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 8,
+					"id" : "IntuiCAMCli::@434c77fc11d56e0cadb1",
+					"jsonFile" : "target-IntuiCAMCli-MinSizeRel-5834449a1d912947405f.json",
+					"name" : "IntuiCAMCli",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 7,
+					"id" : "IntuiCAMGui::@35f413a6cfe5475b20aa",
+					"jsonFile" : "target-IntuiCAMGui-MinSizeRel-815a183e1e4ba1f169cb.json",
+					"name" : "IntuiCAMGui",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ZERO_CHECK-MinSizeRel-e9f58c13a480783c4a1c.json",
+					"name" : "ZERO_CHECK",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "intuicam_core_common::@6908cb15cd5477424af9",
+					"jsonFile" : "target-intuicam_core_common-MinSizeRel-014b37ed707950c55bdd.json",
+					"name" : "intuicam_core_common",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "intuicam_core_geometry::@ed398e0ce3be0621840b",
+					"jsonFile" : "target-intuicam_core_geometry-MinSizeRel-88991e6c7d6b65d0439c.json",
+					"name" : "intuicam_core_geometry",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 5,
+					"id" : "intuicam_core_postprocessor::@5d2fddf615fa909547e0",
+					"jsonFile" : "target-intuicam_core_postprocessor-MinSizeRel-856e22aa90f68e5cc48d.json",
+					"name" : "intuicam_core_postprocessor",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "intuicam_core_simulation::@e9863fed3e6a3709ab7e",
+					"jsonFile" : "target-intuicam_core_simulation-MinSizeRel-0db06a3a6ff025065f65.json",
+					"name" : "intuicam_core_simulation",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "intuicam_core_toolpath::@a1b418a76df8b866ba15",
+					"jsonFile" : "target-intuicam_core_toolpath-MinSizeRel-653f392e00f8a6dda300.json",
+					"name" : "intuicam_core_toolpath",
+					"projectIndex" : 0
+				}
+			]
+		},
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						7,
+						8
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-RelWithDebInfo-b32de7c72301c5c8756c.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						3
+					]
+				},
+				{
+					"build" : "core",
+					"childIndexes" : 
+					[
+						2,
+						3,
+						4,
+						5,
+						6
+					],
+					"jsonFile" : "directory-core-RelWithDebInfo-e3757ce4a321da3133c4.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "core"
+				},
+				{
+					"build" : "core/common",
+					"jsonFile" : "directory-core.common-RelWithDebInfo-26c0bb7d6645978fac3a.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/common",
+					"targetIndexes" : 
+					[
+						4
+					]
+				},
+				{
+					"build" : "core/geometry",
+					"jsonFile" : "directory-core.geometry-RelWithDebInfo-fbab4174417ad0c59569.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/geometry",
+					"targetIndexes" : 
+					[
+						5
+					]
+				},
+				{
+					"build" : "core/toolpath",
+					"jsonFile" : "directory-core.toolpath-RelWithDebInfo-ff90f3d05c6169fcc215.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/toolpath",
+					"targetIndexes" : 
+					[
+						8
+					]
+				},
+				{
+					"build" : "core/postprocessor",
+					"jsonFile" : "directory-core.postprocessor-RelWithDebInfo-1c21dc3b0e5412b3d54e.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/postprocessor",
+					"targetIndexes" : 
+					[
+						6
+					]
+				},
+				{
+					"build" : "core/simulation",
+					"jsonFile" : "directory-core.simulation-RelWithDebInfo-22ee5dde68ba3159c7f0.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "core/simulation",
+					"targetIndexes" : 
+					[
+						7
+					]
+				},
+				{
+					"build" : "gui",
+					"jsonFile" : "directory-gui-RelWithDebInfo-7b85fb46da2567f2394e.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "gui",
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"build" : "cli",
+					"jsonFile" : "directory-cli-RelWithDebInfo-0e5b512f3162713acc7f.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "cli",
+					"targetIndexes" : 
+					[
+						1
+					]
+				}
+			],
+			"name" : "RelWithDebInfo",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					],
+					"name" : "IntuiCAM",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ALL_BUILD-RelWithDebInfo-b3b9e95024eb73429721.json",
+					"name" : "ALL_BUILD",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 8,
+					"id" : "IntuiCAMCli::@434c77fc11d56e0cadb1",
+					"jsonFile" : "target-IntuiCAMCli-RelWithDebInfo-2cfd231889eeff422128.json",
+					"name" : "IntuiCAMCli",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 7,
+					"id" : "IntuiCAMGui::@35f413a6cfe5475b20aa",
+					"jsonFile" : "target-IntuiCAMGui-RelWithDebInfo-ece3978f4a087dd632cf.json",
+					"name" : "IntuiCAMGui",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ZERO_CHECK-RelWithDebInfo-e9f58c13a480783c4a1c.json",
+					"name" : "ZERO_CHECK",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "intuicam_core_common::@6908cb15cd5477424af9",
+					"jsonFile" : "target-intuicam_core_common-RelWithDebInfo-97f69d5cf1d5b24c6260.json",
+					"name" : "intuicam_core_common",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "intuicam_core_geometry::@ed398e0ce3be0621840b",
+					"jsonFile" : "target-intuicam_core_geometry-RelWithDebInfo-d839ab11f36ed62b9fac.json",
+					"name" : "intuicam_core_geometry",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 5,
+					"id" : "intuicam_core_postprocessor::@5d2fddf615fa909547e0",
+					"jsonFile" : "target-intuicam_core_postprocessor-RelWithDebInfo-972f310261acae489664.json",
+					"name" : "intuicam_core_postprocessor",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "intuicam_core_simulation::@e9863fed3e6a3709ab7e",
+					"jsonFile" : "target-intuicam_core_simulation-RelWithDebInfo-fc5f2e0307910f3e0b6d.json",
+					"name" : "intuicam_core_simulation",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "intuicam_core_toolpath::@a1b418a76df8b866ba15",
+					"jsonFile" : "target-intuicam_core_toolpath-RelWithDebInfo-543b0c3229442d7b5bab.json",
+					"name" : "intuicam_core_toolpath",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build",
+		"source" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 8
+	}
+}

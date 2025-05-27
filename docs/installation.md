@@ -1,113 +1,254 @@
-
 # Installation
 
-This guide shows how to get IntuiCAM up and running on Windows using **vcpkg** to manage dependencies (including Open CASCADE). If you prefer a manual SDK install, see [Alternative: manual OCCT install](#alternative-manual-occt-install).
+This guide shows how to get IntuiCAM up and running on different platforms with specific attention to compatibility of dependencies. For development setup, see the [Development Guide](development.md).
 
 ---
 
-## Prerequisites
+## 1. Prerequisites
 
-- **Windows 10/11** (x64)  
-- **Git**  
-- **CMake** ≥ 3.16  
-- **C++17-capable compiler** (MSVC 2019+ or MinGW-w64 x64)  
-- **Qt6 (Widgets)** 6.9.0  
-  - Example install prefix: `C:\Qt\6.9.0\mingw_64`  
-- **vcpkg** (for OCCT and other libs)
+IntuiCAM requires the following dependencies with their recommended minimum versions:
 
----
+| Dependency          | Minimum Version | Recommended Version | Purpose                          |
+|---------------------|-----------------|---------------------|----------------------------------|
+| C++ Compiler        | C++17 support   | GCC 10+, MSVC 2019+ | Core build                       |
+| CMake               | 3.16            | 3.24+               | Build system                     |
+| Qt                  | 6.2             | 6.6+                | GUI framework                    |
+| OpenCASCADE (OCCT)  | 7.5.0           | 7.6.0+              | 3D modeling kernel               |
+| pybind11            | 2.6.0           | 2.10.0+             | Python bindings                  |
+| Eigen               | 3.3             | 3.4+                | Math operations                  |
 
-## 1. Clone IntuiCAM
+### 1.1 Version Compatibility Notes
 
-```bat
-git clone https://github.com/your-org/IntuiCAM.git
-cd IntuiCAM
-```
+* **Qt Compatibility**:
+  * Qt 6.2 is the minimum supported version with Long-Term Support (LTS)
+  * Qt 6.6+ is recommended for the best experience and latest features
+  * Qt 5.15 may work but is not officially supported
 
----
+* **OpenCASCADE Compatibility**:
+  * OCCT 7.5.0 is the minimum version with the necessary B-Rep functionality
+  * OCCT 7.6.0+ is recommended for improved performance and stability
+  * OCCT must be built with the Standard and Modeling modules
 
-## 2. Bootstrap and configure vcpkg
-
-If you don’t have **vcpkg** installed yet, do:
-
-```bat
-cd C:\
-git clone https://github.com/microsoft/vcpkg.git vcpkg
-cd vcpkg
-.\bootstrap-vcpkg.bat
-```
-
-Now you have the `vcpkg` tool in `C:\vcpkg\vcpkg.exe`.
+* **Compiler Requirements**:
+  * GCC 9+ on Linux/macOS
+  * Clang 10+ on Linux/macOS
+  * MSVC 2019+ (v16.8+) on Windows
+  * Apple Clang 12+ on macOS
 
 ---
 
-## 3. Install dependencies via vcpkg
+## 2. Windows Installation
 
-From the root of your vcpkg checkout:
+### 2.1 Using vcpkg (Recommended)
 
-```bat
-C:\vcpkg\vcpkg.exe install opencascade:x64-windows
-```
+vcpkg is the recommended way to manage dependencies on Windows as it ensures consistent versions.
 
-You can also install other dependencies later (e.g. `.\vcpkg install boost:x64-windows`).
+1. **Install Prerequisites**:
+   * [Visual Studio 2019/2022](https://visualstudio.microsoft.com/downloads/) with C++ workload
+   * [Git](https://git-scm.com/download/win)
+   * [CMake](https://cmake.org/download/) (3.16+)
 
----
-
-## 4. Configure CMake with the vcpkg toolchain
-
-Back in your IntuiCAM folder:
-
-```bat
-cd path\to\IntuiCAM
-mkdir build
-cd build
-cmake .. ^
-  -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake ^
-  -DCMAKE_PREFIX_PATH="C:/Qt/6.9.0/mingw_64" ^
-  -DCMAKE_BUILD_TYPE=Release
-```
-
-- `CMAKE_TOOLCHAIN_FILE` tells CMake to use vcpkg’s integration.
-- `CMAKE_PREFIX_PATH` points to your Qt6 install.
-
----
-
-## 5. Build and run
-
-bat
-cmake --build . --config Release
-.\gui\Release\IntuiCAM_GUI.exe
-
-
-If everything went well, you should see the IntuiCAM window with a “Welcome to IntuiCAM” message.
-
----
-
-## Alternative: Manual Open CASCADE SDK install
-
-If you don’t want to use vcpkg, you can download the OCCT Windows SDK:
-
-1. Download `OpenCASCADE-<version>-win64-vc15.zip` from  
-   https://www.opencascade.com/content/latest-release
-2. Unzip to `C:\OpenCASCADE-<version>\`
-3. Set environment variable:
-   ```bat
-   setx CASROOT "C:\OpenCASCADE-<version>"
-   setx PATH "%CASROOT%\bin;%PATH%"
-   ```  
-4. In your CMake command, replace the `-DCMAKE_TOOLCHAIN_FILE` line with:
-   ```bat
-   -DCMAKE_PREFIX_PATH="C:/OpenCASCADE-<version>"
+2. **Install vcpkg**:
+   ```powershell
+   git clone https://github.com/microsoft/vcpkg
+   cd vcpkg
+   .\bootstrap-vcpkg.bat
    ```
 
-CMake will then find OCCT via its own `OpenCASCADEConfig.cmake`.
+3. **Clone IntuiCAM**:
+   ```powershell
+   git clone https://github.com/your-org/IntuiCAM.git
+   cd IntuiCAM
+   ```
+
+4. **Build with vcpkg integration**:
+   ```powershell
+   mkdir build
+   cd build
+   cmake .. -DCMAKE_TOOLCHAIN_FILE=[path\to\vcpkg]\scripts\buildsystems\vcpkg.cmake
+   cmake --build . --config Release
+   ```
+
+### 2.2 Manual Installation (Tested Configuration)
+
+**Verified Working Setup on Windows 10/11:**
+
+1. **Install Visual Studio 2022**: 
+   * Download from [Microsoft](https://visualstudio.microsoft.com/downloads/)
+   * Include "Desktop development with C++" workload
+
+2. **Install Qt 6.9.0**:
+   * Download from [Qt Online Installer](https://www.qt.io/download-qt-installer)
+   * Install to `C:\Qt\6.9.0\msvc2022_64`
+   * Select the MSVC 2022 64-bit component
+
+3. **Install OpenCASCADE 7.6.0**:
+   * Download from [OpenCASCADE website](https://dev.opencascade.org/release)
+   * Install the complete package with 3rdparty dependencies to `C:\OpenCASCADE\`
+   * Ensure the following directories exist:
+     - `C:\OpenCASCADE\occt-vc144-64-with-debug\`
+     - `C:\OpenCASCADE\3rdparty-vc14-64\`
+
+4. **Build IntuiCAM**:
+   ```powershell
+   git clone https://github.com/your-org/IntuiCAM.git
+   cd IntuiCAM
+   mkdir build
+   cd build
+   
+   # Configure (paths are automatically detected)
+   cmake .. -DCMAKE_BUILD_TYPE=Release
+   
+   # Build all components
+   cmake --build . --config Release
+   
+   # Test the build
+   .\Release\IntuiCAMCli.exe --help
+   .\Release\IntuiCAMGui.exe
+   ```
+
+**Important Notes**:
+- The CMakeLists.txt is pre-configured for the standard installation paths
+- **All required runtime DLLs are automatically copied** to the output directory during build, including Qt6, OpenCASCADE 3rd party libraries (TBB, FreeImage, FFmpeg, OpenVR, Jemalloc, etc.), and VTK dependencies
+- **No PATH configuration is required** - the application is self-contained
+- If you install to different locations, you may need to modify the paths in the root CMakeLists.txt file
 
 ---
 
-## Troubleshooting
+## 3. Linux Installation
 
-- **Qt not found**: Make sure `CMAKE_PREFIX_PATH` matches your Qt install.
-- **vcpkg not applied**: Verify the path to `vcpkg.cmake` and rerun CMake from a clean build folder.
-- **Compiler errors**: Ensure you’re using a 64-bit toolchain (matches `x64-windows` triplet).
+### 3.1 Ubuntu/Debian
 
-For further help, see [Development Guide](development.md) or open an issue on GitHub. 
+1. **Install System Dependencies**:
+   ```bash
+   sudo apt update
+   sudo apt install build-essential git cmake python3-dev libgl1-mesa-dev
+   ```
+
+2. **Install Qt**:
+   ```bash
+   sudo apt install qt6-base-dev qt6-declarative-dev
+   # If Qt6 is not available in your repositories:
+   # sudo add-apt-repository ppa:beineri/opt-qt-6.6.0-jammy
+   # sudo apt update
+   # sudo apt install qt6-base-dev
+   ```
+
+3. **Install OpenCASCADE**:
+   OpenCASCADE is not typically available in standard repositories with recent versions.
+   
+   ```bash
+   # Build from source (recommended for latest version)
+   git clone https://git.dev.opencascade.org/repos/occt.git
+   cd occt
+   git checkout V7_6_0
+   mkdir build && cd build
+   cmake .. -DBUILD_LIBRARY_TYPE=Shared -DCMAKE_BUILD_TYPE=Release -DBUILD_RELEASE_DISABLE_EXCEPTIONS=OFF
+   make -j$(nproc)
+   sudo make install
+   ```
+
+4. **Build IntuiCAM**:
+   ```bash
+   git clone https://github.com/your-org/IntuiCAM.git
+   cd IntuiCAM
+   mkdir build && cd build
+   cmake .. -DCMAKE_BUILD_TYPE=Release
+   make -j$(nproc)
+   ```
+
+### 3.2 Fedora/RHEL
+
+1. **Install System Dependencies**:
+   ```bash
+   sudo dnf install gcc-c++ git cmake python3-devel mesa-libGL-devel
+   ```
+
+2. **Install Qt**:
+   ```bash
+   sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel
+   ```
+
+3. **For OpenCASCADE**, follow the build from source instructions in the Ubuntu section.
+
+4. **Build IntuiCAM** following the same steps as Ubuntu.
+
+---
+
+## 4. macOS Installation
+
+1. **Install Prerequisites with Homebrew**:
+   ```bash
+   brew install cmake python qt@6
+   ```
+
+2. **Install OpenCASCADE**:
+   ```bash
+   brew install opencascade
+   ```
+
+3. **Build IntuiCAM**:
+   ```bash
+   git clone https://github.com/your-org/IntuiCAM.git
+   cd IntuiCAM
+   mkdir build && cd build
+   cmake .. -DCMAKE_BUILD_TYPE=Release
+   make -j$(sysctl -n hw.ncpu)
+   ```
+
+---
+
+## 5. Testing Your Installation
+
+After installation, verify that everything works correctly:
+
+1. **Run the tests**:
+   ```bash
+   cd build
+   ctest --output-on-failure
+   ```
+
+2. **Launch the application**:
+   * On Windows: `.\bin\Release\IntuiCAM_GUI.exe`
+   * On Linux/macOS: `./bin/IntuiCAM_GUI`
+
+---
+
+## 6. Troubleshooting
+
+### 6.1 Common Issues
+
+* **CMake can't find Qt**:
+  - Ensure Qt is installed to `C:/Qt/6.9.0/msvc2022_64` or update the path in CMakeLists.txt
+  - Check that you're using a compatible Qt version (6.2+)
+  - Verify the MSVC 2022 64-bit component is installed
+
+* **OpenCASCADE linking errors (RESOLVED)**:
+  - ✅ **jemalloc.lib path errors**: Fixed in CMakeLists.txt with automatic path correction
+  - ✅ **Missing TKAIS.lib**: Removed non-existent library reference
+  - ✅ **Missing 3rdparty libraries**: Added all required 3rdparty library paths
+  - Ensure OpenCASCADE is installed to `C:/OpenCASCADE/` with 3rdparty dependencies
+
+* **Missing library errors**:
+  - ✅ **openvr_api.lib**: Added path `C:/OpenCASCADE/3rdparty-vc14-64/openvr-1.14.15-64/lib/win64`
+  - ✅ **FreeImage.lib**: Added path `C:/OpenCASCADE/3rdparty-vc14-64/freeimage-3.18.0-x64/lib`
+  - ✅ **FFmpeg, TBB, Tcl/Tk libraries**: All 3rdparty paths added to CMakeLists.txt
+
+* **Compilation errors**:
+  - Ensure your compiler supports C++17
+  - Use Visual Studio 2019/2022 for best compatibility
+  - Check for compatibility issues between OCCT and your compiler
+
+* **Vulkan headers warning**:
+  - This is a non-fatal Qt warning and can be ignored
+  - IntuiCAM builds successfully without Vulkan support
+
+### 6.2 Getting Help
+
+If you encounter issues not covered here:
+* Check the [GitHub Issues](https://github.com/your-org/IntuiCAM/issues) for similar problems
+* Open a new issue with detailed information about your system and the error
+* Join our community channels for direct assistance
+
+---
+

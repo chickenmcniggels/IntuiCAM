@@ -106,15 +106,30 @@ IntuiCAM/                   # Root of the repo
 
 ### 3.3 GUI Frontend (`/gui`)
 
-* **Framework**: Qt6 + OpenCASCADE visualization
+* **Framework**: Qt + OpenCASCADE visualization
 * **Responsibilities**:
   * 3D viewport (using OpenCASCADE AIS)
   * Interactive setup wizard (import → axis → stock → tools → operations)
   * Parameter panels and real-time preview
   * Progress dialogs and error reporting
+  * Chuck management and workpiece alignment
 * **Design**:
   * Model–View–Controller (MVC) pattern
   * Communicates with Core via C++ API
+
+#### 3.3.1 Chuck Management System
+
+* **ChuckManager Class**: Handles 3-jaw chuck functionality
+  * Persistent display of chuck STEP file
+  * Automatic cylinder detection in workpieces
+  * Standard diameter matching for raw material
+  * Transparent raw material visualization
+* **Features**:
+  * Automatic workpiece alignment with chuck axis
+  * ISO metric standard stock diameter database
+  * Real-time cylinder detection and feedback
+  * Configurable transparency and material properties
+* **Integration**: Seamlessly integrated with OpenCASCADE AIS context
 
 ### 3.4 Simulation & Verification
 

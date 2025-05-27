@@ -1,0 +1,36 @@
+^C:\USERS\NIKLA\ONEDRIVE\LATHE_ECOSYSTEM\CAM\INTUI_CAM\INTUICAM\BUILD\CMAKEFILES\6DAEA788FA51C0E3A1AB211C5FCE4585\AUTOUIC_(CONFIG).STAMP.RULE
+setlocal
+cd C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\build\gui
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NIKLA\ONEDRIVE\LATHE_ECOSYSTEM\CAM\INTUI_CAM\INTUICAM\BUILD\CMAKEFILES\E5623B50E9A83BFC9F474438129DDA8A\QRC_RESOURCES.CPP.RULE
+setlocal
+cd C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\build\gui
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E cmake_autorcc C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/gui/CMakeFiles/IntuiCAMGui_autogen.dir/AutoRcc_resources_3YJK5W5UP7_Info.json Release
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NIKLA\ONEDRIVE\LATHE_ECOSYSTEM\CAM\INTUI_CAM\INTUICAM\GUI\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -SC:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM -BC:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build --check-stamp-file C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/gui/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
