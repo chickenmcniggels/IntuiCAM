@@ -2,6 +2,7 @@
 
 #include <QDebug>
 #include <qmath.h>
+#include <limits>
 
 // OpenCASCADE includes
 #include <BRepPrimAPI_MakeCylinder.hxx>
@@ -10,6 +11,11 @@
 #include <Graphic3d_NameOfMaterial.hxx>
 #include <Graphic3d_MaterialAspect.hxx>
 #include <Quantity_Color.hxx>
+#include <Bnd_Box.hxx>
+#include <BRepBndLib.hxx>
+#include <BRepTools.hxx>
+#include <gp_Pnt.hxx>
+#include <gp_Vec.hxx>
 
 // Standard material diameters in mm (ISO metric standard stock sizes)
 const QVector<double> RawMaterialManager::STANDARD_DIAMETERS = {
@@ -62,6 +68,43 @@ void RawMaterialManager::displayRawMaterial(double diameter, double length, cons
         qDebug() << "Raw material displayed - Diameter:" << diameter << "mm, Length:" << length << "mm";
     } else {
         emit errorOccurred("Failed to create raw material cylinder");
+    }
+}
+
+void RawMaterialManager::displayRawMaterialForWorkpiece(double diameter, const TopoDS_Shape& workpiece, const gp_Ax1& axis)
+{
+    if (m_context.IsNull()) {
+        emit errorOccurred("AIS context not initialized");
+        return;
+    }
+    
+    if (workpiece.IsNull()) {
+        emit errorOccurred("Invalid workpiece provided");
+        return;
+    }
+    
+    // Calculate workpiece bounds along the specified axis
+    double length = calculateOptimalLength(workpiece, axis);
+    
+    // Remove existing raw material if any
+    clearRawMaterial();
+    
+    // Create raw material cylinder that encompasses the entire workpiece
+    m_currentRawMaterial = createCylinderForWorkpiece(diameter, length, axis, workpiece);
+    
+    if (!m_currentRawMaterial.IsNull()) {
+        m_rawMaterialAIS = new AIS_Shape(m_currentRawMaterial);
+        
+        // Set raw material visual properties
+        setRawMaterialMaterial(m_rawMaterialAIS);
+        
+        // Display the raw material
+        m_context->Display(m_rawMaterialAIS, AIS_Shaded, 0, false);
+        
+        emit rawMaterialCreated(diameter, length);
+        qDebug() << "Raw material displayed for workpiece - Diameter:" << diameter << "mm, Length:" << length << "mm";
+    } else {
+        emit errorOccurred("Failed to create raw material cylinder for workpiece");
     }
 }
 
@@ -137,4 +180,125 @@ void RawMaterialManager::setRawMaterialMaterial(Handle(AIS_Shape) rawMaterialAIS
     
     rawMaterialAIS->SetMaterial(rawMaterial);
     rawMaterialAIS->SetTransparency(m_rawMaterialTransparency);
+}
+
+void RawMaterialManager::setCustomDiameter(double diameter, const TopoDS_Shape& workpiece, const gp_Ax1& axis)
+{
+    if (diameter <= 0.0) {
+        emit errorOccurred("Invalid diameter specified");
+        return;
+    }
+    
+    if (workpiece.IsNull()) {
+        // Use default length if no workpiece provided
+        displayRawMaterial(diameter, 100.0, axis);
+    } else {
+        displayRawMaterialForWorkpiece(diameter, workpiece, axis);
+    }
+}
+
+double RawMaterialManager::calculateOptimalLength(const TopoDS_Shape& workpiece, const gp_Ax1& axis)
+{
+    if (workpiece.IsNull()) {
+        return 100.0; // Default length
+    }
+    
+    try {
+        // Get bounding box of the workpiece
+        Bnd_Box bbox;
+        BRepBndLib::Add(workpiece, bbox);
+        
+        if (bbox.IsVoid()) {
+            qDebug() << "Empty bounding box for workpiece";
+            return 100.0;
+        }
+        
+        double xmin, ymin, zmin, xmax, ymax, zmax;
+        bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+        
+        // Calculate the bounds along the rotation axis
+        gp_Vec axisDir = axis.Direction();
+        gp_Pnt axisLoc = axis.Location();
+        
+        // Project bounding box corners onto the axis to find extent
+        double minProjection = std::numeric_limits<double>::max();
+        double maxProjection = std::numeric_limits<double>::lowest();
+        
+        // Check all 8 corners of the bounding box
+        gp_Pnt corners[8] = {
+            gp_Pnt(xmin, ymin, zmin), gp_Pnt(xmax, ymin, zmin),
+            gp_Pnt(xmin, ymax, zmin), gp_Pnt(xmax, ymax, zmin),
+            gp_Pnt(xmin, ymin, zmax), gp_Pnt(xmax, ymin, zmax),
+            gp_Pnt(xmin, ymax, zmax), gp_Pnt(xmax, ymax, zmax)
+        };
+        
+        for (int i = 0; i < 8; i++) {
+            gp_Vec toCorner(axisLoc, corners[i]);
+            double projection = toCorner.Dot(axisDir);
+            minProjection = std::min(minProjection, projection);
+            maxProjection = std::max(maxProjection, projection);
+        }
+        
+        double workpieceLength = maxProjection - minProjection;
+        
+        // Add 20% extra length (10% on each end) for machining allowance
+        double rawMaterialLength = workpieceLength * 1.2;
+        
+        // Ensure minimum length of 10mm
+        rawMaterialLength = std::max(rawMaterialLength, 10.0);
+        
+        qDebug() << "Calculated raw material length:" << rawMaterialLength << "mm for workpiece length:" << workpieceLength << "mm";
+        
+        return rawMaterialLength;
+        
+    } catch (const std::exception& e) {
+        qDebug() << "Error calculating optimal length:" << e.what();
+        return 100.0;
+    }
+}
+
+TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, double length, const gp_Ax1& axis, const TopoDS_Shape& workpiece)
+{
+    try {
+        double radius = diameter / 2.0;
+        
+        // Get workpiece bounding box to determine proper positioning
+        Bnd_Box bbox;
+        BRepBndLib::Add(workpiece, bbox);
+        
+        gp_Pnt cylinderCenter;
+        if (!bbox.IsVoid()) {
+            // Calculate the center of the raw material cylinder along the axis
+            double xmin, ymin, zmin, xmax, ymax, zmax;
+            bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+            
+            gp_Vec axisDir = axis.Direction();
+            gp_Pnt axisLoc = axis.Location();
+            
+            // Project bounding box center onto the axis
+            gp_Pnt bboxCenter((xmin + xmax) / 2.0, (ymin + ymax) / 2.0, (zmin + zmax) / 2.0);
+            gp_Vec toBboxCenter(axisLoc, bboxCenter);
+            double projection = toBboxCenter.Dot(axisDir);
+            
+            // Position cylinder center so that it encompasses the workpiece
+            cylinderCenter = axisLoc.Translated(axisDir * (projection - length / 2.0));
+        } else {
+            // Fallback to axis location if no valid bounds
+            cylinderCenter = axis.Location().Translated(axis.Direction() * (-length / 2.0));
+        }
+        
+        // Create coordinate system for the cylinder
+        gp_Ax2 cylinderAx2(cylinderCenter, axis.Direction());
+        
+        // Create cylinder
+        BRepPrimAPI_MakeCylinder cylinderMaker(cylinderAx2, radius, length);
+        TopoDS_Shape cylinder = cylinderMaker.Shape();
+        
+        return cylinder;
+        
+    } catch (const std::exception& e) {
+        qDebug() << "Error creating cylinder for workpiece:" << e.what();
+        emit errorOccurred(QString("Error creating cylinder for workpiece: %1").arg(e.what()));
+        return TopoDS_Shape();
+    }
 } 

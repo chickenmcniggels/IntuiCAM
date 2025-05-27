@@ -1,11 +1,8 @@
 #include "opengl3dwidget.h"
-#include "chuckmanager.h"
-#include "workpiecemanager.h"
-#include "rawmaterialmanager.h"
-#include "steploader.h"
 
 #include <QApplication>
 #include <QDebug>
+#include <QTimer>
 
 // Additional OpenCASCADE includes
 #include <Aspect_Handle.hxx>
@@ -14,7 +11,6 @@
 #include <V3d_AmbientLight.hxx>
 #include <Quantity_Color.hxx>
 #include <AIS_DisplayMode.hxx>
-#include <BRepPrimAPI_MakeCylinder.hxx>
 
 #ifdef _WIN32
 #include <WNT_Window.hxx>
@@ -26,18 +22,22 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     : QOpenGLWidget(parent)
     , m_isDragging(false)
     , m_dragButton(Qt::NoButton)
-    , m_chuckManager(nullptr)
-    , m_workpieceManager(nullptr)
-    , m_rawMaterialManager(nullptr)
+    , m_continuousUpdate(false)
+    , m_updateTimer(new QTimer(this))
 {
     // Enable mouse tracking for proper interaction
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
     
-    // Create component managers
-    m_chuckManager = new ChuckManager(this);
-    m_workpieceManager = new WorkpieceManager(this);
-    m_rawMaterialManager = new RawMaterialManager(this);
+    // Set update behavior to always update, regardless of focus
+    setUpdateBehavior(QOpenGLWidget::PartialUpdate);
+    
+    // Setup continuous update timer
+    m_updateTimer->setSingleShot(false);
+    m_updateTimer->setInterval(16); // ~60 FPS
+    connect(m_updateTimer, &QTimer::timeout, this, QOverload<>::of(&QOpenGLWidget::update));
+    
+    qDebug() << "OpenGL3DWidget created as pure visualization component";
 }
 
 OpenGL3DWidget::~OpenGL3DWidget()
@@ -99,31 +99,13 @@ void OpenGL3DWidget::initializeViewer()
         // Create interactive context
         m_context = new AIS_InteractiveContext(m_viewer);
         
-        // Create shared STEP loader
-        StepLoader* stepLoader = new StepLoader();
-        
-        // Initialize component managers with context
-        if (m_chuckManager) {
-            m_chuckManager->initialize(m_context, stepLoader);
-            qDebug() << "ChuckManager initialized with OpenCASCADE context";
-        } else {
-            qDebug() << "Warning: ChuckManager is null during OpenGL initialization";
-        }
-        
-        if (m_workpieceManager) {
-            m_workpieceManager->initialize(m_context);
-            qDebug() << "WorkpieceManager initialized with OpenCASCADE context";
-        }
-        
-        if (m_rawMaterialManager) {
-            m_rawMaterialManager->initialize(m_context);
-            qDebug() << "RawMaterialManager initialized with OpenCASCADE context";
-        }
-        
         // Configure the view
         m_view->SetBackgroundColor(Quantity_NOC_GRAY30);
         m_view->MustBeResized();
         m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_GOLD, 0.08, V3d_ZBUFFER);
+        
+        // Emit initialization signal
+        emit viewerInitialized();
         
         qDebug() << "OpenCASCADE 3D viewer initialized successfully";
         
@@ -138,7 +120,16 @@ void OpenGL3DWidget::updateView()
 {
     if (!m_view.IsNull() && !m_window.IsNull())
     {
+        // Ensure the OpenGL context is current before updating
+        makeCurrent();
+        
+        // Force redraw even if widget doesn't have focus
         m_view->Redraw();
+        
+        // Make sure the rendering is complete
+        if (context()) {
+            context()->swapBuffers(context()->surface());
+        }
     }
 }
 
@@ -259,52 +250,44 @@ void OpenGL3DWidget::wheelEvent(QWheelEvent *event)
     }
 }
 
-void OpenGL3DWidget::initializeChuck(const QString& chuckFilePath)
+void OpenGL3DWidget::setContinuousUpdate(bool enabled)
 {
-    qDebug() << "initializeChuck called with file:" << chuckFilePath;
-    
-    if (!m_chuckManager) {
-        qDebug() << "Error: ChuckManager is null";
-        return;
-    }
-    
-    if (m_context.IsNull()) {
-        qDebug() << "Error: OpenCASCADE context is null";
-        return;
-    }
-    
-    qDebug() << "Attempting to load chuck file...";
-    bool success = m_chuckManager->loadChuck(chuckFilePath);
-    if (success) {
-        fitAll();
-        qDebug() << "Chuck initialized successfully from:" << chuckFilePath;
+    m_continuousUpdate = enabled;
+    if (enabled && isVisible()) {
+        m_updateTimer->start();
     } else {
-        qDebug() << "Failed to initialize chuck from:" << chuckFilePath;
+        m_updateTimer->stop();
     }
 }
 
-void OpenGL3DWidget::addWorkpiece(const TopoDS_Shape& workpiece)
+void OpenGL3DWidget::focusInEvent(QFocusEvent *event)
 {
-    if (m_workpieceManager && m_rawMaterialManager && !workpiece.IsNull()) {
-        // Add workpiece
-        bool success = m_workpieceManager->addWorkpiece(workpiece);
-        if (success) {
-            // Get cylinder information from workpiece
-            QVector<gp_Ax1> cylinders = m_workpieceManager->detectCylinders(workpiece);
-            if (!cylinders.isEmpty()) {
-                gp_Ax1 mainAxis = cylinders.first();
-                double diameter = m_workpieceManager->getDetectedDiameter();
-                
-                // Calculate raw material requirements
-                double rawMaterialDiameter = m_rawMaterialManager->getNextStandardDiameter(diameter);
-                double length = 100.0; // Default length, should be calculated from workpiece bounds
-                
-                // Display raw material
-                m_rawMaterialManager->displayRawMaterial(rawMaterialDiameter, length, mainAxis);
-            }
-            
-            fitAll();
-            qDebug() << "Workpiece added with automatic alignment";
-        }
+    QOpenGLWidget::focusInEvent(event);
+    // Ensure we update when gaining focus
+    update();
+    qDebug() << "OpenGL3DWidget gained focus";
+}
+
+void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
+{
+    QOpenGLWidget::focusOutEvent(event);
+    // Force an update even when losing focus to prevent black screen
+    update();
+    qDebug() << "OpenGL3DWidget lost focus";
+}
+
+void OpenGL3DWidget::showEvent(QShowEvent *event)
+{
+    QOpenGLWidget::showEvent(event);
+    if (m_continuousUpdate) {
+        m_updateTimer->start();
     }
+    // Force initial update when shown
+    update();
+}
+
+void OpenGL3DWidget::hideEvent(QHideEvent *event)
+{
+    QOpenGLWidget::hideEvent(event);
+    m_updateTimer->stop();
 } 

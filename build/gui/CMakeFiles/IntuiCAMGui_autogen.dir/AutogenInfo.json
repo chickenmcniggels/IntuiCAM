@@ -53,6 +53,12 @@
 			null
 		],
 		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/include/workspacecontroller.h",
+			"MU",
+			"6YEA5652QU/moc_workspacecontroller.cpp",
+			null
+		],
+		[
 			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/src/mainwindow.h",
 			"MU",
 			"UVLADIE3JM/moc_mainwindow.cpp",
@@ -321,6 +327,11 @@
 		],
 		[
 			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/src/workpiecemanager.cpp",
+			"MU",
+			null
+		],
+		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/src/workspacecontroller.cpp",
 			"MU",
 			null
 		]

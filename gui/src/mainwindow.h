@@ -17,6 +17,7 @@
 // Forward declarations for our custom classes
 class OpenGL3DWidget;
 class StepLoader;
+class WorkspaceController;
 
 QT_BEGIN_NAMESPACE
 class QLabel;
@@ -42,12 +43,17 @@ public:
 private slots:
     void newProject();
     void openProject();
-    void openStepFile();  // New slot for opening STEP files
+    void openStepFile();
     void saveProject();
     void exitApplication();
     void aboutApplication();
     void showPreferences();
-    void initializeChuck();  // Initialize the chuck after UI is ready
+    void initializeWorkspace();  // Initialize the workspace after UI is ready
+    
+    // Workspace controller event handlers
+    void handleWorkspaceError(const QString& source, const QString& message);
+    void handleChuckInitialized();
+    void handleWorkpieceWorkflowCompleted(double diameter, double rawMaterialDiameter);
 
 private:
     void createMenus();
@@ -55,6 +61,7 @@ private:
     void createStatusBar();
     void createCentralWidget();
     void setupConnections();
+    void setupWorkspaceConnections();
 
     // UI Components
     QWidget *m_centralWidget;
@@ -65,13 +72,14 @@ private:
     QTreeWidget *m_projectTree;
     QTextEdit *m_propertiesPanel;
     
-    // 3D Viewport - replace QLabel with OpenCASCADE viewer
+    // 3D Viewport - pure visualization component
     OpenGL3DWidget *m_3dViewer;
     
     // Output/Log window
     QTextEdit *m_outputWindow;
     
-    // STEP file loader
+    // Business logic controllers
+    WorkspaceController *m_workspaceController;
     StepLoader *m_stepLoader;
     
     // Menus
@@ -84,14 +92,11 @@ private:
     // Actions
     QAction *m_newAction;
     QAction *m_openAction;
-    QAction *m_openStepAction;  // New action for opening STEP files
+    QAction *m_openStepAction;
     QAction *m_saveAction;
     QAction *m_exitAction;
     QAction *m_aboutAction;
     QAction *m_preferencesAction;
-    
-    // Toolbars
-    QToolBar *m_mainToolBar;
 };
 
 #endif // MAINWINDOW_H

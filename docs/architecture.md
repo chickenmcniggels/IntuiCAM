@@ -108,28 +108,94 @@ IntuiCAM/                   # Root of the repo
 
 * **Framework**: Qt + OpenCASCADE visualization
 * **Responsibilities**:
-  * 3D viewport (using OpenCASCADE AIS)
+  * 3D viewport (using OpenCASCADE AIS) with focus-independent rendering
   * Interactive setup wizard (import → axis → stock → tools → operations)
   * Parameter panels and real-time preview
   * Progress dialogs and error reporting
-  * Chuck management and workpiece alignment
+  * Workspace management and workpiece alignment
+  * Advanced raw material sizing with workpiece analysis
 * **Design**:
-  * Model–View–Controller (MVC) pattern
-  * Communicates with Core via C++ API
+  * Model–View–Controller (MVC) pattern with clear separation of concerns
+  * WorkspaceController coordinates business logic
+  * OpenGL3DWidget provides pure visualization with enhanced focus handling
+  * Specialized managers handle domain-specific functionality
 
-#### 3.3.1 Chuck Management System
+#### 3.3.1 Workspace Management System
 
-* **ChuckManager Class**: Handles 3-jaw chuck functionality
-  * Persistent display of chuck STEP file
-  * Automatic cylinder detection in workpieces
-  * Standard diameter matching for raw material
-  * Transparent raw material visualization
-* **Features**:
-  * Automatic workpiece alignment with chuck axis
-  * ISO metric standard stock diameter database
-  * Real-time cylinder detection and feedback
-  * Configurable transparency and material properties
-* **Integration**: Seamlessly integrated with OpenCASCADE AIS context
+The workspace management system exemplifies the application's modular architecture with clear separation of concerns:
+
+* **WorkspaceController Class**: Top-level business logic coordinator
+  * `initializeChuck()`: Coordinates chuck setup workflow
+  * `addWorkpiece()`: Manages complete workpiece processing pipeline
+  * `clearWorkpieces()`: Handles workspace cleanup operations
+  * `executeWorkpieceWorkflow()`: Orchestrates multi-step workflows with improved raw material positioning
+  * Provides unified error handling and progress reporting
+  * Coordinates between specialized managers using dependency injection
+
+* **OpenGL3DWidget Class**: Pure visualization component (Enhanced in v1.1)
+  * `initializeViewer()`: Sets up OpenCASCADE rendering pipeline
+  * `displayShape()`: Basic shape display operations
+  * `fitAll()`: View manipulation and camera controls
+  * Mouse interaction handling (rotation, panning, zooming)
+  * **NEW**: Focus-independent rendering with enhanced event handling
+  * **NEW**: Continuous update support via `setContinuousUpdate()`
+  * **NEW**: Robust context management preventing black screen issues
+  * Emits `viewerInitialized()` signal for controller coordination
+  * No business logic - focused solely on 3D rendering
+
+* **ChuckManager Class**: Chuck-specific functionality
+  * `loadChuck()`: Loads and displays 3-jaw chuck STEP file
+  * `clearChuck()`: Removes chuck from display
+  * `isChuckLoaded()`: Status checking
+  * Uses dependency injection for STEP loading (IStepLoader interface)
+  * Handles chuck-specific material properties and positioning
+
+* **WorkpieceManager Class**: Workpiece analysis and display
+  * `addWorkpiece()`: Adds workpiece with aluminum-like material properties
+  * `detectCylinders()`: Advanced geometric analysis using OpenCASCADE topology
+  * `getDetectedDiameter()`: Returns largest detected cylinder diameter
+  * Emits `cylinderDetected()` signal for workflow coordination
+  * Self-contained geometric analysis algorithms
+
+* **RawMaterialManager Class**: Raw material sizing and display (Enhanced in v1.1)
+  * `displayRawMaterial()`: Creates transparent brass-colored stock cylinder
+  * **NEW**: `displayRawMaterialForWorkpiece()`: Intelligent workpiece-based sizing
+  * **NEW**: `calculateOptimalLength()`: Bounding box analysis with machining allowances
+  * **NEW**: `createCylinderForWorkpiece()`: Proper cylinder positioning to encompass workpiece
+  * **NEW**: `setCustomDiameter()`: Support for manual diameter override
+  * `getNextStandardDiameter()`: Finds optimal standard size from ISO metric database
+  * `setRawMaterialTransparency()`: Configurable transparency (default 70%)
+  * **NEW**: Enhanced standard diameter database with `getStandardDiameters()` access
+  * Independent material creation and sizing logic with improved positioning
+
+* **IStepLoader Interface**: STEP loading abstraction
+  * Enables dependency injection and loose coupling
+  * Facilitates unit testing with mock implementations
+  * Follows SOLID principles (Dependency Inversion)
+
+* **Architectural Benefits**:
+  * Single Responsibility Principle: Each component has one clear purpose
+  * Open/Closed Principle: Easy to extend without modifying existing code
+  * Dependency Inversion: Controllers depend on abstractions, not concrete implementations
+  * **NEW**: Enhanced Reliability: Focus-independent 3D rendering prevents UI glitches
+  * **NEW**: Improved User Experience: Raw material automatically encompasses workpieces
+  * Testability: Each component can be unit tested independently
+  * Extensibility: New managers and workflows can be added following the same pattern
+  * Performance: Component-specific optimization and memory management
+  * Maintainability: Clear interfaces and minimal coupling
+
+#### 3.3.2 Recent Improvements (v1.1)
+
+**3D Viewer Enhancements**:
+- **Black Screen Fix**: Resolved focus-related rendering issues through enhanced event handling
+- **Continuous Updates**: Optional timer-based updates for smooth animations
+- **Robust Context Management**: Improved OpenGL context handling for reliable rendering
+
+**Raw Material System Enhancements**:
+- **Intelligent Sizing**: Automatic bounding box analysis to encompass entire workpieces
+- **Workpiece Positioning**: Raw material cylinders properly positioned relative to part geometry
+- **Manual Controls**: Support for custom diameter selection and manual overrides
+- **Standard Database**: Access to comprehensive ISO metric standard stock sizes
 
 ### 3.4 Simulation & Verification
 
@@ -207,10 +273,10 @@ IntuiCAM/                   # Root of the repo
 ## 5. Data Flow Overview
 
 1. **Import**: User loads a STEP file → Core geometry module parses into B-Rep model.
-2. **Setup**: User defines rotation axis, stock, and chuck in GUI → Core stores `Setup` object.
-3. **Tool & Operation**: GUI or script configures tools and operations → Core validates and attaches to project model.
-4. **Compute**: GUI calls appropriate toolpath generation functions → Core computes and stores toolpaths.
-5. **Preview**: GUI queries Core for mesh & curve data → 3D viewport renders model + toolpaths.
+2. **Setup**: User defines rotation axis, stock, and chuck in GUI → WorkspaceController coordinates setup.
+3. **Tool & Operation**: GUI or script configures tools and operations → WorkspaceController validates and manages workflow.
+4. **Compute**: GUI calls WorkspaceController methods → Core computes and stores toolpaths.
+5. **Preview**: GUI queries managers through WorkspaceController → 3D viewport renders model + toolpaths.
 6. **Export**: GUI or CLI invokes postprocessor → G-Code is formatted and written to file.
 
 ---
@@ -331,14 +397,15 @@ IntuiCAM/                   # Root of the repo
 
 ## 9. Key Design Patterns & Practices
 
-* **SOLID Principles**: Single Responsibility for classes, Open/Closed for extensions
+* **SOLID Principles**: Single Responsibility for classes, Open/Closed for extensions, Dependency Inversion for controllers
 * **Observer/Signal–Slot** for UI updates on model changes
 * **Factory** for creating operations/toolpath strategies
 * **Strategy** for interchangeable CAM algorithms
 * **Facade** for exposing Core API to GUI/CLI
 * **Builder** for constructing complex objects
 * **Adapter** for converting between different type systems
+* **Coordinator/Controller** for orchestrating multi-component workflows
 
 ---
 
-By following this architecture, IntuiCAM achieves a balance of **clarity**, **extensibility**, and **performance**, while remaining **inviting** for new contributors and future integrations into other platforms.
+By following this architecture, IntuiCAM achieves a balance of **clarity**, **extensibility**, and **performance**, while remaining **inviting** for new contributors and future integrations into other platforms. The WorkspaceController pattern ensures clean separation of concerns while maintaining the modular principles that make the codebase maintainable and testable.

@@ -122,7 +122,8 @@
 				},
 				{
 					"build" : "gui",
-					"jsonFile" : "directory-gui-Debug-7b85fb46da2567f2394e.json",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-gui-Debug-cfc895ee739753ca736f.json",
 					"minimumCMakeVersion" : 
 					{
 						"string" : "3.16"
@@ -187,21 +188,21 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ALL_BUILD-Debug-44757dbc4c41bb014fb5.json",
+					"jsonFile" : "target-ALL_BUILD-Debug-06bfe0318e6afa3b0e9b.json",
 					"name" : "ALL_BUILD",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 8,
 					"id" : "IntuiCAMCli::@434c77fc11d56e0cadb1",
-					"jsonFile" : "target-IntuiCAMCli-Debug-ea57f903c7d2306954d6.json",
+					"jsonFile" : "target-IntuiCAMCli-Debug-97173baa66b853b3fdc2.json",
 					"name" : "IntuiCAMCli",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 7,
 					"id" : "IntuiCAMGui::@35f413a6cfe5475b20aa",
-					"jsonFile" : "target-IntuiCAMGui-Debug-be2cc5365de9cf8421d7.json",
+					"jsonFile" : "target-IntuiCAMGui-Debug-d3d026e4094f56ad4b76.json",
 					"name" : "IntuiCAMGui",
 					"projectIndex" : 0
 				},
@@ -229,21 +230,21 @@
 				{
 					"directoryIndex" : 5,
 					"id" : "intuicam_core_postprocessor::@5d2fddf615fa909547e0",
-					"jsonFile" : "target-intuicam_core_postprocessor-Debug-b056e298ed91945f78c2.json",
+					"jsonFile" : "target-intuicam_core_postprocessor-Debug-fba1e7af0fc31ce1f4fd.json",
 					"name" : "intuicam_core_postprocessor",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 6,
 					"id" : "intuicam_core_simulation::@e9863fed3e6a3709ab7e",
-					"jsonFile" : "target-intuicam_core_simulation-Debug-76799823baec2c88eeb6.json",
+					"jsonFile" : "target-intuicam_core_simulation-Debug-43e367c8e746aeb3a7a8.json",
 					"name" : "intuicam_core_simulation",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 4,
 					"id" : "intuicam_core_toolpath::@a1b418a76df8b866ba15",
-					"jsonFile" : "target-intuicam_core_toolpath-Debug-e30fe609c5bcc6696070.json",
+					"jsonFile" : "target-intuicam_core_toolpath-Debug-a04cb36c24c18dd33115.json",
 					"name" : "intuicam_core_toolpath",
 					"projectIndex" : 0
 				}
@@ -370,7 +371,8 @@
 				},
 				{
 					"build" : "gui",
-					"jsonFile" : "directory-gui-Release-7b85fb46da2567f2394e.json",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-gui-Release-4fb79777a81c2487ed87.json",
 					"minimumCMakeVersion" : 
 					{
 						"string" : "3.16"
@@ -435,21 +437,21 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ALL_BUILD-Release-44757dbc4c41bb014fb5.json",
+					"jsonFile" : "target-ALL_BUILD-Release-06bfe0318e6afa3b0e9b.json",
 					"name" : "ALL_BUILD",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 8,
 					"id" : "IntuiCAMCli::@434c77fc11d56e0cadb1",
-					"jsonFile" : "target-IntuiCAMCli-Release-aa6e3ff8eea97f3772bc.json",
+					"jsonFile" : "target-IntuiCAMCli-Release-b698d311666bd1eacab8.json",
 					"name" : "IntuiCAMCli",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 7,
 					"id" : "IntuiCAMGui::@35f413a6cfe5475b20aa",
-					"jsonFile" : "target-IntuiCAMGui-Release-b1ca016ba33228a686e5.json",
+					"jsonFile" : "target-IntuiCAMGui-Release-8689091374293bea768c.json",
 					"name" : "IntuiCAMGui",
 					"projectIndex" : 0
 				},
@@ -477,21 +479,21 @@
 				{
 					"directoryIndex" : 5,
 					"id" : "intuicam_core_postprocessor::@5d2fddf615fa909547e0",
-					"jsonFile" : "target-intuicam_core_postprocessor-Release-7c5908253a81934745e4.json",
+					"jsonFile" : "target-intuicam_core_postprocessor-Release-5f98495bb51192c82d13.json",
 					"name" : "intuicam_core_postprocessor",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 6,
 					"id" : "intuicam_core_simulation::@e9863fed3e6a3709ab7e",
-					"jsonFile" : "target-intuicam_core_simulation-Release-cd5cc870e01ed4367c53.json",
+					"jsonFile" : "target-intuicam_core_simulation-Release-3494ae4ede2960ec4fdd.json",
 					"name" : "intuicam_core_simulation",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 4,
 					"id" : "intuicam_core_toolpath::@a1b418a76df8b866ba15",
-					"jsonFile" : "target-intuicam_core_toolpath-Release-40313eded95664594aa7.json",
+					"jsonFile" : "target-intuicam_core_toolpath-Release-32c23d735237834947b0.json",
 					"name" : "intuicam_core_toolpath",
 					"projectIndex" : 0
 				}
@@ -618,7 +620,8 @@
 				},
 				{
 					"build" : "gui",
-					"jsonFile" : "directory-gui-MinSizeRel-7b85fb46da2567f2394e.json",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-gui-MinSizeRel-5977180ad2c081eb39df.json",
 					"minimumCMakeVersion" : 
 					{
 						"string" : "3.16"
@@ -683,21 +686,21 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ALL_BUILD-MinSizeRel-44757dbc4c41bb014fb5.json",
+					"jsonFile" : "target-ALL_BUILD-MinSizeRel-06bfe0318e6afa3b0e9b.json",
 					"name" : "ALL_BUILD",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 8,
 					"id" : "IntuiCAMCli::@434c77fc11d56e0cadb1",
-					"jsonFile" : "target-IntuiCAMCli-MinSizeRel-1a6eb6e7485e401a1d8a.json",
+					"jsonFile" : "target-IntuiCAMCli-MinSizeRel-8545b7ffbe618ac8ad9f.json",
 					"name" : "IntuiCAMCli",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 7,
 					"id" : "IntuiCAMGui::@35f413a6cfe5475b20aa",
-					"jsonFile" : "target-IntuiCAMGui-MinSizeRel-c3e1db066a4dbcf2dbcb.json",
+					"jsonFile" : "target-IntuiCAMGui-MinSizeRel-64710affbed520a17968.json",
 					"name" : "IntuiCAMGui",
 					"projectIndex" : 0
 				},
@@ -725,21 +728,21 @@
 				{
 					"directoryIndex" : 5,
 					"id" : "intuicam_core_postprocessor::@5d2fddf615fa909547e0",
-					"jsonFile" : "target-intuicam_core_postprocessor-MinSizeRel-7569d28f055f229c679d.json",
+					"jsonFile" : "target-intuicam_core_postprocessor-MinSizeRel-76a1c9058a12b513892f.json",
 					"name" : "intuicam_core_postprocessor",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 6,
 					"id" : "intuicam_core_simulation::@e9863fed3e6a3709ab7e",
-					"jsonFile" : "target-intuicam_core_simulation-MinSizeRel-c9a8742aaa29f1b6ad9d.json",
+					"jsonFile" : "target-intuicam_core_simulation-MinSizeRel-8e54508bd767dff38e91.json",
 					"name" : "intuicam_core_simulation",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 4,
 					"id" : "intuicam_core_toolpath::@a1b418a76df8b866ba15",
-					"jsonFile" : "target-intuicam_core_toolpath-MinSizeRel-653f392e00f8a6dda300.json",
+					"jsonFile" : "target-intuicam_core_toolpath-MinSizeRel-024534442bca895072d4.json",
 					"name" : "intuicam_core_toolpath",
 					"projectIndex" : 0
 				}
@@ -866,7 +869,8 @@
 				},
 				{
 					"build" : "gui",
-					"jsonFile" : "directory-gui-RelWithDebInfo-7b85fb46da2567f2394e.json",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-gui-RelWithDebInfo-d3b8faab3f60afeaa9ff.json",
 					"minimumCMakeVersion" : 
 					{
 						"string" : "3.16"
@@ -931,21 +935,21 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ALL_BUILD-RelWithDebInfo-44757dbc4c41bb014fb5.json",
+					"jsonFile" : "target-ALL_BUILD-RelWithDebInfo-06bfe0318e6afa3b0e9b.json",
 					"name" : "ALL_BUILD",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 8,
 					"id" : "IntuiCAMCli::@434c77fc11d56e0cadb1",
-					"jsonFile" : "target-IntuiCAMCli-RelWithDebInfo-3693ed4f49442ed3d181.json",
+					"jsonFile" : "target-IntuiCAMCli-RelWithDebInfo-72d2ea793965a528ac1d.json",
 					"name" : "IntuiCAMCli",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 7,
 					"id" : "IntuiCAMGui::@35f413a6cfe5475b20aa",
-					"jsonFile" : "target-IntuiCAMGui-RelWithDebInfo-2288e5d1fc649be612b4.json",
+					"jsonFile" : "target-IntuiCAMGui-RelWithDebInfo-1a900c53e5378d7e0304.json",
 					"name" : "IntuiCAMGui",
 					"projectIndex" : 0
 				},
@@ -973,21 +977,21 @@
 				{
 					"directoryIndex" : 5,
 					"id" : "intuicam_core_postprocessor::@5d2fddf615fa909547e0",
-					"jsonFile" : "target-intuicam_core_postprocessor-RelWithDebInfo-b5e524416ef3f9baac9d.json",
+					"jsonFile" : "target-intuicam_core_postprocessor-RelWithDebInfo-27c4bc592422cea3481e.json",
 					"name" : "intuicam_core_postprocessor",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 6,
 					"id" : "intuicam_core_simulation::@e9863fed3e6a3709ab7e",
-					"jsonFile" : "target-intuicam_core_simulation-RelWithDebInfo-c2723ceb4b7180e0b66b.json",
+					"jsonFile" : "target-intuicam_core_simulation-RelWithDebInfo-905799badd92cc9acbfb.json",
 					"name" : "intuicam_core_simulation",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 4,
 					"id" : "intuicam_core_toolpath::@a1b418a76df8b866ba15",
-					"jsonFile" : "target-intuicam_core_toolpath-RelWithDebInfo-543b0c3229442d7b5bab.json",
+					"jsonFile" : "target-intuicam_core_toolpath-RelWithDebInfo-fff1e9bcbfab90136d03.json",
 					"name" : "intuicam_core_toolpath",
 					"projectIndex" : 0
 				}

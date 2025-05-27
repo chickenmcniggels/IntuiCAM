@@ -42,9 +42,30 @@ public:
     void displayRawMaterial(double diameter, double length, const gp_Ax1& axis);
 
     /**
+     * @brief Create and display raw material cylinder sized for a specific workpiece
+     * @param diameter Raw material diameter
+     * @param workpiece The workpiece shape to encompass
+     * @param axis The rotation axis for the raw material
+     */
+    void displayRawMaterialForWorkpiece(double diameter, const TopoDS_Shape& workpiece, const gp_Ax1& axis);
+
+    /**
      * @brief Find the next largest standard diameter for a given diameter
      */
     double getNextStandardDiameter(double diameter);
+
+    /**
+     * @brief Get list of all standard diameters
+     */
+    const QVector<double>& getStandardDiameters() const { return STANDARD_DIAMETERS; }
+
+    /**
+     * @brief Set custom diameter (not necessarily from standard list)
+     * @param diameter Custom diameter in mm
+     * @param workpiece The workpiece to encompass
+     * @param axis The rotation axis
+     */
+    void setCustomDiameter(double diameter, const TopoDS_Shape& workpiece, const gp_Ax1& axis);
 
     /**
      * @brief Clear raw material display
@@ -91,6 +112,16 @@ private:
      * @brief Create a cylinder shape for raw material
      */
     TopoDS_Shape createCylinder(double diameter, double length, const gp_Ax1& axis);
+    
+    /**
+     * @brief Create a cylinder shape that properly encompasses a workpiece
+     */
+    TopoDS_Shape createCylinderForWorkpiece(double diameter, double length, const gp_Ax1& axis, const TopoDS_Shape& workpiece);
+    
+    /**
+     * @brief Calculate optimal length for raw material based on workpiece bounds
+     */
+    double calculateOptimalLength(const TopoDS_Shape& workpiece, const gp_Ax1& axis);
     
     /**
      * @brief Set raw material visual properties

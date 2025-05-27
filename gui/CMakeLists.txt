@@ -11,6 +11,7 @@ set(GUI_SOURCES
     src/chuckmanager.cpp
     src/workpiecemanager.cpp
     src/rawmaterialmanager.cpp
+    src/workspacecontroller.cpp
 )
 
 set(GUI_HEADERS
@@ -21,6 +22,7 @@ set(GUI_HEADERS
     include/chuckmanager.h
     include/workpiecemanager.h
     include/rawmaterialmanager.h
+    include/workspacecontroller.h
 )
 
 set(GUI_UI_FILES
@@ -56,28 +58,55 @@ target_link_libraries(${GUI_EXECUTABLE_NAME} PRIVATE
 )
 
 # Link against OpenCASCADE modules for visualization and STEP import
-# Based on minimal requirements from OCCT samples
-set(OCCT_GUI_LIBS
-    TKernel        # OCCT kernel
-    TKMath         # Mathematical functions
-    TKG2d          # 2D geometry
-    TKG3d          # 3D geometry
-    TKGeomBase     # Geometry base
-    TKGeomAlgo     # Geometry algorithms
-    TKBRep         # Boundary representation
-    TKTopAlgo      # Topology algorithms
-    TKPrim         # Primitive objects
-    TKService      # Visualization services
-    TKV3d          # Core 3D visualization
-    TKOpenGl       # OpenGL rendering backend
-    TKOpenGles     # OpenGL ES rendering backend (for some platforms)
-    TKCAF          # Common Application Framework
-    TKShHealing    # Shape healing utilities
-    TKDE           # Data Exchange utilities
-    TKXSBase       # Exchange base
-    TKDESTEP       # STEP file reader/writer
+# Based on actual available libraries in OpenCASCADE installation
+target_link_libraries(${GUI_EXECUTABLE_NAME} PRIVATE
+    # Kernel and foundation
+    TKernel
+    TKMath
+    
+    # Data exchange - Updated library names
+    TKXSBase
+    TKDESTEP
+    TKDEIGES
+    
+    # Application framework and visualization
+    TKVCAF
+    TKV3d
+    TKOpenGl
+    TKService
+    
+    # Basic topology and geometry
+    TKG3d
+    TKGeomBase
+    TKBRep
+    TKGeomAlgo
+    TKTopAlgo
+    TKPrim
+    
+    # Mesh and shape healing
+    TKMesh
+    TKShHealing
+    
+    # Boolean operations and primitives
+    TKBO
+    TKBool
+    
+    # Hidden line removal
+    TKHLR
 )
-target_link_libraries(${GUI_EXECUTABLE_NAME} PRIVATE ${OCCT_GUI_LIBS})
+
+# Optional: Set additional compiler flags for better optimization and warnings
+if(MSVC)
+    target_compile_options(${GUI_EXECUTABLE_NAME} PRIVATE /W3)
+else()
+    target_compile_options(${GUI_EXECUTABLE_NAME} PRIVATE -Wall -Wextra)
+endif()
+
+# Installation rules
+install(TARGETS ${GUI_EXECUTABLE_NAME}
+    BUNDLE DESTINATION .
+    RUNTIME DESTINATION bin
+)
 
 # Link against our static core libraries
 target_link_libraries(${GUI_EXECUTABLE_NAME} PRIVATE

@@ -1,9 +1,7 @@
 #include "mainwindow.h"
 #include "opengl3dwidget.h"
 #include "steploader.h"
-#include "chuckmanager.h"
-#include "workpiecemanager.h"
-#include "rawmaterialmanager.h"
+#include "workspacecontroller.h"
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -37,15 +35,16 @@ MainWindow::MainWindow(QWidget *parent)
     , m_propertiesPanel(nullptr)
     , m_3dViewer(nullptr)
     , m_outputWindow(nullptr)
+    , m_workspaceController(nullptr)
     , m_stepLoader(nullptr)
-    , m_mainToolBar(nullptr)
 {
     setWindowTitle("IntuiCAM - Computer Aided Manufacturing");
     setMinimumSize(1024, 768);
     resize(1400, 900);
     
-    // Initialize STEP loader
+    // Initialize components following modular architecture
     m_stepLoader = new StepLoader();
+    m_workspaceController = new WorkspaceController(this);
     
     createMenus();
     createToolBars();
@@ -56,20 +55,20 @@ MainWindow::MainWindow(QWidget *parent)
     // Set initial status
     statusBar()->showMessage("Ready - Welcome to IntuiCAM", 2000);
     
-    // Initialize chuck automatically after a short delay to ensure OpenGL is ready
-    QTimer::singleShot(100, this, &MainWindow::initializeChuck);
+    // Initialize workspace automatically after a short delay to ensure OpenGL is ready
+    QTimer::singleShot(100, this, &MainWindow::initializeWorkspace);
 }
 
 MainWindow::~MainWindow()
 {
     // Clean up our custom objects
     delete m_stepLoader;
-    // Qt handles cleanup of widgets automatically
+    // Qt handles cleanup of other widgets and WorkspaceController automatically
 }
 
 void MainWindow::createMenus()
 {
-    // File Menu
+    // Create File menu
     m_fileMenu = menuBar()->addMenu(tr("&File"));
     
     m_newAction = new QAction(tr("&New Project"), this);
@@ -82,16 +81,18 @@ void MainWindow::createMenus()
     m_openAction->setStatusTip(tr("Open an existing CAM project"));
     m_fileMenu->addAction(m_openAction);
     
+    m_fileMenu->addSeparator();
+    
     m_openStepAction = new QAction(tr("Open &STEP File"), this);
-    m_openStepAction->setShortcut(QKeySequence("Ctrl+Shift+O"));
-    m_openStepAction->setStatusTip(tr("Open a STEP file for viewing"));
+    m_openStepAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_O));
+    m_openStepAction->setStatusTip(tr("Import a STEP file as workpiece"));
     m_fileMenu->addAction(m_openStepAction);
     
     m_fileMenu->addSeparator();
     
     m_saveAction = new QAction(tr("&Save Project"), this);
     m_saveAction->setShortcut(QKeySequence::Save);
-    m_saveAction->setStatusTip(tr("Save the current project"));
+    m_saveAction->setStatusTip(tr("Save the current CAM project"));
     m_fileMenu->addAction(m_saveAction);
     
     m_fileMenu->addSeparator();
@@ -101,28 +102,30 @@ void MainWindow::createMenus()
     m_exitAction->setStatusTip(tr("Exit the application"));
     m_fileMenu->addAction(m_exitAction);
     
-    // Edit Menu
+    // Create Edit menu
     m_editMenu = menuBar()->addMenu(tr("&Edit"));
+    
     m_preferencesAction = new QAction(tr("&Preferences"), this);
-    m_preferencesAction->setStatusTip(tr("Configure application preferences"));
+    m_preferencesAction->setStatusTip(tr("Configure application settings"));
     m_editMenu->addAction(m_preferencesAction);
     
-    // View Menu
+    // Create View menu
     m_viewMenu = menuBar()->addMenu(tr("&View"));
     
-    // Tools Menu
+    // Create Tools menu
     m_toolsMenu = menuBar()->addMenu(tr("&Tools"));
     
-    // Help Menu
+    // Create Help menu
     m_helpMenu = menuBar()->addMenu(tr("&Help"));
+    
     m_aboutAction = new QAction(tr("&About IntuiCAM"), this);
-    m_aboutAction->setStatusTip(tr("Show information about IntuiCAM"));
+    m_aboutAction->setStatusTip(tr("Show information about the application"));
     m_helpMenu->addAction(m_aboutAction);
 }
 
 void MainWindow::createToolBars()
 {
-    m_mainToolBar = addToolBar(tr("Main"));
+    QToolBar* m_mainToolBar = addToolBar(tr("Main"));
     m_mainToolBar->setMovable(false);
     
     if (m_newAction) m_mainToolBar->addAction(m_newAction);
@@ -176,7 +179,7 @@ void MainWindow::createCentralWidget()
     m_leftSplitter->addWidget(m_propertiesPanel);
     m_leftSplitter->setSizes({400, 150});
     
-    // 3D Viewport - OpenCASCADE viewer
+    // 3D Viewport - Pure visualization component
     m_3dViewer = new OpenGL3DWidget();
     m_3dViewer->setMinimumSize(600, 400);
     
@@ -208,6 +211,7 @@ void MainWindow::createStatusBar()
 
 void MainWindow::setupConnections()
 {
+    // Connect UI actions
     if (m_newAction) connect(m_newAction, &QAction::triggered, this, &MainWindow::newProject);
     if (m_openAction) connect(m_openAction, &QAction::triggered, this, &MainWindow::openProject);
     if (m_openStepAction) connect(m_openStepAction, &QAction::triggered, this, &MainWindow::openStepFile);
@@ -215,6 +219,30 @@ void MainWindow::setupConnections()
     if (m_exitAction) connect(m_exitAction, &QAction::triggered, this, &MainWindow::exitApplication);
     if (m_aboutAction) connect(m_aboutAction, &QAction::triggered, this, &MainWindow::aboutApplication);
     if (m_preferencesAction) connect(m_preferencesAction, &QAction::triggered, this, &MainWindow::showPreferences);
+    
+    // Connect 3D viewer initialization
+    connect(m_3dViewer, &OpenGL3DWidget::viewerInitialized,
+            this, &MainWindow::setupWorkspaceConnections);
+}
+
+void MainWindow::setupWorkspaceConnections()
+{
+    // Initialize workspace controller when 3D viewer is ready
+    if (m_workspaceController && m_3dViewer->isViewerInitialized()) {
+        m_workspaceController->initialize(m_3dViewer->getContext(), m_stepLoader);
+        
+        // Connect workspace controller signals
+        connect(m_workspaceController, &WorkspaceController::errorOccurred,
+                this, &MainWindow::handleWorkspaceError);
+        
+        connect(m_workspaceController, &WorkspaceController::chuckInitialized,
+                this, &MainWindow::handleChuckInitialized);
+        
+        connect(m_workspaceController, &WorkspaceController::workpieceWorkflowCompleted,
+                this, &MainWindow::handleWorkpieceWorkflowCompleted);
+        
+        qDebug() << "Workspace controller connections established";
+    }
 }
 
 void MainWindow::newProject()
@@ -259,27 +287,31 @@ void MainWindow::openStepFile()
         m_outputWindow->append(QString("Loading STEP file: %1").arg(fileName));
     }
     
-    // Load the STEP file
-    if (m_stepLoader && m_3dViewer) {
+    // Load the STEP file using workspace controller
+    if (m_stepLoader && m_workspaceController && m_workspaceController->isInitialized()) {
         TopoDS_Shape shape = m_stepLoader->loadStepFile(fileName);
         
         if (m_stepLoader->isValid() && !shape.IsNull()) {
-            // Clear previous workpieces only (keep chuck)
-            if (m_3dViewer) {
-                if (m_3dViewer->getWorkpieceManager()) {
-                    m_3dViewer->getWorkpieceManager()->clearWorkpieces();
-                }
-                if (m_3dViewer->getRawMaterialManager()) {
-                    m_3dViewer->getRawMaterialManager()->clearRawMaterial();
-                }
-            }
+            // Clear previous workpieces (workspace controller handles this cleanly)
+            m_workspaceController->clearWorkpieces();
             
-            // Add as workpiece (this will auto-align and create raw material)
-            m_3dViewer->addWorkpiece(shape);
+            // Add workpiece through workspace controller (handles full workflow)
+            bool success = m_workspaceController->addWorkpiece(shape);
             
-            statusBar()->showMessage(tr("STEP file loaded and aligned successfully"), 3000);
-            if (m_outputWindow) {
-                m_outputWindow->append("STEP file loaded as workpiece and auto-aligned with chuck.");
+            if (success) {
+                statusBar()->showMessage(tr("STEP file loaded and processed successfully"), 3000);
+                if (m_outputWindow) {
+                    m_outputWindow->append("STEP file loaded as workpiece and processed by workspace controller.");
+                }
+                
+                // Fit view to show all content
+                m_3dViewer->fitAll();
+            } else {
+                QString errorMsg = "Failed to process workpiece through workspace controller";
+                statusBar()->showMessage(errorMsg, 5000);
+                if (m_outputWindow) {
+                    m_outputWindow->append(errorMsg);
+                }
             }
         } else {
             QString errorMsg = QString("Failed to load STEP file: %1").arg(m_stepLoader->getLastError());
@@ -290,7 +322,7 @@ void MainWindow::openStepFile()
             QMessageBox::warning(this, tr("Error Loading STEP File"), errorMsg);
         }
     } else {
-        QString errorMsg = "STEP loader or 3D viewer not initialized";
+        QString errorMsg = "Workspace controller not initialized";
         statusBar()->showMessage(errorMsg, 5000);
         if (m_outputWindow) {
             m_outputWindow->append(errorMsg);
@@ -336,19 +368,59 @@ void MainWindow::showPreferences()
     // TODO: Implement preferences dialog
 }
 
-void MainWindow::initializeChuck()
+void MainWindow::initializeWorkspace()
 {
-    // Initialize chuck automatically
-    QString chuckFilePath = "C:/Users/nikla/Downloads/three_jaw_chuck.step";
-    if (m_3dViewer) {
+    // This method is called after UI initialization
+    if (m_workspaceController && m_3dViewer->isViewerInitialized()) {
+        // Initialize chuck automatically
+        QString chuckFilePath = "C:/Users/nikla/Downloads/three_jaw_chuck.step";
+        
         if (m_outputWindow) {
-            m_outputWindow->append("Initializing 3-jaw chuck...");
+            m_outputWindow->append("Initializing workspace with 3-jaw chuck...");
         }
-        m_3dViewer->initializeChuck(chuckFilePath);
-        statusBar()->showMessage("Chuck initialization completed", 3000);
+        
+        bool success = m_workspaceController->initializeChuck(chuckFilePath);
+        if (success) {
+            statusBar()->showMessage("Workspace initialization completed", 3000);
+            m_3dViewer->fitAll();
+        } else {
+            if (m_outputWindow) {
+                m_outputWindow->append("Warning: Chuck initialization failed - workspace available without chuck");
+            }
+        }
     } else {
         if (m_outputWindow) {
-            m_outputWindow->append("Error: 3D viewer not available for chuck initialization");
+            m_outputWindow->append("Error: Workspace controller or 3D viewer not ready");
         }
     }
+}
+
+void MainWindow::handleWorkspaceError(const QString& source, const QString& message)
+{
+    QString fullMessage = QString("[%1] %2").arg(source, message);
+    
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Error: %1").arg(fullMessage));
+    }
+    
+    statusBar()->showMessage(QString("Error in %1").arg(source), 5000);
+    qDebug() << "Workspace error:" << fullMessage;
+}
+
+void MainWindow::handleChuckInitialized()
+{
+    if (m_outputWindow) {
+        m_outputWindow->append("Chuck initialized successfully in workspace");
+    }
+    statusBar()->showMessage("Chuck ready", 2000);
+}
+
+void MainWindow::handleWorkpieceWorkflowCompleted(double diameter, double rawMaterialDiameter)
+{
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Workpiece workflow completed - Detected: %1mm, Raw material: %2mm")
+                              .arg(diameter, 0, 'f', 1)
+                              .arg(rawMaterialDiameter, 0, 'f', 1));
+    }
+    statusBar()->showMessage("Workpiece processing completed", 3000);
 } 

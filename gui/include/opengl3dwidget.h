@@ -4,6 +4,7 @@
 #include <QOpenGLWidget>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QTimer>
 
 // OpenCASCADE includes
 #include <V3d_View.hxx>
@@ -15,10 +16,18 @@
 #include <AIS_Shape.hxx>
 #include <TopoDS_Shape.hxx>
 
-class ChuckManager;
-class WorkpieceManager;
-class RawMaterialManager;
-
+/**
+ * @brief Pure 3D visualization widget using OpenCASCADE
+ * 
+ * This widget is now a focused visualization component that:
+ * - Handles OpenGL rendering and OpenCASCADE integration
+ * - Manages user interaction (mouse, wheel events)
+ * - Provides basic display operations (show shape, clear, fit view)
+ * - Maintains clean separation from business logic
+ * 
+ * Business logic and workflow coordination are handled by WorkspaceController.
+ * This follows the modular architecture principle of clear component separation.
+ */
 class OpenGL3DWidget : public QOpenGLWidget
 {
     Q_OBJECT
@@ -27,28 +36,45 @@ public:
     explicit OpenGL3DWidget(QWidget *parent = nullptr);
     ~OpenGL3DWidget();
 
-    // Display a shape in the viewer
-    void displayShape(const TopoDS_Shape& shape);
-    
-    // Clear all displayed objects
-    void clearAll();
-    
-    // Fit all objects in view
-    void fitAll();
-    
-    // Get the AIS context for advanced operations
+    /**
+     * @brief Get the AIS context for manager initialization
+     * @return OpenCASCADE AIS interactive context
+     */
     Handle(AIS_InteractiveContext) getContext() const { return m_context; }
     
-    // Component managers
-    ChuckManager* getChuckManager() const { return m_chuckManager; }
-    WorkpieceManager* getWorkpieceManager() const { return m_workpieceManager; }
-    RawMaterialManager* getRawMaterialManager() const { return m_rawMaterialManager; }
+    /**
+     * @brief Display a shape in the viewer (basic display operation)
+     * @param shape The shape to display
+     */
+    void displayShape(const TopoDS_Shape& shape);
     
-    // Initialize chuck with default chuck file
-    void initializeChuck(const QString& chuckFilePath);
+    /**
+     * @brief Clear all displayed objects
+     */
+    void clearAll();
     
-    // Add workpiece with automatic alignment
-    void addWorkpiece(const TopoDS_Shape& workpiece);
+    /**
+     * @brief Fit all objects in view
+     */
+    void fitAll();
+    
+    /**
+     * @brief Check if the 3D viewer is properly initialized
+     * @return True if viewer is ready for use
+     */
+    bool isViewerInitialized() const { return !m_context.IsNull(); }
+    
+    /**
+     * @brief Enable or disable continuous updates
+     * @param enabled True to enable continuous updates (useful for animations)
+     */
+    void setContinuousUpdate(bool enabled);
+
+signals:
+    /**
+     * @brief Emitted when the viewer is successfully initialized
+     */
+    void viewerInitialized();
 
 protected:
     // Qt OpenGL widget overrides
@@ -61,9 +87,22 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
+    
+    // Focus event handling to prevent black screen
+    void focusInEvent(QFocusEvent *event) override;
+    void focusOutEvent(QFocusEvent *event) override;
+    void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
 
 private:
+    /**
+     * @brief Initialize the OpenCASCADE viewer system
+     */
     void initializeViewer();
+    
+    /**
+     * @brief Update the 3D view
+     */
     void updateView();
     
     // OpenCASCADE objects
@@ -77,10 +116,9 @@ private:
     QPoint m_lastMousePos;
     Qt::MouseButton m_dragButton;
     
-    // Component managers
-    ChuckManager* m_chuckManager;
-    WorkpieceManager* m_workpieceManager;
-    RawMaterialManager* m_rawMaterialManager;
+    // Update management
+    bool m_continuousUpdate;
+    QTimer* m_updateTimer;
 };
 
 #endif // OPENGL3DWIDGET_H 
