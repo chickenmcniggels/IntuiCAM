@@ -12,7 +12,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "core/simulation/RelWithDebInfo/intuicam_core_simulation.lib"
+			"path" : "core/simulation/MinSizeRel/intuicam_core_simulation.lib"
 		}
 	],
 	"backtrace" : 1,
@@ -70,7 +70,7 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "/DWIN32 /D_WINDOWS /GR /EHsc /Zi /O2 /Ob1 /DNDEBUG -std:c++17 -MD"
+					"fragment" : "/DWIN32 /D_WINDOWS /GR /EHsc /O1 /Ob1 /DNDEBUG -std:c++17 -MD"
 				}
 			],
 			"defines" : 
@@ -92,7 +92,7 @@
 			[
 				{
 					"backtrace" : 0,
-					"path" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/core/simulation/intuicam_core_simulation_autogen/include_RelWithDebInfo"
+					"path" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/core/simulation/intuicam_core_simulation_autogen/include_MinSizeRel"
 				},
 				{
 					"backtrace" : 3,
@@ -180,6 +180,10 @@
 	[
 		{
 			"backtrace" : 2,
+			"id" : "intuicam_core_geometry::@ed398e0ce3be0621840b"
+		},
+		{
+			"backtrace" : 2,
 			"id" : "intuicam_core_common::@6908cb15cd5477424af9"
 		},
 		{
@@ -188,10 +192,6 @@
 		},
 		{
 			"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df"
-		},
-		{
-			"backtrace" : 2,
-			"id" : "intuicam_core_geometry::@ed398e0ce3be0621840b"
 		}
 	],
 	"id" : "intuicam_core_simulation::@e9863fed3e6a3709ab7e",
@@ -225,7 +225,7 @@
 			"backtrace" : 0,
 			"compileGroupIndex" : 0,
 			"isGenerated" : true,
-			"path" : "build/core/simulation/intuicam_core_simulation_autogen/mocs_compilation_RelWithDebInfo.cpp",
+			"path" : "build/core/simulation/intuicam_core_simulation_autogen/mocs_compilation_MinSizeRel.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{

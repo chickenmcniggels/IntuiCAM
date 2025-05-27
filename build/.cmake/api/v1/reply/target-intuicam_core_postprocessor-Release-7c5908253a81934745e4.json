@@ -12,7 +12,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "core/postprocessor/Debug/intuicam_core_postprocessor.lib"
+			"path" : "core/postprocessor/Release/intuicam_core_postprocessor.lib"
 		}
 	],
 	"backtrace" : 1,
@@ -31,7 +31,7 @@
 		"files" : 
 		[
 			"core/postprocessor/CMakeLists.txt",
-			"C:/OpenCASCADE/occt-vc144-64-with-debug/cmake/OpenCASCADECompileDefinitionsAndFlags-debug.cmake",
+			"C:/OpenCASCADE/occt-vc144-64-with-debug/cmake/OpenCASCADECompileDefinitionsAndFlags-release.cmake",
 			"C:/OpenCASCADE/occt-vc144-64-with-debug/cmake/OpenCASCADEConfig.cmake",
 			"CMakeLists.txt"
 		],
@@ -221,7 +221,7 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "/DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd"
+					"fragment" : "/DWIN32 /D_WINDOWS /GR /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD"
 				}
 			],
 			"defines" : 
@@ -327,7 +327,7 @@
 			[
 				{
 					"backtrace" : 0,
-					"path" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/core/postprocessor/intuicam_core_postprocessor_autogen/include_Debug"
+					"path" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/core/postprocessor/intuicam_core_postprocessor_autogen/include_Release"
 				},
 				{
 					"backtrace" : 29,
@@ -411,6 +411,10 @@
 	[
 		{
 			"backtrace" : 2,
+			"id" : "intuicam_core_geometry::@ed398e0ce3be0621840b"
+		},
+		{
+			"backtrace" : 2,
 			"id" : "intuicam_core_common::@6908cb15cd5477424af9"
 		},
 		{
@@ -419,10 +423,6 @@
 		},
 		{
 			"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df"
-		},
-		{
-			"backtrace" : 2,
-			"id" : "intuicam_core_geometry::@ed398e0ce3be0621840b"
 		}
 	],
 	"id" : "intuicam_core_postprocessor::@5d2fddf615fa909547e0",
@@ -456,7 +456,7 @@
 			"backtrace" : 0,
 			"compileGroupIndex" : 0,
 			"isGenerated" : true,
-			"path" : "build/core/postprocessor/intuicam_core_postprocessor_autogen/mocs_compilation_Debug.cpp",
+			"path" : "build/core/postprocessor/intuicam_core_postprocessor_autogen/mocs_compilation_Release.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
