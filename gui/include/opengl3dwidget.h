@@ -16,6 +16,8 @@
 #include <TopoDS_Shape.hxx>
 
 class ChuckManager;
+class WorkpieceManager;
+class RawMaterialManager;
 
 class OpenGL3DWidget : public QOpenGLWidget
 {
@@ -37,13 +39,15 @@ public:
     // Get the AIS context for advanced operations
     Handle(AIS_InteractiveContext) getContext() const { return m_context; }
     
-    // Chuck management
+    // Component managers
     ChuckManager* getChuckManager() const { return m_chuckManager; }
+    WorkpieceManager* getWorkpieceManager() const { return m_workpieceManager; }
+    RawMaterialManager* getRawMaterialManager() const { return m_rawMaterialManager; }
     
     // Initialize chuck with default chuck file
     void initializeChuck(const QString& chuckFilePath);
     
-    // Add workpiece and auto-align with chuck
+    // Add workpiece with automatic alignment
     void addWorkpiece(const TopoDS_Shape& workpiece);
 
 protected:
@@ -73,8 +77,10 @@ private:
     QPoint m_lastMousePos;
     Qt::MouseButton m_dragButton;
     
-    // Chuck management
+    // Component managers
     ChuckManager* m_chuckManager;
+    WorkpieceManager* m_workpieceManager;
+    RawMaterialManager* m_rawMaterialManager;
 };
 
 #endif // OPENGL3DWIDGET_H 

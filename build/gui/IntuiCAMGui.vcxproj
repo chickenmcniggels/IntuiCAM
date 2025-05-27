@@ -3752,10 +3752,15 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\src\opengl3dwidget.cpp" />
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\src\steploader.cpp" />
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\src\chuckmanager.cpp" />
+    <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\src\workpiecemanager.cpp" />
+    <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\src\rawmaterialmanager.cpp" />
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\src\mainwindow.h" />
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\include\opengl3dwidget.h" />
+    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\include\isteploader.h" />
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\include\steploader.h" />
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\include\chuckmanager.h" />
+    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\include\workpiecemanager.h" />
+    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\include\rawmaterialmanager.h" />
     <None Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\resources\mainwindow.ui">
     </None>
     <None Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\resources\resources.qrc">

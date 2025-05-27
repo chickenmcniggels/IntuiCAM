@@ -2,10 +2,10 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "Debug/IntuiCAMCli.exe"
+			"path" : "Release/IntuiCAMCli.exe"
 		},
 		{
-			"path" : "Debug/IntuiCAMCli.pdb"
+			"path" : "Release/IntuiCAMCli.pdb"
 		}
 	],
 	"backtrace" : 1,
@@ -36,7 +36,7 @@
 			"C:/OpenCASCADE/occt-vc144-64-with-debug/cmake/OpenCASCADEDrawTargets.cmake",
 			"C:/OpenCASCADE/occt-vc144-64-with-debug/cmake/OpenCASCADEDataExchangeTargets.cmake",
 			"C:/OpenCASCADE/occt-vc144-64-with-debug/cmake/OpenCASCADEModelingAlgorithmsTargets.cmake",
-			"C:/OpenCASCADE/occt-vc144-64-with-debug/cmake/OpenCASCADECompileDefinitionsAndFlags-debug.cmake"
+			"C:/OpenCASCADE/occt-vc144-64-with-debug/cmake/OpenCASCADECompileDefinitionsAndFlags-release.cmake"
 		],
 		"nodes" : 
 		[
@@ -491,7 +491,7 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "/DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd"
+					"fragment" : "/DWIN32 /D_WINDOWS /GR /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD"
 				}
 			],
 			"defines" : 
@@ -585,7 +585,7 @@
 			[
 				{
 					"backtrace" : 0,
-					"path" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/cli/IntuiCAMCli_autogen/include_Debug"
+					"path" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/cli/IntuiCAMCli_autogen/include_Release"
 				},
 				{
 					"backtrace" : 76,
@@ -633,22 +633,22 @@
 	[
 		{
 			"backtrace" : 16,
-			"id" : "intuicam_core_toolpath::@a1b418a76df8b866ba15"
+			"id" : "intuicam_core_common::@6908cb15cd5477424af9"
 		},
 		{
 			"backtrace" : 16,
-			"id" : "intuicam_core_geometry::@ed398e0ce3be0621840b"
+			"id" : "intuicam_core_toolpath::@a1b418a76df8b866ba15"
 		},
 		{
 			"backtrace" : 16,
 			"id" : "intuicam_core_postprocessor::@5d2fddf615fa909547e0"
 		},
 		{
-			"backtrace" : 16,
-			"id" : "intuicam_core_common::@6908cb15cd5477424af9"
+			"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df"
 		},
 		{
-			"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df"
+			"backtrace" : 16,
+			"id" : "intuicam_core_geometry::@ed398e0ce3be0621840b"
 		}
 	],
 	"id" : "IntuiCAMCli::@434c77fc11d56e0cadb1",
@@ -671,11 +671,11 @@
 		"commandFragments" : 
 		[
 			{
-				"fragment" : "/DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -MDd",
+				"fragment" : "/DWIN32 /D_WINDOWS /GR /EHsc /O2 /Ob2 /DNDEBUG -MD",
 				"role" : "flags"
 			},
 			{
-				"fragment" : "/machine:x64 /debug /INCREMENTAL /subsystem:console",
+				"fragment" : "/machine:x64 /INCREMENTAL:NO /subsystem:console",
 				"role" : "flags"
 			},
 			{
@@ -740,57 +740,57 @@
 			},
 			{
 				"backtrace" : 16,
-				"fragment" : "..\\core\\common\\Debug\\intuicam_core_common.lib",
+				"fragment" : "..\\core\\common\\Release\\intuicam_core_common.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 16,
-				"fragment" : "..\\core\\geometry\\Debug\\intuicam_core_geometry.lib",
+				"fragment" : "..\\core\\geometry\\Release\\intuicam_core_geometry.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 16,
-				"fragment" : "..\\core\\toolpath\\Debug\\intuicam_core_toolpath.lib",
+				"fragment" : "..\\core\\toolpath\\Release\\intuicam_core_toolpath.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 16,
-				"fragment" : "..\\core\\postprocessor\\Debug\\intuicam_core_postprocessor.lib",
+				"fragment" : "..\\core\\postprocessor\\Release\\intuicam_core_postprocessor.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 16,
-				"fragment" : "..\\core\\toolpath\\Debug\\intuicam_core_toolpath.lib",
+				"fragment" : "..\\core\\toolpath\\Release\\intuicam_core_toolpath.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 16,
-				"fragment" : "..\\core\\geometry\\Debug\\intuicam_core_geometry.lib",
+				"fragment" : "..\\core\\geometry\\Release\\intuicam_core_geometry.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 16,
-				"fragment" : "..\\core\\common\\Debug\\intuicam_core_common.lib",
+				"fragment" : "..\\core\\common\\Release\\intuicam_core_common.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXMesh.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXMesh.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKOpenGlTest.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKOpenGlTest.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKOpenGlesTest.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKOpenGlesTest.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKOpenGles.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKOpenGles.lib",
 				"role" : "libraries"
 			},
 			{
@@ -805,12 +805,12 @@
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKD3DHostTest.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKD3DHostTest.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKD3DHost.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKD3DHost.lib",
 				"role" : "libraries"
 			},
 			{
@@ -820,32 +820,32 @@
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXDEDRAW.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXDEDRAW.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKTObjDRAW.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKTObjDRAW.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKQADraw.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKQADraw.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKExpress.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKExpress.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKIVtkDraw.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKIVtkDraw.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKOpenGl.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKOpenGl.lib",
 				"role" : "libraries"
 			},
 			{
@@ -855,7 +855,7 @@
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKIVtk.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKIVtk.lib",
 				"role" : "libraries"
 			},
 			{
@@ -995,117 +995,117 @@
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXSDRAWDE.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXSDRAWDE.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKDECascade.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKDECascade.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKBinTObj.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKBinTObj.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXmlTObj.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXmlTObj.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKTObj.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKTObj.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKBinXCAF.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKBinXCAF.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXmlXCAF.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXmlXCAF.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXSDRAWGLTF.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXSDRAWGLTF.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKDEGLTF.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKDEGLTF.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXSDRAWIGES.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXSDRAWIGES.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKDEIGES.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKDEIGES.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXSDRAWOBJ.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXSDRAWOBJ.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKDEOBJ.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKDEOBJ.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXSDRAWPLY.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXSDRAWPLY.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKDEPLY.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKDEPLY.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXSDRAWSTEP.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXSDRAWSTEP.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKDESTEP.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKDESTEP.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXSDRAWSTL.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXSDRAWSTL.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKDESTL.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKDESTL.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXSDRAWVRML.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXSDRAWVRML.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKDEVRML.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKDEVRML.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKRWMesh.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKRWMesh.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKDE.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKDE.lib",
 				"role" : "libraries"
 			},
 			{
@@ -1115,187 +1115,187 @@
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXSDRAW.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXSDRAW.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKMeshVS.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKMeshVS.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXSBase.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXSBase.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXCAF.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXCAF.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKDCAF.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKDCAF.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKBin.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKBin.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKBinL.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKBinL.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXml.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXml.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKXmlL.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKXmlL.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKStd.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKStd.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKStdL.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKStdL.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKVCAF.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKVCAF.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKCAF.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKCAF.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKLCAF.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKLCAF.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKCDF.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKCDF.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKViewerTest.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKViewerTest.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKTopTest.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKTopTest.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKOffset.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKOffset.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKFillet.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKFillet.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKFeat.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKFeat.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKBool.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKBool.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKBO.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKBO.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKPrim.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKPrim.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKV3d.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKV3d.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKDraw.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKDraw.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKHLR.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKHLR.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKMesh.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKMesh.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKShHealing.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKShHealing.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 15,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKTopAlgo.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKTopAlgo.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 15,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKGeomAlgo.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKGeomAlgo.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 15,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKBRep.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKBRep.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 15,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKGeomBase.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKGeomBase.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 49,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKG3d.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKG3d.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 49,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKG2d.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKG2d.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 18,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKService.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKService.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 15,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKMath.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKMath.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 15,
-				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\libd\\TKernel.lib",
+				"fragment" : "C:\\OpenCASCADE\\occt-vc144-64-with-debug\\win64\\vc14\\lib\\TKernel.lib",
 				"role" : "libraries"
 			},
 			{
@@ -1430,7 +1430,7 @@
 			"backtrace" : 0,
 			"compileGroupIndex" : 0,
 			"isGenerated" : true,
-			"path" : "build/cli/IntuiCAMCli_autogen/mocs_compilation_Debug.cpp",
+			"path" : "build/cli/IntuiCAMCli_autogen/mocs_compilation_Release.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{

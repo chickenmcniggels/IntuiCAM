@@ -1,5 +1,8 @@
 #include "opengl3dwidget.h"
 #include "chuckmanager.h"
+#include "workpiecemanager.h"
+#include "rawmaterialmanager.h"
+#include "steploader.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -24,13 +27,17 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_isDragging(false)
     , m_dragButton(Qt::NoButton)
     , m_chuckManager(nullptr)
+    , m_workpieceManager(nullptr)
+    , m_rawMaterialManager(nullptr)
 {
     // Enable mouse tracking for proper interaction
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
     
-    // Initialize OpenCASCADE viewer in initializeGL
+    // Create component managers
     m_chuckManager = new ChuckManager(this);
+    m_workpieceManager = new WorkpieceManager(this);
+    m_rawMaterialManager = new RawMaterialManager(this);
 }
 
 OpenGL3DWidget::~OpenGL3DWidget()
@@ -92,12 +99,25 @@ void OpenGL3DWidget::initializeViewer()
         // Create interactive context
         m_context = new AIS_InteractiveContext(m_viewer);
         
-        // Initialize chuck manager with context
+        // Create shared STEP loader
+        StepLoader* stepLoader = new StepLoader();
+        
+        // Initialize component managers with context
         if (m_chuckManager) {
-            m_chuckManager->initialize(m_context);
+            m_chuckManager->initialize(m_context, stepLoader);
             qDebug() << "ChuckManager initialized with OpenCASCADE context";
         } else {
             qDebug() << "Warning: ChuckManager is null during OpenGL initialization";
+        }
+        
+        if (m_workpieceManager) {
+            m_workpieceManager->initialize(m_context);
+            qDebug() << "WorkpieceManager initialized with OpenCASCADE context";
+        }
+        
+        if (m_rawMaterialManager) {
+            m_rawMaterialManager->initialize(m_context);
+            qDebug() << "RawMaterialManager initialized with OpenCASCADE context";
         }
         
         // Configure the view
@@ -265,11 +285,26 @@ void OpenGL3DWidget::initializeChuck(const QString& chuckFilePath)
 
 void OpenGL3DWidget::addWorkpiece(const TopoDS_Shape& workpiece)
 {
-    if (m_chuckManager && !workpiece.IsNull()) {
-        bool success = m_chuckManager->addWorkpiece(workpiece);
+    if (m_workpieceManager && m_rawMaterialManager && !workpiece.IsNull()) {
+        // Add workpiece
+        bool success = m_workpieceManager->addWorkpiece(workpiece);
         if (success) {
+            // Get cylinder information from workpiece
+            QVector<gp_Ax1> cylinders = m_workpieceManager->detectCylinders(workpiece);
+            if (!cylinders.isEmpty()) {
+                gp_Ax1 mainAxis = cylinders.first();
+                double diameter = m_workpieceManager->getDetectedDiameter();
+                
+                // Calculate raw material requirements
+                double rawMaterialDiameter = m_rawMaterialManager->getNextStandardDiameter(diameter);
+                double length = 100.0; // Default length, should be calculated from workpiece bounds
+                
+                // Display raw material
+                m_rawMaterialManager->displayRawMaterial(rawMaterialDiameter, length, mainAxis);
+            }
+            
             fitAll();
-            qDebug() << "Workpiece added and aligned with chuck";
+            qDebug() << "Workpiece added with automatic alignment";
         }
     }
 } 

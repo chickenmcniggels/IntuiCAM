@@ -3,21 +3,22 @@
 
 #include <QString>
 #include <TopoDS_Shape.hxx>
+#include "isteploader.h"
 
-class StepLoader
+class StepLoader : public IStepLoader
 {
 public:
     StepLoader();
     ~StepLoader();
     
     // Load a STEP file and return the shape
-    TopoDS_Shape loadStepFile(const QString& filename);
+    TopoDS_Shape loadStepFile(const QString& filename) override;
     
     // Get the last error message
-    QString getLastError() const { return m_lastError; }
+    QString getLastError() const override { return m_lastError; }
     
     // Check if the last operation was successful
-    bool isValid() const { return m_isValid; }
+    bool isValid() const override { return m_isValid; }
 
 private:
     QString m_lastError;

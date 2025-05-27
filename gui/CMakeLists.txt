@@ -9,13 +9,18 @@ set(GUI_SOURCES
     src/opengl3dwidget.cpp
     src/steploader.cpp
     src/chuckmanager.cpp
+    src/workpiecemanager.cpp
+    src/rawmaterialmanager.cpp
 )
 
 set(GUI_HEADERS
     src/mainwindow.h
     include/opengl3dwidget.h
+    include/isteploader.h
     include/steploader.h
     include/chuckmanager.h
+    include/workpiecemanager.h
+    include/rawmaterialmanager.h
 )
 
 set(GUI_UI_FILES

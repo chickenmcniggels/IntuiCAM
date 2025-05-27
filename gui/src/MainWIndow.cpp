@@ -2,6 +2,8 @@
 #include "opengl3dwidget.h"
 #include "steploader.h"
 #include "chuckmanager.h"
+#include "workpiecemanager.h"
+#include "rawmaterialmanager.h"
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -263,8 +265,13 @@ void MainWindow::openStepFile()
         
         if (m_stepLoader->isValid() && !shape.IsNull()) {
             // Clear previous workpieces only (keep chuck)
-            if (m_3dViewer && m_3dViewer->getChuckManager()) {
-                m_3dViewer->getChuckManager()->clearWorkpieces();
+            if (m_3dViewer) {
+                if (m_3dViewer->getWorkpieceManager()) {
+                    m_3dViewer->getWorkpieceManager()->clearWorkpieces();
+                }
+                if (m_3dViewer->getRawMaterialManager()) {
+                    m_3dViewer->getRawMaterialManager()->clearRawMaterial();
+                }
             }
             
             // Add as workpiece (this will auto-align and create raw material)

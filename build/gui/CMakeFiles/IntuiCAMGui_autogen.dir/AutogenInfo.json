@@ -23,15 +23,33 @@
 			null
 		],
 		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/include/isteploader.h",
+			"MU",
+			"6YEA5652QU/moc_isteploader.cpp",
+			null
+		],
+		[
 			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/include/opengl3dwidget.h",
 			"MU",
 			"6YEA5652QU/moc_opengl3dwidget.cpp",
 			null
 		],
 		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/include/rawmaterialmanager.h",
+			"MU",
+			"6YEA5652QU/moc_rawmaterialmanager.cpp",
+			null
+		],
+		[
 			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/include/steploader.h",
 			"MU",
 			"6YEA5652QU/moc_steploader.cpp",
+			null
+		],
+		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/include/workpiecemanager.h",
+			"MU",
+			"6YEA5652QU/moc_workpiecemanager.cpp",
 			null
 		],
 		[
@@ -292,7 +310,17 @@
 			null
 		],
 		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/src/rawmaterialmanager.cpp",
+			"MU",
+			null
+		],
+		[
 			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/src/steploader.cpp",
+			"MU",
+			null
+		],
+		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/src/workpiecemanager.cpp",
 			"MU",
 			null
 		]

@@ -12,16 +12,15 @@
 #include <gp_Pnt.hxx>
 #include <gp_Ax1.hxx>
 
-class StepLoader;
+class IStepLoader;
 
 /**
- * @brief Manages 3-jaw chuck display and workpiece alignment functionality
+ * @brief Manages 3-jaw chuck display functionality
  * 
- * This class handles:
+ * This class handles only chuck-specific functionality:
  * - Persistent display of the 3-jaw chuck STEP file
- * - Detection of cylindrical features in workpieces
- * - Automatic alignment with standard material diameters
- * - Raw material display with transparency
+ * - Chuck material properties and positioning
+ * - Chuck-related configuration and status
  */
 class ChuckManager : public QObject
 {
@@ -31,13 +30,10 @@ public:
     explicit ChuckManager(QObject *parent = nullptr);
     ~ChuckManager();
 
-    // Standard material diameters in mm (common turning stock sizes)
-    static const QVector<double> STANDARD_DIAMETERS;
-
     /**
-     * @brief Initialize the chuck manager with AIS context
+     * @brief Initialize the chuck manager with AIS context and STEP loader
      */
-    void initialize(Handle(AIS_InteractiveContext) context);
+    void initialize(Handle(AIS_InteractiveContext) context, IStepLoader* stepLoader);
 
     /**
      * @brief Load and display the 3-jaw chuck permanently
@@ -45,39 +41,9 @@ public:
     bool loadChuck(const QString& chuckFilePath);
 
     /**
-     * @brief Add a workpiece to the scene
+     * @brief Clear chuck display
      */
-    bool addWorkpiece(const TopoDS_Shape& workpiece);
-
-    /**
-     * @brief Detect cylindrical features in a workpiece
-     */
-    QVector<gp_Ax1> detectCylinders(const TopoDS_Shape& workpiece);
-
-    /**
-     * @brief Find the next largest standard diameter for a given diameter
-     */
-    double getNextStandardDiameter(double diameter);
-
-    /**
-     * @brief Align workpiece with chuck and add raw material
-     */
-    bool alignWorkpieceWithChuck(const TopoDS_Shape& workpiece, const gp_Ax1& cylinderAxis);
-
-    /**
-     * @brief Create and display raw material cylinder
-     */
-    void displayRawMaterial(double diameter, double length, const gp_Ax1& axis);
-
-    /**
-     * @brief Clear all workpieces and raw material (keep chuck)
-     */
-    void clearWorkpieces();
-
-    /**
-     * @brief Set transparency for raw material display
-     */
-    void setRawMaterialTransparency(double transparency = 0.7);
+    void clearChuck();
 
     /**
      * @brief Get the chuck shape if loaded
@@ -91,14 +57,9 @@ public:
 
 signals:
     /**
-     * @brief Emitted when a cylinder is detected in a workpiece
+     * @brief Emitted when chuck is successfully loaded
      */
-    void cylinderDetected(double diameter, double length, const gp_Ax1& axis);
-
-    /**
-     * @brief Emitted when workpiece is aligned with raw material
-     */
-    void workpieceAligned(double rawMaterialDiameter, double length);
+    void chuckLoaded();
 
     /**
      * @brief Emitted when an error occurs
@@ -107,29 +68,16 @@ signals:
 
 private:
     Handle(AIS_InteractiveContext) m_context;
-    StepLoader* m_stepLoader;
+    IStepLoader* m_stepLoader;
     
     // Chuck related
     TopoDS_Shape m_chuckShape;
     Handle(AIS_Shape) m_chuckAIS;
     
-    // Workpiece and raw material
-    QVector<Handle(AIS_Shape)> m_workpieces;
-    Handle(AIS_Shape) m_rawMaterialAIS;
-    TopoDS_Shape m_currentRawMaterial;
-    
-    // Configuration
-    double m_rawMaterialTransparency;
-    
     /**
-     * @brief Helper to analyze shape topology for cylinders
+     * @brief Set chuck material properties
      */
-    void analyzeCylindricalFaces(const TopoDS_Shape& shape, QVector<gp_Ax1>& cylinders);
-    
-    /**
-     * @brief Create a cylinder shape for raw material
-     */
-    TopoDS_Shape createCylinder(double diameter, double length, const gp_Ax1& axis);
+    void setChuckMaterial(Handle(AIS_Shape) chuckAIS);
 };
 
 #endif // CHUCKMANAGER_H 

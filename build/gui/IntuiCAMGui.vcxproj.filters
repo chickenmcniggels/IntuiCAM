@@ -19,6 +19,12 @@
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\src\chuckmanager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\src\workpiecemanager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\src\rawmaterialmanager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\build\gui\IntuiCAMGui_autogen\3YJK5W5UP7_Debug\qrc_resources.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -48,10 +54,19 @@
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\include\opengl3dwidget.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\include\isteploader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\include\steploader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\include\chuckmanager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\include\workpiecemanager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\gui\include\rawmaterialmanager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\build\gui\IntuiCAMGui_autogen\include_Debug\resources\ui_mainwindow.h">
