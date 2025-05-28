@@ -10,11 +10,21 @@
 #include <Graphic3d_MaterialAspect.hxx>
 #include <Aspect_TypeOfFacingModel.hxx>
 #include <Quantity_Color.hxx>
+#include <TopExp_Explorer.hxx>
+#include <TopoDS.hxx>
+#include <BRepAdaptor_Surface.hxx>
+#include <GeomAbs_SurfaceType.hxx>
+#include <gp_Cylinder.hxx>
+#include <Bnd_Box.hxx>
+#include <BRepBndLib.hxx>
 
 ChuckManager::ChuckManager(QObject *parent)
     : QObject(parent)
     , m_stepLoader(nullptr)
+    , m_centerlineDetected(false)
 {
+    // Initialize default chuck centerline axis (Z-axis through origin)
+    m_chuckCenterlineAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
 }
 
 ChuckManager::~ChuckManager()
@@ -65,6 +75,9 @@ bool ChuckManager::loadChuck(const QString& chuckFilePath)
     m_context->Display(m_chuckAIS, AIS_Shaded, 0, false);
     m_context->SetSelected(m_chuckAIS, false); // Ensure it's not selected
     
+    // Analyze chuck geometry to detect centerline
+    analyzeChuckGeometry();
+    
     emit chuckLoaded();
     qDebug() << "3-jaw chuck loaded and displayed successfully";
     return true;
@@ -83,7 +96,119 @@ void ChuckManager::clearChuck()
     }
     
     m_chuckShape = TopoDS_Shape();
+    m_centerlineDetected = false;
     qDebug() << "Chuck cleared";
+}
+
+gp_Ax1 ChuckManager::getChuckCenterlineAxis() const
+{
+    return m_chuckCenterlineAxis;
+}
+
+bool ChuckManager::detectChuckCenterline()
+{
+    if (m_chuckShape.IsNull()) {
+        qDebug() << "ChuckManager: No chuck loaded for centerline detection";
+        return false;
+    }
+    
+    analyzeChuckGeometry();
+    return m_centerlineDetected;
+}
+
+void ChuckManager::setCustomChuckCenterline(const gp_Ax1& axis)
+{
+    m_chuckCenterlineAxis = axis;
+    m_centerlineDetected = true;
+    
+    emit chuckCenterlineDetected(axis);
+    qDebug() << "ChuckManager: Custom chuck centerline set";
+}
+
+void ChuckManager::analyzeChuckGeometry()
+{
+    if (m_chuckShape.IsNull()) {
+        return;
+    }
+    
+    try {
+        // Look for cylindrical faces in the chuck to determine the main axis
+        TopExp_Explorer faceExplorer(m_chuckShape, TopAbs_FACE);
+        
+        QVector<gp_Ax1> detectedAxes;
+        QVector<double> cylinderRadii;
+        
+        for (; faceExplorer.More(); faceExplorer.Next()) {
+            TopoDS_Face face = TopoDS::Face(faceExplorer.Current());
+            BRepAdaptor_Surface surface(face);
+            
+            if (surface.GetType() == GeomAbs_Cylinder) {
+                gp_Cylinder cylinder = surface.Cylinder();
+                gp_Ax1 axis = cylinder.Axis();
+                double radius = cylinder.Radius();
+                
+                // Chuck cylinders are typically larger (main body) or smaller (jaw guides)
+                // We're interested in the main body cylinder
+                if (radius > 10.0 && radius < 200.0) { // Reasonable chuck size range
+                    detectedAxes.append(axis);
+                    cylinderRadii.append(radius);
+                    
+                    qDebug() << "ChuckManager: Detected cylindrical face with radius" << radius << "mm";
+                }
+            }
+        }
+        
+        if (!detectedAxes.isEmpty()) {
+            // Find the cylinder with the largest radius (likely the main chuck body)
+            int maxRadiusIndex = 0;
+            double maxRadius = cylinderRadii[0];
+            
+            for (int i = 1; i < cylinderRadii.size(); ++i) {
+                if (cylinderRadii[i] > maxRadius) {
+                    maxRadius = cylinderRadii[i];
+                    maxRadiusIndex = i;
+                }
+            }
+            
+            // Use the axis of the largest cylinder as the chuck centerline
+            m_chuckCenterlineAxis = detectedAxes[maxRadiusIndex];
+            m_centerlineDetected = true;
+            
+            emit chuckCenterlineDetected(m_chuckCenterlineAxis);
+            qDebug() << "ChuckManager: Chuck centerline detected from largest cylinder (radius:" << maxRadius << "mm)";
+        } else {
+            // Fallback: Use geometric center and Z-axis
+            Bnd_Box bbox;
+            BRepBndLib::Add(m_chuckShape, bbox);
+            
+            if (!bbox.IsVoid()) {
+                double xmin, ymin, zmin, xmax, ymax, zmax;
+                bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+                
+                gp_Pnt center((xmin + xmax) / 2.0, (ymin + ymax) / 2.0, (zmin + zmax) / 2.0);
+                m_chuckCenterlineAxis = gp_Ax1(center, gp_Dir(0, 0, 1));
+                m_centerlineDetected = true;
+                
+                emit chuckCenterlineDetected(m_chuckCenterlineAxis);
+                qDebug() << "ChuckManager: Chuck centerline estimated from bounding box center";
+            } else {
+                // Ultimate fallback: Origin with Z-axis
+                m_chuckCenterlineAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
+                m_centerlineDetected = true;
+                
+                emit chuckCenterlineDetected(m_chuckCenterlineAxis);
+                qDebug() << "ChuckManager: Using default chuck centerline (origin, Z-axis)";
+            }
+        }
+        
+    } catch (const std::exception& e) {
+        qDebug() << "ChuckManager: Error analyzing chuck geometry:" << e.what();
+        
+        // Fallback to default axis
+        m_chuckCenterlineAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
+        m_centerlineDetected = true;
+        emit chuckCenterlineDetected(m_chuckCenterlineAxis);
+    }
 }
 
 void ChuckManager::setChuckMaterial(Handle(AIS_Shape) chuckAIS)

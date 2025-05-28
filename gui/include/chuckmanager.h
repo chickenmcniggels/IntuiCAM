@@ -21,6 +21,7 @@ class IStepLoader;
  * - Persistent display of the 3-jaw chuck STEP file
  * - Chuck material properties and positioning
  * - Chuck-related configuration and status
+ * - Chuck centerline axis detection and alignment
  */
 class ChuckManager : public QObject
 {
@@ -55,11 +56,40 @@ public:
      */
     bool isChuckLoaded() const { return !m_chuckShape.IsNull(); }
 
+    /**
+     * @brief Get the chuck centerline axis for alignment
+     * @return The main axis of the chuck (typically Z-axis through origin)
+     */
+    gp_Ax1 getChuckCenterlineAxis() const;
+
+    /**
+     * @brief Detect and analyze the chuck geometry to find its centerline
+     * @return True if centerline was successfully detected
+     */
+    bool detectChuckCenterline();
+
+    /**
+     * @brief Set a custom chuck centerline axis (for manual override)
+     * @param axis The custom axis to use as chuck centerline
+     */
+    void setCustomChuckCenterline(const gp_Ax1& axis);
+
+    /**
+     * @brief Check if chuck centerline has been detected or set
+     */
+    bool hasValidCenterline() const { return m_centerlineDetected; }
+
 signals:
     /**
      * @brief Emitted when chuck is successfully loaded
      */
     void chuckLoaded();
+
+    /**
+     * @brief Emitted when chuck centerline is detected
+     * @param axis The detected centerline axis
+     */
+    void chuckCenterlineDetected(const gp_Ax1& axis);
 
     /**
      * @brief Emitted when an error occurs
@@ -74,10 +104,19 @@ private:
     TopoDS_Shape m_chuckShape;
     Handle(AIS_Shape) m_chuckAIS;
     
+    // Chuck centerline alignment
+    gp_Ax1 m_chuckCenterlineAxis;
+    bool m_centerlineDetected;
+    
     /**
      * @brief Set chuck material properties
      */
     void setChuckMaterial(Handle(AIS_Shape) chuckAIS);
+
+    /**
+     * @brief Analyze chuck geometry to find the main rotational axis
+     */
+    void analyzeChuckGeometry();
 };
 
 #endif // CHUCKMANAGER_H 

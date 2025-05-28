@@ -412,6 +412,7 @@ C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/gui/IntuiCA
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/QRect \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/QSize \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/QSizeF \
+  C:/Qt/6.9.0/msvc2022_64/include/QtCore/QTimer \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/q17memory.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/q20functional.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/q20iterator.h \
@@ -532,6 +533,7 @@ C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/gui/IntuiCA
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtenvironmentvariables.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtextstream.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtformat_impl.h \
+  C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtimer.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtmetamacros.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtnoop.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtpreprocessorsupport.h \

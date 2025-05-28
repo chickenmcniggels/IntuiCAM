@@ -3,16 +3,21 @@
 
 #include <QObject>
 #include <QString>
+#include <QVector>
 
 // OpenCASCADE includes
 #include <TopoDS_Shape.hxx>
 #include <AIS_InteractiveContext.hxx>
+#include <gp_Ax1.hxx>
 
 // Forward declarations
 class ChuckManager;
 class WorkpieceManager;
 class RawMaterialManager;
 class IStepLoader;
+
+// Include CylinderInfo structure
+struct CylinderInfo;
 
 /**
  * @brief Top-level workspace controller that orchestrates all CAM workflow components
@@ -59,6 +64,37 @@ public:
     bool addWorkpiece(const TopoDS_Shape& workpiece);
 
     /**
+     * @brief Manually select which detected cylinder to use as the main axis
+     * @param cylinderIndex Index of the cylinder in the detected cylinders list
+     * @return True if selection was successful
+     */
+    bool selectWorkpieceCylinderAxis(int cylinderIndex);
+
+    /**
+     * @brief Get information about all detected cylinders
+     * @return Vector of CylinderInfo structures
+     */
+    QVector<CylinderInfo> getDetectedCylinders() const;
+
+    /**
+     * @brief Get the index of the currently selected cylinder
+     * @return Index of selected cylinder, or -1 if none selected
+     */
+    int getSelectedCylinderIndex() const;
+
+    /**
+     * @brief Check if chuck centerline has been detected
+     * @return True if chuck has a valid centerline
+     */
+    bool hasChuckCenterline() const;
+
+    /**
+     * @brief Get the chuck centerline axis
+     * @return The chuck centerline axis
+     */
+    gp_Ax1 getChuckCenterlineAxis() const;
+
+    /**
      * @brief Clear all workpieces while preserving chuck
      */
     void clearWorkpieces();
@@ -88,6 +124,25 @@ signals:
      * @brief Emitted when chuck is successfully initialized
      */
     void chuckInitialized();
+
+    /**
+     * @brief Emitted when chuck centerline is detected
+     * @param axis The detected chuck centerline axis
+     */
+    void chuckCenterlineDetected(const gp_Ax1& axis);
+
+    /**
+     * @brief Emitted when multiple cylinders are detected in workpiece
+     * @param cylinders Vector of detected cylinder information
+     */
+    void multipleCylindersDetected(const QVector<CylinderInfo>& cylinders);
+
+    /**
+     * @brief Emitted when a cylinder axis is manually selected
+     * @param index Index of the selected cylinder
+     * @param cylinderInfo Information about the selected cylinder
+     */
+    void cylinderAxisSelected(int index, const CylinderInfo& cylinderInfo);
 
     /**
      * @brief Emitted when workpiece workflow is completed
@@ -129,6 +184,21 @@ private slots:
      */
     void handleCylinderDetected(double diameter, double length, const gp_Ax1& axis);
 
+    /**
+     * @brief Handle chuck centerline detection
+     */
+    void handleChuckCenterlineDetected(const gp_Ax1& axis);
+
+    /**
+     * @brief Handle multiple cylinders detection
+     */
+    void handleMultipleCylindersDetected(const QVector<CylinderInfo>& cylinders);
+
+    /**
+     * @brief Handle cylinder axis selection
+     */
+    void handleCylinderAxisSelected(int index, const CylinderInfo& cylinderInfo);
+
 private:
     // Component managers
     ChuckManager* m_chuckManager;
@@ -152,6 +222,13 @@ private:
      * @param workpiece The workpiece shape to process
      */
     void executeWorkpieceWorkflow(const TopoDS_Shape& workpiece);
+
+    /**
+     * @brief Align workpiece axis with chuck centerline
+     * @param workpieceAxis The original workpiece axis
+     * @return The aligned axis
+     */
+    gp_Ax1 alignWorkpieceWithChuckCenterline(const gp_Ax1& workpieceAxis);
 };
 
 #endif // WORKSPACECONTROLLER_H 

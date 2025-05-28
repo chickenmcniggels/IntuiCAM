@@ -18,6 +18,10 @@
 class OpenGL3DWidget;
 class StepLoader;
 class WorkspaceController;
+class CylinderSelectionDialog;
+
+// Forward declaration for CylinderInfo
+struct CylinderInfo;
 
 QT_BEGIN_NAMESPACE
 class QLabel;
@@ -54,6 +58,9 @@ private slots:
     void handleWorkspaceError(const QString& source, const QString& message);
     void handleChuckInitialized();
     void handleWorkpieceWorkflowCompleted(double diameter, double rawMaterialDiameter);
+    void handleChuckCenterlineDetected(const gp_Ax1& axis);
+    void handleMultipleCylindersDetected(const QVector<CylinderInfo>& cylinders);
+    void handleCylinderAxisSelected(int index, const CylinderInfo& cylinderInfo);
 
 private:
     void createMenus();
@@ -62,6 +69,12 @@ private:
     void createCentralWidget();
     void setupConnections();
     void setupWorkspaceConnections();
+    
+    /**
+     * @brief Show cylinder selection dialog when multiple cylinders are detected
+     * @param cylinders Vector of detected cylinder information
+     */
+    void showCylinderSelectionDialog(const QVector<CylinderInfo>& cylinders);
 
     // UI Components
     QWidget *m_centralWidget;
@@ -81,6 +94,9 @@ private:
     // Business logic controllers
     WorkspaceController *m_workspaceController;
     StepLoader *m_stepLoader;
+    
+    // Dialogs
+    CylinderSelectionDialog *m_cylinderSelectionDialog;
     
     // Menus
     QMenu *m_fileMenu;

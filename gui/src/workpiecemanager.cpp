@@ -14,12 +14,16 @@
 #include <Graphic3d_NameOfMaterial.hxx>
 #include <Graphic3d_MaterialAspect.hxx>
 #include <Quantity_Color.hxx>
+#include <GeomAbs_SurfaceType.hxx>
+#include <Bnd_Box.hxx>
+#include <BRepBndLib.hxx>
 
 WorkpieceManager::WorkpieceManager(QObject *parent)
     : QObject(parent)
     , m_detectedDiameter(0.0)
+    , m_selectedCylinderIndex(-1)
 {
-    // Initialize main cylinder axis to default (Z-axis)
+    // Initialize default main cylinder axis
     m_mainCylinderAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
 }
 
@@ -35,11 +39,16 @@ void WorkpieceManager::initialize(Handle(AIS_InteractiveContext) context)
 
 bool WorkpieceManager::addWorkpiece(const TopoDS_Shape& workpiece)
 {
-    if (m_context.IsNull() || workpiece.IsNull()) {
-        emit errorOccurred("Invalid context or workpiece");
+    if (m_context.IsNull()) {
+        emit errorOccurred("AIS context not initialized");
         return false;
     }
-
+    
+    if (workpiece.IsNull()) {
+        emit errorOccurred("Invalid workpiece shape provided");
+        return false;
+    }
+    
     // Create AIS shape for the workpiece
     Handle(AIS_Shape) workpieceAIS = new AIS_Shape(workpiece);
     
@@ -48,16 +57,11 @@ bool WorkpieceManager::addWorkpiece(const TopoDS_Shape& workpiece)
     
     // Display the workpiece
     m_context->Display(workpieceAIS, AIS_Shaded, 0, false);
+    
+    // Store the workpiece
     m_workpieces.append(workpieceAIS);
     
-    // Detect cylinders in the workpiece
-    QVector<gp_Ax1> cylinders = detectCylinders(workpiece);
-    if (!cylinders.isEmpty()) {
-        // Store the main (first/largest) cylinder
-        m_mainCylinderAxis = cylinders.first();
-    }
-    
-    qDebug() << "Workpiece added to scene with" << cylinders.size() << "cylinders detected";
+    qDebug() << "Workpiece added and displayed successfully";
     return true;
 }
 
@@ -69,17 +73,195 @@ QVector<gp_Ax1> WorkpieceManager::detectCylinders(const TopoDS_Shape& workpiece)
         return cylinders;
     }
     
-    // Reset detected diameter
+    // Reset previous analysis results
     m_detectedDiameter = 0.0;
+    m_detectedCylinders.clear();
+    m_selectedCylinderIndex = -1;
     
-    // Analyze cylindrical faces
-    analyzeCylindricalFaces(workpiece, cylinders);
+    // Perform detailed cylinder analysis
+    performDetailedCylinderAnalysis(workpiece);
+    
+    // Extract axes for backward compatibility
+    for (const CylinderInfo& info : m_detectedCylinders) {
+        cylinders.append(info.axis);
+    }
+    
+    // If multiple cylinders detected, emit signal for manual selection
+    if (m_detectedCylinders.size() > 1) {
+        emit multipleCylindersDetected(m_detectedCylinders);
+        qDebug() << "WorkpieceManager: Multiple cylinders detected (" << m_detectedCylinders.size() << "), manual selection available";
+    }
+    
+    // Auto-select the largest cylinder if any detected
+    if (!m_detectedCylinders.isEmpty()) {
+        selectCylinderAxis(0); // The cylinders are sorted by diameter (largest first)
+    }
     
     return cylinders;
 }
 
+bool WorkpieceManager::selectCylinderAxis(int index)
+{
+    if (index < 0 || index >= m_detectedCylinders.size()) {
+        emit errorOccurred(QString("Invalid cylinder index: %1").arg(index));
+        return false;
+    }
+    
+    const CylinderInfo& selectedCylinder = m_detectedCylinders[index];
+    
+    m_mainCylinderAxis = selectedCylinder.axis;
+    m_detectedDiameter = selectedCylinder.diameter;
+    m_selectedCylinderIndex = index;
+    
+    emit cylinderAxisSelected(index, selectedCylinder);
+    emit cylinderDetected(selectedCylinder.diameter, selectedCylinder.estimatedLength, selectedCylinder.axis);
+    
+    qDebug() << "WorkpieceManager: Selected cylinder" << index << "- Diameter:" << selectedCylinder.diameter << "mm";
+    return true;
+}
+
+CylinderInfo WorkpieceManager::getCylinderInfo(int index) const
+{
+    if (index >= 0 && index < m_detectedCylinders.size()) {
+        return m_detectedCylinders[index];
+    }
+    
+    // Return invalid info
+    return CylinderInfo(gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1)), 0.0, 0.0, "Invalid");
+}
+
+void WorkpieceManager::setCustomAxis(const gp_Ax1& axis, double diameter)
+{
+    m_mainCylinderAxis = axis;
+    m_detectedDiameter = diameter;
+    m_selectedCylinderIndex = -1; // Indicate custom axis
+    
+    // Create a custom cylinder info
+    CylinderInfo customInfo(axis, diameter, 100.0, "Custom Axis");
+    
+    emit cylinderAxisSelected(-1, customInfo);
+    emit cylinderDetected(diameter, 100.0, axis);
+    
+    qDebug() << "WorkpieceManager: Custom axis set - Diameter:" << diameter << "mm";
+}
+
+void WorkpieceManager::performDetailedCylinderAnalysis(const TopoDS_Shape& shape)
+{
+    if (shape.IsNull()) {
+        return;
+    }
+    
+    try {
+        TopExp_Explorer faceExplorer(shape, TopAbs_FACE);
+        QVector<CylinderInfo> tempCylinders;
+        
+        for (; faceExplorer.More(); faceExplorer.Next()) {
+            TopoDS_Face face = TopoDS::Face(faceExplorer.Current());
+            BRepAdaptor_Surface surface(face);
+            
+            if (surface.GetType() == GeomAbs_Cylinder) {
+                gp_Cylinder cylinder = surface.Cylinder();
+                gp_Ax1 axis = cylinder.Axis();
+                double radius = cylinder.Radius();
+                double diameter = 2.0 * radius;
+                
+                // Only consider cylinders with reasonable diameters (> 5mm, < 500mm)
+                if (diameter > 5.0 && diameter < 500.0) {
+                    double estimatedLength = estimateCylinderLength(shape, axis);
+                    
+                    CylinderInfo info(axis, diameter, estimatedLength);
+                    tempCylinders.append(info);
+                    
+                    qDebug() << "WorkpieceManager: Detected cylinder - Diameter:" << diameter << "mm, Length:" << estimatedLength << "mm";
+                }
+            }
+        }
+        
+        // Sort cylinders by diameter (largest first)
+        std::sort(tempCylinders.begin(), tempCylinders.end(), 
+                  [](const CylinderInfo& a, const CylinderInfo& b) {
+                      return a.diameter > b.diameter;
+                  });
+        
+        // Generate descriptions and store
+        for (int i = 0; i < tempCylinders.size(); ++i) {
+            CylinderInfo& info = tempCylinders[i];
+            info.description = generateCylinderDescription(info, i);
+            m_detectedCylinders.append(info);
+        }
+        
+        qDebug() << "WorkpieceManager: Detailed analysis complete - Found" << m_detectedCylinders.size() << "cylinders";
+        
+    } catch (const std::exception& e) {
+        qDebug() << "WorkpieceManager: Error in detailed cylinder analysis:" << e.what();
+        emit errorOccurred(QString("Cylinder analysis failed: %1").arg(e.what()));
+    }
+}
+
+double WorkpieceManager::estimateCylinderLength(const TopoDS_Shape& workpiece, const gp_Ax1& axis)
+{
+    try {
+        // Get bounding box of the workpiece
+        Bnd_Box bbox;
+        BRepBndLib::Add(workpiece, bbox);
+        
+        if (bbox.IsVoid()) {
+            return 100.0; // Default length
+        }
+        
+        double xmin, ymin, zmin, xmax, ymax, zmax;
+        bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+        
+        // Calculate the bounds along the cylinder axis
+        gp_Vec axisDir = axis.Direction();
+        gp_Pnt axisLoc = axis.Location();
+        
+        // Project bounding box corners onto the axis to find extent
+        double minProjection = std::numeric_limits<double>::max();
+        double maxProjection = std::numeric_limits<double>::lowest();
+        
+        // Check all 8 corners of the bounding box
+        gp_Pnt corners[8] = {
+            gp_Pnt(xmin, ymin, zmin), gp_Pnt(xmax, ymin, zmin),
+            gp_Pnt(xmin, ymax, zmin), gp_Pnt(xmax, ymax, zmin),
+            gp_Pnt(xmin, ymin, zmax), gp_Pnt(xmax, ymin, zmax),
+            gp_Pnt(xmin, ymax, zmax), gp_Pnt(xmax, ymax, zmax)
+        };
+        
+        for (int i = 0; i < 8; i++) {
+            gp_Vec toCorner(axisLoc, corners[i]);
+            double projection = toCorner.Dot(axisDir);
+            minProjection = std::min(minProjection, projection);
+            maxProjection = std::max(maxProjection, projection);
+        }
+        
+        double length = maxProjection - minProjection;
+        return std::max(length, 10.0); // Minimum 10mm length
+        
+    } catch (const std::exception& e) {
+        qDebug() << "WorkpieceManager: Error estimating cylinder length:" << e.what();
+        return 100.0; // Default fallback
+    }
+}
+
+QString WorkpieceManager::generateCylinderDescription(const CylinderInfo& info, int index)
+{
+    QString desc = QString("Cylinder %1: Ø%2mm × %3mm")
+                   .arg(index + 1)
+                   .arg(QString::number(info.diameter, 'f', 1))
+                   .arg(QString::number(info.estimatedLength, 'f', 1));
+    
+    if (index == 0) {
+        desc += " (Largest)";
+    }
+    
+    return desc;
+}
+
 void WorkpieceManager::analyzeCylindricalFaces(const TopoDS_Shape& shape, QVector<gp_Ax1>& cylinders)
 {
+    // This method is kept for backward compatibility
+    // The actual analysis is now done in performDetailedCylinderAnalysis
     TopExp_Explorer faceExplorer(shape, TopAbs_FACE);
     
     double largestDiameter = 0.0;
@@ -128,6 +310,8 @@ void WorkpieceManager::clearWorkpieces()
     // Reset analysis results
     m_detectedDiameter = 0.0;
     m_mainCylinderAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
+    m_detectedCylinders.clear();
+    m_selectedCylinderIndex = -1;
     
     qDebug() << "All workpieces cleared";
 }

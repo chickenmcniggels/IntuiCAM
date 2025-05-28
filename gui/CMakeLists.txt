@@ -12,6 +12,7 @@ set(GUI_SOURCES
     src/workpiecemanager.cpp
     src/rawmaterialmanager.cpp
     src/workspacecontroller.cpp
+    src/cylinderselectiondialog.cpp
 )
 
 set(GUI_HEADERS
@@ -23,6 +24,7 @@ set(GUI_HEADERS
     include/workpiecemanager.h
     include/rawmaterialmanager.h
     include/workspacecontroller.h
+    include/cylinderselectiondialog.h
 )
 
 set(GUI_UI_FILES

@@ -414,6 +414,7 @@ C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/include/openg
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/QRect
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/QSize
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/QSizeF
+ mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/QTimer
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/q17memory.h
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/q20functional.h
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/q20iterator.h
@@ -534,6 +535,7 @@ C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/include/openg
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtenvironmentvariables.h
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtextstream.h
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtformat_impl.h
+ mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtimer.h
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtmetamacros.h
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtnoop.h
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtpreprocessorsupport.h
@@ -833,8 +835,8 @@ C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/src/mainwindo
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtWidgets/qwidget.h
  mdp:C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/src/mainwindow.h
 C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/src/main.cpp
-C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/src/mainwindow.cpp
 C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/src/steploader.cpp
+C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/src/mainwindow.cpp
 C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/include/chuckmanager.h
  mmc:Q_OBJECT
  mdp:C:/OpenCASCADE/occt-vc144-64-with-debug/inc/AIS_DataMapOfIOStatus.hxx

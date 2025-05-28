@@ -2,6 +2,7 @@
 #include "opengl3dwidget.h"
 #include "steploader.h"
 #include "workspacecontroller.h"
+#include "cylinderselectiondialog.h"
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -26,6 +27,9 @@
 #include <QStandardPaths>
 #include <QTimer>
 
+// OpenCASCADE includes for gp_Ax1
+#include <gp_Ax1.hxx>
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_centralWidget(nullptr)
@@ -37,6 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_outputWindow(nullptr)
     , m_workspaceController(nullptr)
     , m_stepLoader(nullptr)
+    , m_cylinderSelectionDialog(nullptr)
 {
     setWindowTitle("IntuiCAM - Computer Aided Manufacturing");
     setMinimumSize(1024, 768);
@@ -241,6 +246,18 @@ void MainWindow::setupWorkspaceConnections()
         connect(m_workspaceController, &WorkspaceController::workpieceWorkflowCompleted,
                 this, &MainWindow::handleWorkpieceWorkflowCompleted);
         
+        // Connect chuck centerline detection
+        connect(m_workspaceController, &WorkspaceController::chuckCenterlineDetected,
+                this, &MainWindow::handleChuckCenterlineDetected);
+        
+        // Connect multiple cylinders detection for manual selection
+        connect(m_workspaceController, &WorkspaceController::multipleCylindersDetected,
+                this, &MainWindow::handleMultipleCylindersDetected);
+        
+        // Connect cylinder axis selection
+        connect(m_workspaceController, &WorkspaceController::cylinderAxisSelected,
+                this, &MainWindow::handleCylinderAxisSelected);
+        
         qDebug() << "Workspace controller connections established";
     }
 }
@@ -423,4 +440,88 @@ void MainWindow::handleWorkpieceWorkflowCompleted(double diameter, double rawMat
                               .arg(rawMaterialDiameter, 0, 'f', 1));
     }
     statusBar()->showMessage("Workpiece processing completed", 3000);
+}
+
+void MainWindow::handleChuckCenterlineDetected(const gp_Ax1& axis)
+{
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Chuck centerline detected - Location: (%1, %2, %3), Direction: (%4, %5, %6)")
+                              .arg(axis.Location().X(), 0, 'f', 2)
+                              .arg(axis.Location().Y(), 0, 'f', 2)
+                              .arg(axis.Location().Z(), 0, 'f', 2)
+                              .arg(axis.Direction().X(), 0, 'f', 3)
+                              .arg(axis.Direction().Y(), 0, 'f', 3)
+                              .arg(axis.Direction().Z(), 0, 'f', 3));
+    }
+    statusBar()->showMessage("Chuck centerline detected and aligned", 3000);
+}
+
+void MainWindow::handleMultipleCylindersDetected(const QVector<CylinderInfo>& cylinders)
+{
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Multiple cylinders detected (%1 total) - Manual selection required").arg(cylinders.size()));
+        for (int i = 0; i < cylinders.size(); ++i) {
+            m_outputWindow->append(QString("  %1. %2").arg(i + 1).arg(cylinders[i].description));
+        }
+    }
+    statusBar()->showMessage("Multiple cylinders detected - Select turning axis", 5000);
+    
+    // Show cylinder selection dialog
+    showCylinderSelectionDialog(cylinders);
+}
+
+void MainWindow::handleCylinderAxisSelected(int index, const CylinderInfo& cylinderInfo)
+{
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Cylinder axis selected: %1 (Index: %2)")
+                              .arg(cylinderInfo.description)
+                              .arg(index));
+    }
+    statusBar()->showMessage("Turning axis selected and applied", 3000);
+}
+
+void MainWindow::showCylinderSelectionDialog(const QVector<CylinderInfo>& cylinders)
+{
+    // Clean up previous dialog if it exists
+    if (m_cylinderSelectionDialog) {
+        m_cylinderSelectionDialog->deleteLater();
+        m_cylinderSelectionDialog = nullptr;
+    }
+    
+    // Create and show cylinder selection dialog
+    m_cylinderSelectionDialog = new CylinderSelectionDialog(cylinders, 0, this);
+    
+    // Connect dialog result
+    connect(m_cylinderSelectionDialog, &QDialog::accepted, [this]() {
+        int selectedIndex = m_cylinderSelectionDialog->getSelectedCylinderIndex();
+        if (selectedIndex >= 0 && m_workspaceController) {
+            bool success = m_workspaceController->selectWorkpieceCylinderAxis(selectedIndex);
+            if (success) {
+                if (m_outputWindow) {
+                    m_outputWindow->append(QString("User selected cylinder %1 for turning axis").arg(selectedIndex + 1));
+                }
+                // Fit view to show updated workspace
+                m_3dViewer->fitAll();
+            } else {
+                QMessageBox::warning(this, "Selection Error", 
+                                   QString("Failed to apply selected cylinder axis %1").arg(selectedIndex + 1));
+            }
+        }
+        m_cylinderSelectionDialog->deleteLater();
+        m_cylinderSelectionDialog = nullptr;
+    });
+    
+    connect(m_cylinderSelectionDialog, &QDialog::rejected, [this]() {
+        if (m_outputWindow) {
+            m_outputWindow->append("Cylinder selection cancelled - Using automatic selection");
+        }
+        statusBar()->showMessage("Cylinder selection cancelled", 3000);
+        m_cylinderSelectionDialog->deleteLater();
+        m_cylinderSelectionDialog = nullptr;
+    });
+    
+    // Show dialog
+    m_cylinderSelectionDialog->show();
+    m_cylinderSelectionDialog->raise();
+    m_cylinderSelectionDialog->activateWindow();
 } 
