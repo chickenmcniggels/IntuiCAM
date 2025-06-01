@@ -16,6 +16,7 @@
 #include <BRepTools.hxx>
 #include <gp_Pnt.hxx>
 #include <gp_Vec.hxx>
+#include <BRepBuilderAPI_Transform.hxx>
 
 // Standard material diameters in mm (ISO metric standard stock sizes)
 const QVector<double> RawMaterialManager::STANDARD_DIAMETERS = {
@@ -136,7 +137,8 @@ void RawMaterialManager::clearRawMaterial()
     if (!m_rawMaterialAIS.IsNull()) {
         m_context->Remove(m_rawMaterialAIS, false);
         m_rawMaterialAIS.Nullify();
-        m_context->UpdateCurrentViewer();
+        // Don't call UpdateCurrentViewer here - let the calling method handle updates
+        // to prevent unnecessary full refreshes that can cause black screens
     }
     
     // Reset current diameter
@@ -250,20 +252,97 @@ double RawMaterialManager::calculateOptimalLength(const TopoDS_Shape& workpiece,
         
         double workpieceLength = maxProjection - minProjection;
         
-        // Add proper machining allowance (10% on each end, minimum 5mm each)
-        double allowance = std::max(workpieceLength * 0.1, 5.0);
-        double rawMaterialLength = workpieceLength + 2 * allowance;
+        // For lathe operations, ensure raw material:
+        // 1. Includes the full part in Z+ direction (+ small allowance)
+        // 2. Extends 50mm in Z- direction into the chuck
+        double chuckExtension = 50.0; // mm extension into chuck
+        double partAllowance = 5.0;   // mm allowance beyond the part
         
-        // Ensure minimum length of 20mm (10mm workpiece + 5mm each end)
-        rawMaterialLength = std::max(rawMaterialLength, 20.0);
+        double rawMaterialLength = workpieceLength + chuckExtension + partAllowance;
+        
+        // Ensure minimum length of 60mm (5mm part + 50mm chuck + 5mm allowance)
+        rawMaterialLength = std::max(rawMaterialLength, 60.0);
         
         qDebug() << "Calculated raw material length:" << rawMaterialLength << "mm for workpiece length:" << workpieceLength << "mm"
-                 << "with allowance:" << allowance << "mm per end";
+                 << "with chuck extension:" << chuckExtension << "mm and part allowance:" << partAllowance << "mm";
         
         return rawMaterialLength;
         
     } catch (const std::exception& e) {
         qDebug() << "Error calculating optimal length:" << e.what();
+        return 100.0;
+    }
+}
+
+double RawMaterialManager::calculateOptimalLengthWithTransform(const TopoDS_Shape& workpiece, const gp_Ax1& axis, const gp_Trsf& transform)
+{
+    if (workpiece.IsNull()) {
+        return 100.0; // Default length
+    }
+    
+    try {
+        // Apply transformation to the workpiece for calculation
+        TopoDS_Shape transformedWorkpiece = workpiece;
+        if (!transform.Form() == gp_Identity) {
+            BRepBuilderAPI_Transform transformer(workpiece, transform);
+            transformedWorkpiece = transformer.Shape();
+        }
+        
+        // Get bounding box of the transformed workpiece
+        Bnd_Box bbox;
+        BRepBndLib::Add(transformedWorkpiece, bbox);
+        
+        if (bbox.IsVoid()) {
+            qDebug() << "Empty bounding box for transformed workpiece";
+            return 100.0;
+        }
+        
+        double xmin, ymin, zmin, xmax, ymax, zmax;
+        bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+        
+        // Calculate the bounds along the rotation axis
+        gp_Dir axisDir = axis.Direction();
+        gp_Pnt axisLoc = axis.Location();
+        
+        // Project bounding box corners onto the axis to find extent
+        double minProjection = std::numeric_limits<double>::max();
+        double maxProjection = std::numeric_limits<double>::lowest();
+        
+        // Check all 8 corners of the bounding box
+        gp_Pnt corners[8] = {
+            gp_Pnt(xmin, ymin, zmin), gp_Pnt(xmax, ymin, zmin),
+            gp_Pnt(xmin, ymax, zmin), gp_Pnt(xmax, ymax, zmin),
+            gp_Pnt(xmin, ymin, zmax), gp_Pnt(xmax, ymin, zmax),
+            gp_Pnt(xmin, ymax, zmax), gp_Pnt(xmax, ymax, zmax)
+        };
+        
+        for (int i = 0; i < 8; i++) {
+            gp_Vec toCorner(axisLoc, corners[i]);
+            double projection = toCorner.Dot(axisDir);
+            minProjection = std::min(minProjection, projection);
+            maxProjection = std::max(maxProjection, projection);
+        }
+        
+        double workpieceLength = maxProjection - minProjection;
+        
+        // For lathe operations, ensure raw material:
+        // 1. Includes the full part in Z+ direction (+ small allowance)
+        // 2. Extends 50mm in Z- direction into the chuck
+        double chuckExtension = 50.0; // mm extension into chuck
+        double partAllowance = 5.0;   // mm allowance beyond the part
+        
+        double rawMaterialLength = workpieceLength + chuckExtension + partAllowance;
+        
+        // Ensure minimum length of 60mm (5mm part + 50mm chuck + 5mm allowance)
+        rawMaterialLength = std::max(rawMaterialLength, 60.0);
+        
+        qDebug() << "Calculated raw material length with transform:" << rawMaterialLength << "mm for transformed workpiece length:" << workpieceLength << "mm"
+                 << "with chuck extension:" << chuckExtension << "mm and part allowance:" << partAllowance << "mm";
+        
+        return rawMaterialLength;
+        
+    } catch (const std::exception& e) {
+        qDebug() << "Error calculating optimal length with transform:" << e.what();
         return 100.0;
     }
 }
@@ -305,21 +384,29 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, dou
                 maxProjection = std::max(maxProjection, projection);
             }
             
-            // Add machining allowance (10% on each end, minimum 5mm each)
-            double allowance = std::max((maxProjection - minProjection) * 0.1, 5.0);
+            // For lathe operations, ensure raw material:
+            // 1. Includes the full part in Z+ direction (maxProjection + small allowance)
+            // 2. Extends 50mm in Z- direction into the chuck (minProjection - 50mm)
+            double chuckExtension = 50.0; // mm extension into chuck
+            double partAllowance = 5.0;   // mm allowance beyond the part
             
-            // For lathe operations, we want the raw material to start from the chuck 
-            // (minProjection - allowance) and extend to the rightmost part (maxProjection + allowance)
-            // The cylinder should start at the leftmost position (closest to chuck)
-            cylinderStartPoint = axisLoc.Translated(gp_Vec(axisDir) * (minProjection - allowance));
+            // Calculate start position: extend 50mm into chuck (Z- direction)
+            double rawMaterialStart = minProjection - chuckExtension;
             
-            // Update the length to match the actual needed length with allowances
-            length = (maxProjection - minProjection) + 2 * allowance;
+            // Calculate end position: include full part + small allowance (Z+ direction)
+            double rawMaterialEnd = maxProjection + partAllowance;
             
-            qDebug() << "Raw material positioned from" << (minProjection - allowance) 
-                     << "to" << (maxProjection + allowance) << "along axis";
-            qDebug() << "Workpiece extent:" << minProjection << "to" << maxProjection;
-            qDebug() << "Raw material length:" << length << "mm with allowance:" << allowance << "mm";
+            // Update the cylinder start point and length
+            cylinderStartPoint = axisLoc.Translated(gp_Vec(axisDir) * rawMaterialStart);
+            length = rawMaterialEnd - rawMaterialStart;
+            
+            qDebug() << "Raw material positioning:";
+            qDebug() << "  Part extent:" << minProjection << "to" << maxProjection << "mm";
+            qDebug() << "  Raw material:" << rawMaterialStart << "to" << rawMaterialEnd << "mm";
+            qDebug() << "  Chuck extension:" << chuckExtension << "mm";
+            qDebug() << "  Part allowance:" << partAllowance << "mm";
+            qDebug() << "  Total length:" << length << "mm";
+            
         } else {
             // Fallback to axis location if no valid bounds
             cylinderStartPoint = axis.Location().Translated(gp_Vec(axis.Direction()) * (-length / 2.0));
@@ -339,5 +426,134 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, dou
         qDebug() << "Error creating cylinder for workpiece:" << e.what();
         emit errorOccurred(QString("Error creating cylinder for workpiece: %1").arg(e.what()));
         return TopoDS_Shape();
+    }
+}
+
+TopoDS_Shape RawMaterialManager::createCylinderForWorkpieceWithTransform(double diameter, double length, const gp_Ax1& axis, const TopoDS_Shape& workpiece, const gp_Trsf& transform)
+{
+    try {
+        double radius = diameter / 2.0;
+        
+        // Apply transformation to the workpiece for bounding box calculation
+        TopoDS_Shape transformedWorkpiece = workpiece;
+        if (!transform.Form() == gp_Identity) {
+            BRepBuilderAPI_Transform transformer(workpiece, transform);
+            transformedWorkpiece = transformer.Shape();
+        }
+        
+        // Get transformed workpiece bounding box to determine proper positioning
+        Bnd_Box bbox;
+        BRepBndLib::Add(transformedWorkpiece, bbox);
+        
+        gp_Pnt cylinderStartPoint;
+        if (!bbox.IsVoid()) {
+            // Calculate the proper positioning along the axis
+            double xmin, ymin, zmin, xmax, ymax, zmax;
+            bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+            
+            gp_Dir axisDir = axis.Direction();
+            gp_Pnt axisLoc = axis.Location();
+            
+            // Project all bounding box corners onto the axis to find the true extent
+            double minProjection = std::numeric_limits<double>::max();
+            double maxProjection = std::numeric_limits<double>::lowest();
+            
+            // Check all 8 corners of the bounding box
+            gp_Pnt corners[8] = {
+                gp_Pnt(xmin, ymin, zmin), gp_Pnt(xmax, ymin, zmin),
+                gp_Pnt(xmin, ymax, zmin), gp_Pnt(xmax, ymax, zmin),
+                gp_Pnt(xmin, ymin, zmax), gp_Pnt(xmax, ymin, zmax),
+                gp_Pnt(xmin, ymax, zmax), gp_Pnt(xmax, ymax, zmax)
+            };
+            
+            for (int i = 0; i < 8; i++) {
+                gp_Vec toCorner(axisLoc, corners[i]);
+                double projection = toCorner.Dot(axisDir);
+                minProjection = std::min(minProjection, projection);
+                maxProjection = std::max(maxProjection, projection);
+            }
+            
+            // For lathe operations, ensure raw material:
+            // 1. Includes the full part in Z+ direction (maxProjection + small allowance)
+            // 2. Extends 50mm in Z- direction into the chuck (minProjection - 50mm)
+            double chuckExtension = 50.0; // mm extension into chuck
+            double partAllowance = 5.0;   // mm allowance beyond the part
+            
+            // Calculate start position: extend 50mm into chuck (Z- direction)
+            double rawMaterialStart = minProjection - chuckExtension;
+            
+            // Calculate end position: include full part + small allowance (Z+ direction)
+            double rawMaterialEnd = maxProjection + partAllowance;
+            
+            // Update the cylinder start point and length
+            cylinderStartPoint = axisLoc.Translated(gp_Vec(axisDir) * rawMaterialStart);
+            length = rawMaterialEnd - rawMaterialStart;
+            
+            qDebug() << "Raw material positioning with transform:";
+            qDebug() << "  Transformed part extent:" << minProjection << "to" << maxProjection << "mm";
+            qDebug() << "  Raw material:" << rawMaterialStart << "to" << rawMaterialEnd << "mm";
+            qDebug() << "  Chuck extension:" << chuckExtension << "mm";
+            qDebug() << "  Part allowance:" << partAllowance << "mm";
+            qDebug() << "  Total length:" << length << "mm";
+            
+        } else {
+            // Fallback to axis location if no valid bounds
+            cylinderStartPoint = axis.Location().Translated(gp_Vec(axis.Direction()) * (-length / 2.0));
+            qDebug() << "Using fallback positioning - no valid transformed workpiece bounds";
+        }
+        
+        // Create coordinate system for the cylinder starting at the calculated position
+        gp_Ax2 cylinderAx2(cylinderStartPoint, axis.Direction());
+        
+        // Create cylinder starting from the calculated start point
+        BRepPrimAPI_MakeCylinder cylinderMaker(cylinderAx2, radius, length);
+        TopoDS_Shape cylinder = cylinderMaker.Shape();
+        
+        return cylinder;
+        
+    } catch (const std::exception& e) {
+        qDebug() << "Error creating cylinder for workpiece with transform:" << e.what();
+        emit errorOccurred(QString("Error creating cylinder for workpiece with transform: %1").arg(e.what()));
+        return TopoDS_Shape();
+    }
+}
+
+void RawMaterialManager::displayRawMaterialForWorkpieceWithTransform(double diameter, const TopoDS_Shape& workpiece, const gp_Ax1& axis, const gp_Trsf& transform)
+{
+    if (m_context.IsNull()) {
+        emit errorOccurred("AIS context not initialized");
+        return;
+    }
+    
+    if (workpiece.IsNull()) {
+        emit errorOccurred("Invalid workpiece provided");
+        return;
+    }
+    
+    // Calculate workpiece bounds along the specified axis with transform
+    double length = calculateOptimalLengthWithTransform(workpiece, axis, transform);
+    
+    // Remove existing raw material if any
+    clearRawMaterial();
+    
+    // Create raw material cylinder that encompasses the entire transformed workpiece
+    m_currentRawMaterial = createCylinderForWorkpieceWithTransform(diameter, length, axis, workpiece, transform);
+    
+    if (!m_currentRawMaterial.IsNull()) {
+        m_rawMaterialAIS = new AIS_Shape(m_currentRawMaterial);
+        
+        // Set raw material visual properties
+        setRawMaterialMaterial(m_rawMaterialAIS);
+        
+        // Display the raw material
+        m_context->Display(m_rawMaterialAIS, AIS_Shaded, 0, false);
+        
+        // Store the current diameter
+        m_currentDiameter = diameter;
+        
+        emit rawMaterialCreated(diameter, length);
+        qDebug() << "Raw material displayed for transformed workpiece - Diameter:" << diameter << "mm, Length:" << length << "mm";
+    } else {
+        emit errorOccurred("Failed to create raw material cylinder for transformed workpiece");
     }
 } 

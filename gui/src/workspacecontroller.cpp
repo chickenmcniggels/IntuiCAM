@@ -428,18 +428,22 @@ bool WorkspaceController::updateDistanceToChuck(double distance)
                 gp_Ax1 currentAxis = m_workpieceManager->getMainCylinderAxis();
                 double currentDiameter = m_rawMaterialManager->getCurrentDiameter();
                 
+                // Get the current transformation from the workpiece manager
+                gp_Trsf currentTransform = m_workpieceManager->getCurrentTransformation();
+                
                 // Apply chuck alignment if available
                 gp_Ax1 alignmentAxis = currentAxis;
                 if (m_chuckManager->hasValidCenterline()) {
                     alignmentAxis = alignWorkpieceWithChuckCenterline(currentAxis);
                 }
                 
-                // Clear and regenerate raw material
+                // Clear and regenerate raw material using transform-aware method
                 m_rawMaterialManager->clearRawMaterial();
-                m_rawMaterialManager->displayRawMaterialForWorkpiece(currentDiameter, m_currentWorkpiece, alignmentAxis);
+                m_rawMaterialManager->displayRawMaterialForWorkpieceWithTransform(
+                    currentDiameter, m_currentWorkpiece, alignmentAxis, currentTransform);
             }
             
-            qDebug() << "WorkspaceController: Distance to chuck set to" << distance << "mm and raw material updated";
+            qDebug() << "WorkspaceController: Distance to chuck set to" << distance << "mm and raw material updated with correct transform";
         }
         
         return success;
@@ -469,11 +473,14 @@ bool WorkspaceController::flipWorkpieceOrientation(bool flipped)
         bool success = m_workpieceManager->flipWorkpieceOrientation(flipped);
         
         if (success) {
-            // Regenerate raw material to match the new workpiece orientation
+            // Regenerate raw material to match the new workpiece orientation using transform
             if (!m_currentWorkpiece.IsNull()) {
                 // Get current settings
                 gp_Ax1 currentAxis = m_workpieceManager->getMainCylinderAxis();
                 double currentDiameter = m_rawMaterialManager->getCurrentDiameter();
+                
+                // Get the current transformation from the workpiece manager
+                gp_Trsf currentTransform = m_workpieceManager->getCurrentTransformation();
                 
                 // Apply chuck alignment if available
                 gp_Ax1 alignmentAxis = currentAxis;
@@ -481,12 +488,13 @@ bool WorkspaceController::flipWorkpieceOrientation(bool flipped)
                     alignmentAxis = alignWorkpieceWithChuckCenterline(currentAxis);
                 }
                 
-                // Clear and regenerate raw material
+                // Clear and regenerate raw material using transform-aware method
                 m_rawMaterialManager->clearRawMaterial();
-                m_rawMaterialManager->displayRawMaterialForWorkpiece(currentDiameter, m_currentWorkpiece, alignmentAxis);
+                m_rawMaterialManager->displayRawMaterialForWorkpieceWithTransform(
+                    currentDiameter, m_currentWorkpiece, alignmentAxis, currentTransform);
             }
             
-            qDebug() << "WorkspaceController: Workpiece orientation" << (flipped ? "flipped" : "restored") << "and raw material updated";
+            qDebug() << "WorkspaceController: Workpiece orientation" << (flipped ? "flipped" : "restored") << "and raw material updated with correct transform";
         }
         
         return success;

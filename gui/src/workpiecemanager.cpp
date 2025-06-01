@@ -366,12 +366,14 @@ bool WorkpieceManager::flipWorkpieceOrientation(bool flipped)
                     workpiece->SetLocalTransformation(identity);
                 }
                 
-                // Update display
+                // Update display without triggering full viewer update
                 m_context->Redisplay(workpiece, false);
             }
         }
 
         m_isFlipped = flipped;
+        
+        // Use a single efficient update instead of UpdateCurrentViewer
         m_context->UpdateCurrentViewer();
         
         qDebug() << "WorkpieceManager: Workpiece orientation" << (flipped ? "flipped" : "restored");
@@ -381,6 +383,20 @@ bool WorkpieceManager::flipWorkpieceOrientation(bool flipped)
         emit errorOccurred(QString("Failed to flip workpiece orientation: %1").arg(e.what()));
         return false;
     }
+}
+
+gp_Trsf WorkpieceManager::getCurrentTransformation() const
+{
+    gp_Trsf transform;
+    
+    if (m_isFlipped) {
+        // Create the same transformation used in flipWorkpieceOrientation
+        gp_Ax1 rotationAxis(m_mainCylinderAxis.Location(), gp_Dir(0, 1, 0)); // Y-axis
+        transform.SetRotation(rotationAxis, M_PI); // 180 degrees
+    }
+    // else: transform remains identity (default)
+    
+    return transform;
 }
 
 bool WorkpieceManager::positionWorkpieceAlongAxis(double distance)

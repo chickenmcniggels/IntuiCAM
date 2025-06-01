@@ -90,6 +90,29 @@ public:
      */
     bool isSelectionModeActive() const { return m_selectionMode; }
 
+    /**
+     * @brief Enable or disable auto-fit when displaying new shapes
+     * @param enabled True to automatically fit view when displaying shapes
+     */
+    void setAutoFitEnabled(bool enabled) { m_autoFitEnabled = enabled; }
+
+    /**
+     * @brief Check if auto-fit is enabled
+     * @return True if auto-fit is enabled
+     */
+    bool isAutoFitEnabled() const { return m_autoFitEnabled; }
+
+    /**
+     * @brief Set the turning axis face for special highlighting
+     * @param axisShape The face shape that defines the turning axis
+     */
+    void setTurningAxisFace(const TopoDS_Shape& axisShape);
+
+    /**
+     * @brief Clear the turning axis face highlighting
+     */
+    void clearTurningAxisFace();
+
 signals:
     /**
      * @brief Emitted when the viewer is successfully initialized
@@ -175,6 +198,17 @@ private:
 
     // Selection mode
     bool m_selectionMode;
+
+    // Auto-fit
+    bool m_autoFitEnabled;
+
+    // Hover highlighting
+    Handle(AIS_Shape) m_hoveredObject;
+    bool m_hoverHighlightEnabled;
+
+    // Turning axis face highlighting
+    Handle(AIS_Shape) m_turningAxisFaceAIS;
+    TopoDS_Shape m_turningAxisFace;
 };
 
 #endif // OPENGL3DWIDGET_H 

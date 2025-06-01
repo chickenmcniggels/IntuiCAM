@@ -15,6 +15,7 @@
 #include <AIS_DisplayMode.hxx>
 #include <StdSelect_BRepOwner.hxx>
 #include <SelectMgr_SortCriterion.hxx>
+#include <Prs3d_Drawer.hxx>
 
 #ifdef _WIN32
 #include <WNT_Window.hxx>
@@ -32,6 +33,8 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_isInitialized(false)
     , m_needsRefresh(false)
     , m_selectionMode(false)
+    , m_autoFitEnabled(true)
+    , m_hoverHighlightEnabled(true)
 {
     // Enable mouse tracking for proper interaction
     setMouseTracking(true);
@@ -253,9 +256,12 @@ void OpenGL3DWidget::updateView()
                 // Force redraw regardless of focus state with error handling
                 m_view->Redraw();
                 
-                // Ensure immediate flush for better responsiveness
+                // Ensure immediate flush for better responsiveness without full swap
                 if (context() && context()->surface()) {
                     context()->functions()->glFlush();
+                    // Use doneCurrent() instead of swapBuffers to prevent frame buffer issues
+                    doneCurrent();
+                    makeCurrent();
                 }
             } catch (...) {
                 qDebug() << "Error during view update, attempting recovery";
@@ -279,8 +285,13 @@ void OpenGL3DWidget::displayShape(const TopoDS_Shape& shape)
         // Display the shape
         m_context->Display(aisShape, AIS_Shaded, 0, false);
         
-        // Update the view
-        fitAll();
+        // Only auto-fit if enabled
+        if (m_autoFitEnabled) {
+            fitAll();
+        } else {
+            // Just update the view without fitting
+            updateView();
+        }
         
         qDebug() << "Shape displayed successfully";
         
@@ -407,27 +418,46 @@ void OpenGL3DWidget::mousePressEvent(QMouseEvent *event)
 
 void OpenGL3DWidget::mouseMoveEvent(QMouseEvent *event)
 {
-    if (!m_view.IsNull() && m_isDragging)
-    {
-        if (m_dragButton == Qt::LeftButton)
-        {
-            // Rotation
-            m_view->Rotation(event->pos().x(), event->pos().y());
+    if (!m_view.IsNull()) {
+        if (m_isDragging) {
+            if (m_dragButton == Qt::LeftButton)
+            {
+                // Rotation
+                m_view->Rotation(event->pos().x(), event->pos().y());
+            }
+            else if (m_dragButton == Qt::MiddleButton)
+            {
+                // Panning
+                m_view->Pan(event->pos().x() - m_lastMousePos.x(), 
+                           m_lastMousePos.y() - event->pos().y());
+            }
+            else if (m_dragButton == Qt::RightButton)
+            {
+                // Zooming
+                m_view->Zoom(m_lastMousePos.x(), m_lastMousePos.y(), 
+                            event->pos().x(), event->pos().y());
+            }
+            
+            updateView();
+        } else if (m_hoverHighlightEnabled && !m_context.IsNull()) {
+            // Handle hover highlighting when not dragging
+            m_context->MoveTo(event->pos().x(), event->pos().y(), m_view, Standard_True);
+            
+            // Check if we're hovering over something different
+            if (m_context->HasDetected()) {
+                Handle(AIS_InteractiveObject) detectedObj = m_context->DetectedInteractive();
+                
+                // Highlight the detected object if it's not the turning axis face
+                if (!detectedObj.IsNull() && detectedObj != m_turningAxisFaceAIS) {
+                    // The context will automatically handle highlighting with default colors
+                    updateView();
+                }
+            } else {
+                // Clear any previous hover highlighting
+                m_context->ClearDetected(Standard_False);
+                updateView();
+            }
         }
-        else if (m_dragButton == Qt::MiddleButton)
-        {
-            // Panning
-            m_view->Pan(event->pos().x() - m_lastMousePos.x(), 
-                       m_lastMousePos.y() - event->pos().y());
-        }
-        else if (m_dragButton == Qt::RightButton)
-        {
-            // Zooming
-            m_view->Zoom(m_lastMousePos.x(), m_lastMousePos.y(), 
-                        event->pos().x(), event->pos().y());
-        }
-        
-        updateView();
     }
     
     m_lastMousePos = event->pos();
@@ -590,12 +620,42 @@ void OpenGL3DWidget::hideEvent(QHideEvent *event)
 
 void OpenGL3DWidget::forceRedraw()
 {
-    if (!m_view.IsNull())
+    if (!m_view.IsNull() && isVisible() && width() > 0 && height() > 0)
     {
-        makeCurrent();
-        m_view->Redraw();
-        if (context()) {
-            context()->functions()->glFlush();
+        try {
+            makeCurrent();
+            
+            // Ensure proper sizing before redraw
+            if (m_needsRefresh) {
+                m_view->MustBeResized();
+                m_window->DoResize();
+                m_needsRefresh = false;
+            }
+            
+            m_view->Redraw();
+            
+            // Use a more conservative flush approach
+            if (context()) {
+                context()->functions()->glFlush();
+                context()->functions()->glFinish(); // Ensure completion
+            }
+        } catch (...) {
+            qDebug() << "Error during force redraw - will retry";
+            m_needsRefresh = true;
+            // Schedule another attempt with a short delay
+            QTimer::singleShot(10, this, [this]() {
+                if (!m_view.IsNull() && isVisible()) {
+                    try {
+                        makeCurrent();
+                        m_view->Redraw();
+                        if (context()) {
+                            context()->functions()->glFlush();
+                        }
+                    } catch (...) {
+                        qDebug() << "Backup redraw also failed";
+                    }
+                }
+            });
         }
     }
 }
@@ -707,4 +767,67 @@ bool OpenGL3DWidget::event(QEvent *event)
     }
     
     return QOpenGLWidget::event(event);
+}
+
+void OpenGL3DWidget::setTurningAxisFace(const TopoDS_Shape& axisShape)
+{
+    if (m_context.IsNull() || axisShape.IsNull()) {
+        return;
+    }
+    
+    // Clear any existing turning axis face display
+    clearTurningAxisFace();
+    
+    try {
+        // Create AIS shape for the turning axis face
+        m_turningAxisFaceAIS = new AIS_Shape(axisShape);
+        m_turningAxisFace = axisShape;
+        
+        // Set special highlighting material for turning axis (orange/gold color)
+        Graphic3d_MaterialAspect axisMaterial(Graphic3d_NOM_GOLD);
+        axisMaterial.SetColor(Quantity_Color(1.0, 0.5, 0.0, Quantity_TOC_RGB)); // Orange
+        axisMaterial.SetTransparency(Standard_ShortReal(0.3));
+        
+        m_turningAxisFaceAIS->SetMaterial(axisMaterial);
+        m_turningAxisFaceAIS->SetTransparency(Standard_ShortReal(0.3));
+        
+        // Display with special highlighting
+        m_context->Display(m_turningAxisFaceAIS, AIS_Shaded, 0, false);
+        
+        // Create a drawer for permanent highlight with orange color
+        Handle(Prs3d_Drawer) highlightDrawer = new Prs3d_Drawer();
+        highlightDrawer->SetColor(Quantity_NOC_ORANGE);
+        highlightDrawer->SetTransparency(Standard_ShortReal(0.3));
+        
+        // Set permanent highlight for the turning axis face
+        m_context->HilightWithColor(m_turningAxisFaceAIS, highlightDrawer, Standard_False);
+        
+        updateView();
+        
+        qDebug() << "Turning axis face highlighted";
+        
+    } catch (const std::exception& e) {
+        qDebug() << "Error highlighting turning axis face:" << e.what();
+    }
+}
+
+void OpenGL3DWidget::clearTurningAxisFace()
+{
+    if (!m_context.IsNull() && !m_turningAxisFaceAIS.IsNull()) {
+        try {
+            // Clear highlight and remove from display
+            m_context->Unhilight(m_turningAxisFaceAIS, Standard_False);
+            m_context->Remove(m_turningAxisFaceAIS, Standard_False);
+            
+            m_turningAxisFaceAIS.Nullify();
+            m_turningAxisFace.Nullify();
+            
+            updateView();
+            
+            qDebug() << "Turning axis face highlighting cleared";
+            
+        } catch (const std::exception& e) {
+            qDebug() << "Error clearing turning axis face:" << e.what();
+        }
+    }
 } 

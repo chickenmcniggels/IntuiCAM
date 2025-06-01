@@ -423,27 +423,47 @@ void MainWindow::showPreferences()
 
 void MainWindow::initializeWorkspace()
 {
-    // This method is called after UI initialization
-    if (m_workspaceController && m_3dViewer->isViewerInitialized()) {
-        // Initialize chuck automatically
-        QString chuckFilePath = "C:/Users/nikla/Downloads/three_jaw_chuck.step";
+    if (m_workspaceController && m_3dViewer) {
+        // Get the context from the viewer and initialize workspace controller
+        Handle(AIS_InteractiveContext) context = m_3dViewer->getContext();
         
-        if (m_outputWindow) {
-            m_outputWindow->append("Initializing workspace with 3-jaw chuck...");
-        }
-        
-        bool success = m_workspaceController->initializeChuck(chuckFilePath);
-        if (success) {
-            statusBar()->showMessage("Workspace initialization completed", 3000);
-            m_3dViewer->fitAll();
-        } else {
+        if (!context.IsNull()) {
+            m_workspaceController->initialize(context, m_stepLoader);
             if (m_outputWindow) {
-                m_outputWindow->append("Warning: Chuck initialization failed - workspace available without chuck");
+                m_outputWindow->append("Workspace controller initialized successfully");
             }
-        }
-    } else {
-        if (m_outputWindow) {
-            m_outputWindow->append("Error: Workspace controller or 3D viewer not ready");
+            
+            // Setup connections for workspace events
+            connect(m_workspaceController, &WorkspaceController::chuckInitialized,
+                    this, &MainWindow::handleChuckInitialized);
+            connect(m_workspaceController, &WorkspaceController::chuckCenterlineDetected,
+                    this, &MainWindow::handleChuckCenterlineDetected);
+            connect(m_workspaceController, &WorkspaceController::multipleCylindersDetected,
+                    this, &MainWindow::handleMultipleCylindersDetected);
+            connect(m_workspaceController, &WorkspaceController::cylinderAxisSelected,
+                    this, &MainWindow::handleCylinderAxisSelected);
+            connect(m_workspaceController, &WorkspaceController::workpieceWorkflowCompleted,
+                    this, &MainWindow::handleWorkpieceWorkflowCompleted);
+            
+            // Enable auto-fit for initial file loading, but disable for parameter updates
+            m_3dViewer->setAutoFitEnabled(true);
+            
+            // Automatically load the chuck
+            QString chuckFilePath = "C:/Users/nikla/Downloads/three_jaw_chuck.step";
+            bool chuckSuccess = m_workspaceController->initializeChuck(chuckFilePath);
+            if (chuckSuccess) {
+                if (m_outputWindow) {
+                    m_outputWindow->append("Chuck loaded successfully from: " + chuckFilePath);
+                }
+                statusBar()->showMessage("Workspace and chuck ready", 2000);
+            } else {
+                if (m_outputWindow) {
+                    m_outputWindow->append("Warning: Failed to load chuck from: " + chuckFilePath);
+                }
+                statusBar()->showMessage("Workspace ready (chuck not loaded)", 3000);
+            }
+        } else {
+            statusBar()->showMessage("Failed to get viewer context", 3000);
         }
     }
 }
@@ -529,8 +549,22 @@ void MainWindow::handlePartLoadingDistanceChanged(double distance)
         bool success = m_workspaceController->updateDistanceToChuck(distance);
         if (success) {
             statusBar()->showMessage(QString("Distance to chuck updated: %1 mm").arg(distance, 0, 'f', 1), 2000);
-            // Update 3D view to show changes
-            m_3dViewer->fitAll();
+            // Use optimized update method to prevent black screens
+            if (m_3dViewer && m_3dViewer->isViewerInitialized()) {
+                // Disable auto-fit temporarily to prevent view jumping
+                bool autoFitWasEnabled = m_3dViewer->isAutoFitEnabled();
+                m_3dViewer->setAutoFitEnabled(false);
+                
+                // Use direct update instead of Qt's update() to avoid black screen
+                QTimer::singleShot(1, this, [this, autoFitWasEnabled]() {
+                    if (m_3dViewer) {
+                        // Just redraw without fitting
+                        m_3dViewer->update();
+                        // Restore auto-fit setting
+                        m_3dViewer->setAutoFitEnabled(autoFitWasEnabled);
+                    }
+                });
+            }
         } else {
             statusBar()->showMessage("Failed to update distance to chuck", 3000);
         }
@@ -548,8 +582,22 @@ void MainWindow::handlePartLoadingDiameterChanged(double diameter)
         bool success = m_workspaceController->updateRawMaterialDiameter(diameter);
         if (success) {
             statusBar()->showMessage(QString("Raw material diameter updated: %1 mm").arg(diameter, 0, 'f', 1), 2000);
-            // Update 3D view to show changes
-            m_3dViewer->fitAll();
+            // Use optimized update method to prevent black screens
+            if (m_3dViewer && m_3dViewer->isViewerInitialized()) {
+                // Disable auto-fit temporarily to prevent view jumping
+                bool autoFitWasEnabled = m_3dViewer->isAutoFitEnabled();
+                m_3dViewer->setAutoFitEnabled(false);
+                
+                // Use direct update instead of Qt's update() to avoid black screen
+                QTimer::singleShot(1, this, [this, autoFitWasEnabled]() {
+                    if (m_3dViewer) {
+                        // Just redraw without fitting
+                        m_3dViewer->update();
+                        // Restore auto-fit setting
+                        m_3dViewer->setAutoFitEnabled(autoFitWasEnabled);
+                    }
+                });
+            }
         } else {
             statusBar()->showMessage("Failed to update raw material diameter", 3000);
         }
@@ -567,8 +615,22 @@ void MainWindow::handlePartLoadingOrientationFlipped(bool flipped)
         bool success = m_workspaceController->flipWorkpieceOrientation(flipped);
         if (success) {
             statusBar()->showMessage(QString("Part orientation %1").arg(flipped ? "flipped" : "restored"), 2000);
-            // Update 3D view to show changes
-            m_3dViewer->fitAll();
+            // Use optimized update method to prevent black screens
+            if (m_3dViewer && m_3dViewer->isViewerInitialized()) {
+                // Disable auto-fit temporarily to prevent view jumping
+                bool autoFitWasEnabled = m_3dViewer->isAutoFitEnabled();
+                m_3dViewer->setAutoFitEnabled(false);
+                
+                // Use direct update instead of Qt's update() to avoid black screen
+                QTimer::singleShot(1, this, [this, autoFitWasEnabled]() {
+                    if (m_3dViewer) {
+                        // Just redraw without fitting
+                        m_3dViewer->update();
+                        // Restore auto-fit setting
+                        m_3dViewer->setAutoFitEnabled(autoFitWasEnabled);
+                    }
+                });
+            }
         } else {
             statusBar()->showMessage("Failed to flip part orientation", 3000);
         }
@@ -588,8 +650,22 @@ void MainWindow::handlePartLoadingCylinderChanged(int index)
             if (m_outputWindow) {
                 m_outputWindow->append(QString("Applied cylinder axis selection: %1").arg(index));
             }
-            // Fit view to show updated workspace
-            m_3dViewer->fitAll();
+            // Use optimized update method to prevent black screens
+            if (m_3dViewer && m_3dViewer->isViewerInitialized()) {
+                // Disable auto-fit temporarily to prevent view jumping
+                bool autoFitWasEnabled = m_3dViewer->isAutoFitEnabled();
+                m_3dViewer->setAutoFitEnabled(false);
+                
+                // Use direct update instead of Qt's update() to avoid black screen
+                QTimer::singleShot(1, this, [this, autoFitWasEnabled]() {
+                    if (m_3dViewer) {
+                        // Just redraw without fitting
+                        m_3dViewer->update();
+                        // Restore auto-fit setting
+                        m_3dViewer->setAutoFitEnabled(autoFitWasEnabled);
+                    }
+                });
+            }
         } else {
             QMessageBox::warning(this, "Selection Error", 
                                QString("Failed to apply selected cylinder axis %1").arg(index + 1));

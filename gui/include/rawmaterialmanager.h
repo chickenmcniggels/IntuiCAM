@@ -10,6 +10,7 @@
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_Shape.hxx>
 #include <gp_Ax1.hxx>
+#include <gp_Trsf.hxx>
 
 /**
  * @brief Manages raw material display and sizing
@@ -50,6 +51,15 @@ public:
     void displayRawMaterialForWorkpiece(double diameter, const TopoDS_Shape& workpiece, const gp_Ax1& axis);
 
     /**
+     * @brief Display raw material for a transformed workpiece with auto-sizing
+     * @param diameter Raw material diameter in mm
+     * @param workpiece The workpiece shape to encompass
+     * @param axis The rotation axis for the cylinder
+     * @param transform The transformation applied to the workpiece
+     */
+    void displayRawMaterialForWorkpieceWithTransform(double diameter, const TopoDS_Shape& workpiece, const gp_Ax1& axis, const gp_Trsf& transform);
+
+    /**
      * @brief Find the next largest standard diameter for a given diameter
      */
     double getNextStandardDiameter(double diameter);
@@ -60,10 +70,7 @@ public:
     const QVector<double>& getStandardDiameters() const { return STANDARD_DIAMETERS; }
 
     /**
-     * @brief Set custom diameter (not necessarily from standard list)
-     * @param diameter Custom diameter in mm
-     * @param workpiece The workpiece to encompass
-     * @param axis The rotation axis
+     * @brief Set custom diameter with workpiece-based length calculation
      */
     void setCustomDiameter(double diameter, const TopoDS_Shape& workpiece, const gp_Ax1& axis);
 
@@ -127,9 +134,19 @@ private:
     TopoDS_Shape createCylinderForWorkpiece(double diameter, double length, const gp_Ax1& axis, const TopoDS_Shape& workpiece);
     
     /**
+     * @brief Create a cylinder shape that properly encompasses a transformed workpiece
+     */
+    TopoDS_Shape createCylinderForWorkpieceWithTransform(double diameter, double length, const gp_Ax1& axis, const TopoDS_Shape& workpiece, const gp_Trsf& transform);
+    
+    /**
      * @brief Calculate optimal length for raw material based on workpiece bounds
      */
     double calculateOptimalLength(const TopoDS_Shape& workpiece, const gp_Ax1& axis);
+    
+    /**
+     * @brief Calculate optimal length for raw material based on transformed workpiece bounds
+     */
+    double calculateOptimalLengthWithTransform(const TopoDS_Shape& workpiece, const gp_Ax1& axis, const gp_Trsf& transform);
     
     /**
      * @brief Set raw material visual properties

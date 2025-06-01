@@ -10,6 +10,7 @@
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_Shape.hxx>
 #include <gp_Ax1.hxx>
+#include <gp_Trsf.hxx>
 
 /**
  * @brief Cylinder detection result structure
@@ -116,16 +117,22 @@ public:
     int getSelectedCylinderIndex() const { return m_selectedCylinderIndex; }
 
     /**
-     * @brief Transform workpiece by flipping orientation around a perpendicular axis
+     * @brief Flip the workpiece orientation 180 degrees around Y-axis
      * @param flipped True to flip, false to restore original orientation
-     * @return True if transformation was successful
+     * @return True if successful
      */
     bool flipWorkpieceOrientation(bool flipped);
 
     /**
-     * @brief Move workpiece along the main cylinder axis
-     * @param distance Distance to move in mm (positive = away from chuck)
-     * @return True if positioning was successful
+     * @brief Get the current workpiece transformation (includes flip and position)
+     * @return The current transformation matrix
+     */
+    gp_Trsf getCurrentTransformation() const;
+
+    /**
+     * @brief Position the workpiece along its main cylinder axis
+     * @param distance Distance from chuck face in mm
+     * @return True if successful
      */
     bool positionWorkpieceAlongAxis(double distance);
 
