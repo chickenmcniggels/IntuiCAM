@@ -3,6 +3,7 @@
 #include "steploader.h"
 #include "workspacecontroller.h"
 #include "cylinderselectiondialog.h"
+#include "workpiecemanager.h"  // For CylinderInfo definition
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -26,6 +27,7 @@
 #include <QFileDialog>
 #include <QStandardPaths>
 #include <QTimer>
+#include <QDebug>  // Add this include for qDebug()
 
 // OpenCASCADE includes for gp_Ax1
 #include <gp_Ax1.hxx>

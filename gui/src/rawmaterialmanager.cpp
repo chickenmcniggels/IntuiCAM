@@ -217,7 +217,7 @@ double RawMaterialManager::calculateOptimalLength(const TopoDS_Shape& workpiece,
         bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
         
         // Calculate the bounds along the rotation axis
-        gp_Vec axisDir = axis.Direction();
+        gp_Dir axisDir = axis.Direction();
         gp_Pnt axisLoc = axis.Location();
         
         // Project bounding box corners onto the axis to find extent
@@ -272,7 +272,7 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, dou
             double xmin, ymin, zmin, xmax, ymax, zmax;
             bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
             
-            gp_Vec axisDir = axis.Direction();
+            gp_Dir axisDir = axis.Direction();
             gp_Pnt axisLoc = axis.Location();
             
             // Project bounding box center onto the axis
@@ -281,10 +281,10 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, dou
             double projection = toBboxCenter.Dot(axisDir);
             
             // Position cylinder center so that it encompasses the workpiece
-            cylinderCenter = axisLoc.Translated(axisDir * (projection - length / 2.0));
+            cylinderCenter = axisLoc.Translated(gp_Vec(axisDir) * (projection - length / 2.0));
         } else {
             // Fallback to axis location if no valid bounds
-            cylinderCenter = axis.Location().Translated(axis.Direction() * (-length / 2.0));
+            cylinderCenter = axis.Location().Translated(gp_Vec(axis.Direction()) * (-length / 2.0));
         }
         
         // Create coordinate system for the cylinder

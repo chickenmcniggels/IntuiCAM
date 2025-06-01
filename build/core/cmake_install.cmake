@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/core
+# Install script for directory: C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,26 +34,26 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/core/common/cmake_install.cmake")
+  include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/core/common/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/core/geometry/cmake_install.cmake")
+  include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/core/geometry/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/core/toolpath/cmake_install.cmake")
+  include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/core/toolpath/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/core/postprocessor/cmake_install.cmake")
+  include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/core/postprocessor/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/core/simulation/cmake_install.cmake")
+  include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/core/simulation/cmake_install.cmake")
 endif()
 

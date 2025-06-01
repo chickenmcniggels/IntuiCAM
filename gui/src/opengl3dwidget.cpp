@@ -3,6 +3,8 @@
 #include <QApplication>
 #include <QDebug>
 #include <QTimer>
+#include <QOpenGLContext>
+#include <QOpenGLFunctions>
 
 // Additional OpenCASCADE includes
 #include <Aspect_Handle.hxx>
@@ -29,8 +31,12 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
     
-    // Set update behavior to always update, regardless of focus
-    setUpdateBehavior(QOpenGLWidget::PartialUpdate);
+    // Set update behavior to ensure consistent rendering
+    setUpdateBehavior(QOpenGLWidget::NoPartialUpdate);
+    
+    // Ensure the widget gets proper resize events
+    setAttribute(Qt::WA_OpaquePaintEvent);
+    setAttribute(Qt::WA_NoSystemBackground);
     
     // Setup continuous update timer
     m_updateTimer->setSingleShot(false);
@@ -57,9 +63,55 @@ void OpenGL3DWidget::paintGL()
 
 void OpenGL3DWidget::resizeGL(int width, int height)
 {
-    if (!m_view.IsNull())
+    if (!m_view.IsNull() && !m_window.IsNull())
     {
+        // Ensure we have a valid context and proper size
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        
+        makeCurrent();
+        
+        // Tell OpenCASCADE that the view must be resized
         m_view->MustBeResized();
+        
+        // Update the window size immediately
+        m_window->DoResize();
+        
+        // Force immediate redraw with proper viewport
+        m_view->Redraw();
+        
+        qDebug() << "OpenGL3DWidget resized to:" << width << "x" << height;
+    }
+}
+
+void OpenGL3DWidget::resizeEvent(QResizeEvent *event)
+{
+    // Call the base class implementation first
+    QOpenGLWidget::resizeEvent(event);
+    
+    // Additional resize handling for smooth OpenCASCADE integration
+    if (!m_view.IsNull() && !m_window.IsNull())
+    {
+        QSize newSize = event->size();
+        
+        // Ensure minimum size and valid dimensions
+        if (newSize.width() > 0 && newSize.height() > 0)
+        {
+            makeCurrent();
+            
+            // Immediate resize handling for smoother experience
+            m_view->MustBeResized();
+            m_window->DoResize();
+            
+            // Schedule a deferred update to ensure smooth resizing
+            QTimer::singleShot(0, this, [this]() {
+                if (!m_view.IsNull()) {
+                    makeCurrent();
+                    updateView();
+                }
+            });
+        }
     }
 }
 
@@ -123,12 +175,22 @@ void OpenGL3DWidget::updateView()
         // Ensure the OpenGL context is current before updating
         makeCurrent();
         
-        // Force redraw even if widget doesn't have focus
-        m_view->Redraw();
-        
-        // Make sure the rendering is complete
-        if (context()) {
-            context()->swapBuffers(context()->surface());
+        // Check if the widget is visible and has a valid size
+        if (isVisible() && width() > 0 && height() > 0)
+        {
+            try {
+                // Force redraw regardless of focus state with error handling
+                m_view->Redraw();
+                
+                // Ensure immediate flush for better responsiveness
+                if (context() && context()->surface()) {
+                    context()->functions()->glFlush();
+                }
+            } catch (...) {
+                qDebug() << "Error during view update, attempting recovery";
+                // Attempt recovery on next frame
+                QTimer::singleShot(16, this, QOverload<>::of(&QOpenGLWidget::update));
+            }
         }
     }
 }
@@ -263,16 +325,36 @@ void OpenGL3DWidget::setContinuousUpdate(bool enabled)
 void OpenGL3DWidget::focusInEvent(QFocusEvent *event)
 {
     QOpenGLWidget::focusInEvent(event);
-    // Ensure we update when gaining focus
-    update();
+    // Immediate update when gaining focus to prevent black screen
+    if (!m_view.IsNull())
+    {
+        makeCurrent();
+        m_view->Redraw();
+        // Force immediate context flush
+        if (context()) {
+            context()->functions()->glFlush();
+        }
+    }
     qDebug() << "OpenGL3DWidget gained focus";
 }
 
 void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
 {
     QOpenGLWidget::focusOutEvent(event);
-    // Force an update even when losing focus to prevent black screen
-    update();
+    // Enhanced focus loss handling to prevent black screen
+    if (!m_view.IsNull())
+    {
+        // Use a very short timer to ensure context is still valid
+        QTimer::singleShot(1, this, [this]() {
+            if (!m_view.IsNull() && isVisible()) {
+                makeCurrent();
+                m_view->Redraw();
+                if (context()) {
+                    context()->functions()->glFlush();
+                }
+            }
+        });
+    }
     qDebug() << "OpenGL3DWidget lost focus";
 }
 
@@ -282,8 +364,19 @@ void OpenGL3DWidget::showEvent(QShowEvent *event)
     if (m_continuousUpdate) {
         m_updateTimer->start();
     }
-    // Force initial update when shown
-    update();
+    // Enhanced show event to ensure proper display
+    if (!m_view.IsNull())
+    {
+        makeCurrent();
+        // Tell the view it must be resized to ensure proper display
+        m_view->MustBeResized();
+        m_window->DoResize();
+        // Force immediate redraw
+        m_view->Redraw();
+        if (context()) {
+            context()->functions()->glFlush();
+        }
+    }
 }
 
 void OpenGL3DWidget::hideEvent(QHideEvent *event)

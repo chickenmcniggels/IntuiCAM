@@ -14,14 +14,17 @@
 #include <QAction>
 #include <QApplication>
 
+// OpenCASCADE includes
+#include <gp_Ax1.hxx>
+
 // Forward declarations for our custom classes
 class OpenGL3DWidget;
 class StepLoader;
 class WorkspaceController;
 class CylinderSelectionDialog;
 
-// Forward declaration for CylinderInfo
-struct CylinderInfo;
+// Include CylinderInfo definition
+#include "workpiecemanager.h"
 
 QT_BEGIN_NAMESPACE
 class QLabel;

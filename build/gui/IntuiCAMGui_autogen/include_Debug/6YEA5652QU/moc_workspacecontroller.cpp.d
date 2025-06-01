@@ -1,4 +1,4 @@
-C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/gui/IntuiCAMGui_autogen/include_Debug/6YEA5652QU/moc_workspacecontroller.cpp: C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/include/workspacecontroller.h \
+C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/gui/IntuiCAMGui_autogen/include_Debug/6YEA5652QU/moc_workspacecontroller.cpp: C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui/include/workspacecontroller.h \
   C:/OpenCASCADE/occt-vc144-64-with-debug/inc/AIS_DataMapOfIOStatus.hxx \
   C:/OpenCASCADE/occt-vc144-64-with-debug/inc/AIS_DisplayMode.hxx \
   C:/OpenCASCADE/occt-vc144-64-with-debug/inc/AIS_DisplayStatus.hxx \
@@ -364,6 +364,7 @@ C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/gui/IntuiCA
   C:/OpenCASCADE/occt-vc144-64-with-debug/inc/gp_XYZ.hxx \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/QObject \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/QString \
+  C:/Qt/6.9.0/msvc2022_64/include/QtCore/QVector \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/q17memory.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/q20functional.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/q20memory.h \
@@ -464,6 +465,7 @@ C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/gui/IntuiCA
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtypeinfo.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qtypes.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qutf8stringview.h \
+  C:/Qt/6.9.0/msvc2022_64/include/QtCore/qvector.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qversiontagging.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qxptype_traits.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qyieldcpu.h

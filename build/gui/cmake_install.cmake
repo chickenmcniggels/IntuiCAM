@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui
+# Install script for directory: C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,13 +34,13 @@ endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Dd][Ee][Bb][Uu][Gg])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/Debug/IntuiCAMGui.exe")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/Debug/IntuiCAMGui.exe")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ee][Aa][Ss][Ee])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/Release/IntuiCAMGui.exe")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/Release/IntuiCAMGui.exe")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Mm][Ii][Nn][Ss][Ii][Zz][Ee][Rr][Ee][Ll])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/MinSizeRel/IntuiCAMGui.exe")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/MinSizeRel/IntuiCAMGui.exe")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ww][Ii][Tt][Hh][Dd][Ee][Bb][Ii][Nn][Ff][Oo])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/RelWithDebInfo/IntuiCAMGui.exe")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/RelWithDebInfo/IntuiCAMGui.exe")
   endif()
 endif()
 

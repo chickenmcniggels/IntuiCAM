@@ -2,10 +2,10 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\build\x64\Debug\ZERO_CHECK</FullPath>
+      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\x64\Debug\ZERO_CHECK</FullPath>
     </ProjectOutput>
     <ProjectOutput>
-      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\intui_cam\IntuiCAM\build\Debug\IntuiCAMCli.exe</FullPath>
+      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\Debug\IntuiCAMCli.exe</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />

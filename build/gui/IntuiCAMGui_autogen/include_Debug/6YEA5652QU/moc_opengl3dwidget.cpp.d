@@ -1,4 +1,4 @@
-C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/gui/IntuiCAMGui_autogen/include_Debug/6YEA5652QU/moc_opengl3dwidget.cpp: C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/include/opengl3dwidget.h \
+C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/gui/IntuiCAMGui_autogen/include_Debug/6YEA5652QU/moc_opengl3dwidget.cpp: C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui/include/opengl3dwidget.h \
   C:/OpenCASCADE/occt-vc144-64-with-debug/inc/AIS_DataMapOfIOStatus.hxx \
   C:/OpenCASCADE/occt-vc144-64-with-debug/inc/AIS_DisplayMode.hxx \
   C:/OpenCASCADE/occt-vc144-64-with-debug/inc/AIS_DisplayStatus.hxx \
@@ -552,6 +552,7 @@ C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/gui/IntuiCA
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qxptype_traits.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtCore/qyieldcpu.h \
   C:/Qt/6.9.0/msvc2022_64/include/QtGui/QMouseEvent \
+  C:/Qt/6.9.0/msvc2022_64/include/QtGui/QResizeEvent \
   C:/Qt/6.9.0/msvc2022_64/include/QtGui/QSurfaceFormat \
   C:/Qt/6.9.0/msvc2022_64/include/QtGui/QTransform \
   C:/Qt/6.9.0/msvc2022_64/include/QtGui/QWheelEvent \

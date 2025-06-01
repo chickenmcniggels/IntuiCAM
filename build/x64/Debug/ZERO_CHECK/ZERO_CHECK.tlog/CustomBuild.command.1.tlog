@@ -1,6 +1,6 @@
-^C:\USERS\NIKLA\ONEDRIVE\LATHE_ECOSYSTEM\CAM\INTUI_CAM\INTUICAM\BUILD\CMAKEFILES\35C3DA5ADFBA5B31C271DCD7C61D98B9\GENERATE.STAMP.RULE
+^C:\USERS\NIKLA\ONEDRIVE\LATHE_ECOSYSTEM\CAM\INTUICAM\BUILD\CMAKEFILES\1DED998C1F5C2A6E5A2A5F434F74A8BB\GENERATE.STAMP.RULE
 setlocal
-"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -SC:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM -BC:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/IntuiCAM.sln
+"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -SC:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM -BC:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/IntuiCAM.sln
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone

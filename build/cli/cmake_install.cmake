@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/cli
+# Install script for directory: C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/cli
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

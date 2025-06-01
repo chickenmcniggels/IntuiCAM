@@ -4,6 +4,7 @@
 #include <QOpenGLWidget>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QResizeEvent>
 #include <QTimer>
 
 // OpenCASCADE includes
@@ -81,6 +82,7 @@ protected:
     void initializeGL() override;
     void paintGL() override;
     void resizeGL(int width, int height) override;
+    void resizeEvent(QResizeEvent *event) override;
     
     // Mouse interaction
     void mousePressEvent(QMouseEvent *event) override;

@@ -1,4 +1,4 @@
-C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/build/gui/IntuiCAMGui_autogen/include_Debug/6YEA5652QU/moc_workpiecemanager.cpp: C:/Users/nikla/OneDrive/lathe_ecosystem/cam/intui_cam/IntuiCAM/gui/include/workpiecemanager.h \
+C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/gui/IntuiCAMGui_autogen/include_Debug/6YEA5652QU/moc_workpiecemanager.cpp: C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui/include/workpiecemanager.h \
   C:/OpenCASCADE/occt-vc144-64-with-debug/inc/AIS_DataMapOfIOStatus.hxx \
   C:/OpenCASCADE/occt-vc144-64-with-debug/inc/AIS_DisplayMode.hxx \
   C:/OpenCASCADE/occt-vc144-64-with-debug/inc/AIS_DisplayStatus.hxx \
