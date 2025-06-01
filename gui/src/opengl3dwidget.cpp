@@ -26,6 +26,9 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_dragButton(Qt::NoButton)
     , m_continuousUpdate(false)
     , m_updateTimer(new QTimer(this))
+    , m_robustRefreshTimer(new QTimer(this))
+    , m_isInitialized(false)
+    , m_needsRefresh(false)
 {
     // Enable mouse tracking for proper interaction
     setMouseTracking(true);
@@ -37,11 +40,42 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     // Ensure the widget gets proper resize events
     setAttribute(Qt::WA_OpaquePaintEvent);
     setAttribute(Qt::WA_NoSystemBackground);
+    setAttribute(Qt::WA_PaintOnScreen, false);  // Important for proper rendering
+    setAttribute(Qt::WA_NativeWindow, true);    // Helps with focus management
     
     // Setup continuous update timer
     m_updateTimer->setSingleShot(false);
     m_updateTimer->setInterval(16); // ~60 FPS
     connect(m_updateTimer, &QTimer::timeout, this, QOverload<>::of(&QOpenGLWidget::update));
+    
+    // Setup robust refresh timer for recovery from black screens
+    m_robustRefreshTimer->setSingleShot(true);
+    m_robustRefreshTimer->setInterval(50); // Quick recovery
+    connect(m_robustRefreshTimer, &QTimer::timeout, this, [this]() {
+        forceRedraw();
+    });
+    
+    // Connect to application focus changes to handle external app switching
+    connect(qApp, &QApplication::applicationStateChanged, this, [this](Qt::ApplicationState state) {
+        qDebug() << "Application state changed to:" << state;
+        if (state == Qt::ApplicationActive && !m_view.IsNull() && m_isInitialized) {
+            qDebug() << "Application became active - ensuring viewer ready";
+            ensureViewerReady();
+            // Use a longer delay for application reactivation
+            QTimer::singleShot(100, this, [this]() {
+                forceRedraw();
+            });
+        }
+    });
+    
+    // Also monitor focus changes at application level
+    connect(qApp, &QApplication::focusChanged, this, [this](QWidget *old, QWidget *now) {
+        Q_UNUSED(old)
+        if (now == this && !m_view.IsNull() && m_isInitialized) {
+            qDebug() << "Focus changed to this widget - ensuring ready";
+            ensureViewerReady();
+        }
+    });
     
     qDebug() << "OpenGL3DWidget created as pure visualization component";
 }
@@ -63,7 +97,7 @@ void OpenGL3DWidget::paintGL()
 
 void OpenGL3DWidget::resizeGL(int width, int height)
 {
-    if (!m_view.IsNull() && !m_window.IsNull())
+    if (!m_view.IsNull() && !m_window.IsNull() && m_isInitialized)
     {
         // Ensure we have a valid context and proper size
         if (width <= 0 || height <= 0) {
@@ -72,16 +106,27 @@ void OpenGL3DWidget::resizeGL(int width, int height)
         
         makeCurrent();
         
-        // Tell OpenCASCADE that the view must be resized
-        m_view->MustBeResized();
-        
-        // Update the window size immediately
-        m_window->DoResize();
-        
-        // Force immediate redraw with proper viewport
-        m_view->Redraw();
-        
-        qDebug() << "OpenGL3DWidget resized to:" << width << "x" << height;
+        try {
+            // Tell OpenCASCADE that the view must be resized
+            m_view->MustBeResized();
+            
+            // Update the window size immediately
+            m_window->DoResize();
+            
+            // Force immediate redraw with proper viewport
+            m_view->Redraw();
+            
+            // Ensure immediate flush
+            if (context()) {
+                context()->functions()->glFlush();
+            }
+            
+            qDebug() << "OpenGL3DWidget resized to:" << width << "x" << height;
+        } catch (...) {
+            qDebug() << "Error during resize, marking for refresh";
+            m_needsRefresh = true;
+            m_robustRefreshTimer->start();
+        }
     }
 }
 
@@ -91,26 +136,37 @@ void OpenGL3DWidget::resizeEvent(QResizeEvent *event)
     QOpenGLWidget::resizeEvent(event);
     
     // Additional resize handling for smooth OpenCASCADE integration
-    if (!m_view.IsNull() && !m_window.IsNull())
+    if (!m_view.IsNull() && !m_window.IsNull() && m_isInitialized)
     {
         QSize newSize = event->size();
         
         // Ensure minimum size and valid dimensions
         if (newSize.width() > 0 && newSize.height() > 0)
         {
-            makeCurrent();
-            
-            // Immediate resize handling for smoother experience
-            m_view->MustBeResized();
-            m_window->DoResize();
-            
-            // Schedule a deferred update to ensure smooth resizing
-            QTimer::singleShot(0, this, [this]() {
-                if (!m_view.IsNull()) {
-                    makeCurrent();
-                    updateView();
-                }
-            });
+            try {
+                makeCurrent();
+                
+                // Immediate resize handling for smoother experience
+                m_view->MustBeResized();
+                m_window->DoResize();
+                
+                // Schedule multiple deferred updates for ultra-smooth resizing
+                QTimer::singleShot(0, this, [this]() {
+                    if (!m_view.IsNull() && m_isInitialized) {
+                        forceRedraw();
+                    }
+                });
+                
+                QTimer::singleShot(16, this, [this]() {
+                    if (!m_view.IsNull() && m_isInitialized) {
+                        forceRedraw();
+                    }
+                });
+            } catch (...) {
+                qDebug() << "Error during resize event, scheduling recovery";
+                m_needsRefresh = true;
+                m_robustRefreshTimer->start();
+            }
         }
     }
 }
@@ -156,6 +212,9 @@ void OpenGL3DWidget::initializeViewer()
         m_view->MustBeResized();
         m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_GOLD, 0.08, V3d_ZBUFFER);
         
+        // Mark as initialized
+        m_isInitialized = true;
+        
         // Emit initialization signal
         emit viewerInitialized();
         
@@ -163,14 +222,16 @@ void OpenGL3DWidget::initializeViewer()
         
     } catch (const std::exception& e) {
         qDebug() << "Error initializing OpenCASCADE viewer:" << e.what();
+        m_isInitialized = false;
     } catch (...) {
         qDebug() << "Unknown error initializing OpenCASCADE viewer";
+        m_isInitialized = false;
     }
 }
 
 void OpenGL3DWidget::updateView()
 {
-    if (!m_view.IsNull() && !m_window.IsNull())
+    if (!m_view.IsNull() && !m_window.IsNull() && m_isInitialized)
     {
         // Ensure the OpenGL context is current before updating
         makeCurrent();
@@ -179,6 +240,13 @@ void OpenGL3DWidget::updateView()
         if (isVisible() && width() > 0 && height() > 0)
         {
             try {
+                // Ensure the view is properly sized
+                if (m_needsRefresh) {
+                    m_view->MustBeResized();
+                    m_window->DoResize();
+                    m_needsRefresh = false;
+                }
+                
                 // Force redraw regardless of focus state with error handling
                 m_view->Redraw();
                 
@@ -188,8 +256,9 @@ void OpenGL3DWidget::updateView()
                 }
             } catch (...) {
                 qDebug() << "Error during view update, attempting recovery";
-                // Attempt recovery on next frame
-                QTimer::singleShot(16, this, QOverload<>::of(&QOpenGLWidget::update));
+                // Mark for refresh and attempt recovery
+                m_needsRefresh = true;
+                m_robustRefreshTimer->start();
             }
         }
     }
@@ -325,57 +394,58 @@ void OpenGL3DWidget::setContinuousUpdate(bool enabled)
 void OpenGL3DWidget::focusInEvent(QFocusEvent *event)
 {
     QOpenGLWidget::focusInEvent(event);
+    qDebug() << "OpenGL3DWidget gained focus from:" << event->reason();
+    
     // Immediate update when gaining focus to prevent black screen
-    if (!m_view.IsNull())
+    if (!m_view.IsNull() && m_isInitialized)
     {
-        makeCurrent();
-        m_view->Redraw();
-        // Force immediate context flush
-        if (context()) {
-            context()->functions()->glFlush();
-        }
+        ensureViewerReady();
+        
+        // Additional immediate redraw for critical focus scenarios
+        QTimer::singleShot(1, this, [this]() {
+            forceRedraw();
+        });
     }
-    qDebug() << "OpenGL3DWidget gained focus";
 }
 
 void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
 {
     QOpenGLWidget::focusOutEvent(event);
+    qDebug() << "OpenGL3DWidget lost focus due to:" << event->reason();
+    
     // Enhanced focus loss handling to prevent black screen
-    if (!m_view.IsNull())
+    if (!m_view.IsNull() && m_isInitialized)
     {
+        // Mark for refresh when focus returns
+        m_needsRefresh = true;
+        
         // Use a very short timer to ensure context is still valid
         QTimer::singleShot(1, this, [this]() {
             if (!m_view.IsNull() && isVisible()) {
-                makeCurrent();
-                m_view->Redraw();
-                if (context()) {
-                    context()->functions()->glFlush();
-                }
+                forceRedraw();
             }
         });
     }
-    qDebug() << "OpenGL3DWidget lost focus";
 }
 
 void OpenGL3DWidget::showEvent(QShowEvent *event)
 {
     QOpenGLWidget::showEvent(event);
+    qDebug() << "OpenGL3DWidget show event";
+    
     if (m_continuousUpdate) {
         m_updateTimer->start();
     }
+    
     // Enhanced show event to ensure proper display
-    if (!m_view.IsNull())
+    if (!m_view.IsNull() && m_isInitialized)
     {
-        makeCurrent();
-        // Tell the view it must be resized to ensure proper display
-        m_view->MustBeResized();
-        m_window->DoResize();
-        // Force immediate redraw
-        m_view->Redraw();
-        if (context()) {
-            context()->functions()->glFlush();
-        }
+        ensureViewerReady();
+        
+        // Force immediate redraw with slight delay to ensure context is ready
+        QTimer::singleShot(10, this, [this]() {
+            forceRedraw();
+        });
     }
 }
 
@@ -383,4 +453,125 @@ void OpenGL3DWidget::hideEvent(QHideEvent *event)
 {
     QOpenGLWidget::hideEvent(event);
     m_updateTimer->stop();
+}
+
+void OpenGL3DWidget::forceRedraw()
+{
+    if (!m_view.IsNull())
+    {
+        makeCurrent();
+        m_view->Redraw();
+        if (context()) {
+            context()->functions()->glFlush();
+        }
+    }
+}
+
+void OpenGL3DWidget::ensureViewerReady()
+{
+    if (!m_view.IsNull() && !m_window.IsNull() && isVisible())
+    {
+        makeCurrent();
+        m_view->MustBeResized();
+        m_window->DoResize();
+        m_needsRefresh = true;
+        m_robustRefreshTimer->start();
+    }
+}
+
+void OpenGL3DWidget::handleActivationChange(bool active)
+{
+    qDebug() << "OpenGL3DWidget activation changed:" << active;
+    if (active && !m_view.IsNull())
+    {
+        ensureViewerReady();
+    }
+}
+
+void OpenGL3DWidget::changeEvent(QEvent *event)
+{
+    QOpenGLWidget::changeEvent(event);
+    
+    if (event->type() == QEvent::ActivationChange)
+    {
+        handleActivationChange(isActiveWindow());
+    }
+    else if (event->type() == QEvent::WindowStateChange)
+    {
+        qDebug() << "OpenGL3DWidget window state changed";
+        if (!isMinimized() && !m_view.IsNull())
+        {
+            ensureViewerReady();
+        }
+    }
+}
+
+void OpenGL3DWidget::paintEvent(QPaintEvent *event)
+{
+    // Ensure we always have a valid rendering state
+    if (!m_view.IsNull() && isVisible())
+    {
+        makeCurrent();
+        // Let the base class handle the actual painting
+        QOpenGLWidget::paintEvent(event);
+        
+        // Force immediate flush for responsiveness
+        if (context()) {
+            context()->functions()->glFlush();
+        }
+    }
+    else
+    {
+        QOpenGLWidget::paintEvent(event);
+    }
+}
+
+void OpenGL3DWidget::enterEvent(QEnterEvent *event)
+{
+    QOpenGLWidget::enterEvent(event);
+    // Ensure the viewer is ready when mouse enters
+    if (!m_view.IsNull())
+    {
+        m_robustRefreshTimer->start();
+    }
+}
+
+void OpenGL3DWidget::leaveEvent(QEvent *event)
+{
+    QOpenGLWidget::leaveEvent(event);
+    // Optional: Could implement specific leave behavior if needed
+}
+
+bool OpenGL3DWidget::event(QEvent *event)
+{
+    switch (event->type())
+    {
+        case QEvent::Show:
+        case QEvent::WindowActivate:
+        case QEvent::FocusIn:
+            qDebug() << "OpenGL3DWidget critical event:" << event->type();
+            if (!m_view.IsNull())
+            {
+                ensureViewerReady();
+            }
+            break;
+            
+        case QEvent::WindowDeactivate:
+            // Prepare for potential reactivation
+            m_needsRefresh = true;
+            break;
+            
+        case QEvent::UpdateRequest:
+            // Handle update requests immediately
+            if (!m_view.IsNull() && isVisible())
+            {
+                forceRedraw();
+            }
+            break;
+            
+        default:
+            break;
+    }
+    
+    return QOpenGLWidget::event(event);
 } 

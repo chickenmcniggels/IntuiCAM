@@ -6,6 +6,12 @@
 #include <QWheelEvent>
 #include <QResizeEvent>
 #include <QTimer>
+#include <QEvent>
+#include <QEnterEvent>
+#include <QPaintEvent>
+#include <QFocusEvent>
+#include <QShowEvent>
+#include <QHideEvent>
 
 // OpenCASCADE includes
 #include <V3d_View.hxx>
@@ -90,11 +96,16 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
     
-    // Focus event handling to prevent black screen
+    // Comprehensive event handling to prevent black screen
     void focusInEvent(QFocusEvent *event) override;
     void focusOutEvent(QFocusEvent *event) override;
     void showEvent(QShowEvent *event) override;
     void hideEvent(QHideEvent *event) override;
+    void changeEvent(QEvent *event) override;
+    void paintEvent(QPaintEvent *event) override;
+    void enterEvent(QEnterEvent *event) override;
+    void leaveEvent(QEvent *event) override;
+    bool event(QEvent *event) override;
 
 private:
     /**
@@ -106,6 +117,21 @@ private:
      * @brief Update the 3D view
      */
     void updateView();
+    
+    /**
+     * @brief Force a robust redraw of the viewer
+     */
+    void forceRedraw();
+    
+    /**
+     * @brief Ensure the viewer context is valid and ready
+     */
+    void ensureViewerReady();
+    
+    /**
+     * @brief Handle window activation changes
+     */
+    void handleActivationChange(bool active);
     
     // OpenCASCADE objects
     Handle(V3d_Viewer) m_viewer;
@@ -121,6 +147,11 @@ private:
     // Update management
     bool m_continuousUpdate;
     QTimer* m_updateTimer;
+    QTimer* m_robustRefreshTimer;  // For preventing persistent black screens
+    
+    // State tracking
+    bool m_isInitialized;
+    bool m_needsRefresh;
 };
 
 #endif // OPENGL3DWIDGET_H 

@@ -2030,6 +2030,7 @@ C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui/include/opengl3dwidget.
  mdp:C:/OpenCASCADE/occt-vc144-64-with-debug/inc/gp_VectorWithNullMagnitude.hxx
  mdp:C:/OpenCASCADE/occt-vc144-64-with-debug/inc/gp_XY.hxx
  mdp:C:/OpenCASCADE/occt-vc144-64-with-debug/inc/gp_XYZ.hxx
+ mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/QEvent
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/QList
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/QObject
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/QRect
@@ -2174,8 +2175,13 @@ C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui/include/opengl3dwidget.
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/qversiontagging.h
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/qxptype_traits.h
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtCore/qyieldcpu.h
+ mdp:C:/Qt/6.9.0/msvc2022_64/include/QtGui/QEnterEvent
+ mdp:C:/Qt/6.9.0/msvc2022_64/include/QtGui/QFocusEvent
+ mdp:C:/Qt/6.9.0/msvc2022_64/include/QtGui/QHideEvent
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtGui/QMouseEvent
+ mdp:C:/Qt/6.9.0/msvc2022_64/include/QtGui/QPaintEvent
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtGui/QResizeEvent
+ mdp:C:/Qt/6.9.0/msvc2022_64/include/QtGui/QShowEvent
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtGui/QSurfaceFormat
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtGui/QTransform
  mdp:C:/Qt/6.9.0/msvc2022_64/include/QtGui/QWheelEvent
