@@ -1,0 +1,58 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"plugins/operations/drilling/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 16,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"plugins/operations/drilling/Debug/intuicam_operation_drilling.lib"
+			],
+			"targetId" : "intuicam_operation_drilling::@5881b0ece16326813b91",
+			"targetIndex" : 12,
+			"targetIsImportLibrary" : true,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"Debug/intuicam_operation_drilling.dll"
+			],
+			"targetId" : "intuicam_operation_drilling::@5881b0ece16326813b91",
+			"targetIndex" : 12,
+			"type" : "target"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "plugins/operations/drilling",
+		"source" : "plugins/operations/drilling"
+	}
+}

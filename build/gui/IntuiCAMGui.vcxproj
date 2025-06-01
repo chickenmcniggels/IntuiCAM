@@ -3759,7 +3759,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\src\workpiecemanager.cpp" />
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\src\rawmaterialmanager.cpp" />
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\src\workspacecontroller.cpp" />
-    <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\src\cylinderselectiondialog.cpp" />
+    <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\src\partloadingpanel.cpp" />
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\src\mainwindow.h" />
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\include\opengl3dwidget.h" />
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\include\isteploader.h" />
@@ -3768,7 +3768,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\include\workpiecemanager.h" />
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\include\rawmaterialmanager.h" />
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\include\workspacecontroller.h" />
-    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\include\cylinderselectiondialog.h" />
+    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\include\partloadingpanel.h" />
     <None Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\resources\mainwindow.ui">
     </None>
     <None Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\resources\resources.qrc">

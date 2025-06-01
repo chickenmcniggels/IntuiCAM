@@ -361,6 +361,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\simulation\include\IntuiCAM\Simulation\Types.h" />
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\simulation\src\placeholder.cpp" />
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\core\simulation\intuicam_core_simulation_autogen\mocs_compilation_Release.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

@@ -2,7 +2,7 @@
 #include "opengl3dwidget.h"
 #include "steploader.h"
 #include "workspacecontroller.h"
-#include "cylinderselectiondialog.h"
+#include "partloadingpanel.h"
 #include "workpiecemanager.h"  // For CylinderInfo definition
 
 #include <QLabel>
@@ -39,11 +39,11 @@ MainWindow::MainWindow(QWidget *parent)
     , m_leftSplitter(nullptr)
     , m_projectTree(nullptr)
     , m_propertiesPanel(nullptr)
+    , m_partLoadingPanel(nullptr)
     , m_3dViewer(nullptr)
     , m_outputWindow(nullptr)
     , m_workspaceController(nullptr)
     , m_stepLoader(nullptr)
-    , m_cylinderSelectionDialog(nullptr)
 {
     setWindowTitle("IntuiCAM - Computer Aided Manufacturing");
     setMinimumSize(1024, 768);
@@ -151,14 +151,14 @@ void MainWindow::createCentralWidget()
     // Main horizontal splitter
     m_mainSplitter = new QSplitter(Qt::Horizontal);
     
-    // Left vertical splitter for project tree and properties
+    // Left vertical splitter for project tree, part loading panel, and properties
     m_leftSplitter = new QSplitter(Qt::Vertical);
     
     // Project tree
     m_projectTree = new QTreeWidget;
     m_projectTree->setHeaderLabel("Project");
-    m_projectTree->setMinimumWidth(250);
-    m_projectTree->setMaximumWidth(400);
+    m_projectTree->setMinimumWidth(280);
+    m_projectTree->setMaximumWidth(450);
     
     // Add some example project structure
     QTreeWidgetItem *rootItem = new QTreeWidgetItem(m_projectTree);
@@ -175,16 +175,22 @@ void MainWindow::createCentralWidget()
     
     m_projectTree->expandAll();
     
+    // Part loading panel
+    m_partLoadingPanel = new PartLoadingPanel();
+    m_partLoadingPanel->setMinimumHeight(300);
+    m_partLoadingPanel->setMaximumHeight(600);
+    
     // Properties panel
     m_propertiesPanel = new QTextEdit;
-    m_propertiesPanel->setMaximumHeight(200);
+    m_propertiesPanel->setMaximumHeight(150);
     m_propertiesPanel->setPlainText("Properties panel - Select an item to view details");
     m_propertiesPanel->setReadOnly(true);
     
     // Add to left splitter
     m_leftSplitter->addWidget(m_projectTree);
+    m_leftSplitter->addWidget(m_partLoadingPanel);
     m_leftSplitter->addWidget(m_propertiesPanel);
-    m_leftSplitter->setSizes({400, 150});
+    m_leftSplitter->setSizes({200, 350, 100});
     
     // 3D Viewport - Pure visualization component
     m_3dViewer = new OpenGL3DWidget();
@@ -200,8 +206,8 @@ void MainWindow::createCentralWidget()
     m_mainSplitter->addWidget(m_leftSplitter);
     m_mainSplitter->addWidget(m_3dViewer);
     
-    // Set splitter sizes (left panel 25%, viewport 75%)
-    m_mainSplitter->setSizes({300, 900});
+    // Set splitter sizes (left panel 30%, viewport 70%)
+    m_mainSplitter->setSizes({350, 800});
     
     // Main layout
     QVBoxLayout *mainLayout = new QVBoxLayout;
@@ -230,6 +236,9 @@ void MainWindow::setupConnections()
     // Connect 3D viewer initialization
     connect(m_3dViewer, &OpenGL3DWidget::viewerInitialized,
             this, &MainWindow::setupWorkspaceConnections);
+    
+    // Setup part loading panel connections
+    setupPartLoadingConnections();
 }
 
 void MainWindow::setupWorkspaceConnections()
@@ -260,8 +269,33 @@ void MainWindow::setupWorkspaceConnections()
         connect(m_workspaceController, &WorkspaceController::cylinderAxisSelected,
                 this, &MainWindow::handleCylinderAxisSelected);
         
+        // Connect 3D viewer selection for manual axis selection
+        connect(m_3dViewer, &OpenGL3DWidget::shapeSelected,
+                this, &MainWindow::handleShapeSelected);
+        
         qDebug() << "Workspace controller connections established";
     }
+}
+
+void MainWindow::setupPartLoadingConnections()
+{
+    if (!m_partLoadingPanel) return;
+
+    // Connect part loading panel signals
+    connect(m_partLoadingPanel, &PartLoadingPanel::distanceToChuckChanged,
+            this, &MainWindow::handlePartLoadingDistanceChanged);
+    
+    connect(m_partLoadingPanel, &PartLoadingPanel::rawMaterialDiameterChanged,
+            this, &MainWindow::handlePartLoadingDiameterChanged);
+    
+    connect(m_partLoadingPanel, &PartLoadingPanel::orientationFlipped,
+            this, &MainWindow::handlePartLoadingOrientationFlipped);
+    
+    connect(m_partLoadingPanel, &PartLoadingPanel::cylinderSelectionChanged,
+            this, &MainWindow::handlePartLoadingCylinderChanged);
+    
+    connect(m_partLoadingPanel, &PartLoadingPanel::manualAxisSelectionRequested,
+            this, &MainWindow::handlePartLoadingManualSelection);
 }
 
 void MainWindow::newProject()
@@ -461,15 +495,17 @@ void MainWindow::handleChuckCenterlineDetected(const gp_Ax1& axis)
 void MainWindow::handleMultipleCylindersDetected(const QVector<CylinderInfo>& cylinders)
 {
     if (m_outputWindow) {
-        m_outputWindow->append(QString("Multiple cylinders detected (%1 total) - Manual selection required").arg(cylinders.size()));
+        m_outputWindow->append(QString("Multiple cylinders detected (%1 total) - Use part loading panel to select").arg(cylinders.size()));
         for (int i = 0; i < cylinders.size(); ++i) {
             m_outputWindow->append(QString("  %1. %2").arg(i + 1).arg(cylinders[i].description));
         }
     }
-    statusBar()->showMessage("Multiple cylinders detected - Select turning axis", 5000);
+    statusBar()->showMessage("Multiple cylinders detected - Use part loading panel", 5000);
     
-    // Show cylinder selection dialog
-    showCylinderSelectionDialog(cylinders);
+    // Update part loading panel with cylinder information
+    if (m_partLoadingPanel) {
+        m_partLoadingPanel->updateCylinderInfo(cylinders);
+    }
 }
 
 void MainWindow::handleCylinderAxisSelected(int index, const CylinderInfo& cylinderInfo)
@@ -482,48 +518,149 @@ void MainWindow::handleCylinderAxisSelected(int index, const CylinderInfo& cylin
     statusBar()->showMessage("Turning axis selected and applied", 3000);
 }
 
-void MainWindow::showCylinderSelectionDialog(const QVector<CylinderInfo>& cylinders)
+void MainWindow::handlePartLoadingDistanceChanged(double distance)
 {
-    // Clean up previous dialog if it exists
-    if (m_cylinderSelectionDialog) {
-        m_cylinderSelectionDialog->deleteLater();
-        m_cylinderSelectionDialog = nullptr;
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Distance to chuck changed: %1 mm").arg(distance, 0, 'f', 1));
     }
     
-    // Create and show cylinder selection dialog
-    m_cylinderSelectionDialog = new CylinderSelectionDialog(cylinders, 0, this);
+    // Auto-apply distance change through workspace controller
+    if (m_workspaceController) {
+        bool success = m_workspaceController->updateDistanceToChuck(distance);
+        if (success) {
+            statusBar()->showMessage(QString("Distance to chuck updated: %1 mm").arg(distance, 0, 'f', 1), 2000);
+            // Update 3D view to show changes
+            m_3dViewer->fitAll();
+        } else {
+            statusBar()->showMessage("Failed to update distance to chuck", 3000);
+        }
+    }
+}
+
+void MainWindow::handlePartLoadingDiameterChanged(double diameter)
+{
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Raw material diameter changed: %1 mm").arg(diameter, 0, 'f', 1));
+    }
     
-    // Connect dialog result
-    connect(m_cylinderSelectionDialog, &QDialog::accepted, [this]() {
-        int selectedIndex = m_cylinderSelectionDialog->getSelectedCylinderIndex();
-        if (selectedIndex >= 0 && m_workspaceController) {
-            bool success = m_workspaceController->selectWorkpieceCylinderAxis(selectedIndex);
-            if (success) {
-                if (m_outputWindow) {
-                    m_outputWindow->append(QString("User selected cylinder %1 for turning axis").arg(selectedIndex + 1));
-                }
-                // Fit view to show updated workspace
-                m_3dViewer->fitAll();
-            } else {
-                QMessageBox::warning(this, "Selection Error", 
-                                   QString("Failed to apply selected cylinder axis %1").arg(selectedIndex + 1));
+    // Auto-apply diameter change through workspace controller
+    if (m_workspaceController) {
+        bool success = m_workspaceController->updateRawMaterialDiameter(diameter);
+        if (success) {
+            statusBar()->showMessage(QString("Raw material diameter updated: %1 mm").arg(diameter, 0, 'f', 1), 2000);
+            // Update 3D view to show changes
+            m_3dViewer->fitAll();
+        } else {
+            statusBar()->showMessage("Failed to update raw material diameter", 3000);
+        }
+    }
+}
+
+void MainWindow::handlePartLoadingOrientationFlipped(bool flipped)
+{
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Part orientation %1").arg(flipped ? "flipped" : "restored"));
+    }
+    
+    // Auto-apply orientation flip through workspace controller
+    if (m_workspaceController) {
+        bool success = m_workspaceController->flipWorkpieceOrientation(flipped);
+        if (success) {
+            statusBar()->showMessage(QString("Part orientation %1").arg(flipped ? "flipped" : "restored"), 2000);
+            // Update 3D view to show changes
+            m_3dViewer->fitAll();
+        } else {
+            statusBar()->showMessage("Failed to flip part orientation", 3000);
+        }
+    }
+}
+
+void MainWindow::handlePartLoadingCylinderChanged(int index)
+{
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Selected cylinder axis changed to index: %1").arg(index));
+    }
+    
+    // Apply cylinder selection through workspace controller
+    if (m_workspaceController && index >= 0) {
+        bool success = m_workspaceController->selectWorkpieceCylinderAxis(index);
+        if (success) {
+            if (m_outputWindow) {
+                m_outputWindow->append(QString("Applied cylinder axis selection: %1").arg(index));
             }
+            // Fit view to show updated workspace
+            m_3dViewer->fitAll();
+        } else {
+            QMessageBox::warning(this, "Selection Error", 
+                               QString("Failed to apply selected cylinder axis %1").arg(index + 1));
         }
-        m_cylinderSelectionDialog->deleteLater();
-        m_cylinderSelectionDialog = nullptr;
-    });
+    }
+}
+
+void MainWindow::handlePartLoadingManualSelection()
+{
+    if (m_outputWindow) {
+        m_outputWindow->append("Manual axis selection requested - Click on a cylindrical face or edge in the 3D view");
+    }
+    statusBar()->showMessage("Click on a cylindrical face or edge to select axis", 5000);
     
-    connect(m_cylinderSelectionDialog, &QDialog::rejected, [this]() {
+    // Enable selection mode in the 3D viewer
+    if (m_3dViewer) {
+        m_3dViewer->setSelectionMode(true);
         if (m_outputWindow) {
-            m_outputWindow->append("Cylinder selection cancelled - Using automatic selection");
+            m_outputWindow->append("Selection mode enabled - click on the workpiece to select an axis");
         }
-        statusBar()->showMessage("Cylinder selection cancelled", 3000);
-        m_cylinderSelectionDialog->deleteLater();
-        m_cylinderSelectionDialog = nullptr;
-    });
+    }
+}
+
+void MainWindow::handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& clickPoint)
+{
+    // Disable selection mode after selection
+    if (m_3dViewer) {
+        m_3dViewer->setSelectionMode(false);
+    }
     
-    // Show dialog
-    m_cylinderSelectionDialog->show();
-    m_cylinderSelectionDialog->raise();
-    m_cylinderSelectionDialog->activateWindow();
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Shape selected at point: (%1, %2, %3)")
+                              .arg(clickPoint.X(), 0, 'f', 2)
+                              .arg(clickPoint.Y(), 0, 'f', 2)
+                              .arg(clickPoint.Z(), 0, 'f', 2));
+    }
+    
+    // Process the selected shape through workspace controller
+    if (m_workspaceController) {
+        // TODO: Implement shape analysis to extract cylindrical axis
+        // For now, just provide feedback
+        statusBar()->showMessage("Shape selected - analyzing for cylindrical features...", 3000);
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("Analyzing selected shape for cylindrical features...");
+            m_outputWindow->append("Note: Manual axis selection from 3D view is not yet fully implemented");
+        }
+    }
+}
+
+void MainWindow::handlePartLoadingReprocess()
+{
+    if (m_outputWindow) {
+        m_outputWindow->append("Reprocessing part loading workflow...");
+    }
+    statusBar()->showMessage("Reprocessing part loading workflow...", 3000);
+    
+    // Trigger reprocessing through workspace controller
+    if (m_workspaceController) {
+        bool success = m_workspaceController->reprocessCurrentWorkpiece();
+        if (success) {
+            if (m_outputWindow) {
+                m_outputWindow->append("Part loading workflow reprocessed successfully");
+            }
+            statusBar()->showMessage("Workflow reprocessed successfully", 3000);
+            m_3dViewer->fitAll();
+        } else {
+            if (m_outputWindow) {
+                m_outputWindow->append("Failed to reprocess part loading workflow");
+            }
+            statusBar()->showMessage("Failed to reprocess workflow", 3000);
+        }
+    }
 } 

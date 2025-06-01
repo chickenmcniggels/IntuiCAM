@@ -22,6 +22,7 @@
 #include <WNT_Window.hxx>
 #include <AIS_Shape.hxx>
 #include <TopoDS_Shape.hxx>
+#include <gp_Pnt.hxx>
 
 /**
  * @brief Pure 3D visualization widget using OpenCASCADE
@@ -77,11 +78,30 @@ public:
      */
     void setContinuousUpdate(bool enabled);
 
+    /**
+     * @brief Enable interactive selection mode for manual axis selection
+     * @param enabled True to enable selection mode
+     */
+    void setSelectionMode(bool enabled);
+
+    /**
+     * @brief Check if selection mode is currently active
+     * @return True if selection mode is enabled
+     */
+    bool isSelectionModeActive() const { return m_selectionMode; }
+
 signals:
     /**
      * @brief Emitted when the viewer is successfully initialized
      */
     void viewerInitialized();
+
+    /**
+     * @brief Emitted when a shape is selected in selection mode
+     * @param selectedShape The selected shape
+     * @param clickPoint The 3D point where the selection occurred
+     */
+    void shapeSelected(const TopoDS_Shape& selectedShape, const gp_Pnt& clickPoint);
 
 protected:
     // Qt OpenGL widget overrides
@@ -152,6 +172,9 @@ private:
     // State tracking
     bool m_isInitialized;
     bool m_needsRefresh;
+
+    // Selection mode
+    bool m_selectionMode;
 };
 
 #endif // OPENGL3DWIDGET_H 

@@ -1,0 +1,58 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"plugins/postprocessors/lathe/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 16,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"plugins/postprocessors/lathe/MinSizeRel/intuicam_postprocessor_lathe.lib"
+			],
+			"targetId" : "intuicam_postprocessor_lathe::@1ca60cb22d7c9a446c3c",
+			"targetIndex" : 16,
+			"targetIsImportLibrary" : true,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"MinSizeRel/intuicam_postprocessor_lathe.dll"
+			],
+			"targetId" : "intuicam_postprocessor_lathe::@1ca60cb22d7c9a446c3c",
+			"targetIndex" : 16,
+			"type" : "target"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "plugins/postprocessors/lathe",
+		"source" : "plugins/postprocessors/lathe"
+	}
+}

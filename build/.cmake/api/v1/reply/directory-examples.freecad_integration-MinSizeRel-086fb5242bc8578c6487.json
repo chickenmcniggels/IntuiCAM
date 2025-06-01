@@ -1,0 +1,80 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"examples/freecad_integration/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 8,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 17,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 24,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "examples/freecad_integration",
+			"isOptional" : true,
+			"paths" : 
+			[
+				"examples/freecad_integration/freecad_workbench.py",
+				"examples/freecad_integration/path_generation.py",
+				"examples/freecad_integration/model_import.py"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "examples/freecad_integration/macros",
+			"isOptional" : true,
+			"paths" : 
+			[
+				"examples/freecad_integration/IntuiCAM_Macro.py"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "Unspecified",
+			"destination" : "examples/freecad_integration",
+			"isOptional" : true,
+			"paths" : 
+			[
+				"examples/freecad_integration/README.md"
+			],
+			"type" : "file"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "examples/freecad_integration",
+		"source" : "examples/freecad_integration"
+	}
+}

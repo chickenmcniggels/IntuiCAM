@@ -4,6 +4,12 @@
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\core\toolpath\intuicam_core_toolpath_autogen\mocs_compilation_Debug.cpp">
       <Filter>Source Files\Generated</Filter>
     </ClCompile>
+    <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\toolpath\src\Operations.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\toolpath\src\Types.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\toolpath\src\placeholder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -18,9 +24,20 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\toolpath\include\IntuiCAM\Toolpath\Operations.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\toolpath\include\IntuiCAM\Toolpath\Types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
     <CustomBuild Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\toolpath\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{2A0FD0AA-81ED-3F7C-BC7E-81D1AAE8B304}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source Files">
       <UniqueIdentifier>{3030091A-C3EC-3143-82F1-5AA877CA21D7}</UniqueIdentifier>
     </Filter>

@@ -11,6 +11,39 @@
       <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\Debug\IntuiCAMGui.exe</FullPath>
     </ProjectOutput>
     <ProjectOutput>
+      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\examples\custom_postprocessor\Debug\custom_postprocessor_example.exe</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\Debug\intuicam_operation_drilling.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\Debug\intuicam_operation_milling.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\Debug\intuicam_operation_threading.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\Debug\intuicam_operation_turning.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\Debug\intuicam_postprocessor_lathe.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\Debug\intuicam_postprocessor_mill.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\Debug\intuicam_postprocessor_swiss.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\examples\basic_usage\Debug\simple_turning.exe</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\examples\simulation_demo\Debug\simulation_demo.exe</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\Debug\test_core.exe</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
       <FullPath>C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\x64\Debug\ALL_BUILD</FullPath>
     </ProjectOutput>
   </ProjectOutputs>

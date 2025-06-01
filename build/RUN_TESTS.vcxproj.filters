@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\CMakeFiles\1ded998c1f5c2a6e5a2a5f434f74a8bb\RUN_TESTS_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{24264FE6-0D3D-319F-AF5D-6040990A3F36}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

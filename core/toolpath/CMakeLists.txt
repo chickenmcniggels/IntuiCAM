@@ -19,10 +19,12 @@ target_include_directories(${CORE_TOOLPATH_LIB_NAME}
 )
 
 # Link against other core libraries from this project and OpenCASCADE
-target_link_libraries(${CORE_TOOLPATH_LIB_NAME} PRIVATE
-    intuicam_core_common
-    intuicam_core_geometry
-    ${OpenCASCADE_LIBRARIES}
+target_link_libraries(${CORE_TOOLPATH_LIB_NAME} 
+    PRIVATE
+        intuicam_core_common
+        ${OpenCASCADE_LIBRARIES}
+    PUBLIC
+        intuicam_core_geometry
 )
 
 # Link against necessary OpenCASCADE modules for toolpath algorithms

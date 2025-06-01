@@ -18,9 +18,17 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\simulation\include\IntuiCAM\Simulation\Types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
     <CustomBuild Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\simulation\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{2A0FD0AA-81ED-3F7C-BC7E-81D1AAE8B304}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source Files">
       <UniqueIdentifier>{3030091A-C3EC-3143-82F1-5AA877CA21D7}</UniqueIdentifier>
     </Filter>

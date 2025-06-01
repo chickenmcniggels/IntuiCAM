@@ -110,9 +110,36 @@ public:
     double getDetectedDiameter() const { return m_detectedDiameter; }
 
     /**
-     * @brief Get the index of the currently selected cylinder (-1 if none selected)
+     * @brief Get the selected cylinder index (-1 for automatic/custom)
+     * @return Index of currently selected cylinder
      */
     int getSelectedCylinderIndex() const { return m_selectedCylinderIndex; }
+
+    /**
+     * @brief Transform workpiece by flipping orientation around a perpendicular axis
+     * @param flipped True to flip, false to restore original orientation
+     * @return True if transformation was successful
+     */
+    bool flipWorkpieceOrientation(bool flipped);
+
+    /**
+     * @brief Move workpiece along the main cylinder axis
+     * @param distance Distance to move in mm (positive = away from chuck)
+     * @return True if positioning was successful
+     */
+    bool positionWorkpieceAlongAxis(double distance);
+
+    /**
+     * @brief Get the current workpiece transformation state
+     * @return True if workpiece is currently flipped
+     */
+    bool isWorkpieceFlipped() const { return m_isFlipped; }
+
+    /**
+     * @brief Get the current workpiece position offset
+     * @return Distance offset from original position in mm
+     */
+    double getWorkpiecePositionOffset() const { return m_positionOffset; }
 
 signals:
     /**
@@ -147,6 +174,10 @@ private:
     double m_detectedDiameter;
     QVector<CylinderInfo> m_detectedCylinders;
     int m_selectedCylinderIndex;
+    
+    // Transformation state
+    bool m_isFlipped;
+    double m_positionOffset;
     
     /**
      * @brief Helper to analyze shape topology for cylinders

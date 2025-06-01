@@ -68,7 +68,7 @@ public:
     void setCustomDiameter(double diameter, const TopoDS_Shape& workpiece, const gp_Ax1& axis);
 
     /**
-     * @brief Clear raw material display
+     * @brief Clear all raw material from the scene
      */
     void clearRawMaterial();
 
@@ -86,6 +86,12 @@ public:
      * @brief Check if raw material is currently displayed
      */
     bool isRawMaterialDisplayed() const { return !m_rawMaterialAIS.IsNull(); }
+
+    /**
+     * @brief Get the current raw material diameter
+     * @return Current diameter in mm, or 0.0 if no raw material is displayed
+     */
+    double getCurrentDiameter() const { return m_currentDiameter; }
 
 signals:
     /**
@@ -107,6 +113,8 @@ private:
     
     // Configuration
     double m_rawMaterialTransparency;
+    
+    double m_currentDiameter;
     
     /**
      * @brief Create a cylinder shape for raw material

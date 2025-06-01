@@ -24,7 +24,7 @@ events:
       The output was:
       0
       MSBuild-Version 17.13.19+0d9f5a35a f├╝r .NET Framework
-      Der Buildvorgang wurde am 01.06.2025 15:17:42 gestartet.
+      Der Buildvorgang wurde am 01.06.2025 16:23:33 gestartet.
       
       Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\3.30.5-msvc23\\CompilerIdCXX\\CompilerIdCXX.vcxproj" auf Knoten "1" (Standardziele).
       PrepareForBuild:
@@ -53,7 +53,7 @@ events:
           0 Warnung(en)
           0 Fehler
       
-      Verstrichene Zeit 00:00:00.78
+      Verstrichene Zeit 00:00:00.63
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -72,8 +72,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-66e2fq"
-      binary: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-66e2fq"
+      source: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-nsgnx5"
+      binary: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-nsgnx5"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /GR /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -83,40 +83,40 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-66e2fq'
+        Change Dir: 'C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-nsgnx5'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_f39be.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_7535e.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild-Version 17.13.19+0d9f5a35a f├╝r .NET Framework
-        Der Buildvorgang wurde am 01.06.2025 15:17:44 gestartet.
+        Der Buildvorgang wurde am 01.06.2025 16:23:34 gestartet.
         
-        Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-66e2fq\\cmTC_f39be.vcxproj" auf Knoten "1" (Standardziele).
+        Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-nsgnx5\\cmTC_7535e.vcxproj" auf Knoten "1" (Standardziele).
         PrepareForBuild:
-          Das Verzeichnis "cmTC_f39be.dir\\Debug\\" wird erstellt.
+          Das Verzeichnis "cmTC_7535e.dir\\Debug\\" wird erstellt.
           Die strukturierte Ausgabe ist aktiviert. Die Formatierung der Compilerdiagnose spiegelt die Fehlerhierarchie wider. Weitere Informationen finden Sie unter https://aka.ms/cpp/structured-output.
-          Das Verzeichnis "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-66e2fq\\Debug\\" wird erstellt.
-          Das Verzeichnis "cmTC_f39be.dir\\Debug\\cmTC_f39be.tlog\\" wird erstellt.
+          Das Verzeichnis "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-nsgnx5\\Debug\\" wird erstellt.
+          Das Verzeichnis "cmTC_7535e.dir\\Debug\\cmTC_7535e.tlog\\" wird erstellt.
         InitializeBuildStatus:
-          "cmTC_f39be.dir\\Debug\\cmTC_f39be.tlog\\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
-          Aktualisieren des Timestamps von "cmTC_f39be.dir\\Debug\\cmTC_f39be.tlog\\unsuccessfulbuild".
+          "cmTC_7535e.dir\\Debug\\cmTC_7535e.tlog\\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
+          Aktualisieren des Timestamps von "cmTC_7535e.dir\\Debug\\cmTC_7535e.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_f39be.dir\\Debug\\\\" /Fd"cmTC_f39be.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\share\\cmake-3.30\\Modules\\CMakeCXXCompilerABI.cpp"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_7535e.dir\\Debug\\\\" /Fd"cmTC_7535e.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\share\\cmake-3.30\\Modules\\CMakeCXXCompilerABI.cpp"
           Microsoft (R) C/C++-Optimierungscompiler Version 19.43.34810 f├╝r x64
           Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_f39be.dir\\Debug\\\\" /Fd"cmTC_f39be.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\share\\cmake-3.30\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_7535e.dir\\Debug\\\\" /Fd"cmTC_7535e.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\share\\cmake-3.30\\Modules\\CMakeCXXCompilerABI.cpp"
           CMakeCXXCompilerABI.cpp
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-66e2fq\\Debug\\cmTC_f39be.exe" /INCREMENTAL /ILK:"cmTC_f39be.dir\\Debug\\cmTC_f39be.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-66e2fq/Debug/cmTC_f39be.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-66e2fq/Debug/cmTC_f39be.lib" /MACHINE:X64  /machine:x64 cmTC_f39be.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_f39be.vcxproj -> C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-66e2fq\\Debug\\cmTC_f39be.exe
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-nsgnx5\\Debug\\cmTC_7535e.exe" /INCREMENTAL /ILK:"cmTC_7535e.dir\\Debug\\cmTC_7535e.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-nsgnx5/Debug/cmTC_7535e.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-nsgnx5/Debug/cmTC_7535e.lib" /MACHINE:X64  /machine:x64 cmTC_7535e.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_7535e.vcxproj -> C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-nsgnx5\\Debug\\cmTC_7535e.exe
         FinalizeBuildStatus:
-          Die Datei "cmTC_f39be.dir\\Debug\\cmTC_f39be.tlog\\unsuccessfulbuild" wird gel├Âscht.
-          Aktualisieren des Timestamps von "cmTC_f39be.dir\\Debug\\cmTC_f39be.tlog\\cmTC_f39be.lastbuildstate".
-        Die Erstellung von Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-66e2fq\\cmTC_f39be.vcxproj" ist abgeschlossen (Standardziele).
+          Die Datei "cmTC_7535e.dir\\Debug\\cmTC_7535e.tlog\\unsuccessfulbuild" wird gel├Âscht.
+          Aktualisieren des Timestamps von "cmTC_7535e.dir\\Debug\\cmTC_7535e.tlog\\cmTC_7535e.lastbuildstate".
+        Die Erstellung von Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-nsgnx5\\cmTC_7535e.vcxproj" ist abgeschlossen (Standardziele).
         
         Der Buildvorgang wurde erfolgreich ausgef├╝hrt.
             0 Warnung(en)
             0 Fehler
         
-        Verstrichene Zeit 00:00:01.17
+        Verstrichene Zeit 00:00:00.77
         
       exitCode: 0
   -
@@ -162,8 +162,8 @@ events:
     checks:
       - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
     directories:
-      source: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-promlk"
-      binary: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-promlk"
+      source: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-xups1v"
+      binary: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-xups1v"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /GR /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -173,40 +173,40 @@ events:
       variable: "CMAKE_HAVE_LIBC_PTHREAD"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-promlk'
+        Change Dir: 'C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-xups1v'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_0cc1d.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_71b68.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild-Version 17.13.19+0d9f5a35a f├╝r .NET Framework
-        Der Buildvorgang wurde am 01.06.2025 15:17:45 gestartet.
+        Der Buildvorgang wurde am 01.06.2025 16:23:35 gestartet.
         
-        Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-promlk\\cmTC_0cc1d.vcxproj" auf Knoten "1" (Standardziele).
+        Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xups1v\\cmTC_71b68.vcxproj" auf Knoten "1" (Standardziele).
         PrepareForBuild:
-          Das Verzeichnis "cmTC_0cc1d.dir\\Debug\\" wird erstellt.
+          Das Verzeichnis "cmTC_71b68.dir\\Debug\\" wird erstellt.
           Die strukturierte Ausgabe ist aktiviert. Die Formatierung der Compilerdiagnose spiegelt die Fehlerhierarchie wider. Weitere Informationen finden Sie unter https://aka.ms/cpp/structured-output.
-          Das Verzeichnis "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-promlk\\Debug\\" wird erstellt.
-          Das Verzeichnis "cmTC_0cc1d.dir\\Debug\\cmTC_0cc1d.tlog\\" wird erstellt.
+          Das Verzeichnis "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xups1v\\Debug\\" wird erstellt.
+          Das Verzeichnis "cmTC_71b68.dir\\Debug\\cmTC_71b68.tlog\\" wird erstellt.
         InitializeBuildStatus:
-          "cmTC_0cc1d.dir\\Debug\\cmTC_0cc1d.tlog\\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
-          Aktualisieren des Timestamps von "cmTC_0cc1d.dir\\Debug\\cmTC_0cc1d.tlog\\unsuccessfulbuild".
+          "cmTC_71b68.dir\\Debug\\cmTC_71b68.tlog\\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
+          Aktualisieren des Timestamps von "cmTC_71b68.dir\\Debug\\cmTC_71b68.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_0cc1d.dir\\Debug\\\\" /Fd"cmTC_0cc1d.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-promlk\\src.cxx"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_71b68.dir\\Debug\\\\" /Fd"cmTC_71b68.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xups1v\\src.cxx"
           Microsoft (R) C/C++-Optimierungscompiler Version 19.43.34810 f├╝r x64
           Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_0cc1d.dir\\Debug\\\\" /Fd"cmTC_0cc1d.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-promlk\\src.cxx"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_71b68.dir\\Debug\\\\" /Fd"cmTC_71b68.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xups1v\\src.cxx"
           src.cxx
-        C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-promlk\\src.cxx(1,10): error C1083: Datei (Include) kann nicht ge├Âffnet werden: "pthread.h": No such file or directory [C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-promlk\\cmTC_0cc1d.vcxproj]
-        Die Erstellung des Projekts "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-promlk\\cmTC_0cc1d.vcxproj" ist abgeschlossen (Standardziele) -- FEHLER.
+        C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xups1v\\src.cxx(1,10): error C1083: Datei (Include) kann nicht ge├Âffnet werden: "pthread.h": No such file or directory [C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xups1v\\cmTC_71b68.vcxproj]
+        Die Erstellung des Projekts "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xups1v\\cmTC_71b68.vcxproj" ist abgeschlossen (Standardziele) -- FEHLER.
         
         Fehler beim Buildvorgang.
         
-        "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-promlk\\cmTC_0cc1d.vcxproj" (Standardziel) (1) ->
+        "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xups1v\\cmTC_71b68.vcxproj" (Standardziel) (1) ->
         (ClCompile Ziel) -> 
-          C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-promlk\\src.cxx(1,10): error C1083: Datei (Include) kann nicht ge├Âffnet werden: "pthread.h": No such file or directory [C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-promlk\\cmTC_0cc1d.vcxproj]
+          C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xups1v\\src.cxx(1,10): error C1083: Datei (Include) kann nicht ge├Âffnet werden: "pthread.h": No such file or directory [C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xups1v\\cmTC_71b68.vcxproj]
         
             0 Warnung(en)
             1 Fehler
         
-        Verstrichene Zeit 00:00:00.38
+        Verstrichene Zeit 00:00:00.39
         
       exitCode: 1
   -
@@ -223,8 +223,8 @@ events:
     checks:
       - "Looking for pthread_create in pthreads"
     directories:
-      source: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-fd9lcd"
-      binary: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-fd9lcd"
+      source: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-o8h69l"
+      binary: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-o8h69l"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /GR /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -234,42 +234,42 @@ events:
       variable: "CMAKE_HAVE_PTHREADS_CREATE"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-fd9lcd'
+        Change Dir: 'C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-o8h69l'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_65e94.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_2c9fb.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild-Version 17.13.19+0d9f5a35a f├╝r .NET Framework
-        Der Buildvorgang wurde am 01.06.2025 15:17:46 gestartet.
+        Der Buildvorgang wurde am 01.06.2025 16:23:35 gestartet.
         
-        Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fd9lcd\\cmTC_65e94.vcxproj" auf Knoten "1" (Standardziele).
+        Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-o8h69l\\cmTC_2c9fb.vcxproj" auf Knoten "1" (Standardziele).
         PrepareForBuild:
-          Das Verzeichnis "cmTC_65e94.dir\\Debug\\" wird erstellt.
+          Das Verzeichnis "cmTC_2c9fb.dir\\Debug\\" wird erstellt.
           Die strukturierte Ausgabe ist aktiviert. Die Formatierung der Compilerdiagnose spiegelt die Fehlerhierarchie wider. Weitere Informationen finden Sie unter https://aka.ms/cpp/structured-output.
-          Das Verzeichnis "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fd9lcd\\Debug\\" wird erstellt.
-          Das Verzeichnis "cmTC_65e94.dir\\Debug\\cmTC_65e94.tlog\\" wird erstellt.
+          Das Verzeichnis "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-o8h69l\\Debug\\" wird erstellt.
+          Das Verzeichnis "cmTC_2c9fb.dir\\Debug\\cmTC_2c9fb.tlog\\" wird erstellt.
         InitializeBuildStatus:
-          "cmTC_65e94.dir\\Debug\\cmTC_65e94.tlog\\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
-          Aktualisieren des Timestamps von "cmTC_65e94.dir\\Debug\\cmTC_65e94.tlog\\unsuccessfulbuild".
+          "cmTC_2c9fb.dir\\Debug\\cmTC_2c9fb.tlog\\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
+          Aktualisieren des Timestamps von "cmTC_2c9fb.dir\\Debug\\cmTC_2c9fb.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_65e94.dir\\Debug\\\\" /Fd"cmTC_65e94.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fd9lcd\\CheckFunctionExists.cxx"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_2c9fb.dir\\Debug\\\\" /Fd"cmTC_2c9fb.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-o8h69l\\CheckFunctionExists.cxx"
           Microsoft (R) C/C++-Optimierungscompiler Version 19.43.34810 f├╝r x64
           Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_65e94.dir\\Debug\\\\" /Fd"cmTC_65e94.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fd9lcd\\CheckFunctionExists.cxx"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_2c9fb.dir\\Debug\\\\" /Fd"cmTC_2c9fb.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-o8h69l\\CheckFunctionExists.cxx"
           CheckFunctionExists.cxx
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fd9lcd\\Debug\\cmTC_65e94.exe" /INCREMENTAL /ILK:"cmTC_65e94.dir\\Debug\\cmTC_65e94.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-fd9lcd/Debug/cmTC_65e94.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-fd9lcd/Debug/cmTC_65e94.lib" /MACHINE:X64  /machine:x64 cmTC_65e94.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: Datei "pthreads.lib" kann nicht ge├Âffnet werden. [C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fd9lcd\\cmTC_65e94.vcxproj]
-        Die Erstellung des Projekts "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fd9lcd\\cmTC_65e94.vcxproj" ist abgeschlossen (Standardziele) -- FEHLER.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-o8h69l\\Debug\\cmTC_2c9fb.exe" /INCREMENTAL /ILK:"cmTC_2c9fb.dir\\Debug\\cmTC_2c9fb.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-o8h69l/Debug/cmTC_2c9fb.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-o8h69l/Debug/cmTC_2c9fb.lib" /MACHINE:X64  /machine:x64 cmTC_2c9fb.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: Datei "pthreads.lib" kann nicht ge├Âffnet werden. [C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-o8h69l\\cmTC_2c9fb.vcxproj]
+        Die Erstellung des Projekts "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-o8h69l\\cmTC_2c9fb.vcxproj" ist abgeschlossen (Standardziele) -- FEHLER.
         
         Fehler beim Buildvorgang.
         
-        "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fd9lcd\\cmTC_65e94.vcxproj" (Standardziel) (1) ->
+        "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-o8h69l\\cmTC_2c9fb.vcxproj" (Standardziel) (1) ->
         (Link Ziel) -> 
-          LINK : fatal error LNK1104: Datei "pthreads.lib" kann nicht ge├Âffnet werden. [C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fd9lcd\\cmTC_65e94.vcxproj]
+          LINK : fatal error LNK1104: Datei "pthreads.lib" kann nicht ge├Âffnet werden. [C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-o8h69l\\cmTC_2c9fb.vcxproj]
         
             0 Warnung(en)
             1 Fehler
         
-        Verstrichene Zeit 00:00:00.50
+        Verstrichene Zeit 00:00:00.51
         
       exitCode: 1
   -
@@ -286,8 +286,8 @@ events:
     checks:
       - "Looking for pthread_create in pthread"
     directories:
-      source: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-1ox6ym"
-      binary: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-1ox6ym"
+      source: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-5bq6ek"
+      binary: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-5bq6ek"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /GR /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -297,42 +297,42 @@ events:
       variable: "CMAKE_HAVE_PTHREAD_CREATE"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-1ox6ym'
+        Change Dir: 'C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-5bq6ek'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_3d766.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_8f47a.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild-Version 17.13.19+0d9f5a35a f├╝r .NET Framework
-        Der Buildvorgang wurde am 01.06.2025 15:17:46 gestartet.
+        Der Buildvorgang wurde am 01.06.2025 16:23:36 gestartet.
         
-        Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1ox6ym\\cmTC_3d766.vcxproj" auf Knoten "1" (Standardziele).
+        Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5bq6ek\\cmTC_8f47a.vcxproj" auf Knoten "1" (Standardziele).
         PrepareForBuild:
-          Das Verzeichnis "cmTC_3d766.dir\\Debug\\" wird erstellt.
+          Das Verzeichnis "cmTC_8f47a.dir\\Debug\\" wird erstellt.
           Die strukturierte Ausgabe ist aktiviert. Die Formatierung der Compilerdiagnose spiegelt die Fehlerhierarchie wider. Weitere Informationen finden Sie unter https://aka.ms/cpp/structured-output.
-          Das Verzeichnis "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1ox6ym\\Debug\\" wird erstellt.
-          Das Verzeichnis "cmTC_3d766.dir\\Debug\\cmTC_3d766.tlog\\" wird erstellt.
+          Das Verzeichnis "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5bq6ek\\Debug\\" wird erstellt.
+          Das Verzeichnis "cmTC_8f47a.dir\\Debug\\cmTC_8f47a.tlog\\" wird erstellt.
         InitializeBuildStatus:
-          "cmTC_3d766.dir\\Debug\\cmTC_3d766.tlog\\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
-          Aktualisieren des Timestamps von "cmTC_3d766.dir\\Debug\\cmTC_3d766.tlog\\unsuccessfulbuild".
+          "cmTC_8f47a.dir\\Debug\\cmTC_8f47a.tlog\\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
+          Aktualisieren des Timestamps von "cmTC_8f47a.dir\\Debug\\cmTC_8f47a.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_3d766.dir\\Debug\\\\" /Fd"cmTC_3d766.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1ox6ym\\CheckFunctionExists.cxx"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_8f47a.dir\\Debug\\\\" /Fd"cmTC_8f47a.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5bq6ek\\CheckFunctionExists.cxx"
           Microsoft (R) C/C++-Optimierungscompiler Version 19.43.34810 f├╝r x64
           Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_3d766.dir\\Debug\\\\" /Fd"cmTC_3d766.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1ox6ym\\CheckFunctionExists.cxx"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_8f47a.dir\\Debug\\\\" /Fd"cmTC_8f47a.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5bq6ek\\CheckFunctionExists.cxx"
           CheckFunctionExists.cxx
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1ox6ym\\Debug\\cmTC_3d766.exe" /INCREMENTAL /ILK:"cmTC_3d766.dir\\Debug\\cmTC_3d766.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-1ox6ym/Debug/cmTC_3d766.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-1ox6ym/Debug/cmTC_3d766.lib" /MACHINE:X64  /machine:x64 cmTC_3d766.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: Datei "pthread.lib" kann nicht ge├Âffnet werden. [C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1ox6ym\\cmTC_3d766.vcxproj]
-        Die Erstellung des Projekts "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1ox6ym\\cmTC_3d766.vcxproj" ist abgeschlossen (Standardziele) -- FEHLER.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5bq6ek\\Debug\\cmTC_8f47a.exe" /INCREMENTAL /ILK:"cmTC_8f47a.dir\\Debug\\cmTC_8f47a.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-5bq6ek/Debug/cmTC_8f47a.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-5bq6ek/Debug/cmTC_8f47a.lib" /MACHINE:X64  /machine:x64 cmTC_8f47a.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: Datei "pthread.lib" kann nicht ge├Âffnet werden. [C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5bq6ek\\cmTC_8f47a.vcxproj]
+        Die Erstellung des Projekts "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5bq6ek\\cmTC_8f47a.vcxproj" ist abgeschlossen (Standardziele) -- FEHLER.
         
         Fehler beim Buildvorgang.
         
-        "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1ox6ym\\cmTC_3d766.vcxproj" (Standardziel) (1) ->
+        "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5bq6ek\\cmTC_8f47a.vcxproj" (Standardziel) (1) ->
         (Link Ziel) -> 
-          LINK : fatal error LNK1104: Datei "pthread.lib" kann nicht ge├Âffnet werden. [C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1ox6ym\\cmTC_3d766.vcxproj]
+          LINK : fatal error LNK1104: Datei "pthread.lib" kann nicht ge├Âffnet werden. [C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5bq6ek\\cmTC_8f47a.vcxproj]
         
             0 Warnung(en)
             1 Fehler
         
-        Verstrichene Zeit 00:00:00.52
+        Verstrichene Zeit 00:00:00.54
         
       exitCode: 1
   -
@@ -350,8 +350,8 @@ events:
     checks:
       - "Performing Test HAVE_STDATOMIC"
     directories:
-      source: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-q39i2f"
-      binary: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-q39i2f"
+      source: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-s7y2cy"
+      binary: "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-s7y2cy"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /GR /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -361,40 +361,40 @@ events:
       variable: "HAVE_STDATOMIC"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-q39i2f'
+        Change Dir: 'C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-s7y2cy'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_921df.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_37908.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild-Version 17.13.19+0d9f5a35a f├╝r .NET Framework
-        Der Buildvorgang wurde am 01.06.2025 15:17:47 gestartet.
+        Der Buildvorgang wurde am 01.06.2025 16:23:37 gestartet.
         
-        Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q39i2f\\cmTC_921df.vcxproj" auf Knoten "1" (Standardziele).
+        Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-s7y2cy\\cmTC_37908.vcxproj" auf Knoten "1" (Standardziele).
         PrepareForBuild:
-          Das Verzeichnis "cmTC_921df.dir\\Debug\\" wird erstellt.
+          Das Verzeichnis "cmTC_37908.dir\\Debug\\" wird erstellt.
           Die strukturierte Ausgabe ist aktiviert. Die Formatierung der Compilerdiagnose spiegelt die Fehlerhierarchie wider. Weitere Informationen finden Sie unter https://aka.ms/cpp/structured-output.
-          Das Verzeichnis "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q39i2f\\Debug\\" wird erstellt.
-          Das Verzeichnis "cmTC_921df.dir\\Debug\\cmTC_921df.tlog\\" wird erstellt.
+          Das Verzeichnis "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-s7y2cy\\Debug\\" wird erstellt.
+          Das Verzeichnis "cmTC_37908.dir\\Debug\\cmTC_37908.tlog\\" wird erstellt.
         InitializeBuildStatus:
-          "cmTC_921df.dir\\Debug\\cmTC_921df.tlog\\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
-          Aktualisieren des Timestamps von "cmTC_921df.dir\\Debug\\cmTC_921df.tlog\\unsuccessfulbuild".
+          "cmTC_37908.dir\\Debug\\cmTC_37908.tlog\\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
+          Aktualisieren des Timestamps von "cmTC_37908.dir\\Debug\\cmTC_37908.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAVE_STDATOMIC /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_921df.dir\\Debug\\\\" /Fd"cmTC_921df.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q39i2f\\src.cxx"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAVE_STDATOMIC /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_37908.dir\\Debug\\\\" /Fd"cmTC_37908.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-s7y2cy\\src.cxx"
           Microsoft (R) C/C++-Optimierungscompiler Version 19.43.34810 f├╝r x64
           Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAVE_STDATOMIC /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_921df.dir\\Debug\\\\" /Fd"cmTC_921df.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q39i2f\\src.cxx"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAVE_STDATOMIC /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /std:c++17 /Fo"cmTC_37908.dir\\Debug\\\\" /Fd"cmTC_37908.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-s7y2cy\\src.cxx"
           src.cxx
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q39i2f\\Debug\\cmTC_921df.exe" /INCREMENTAL /ILK:"cmTC_921df.dir\\Debug\\cmTC_921df.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-q39i2f/Debug/cmTC_921df.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-q39i2f/Debug/cmTC_921df.lib" /MACHINE:X64  /machine:x64 cmTC_921df.dir\\Debug\\src.obj
-          cmTC_921df.vcxproj -> C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q39i2f\\Debug\\cmTC_921df.exe
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX86\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-s7y2cy\\Debug\\cmTC_37908.exe" /INCREMENTAL /ILK:"cmTC_37908.dir\\Debug\\cmTC_37908.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-s7y2cy/Debug/cmTC_37908.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/CMakeFiles/CMakeScratch/TryCompile-s7y2cy/Debug/cmTC_37908.lib" /MACHINE:X64  /machine:x64 cmTC_37908.dir\\Debug\\src.obj
+          cmTC_37908.vcxproj -> C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-s7y2cy\\Debug\\cmTC_37908.exe
         FinalizeBuildStatus:
-          Die Datei "cmTC_921df.dir\\Debug\\cmTC_921df.tlog\\unsuccessfulbuild" wird gel├Âscht.
-          Aktualisieren des Timestamps von "cmTC_921df.dir\\Debug\\cmTC_921df.tlog\\cmTC_921df.lastbuildstate".
-        Die Erstellung von Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q39i2f\\cmTC_921df.vcxproj" ist abgeschlossen (Standardziele).
+          Die Datei "cmTC_37908.dir\\Debug\\cmTC_37908.tlog\\unsuccessfulbuild" wird gel├Âscht.
+          Aktualisieren des Timestamps von "cmTC_37908.dir\\Debug\\cmTC_37908.tlog\\cmTC_37908.lastbuildstate".
+        Die Erstellung von Projekt "C:\\Users\\nikla\\OneDrive\\lathe_ecosystem\\cam\\IntuiCAM\\build\\CMakeFiles\\CMakeScratch\\TryCompile-s7y2cy\\cmTC_37908.vcxproj" ist abgeschlossen (Standardziele).
         
         Der Buildvorgang wurde erfolgreich ausgef├╝hrt.
             0 Warnung(en)
             0 Fehler
         
-        Verstrichene Zeit 00:00:00.71
+        Verstrichene Zeit 00:00:00.75
         
       exitCode: 0
 ...

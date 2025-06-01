@@ -23,12 +23,6 @@
 			null
 		],
 		[
-			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui/include/cylinderselectiondialog.h",
-			"MU",
-			"6YEA5652QU/moc_cylinderselectiondialog.cpp",
-			null
-		],
-		[
 			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui/include/isteploader.h",
 			"MU",
 			"6YEA5652QU/moc_isteploader.cpp",
@@ -38,6 +32,12 @@
 			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui/include/opengl3dwidget.h",
 			"MU",
 			"6YEA5652QU/moc_opengl3dwidget.cpp",
+			null
+		],
+		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui/include/partloadingpanel.h",
+			"MU",
+			"6YEA5652QU/moc_partloadingpanel.cpp",
 			null
 		],
 		[
@@ -307,11 +307,6 @@
 			null
 		],
 		[
-			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui/src/cylinderselectiondialog.cpp",
-			"MU",
-			null
-		],
-		[
 			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui/src/main.cpp",
 			"MU",
 			null
@@ -323,6 +318,11 @@
 		],
 		[
 			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui/src/opengl3dwidget.cpp",
+			"MU",
+			null
+		],
+		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/gui/src/partloadingpanel.cpp",
 			"MU",
 			null
 		],

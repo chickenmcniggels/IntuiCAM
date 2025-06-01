@@ -47,6 +47,21 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/cli/cmake_install.cmake")
 endif()
 
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/plugins/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/examples/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/tests/cmake_install.cmake")
+endif()
+
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE PROGRAM FILES
     "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Redist/MSVC/14.42.34433/x64/Microsoft.VC143.CRT/msvcp140.dll"

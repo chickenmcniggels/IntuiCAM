@@ -248,6 +248,18 @@ INTUICAM_BUILD_PYTHON:BOOL=OFF
 //Build unit and integration tests
 INTUICAM_BUILD_TESTS:BOOL=ON
 
+//Enable dynamic plugin loading
+INTUICAM_ENABLE_PLUGIN_LOADING:BOOL=ON
+
+//Value Computed by CMake
+IntuiCAMTests_BINARY_DIR:STATIC=C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/tests
+
+//Value Computed by CMake
+IntuiCAMTests_IS_TOP_LEVEL:STATIC=OFF
+
+//Value Computed by CMake
+IntuiCAMTests_SOURCE_DIR:STATIC=C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/tests
+
 //Value Computed by CMake
 IntuiCAM_BINARY_DIR:STATIC=C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build
 
@@ -447,7 +459,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_MT
 CMAKE_MT-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=9
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=26
 //Platform information initialized
 CMAKE_PLATFORM_INFO_INITIALIZED:INTERNAL=1
 //noop for ranlib

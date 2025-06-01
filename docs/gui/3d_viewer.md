@@ -11,6 +11,72 @@ The `OpenGL3DWidget` is the primary 3D visualization component in IntuiCAM, buil
 - **Interactive Navigation**: Mouse-based rotation, panning, and zooming
 - **Multi-object Display**: Simultaneous visualization of workpieces, raw materials, and chuck components
 - **Focus-Independent Rendering**: Reliable rendering regardless of widget focus state
+- **Advanced Selection System**: Multi-mode selection with highlighting and feedback
+
+### Enhanced Selection Capabilities (v1.2)
+
+**Problem Resolved**: Previous selection implementation had limited functionality and poor feedback.
+
+**Solution**: Implemented comprehensive OCCT-native selection system:
+- **Multi-mode Selection**: Supports whole objects (mode 0), edges (mode 2), and faces (mode 4)
+- **Automatic Highlighting**: Visual feedback during mouse hover and selection
+- **Sub-shape Selection**: Ability to select specific faces, edges, or vertices
+- **Proper Event Handling**: Robust mouse interaction with accurate 3D point calculation
+- **Selection Feedback**: Clear status messages and debugging information
+
+```cpp
+// Enhanced selection with multiple modes
+void OpenGL3DWidget::setSelectionMode(bool enabled)
+{
+    if (enabled) {
+        m_context->SetAutomaticHilight(Standard_True);
+        m_context->SetAutoActivateSelection(Standard_True);
+        
+        // Activate multiple selection modes for all displayed shapes
+        AIS_ListOfInteractive allObjects;
+        m_context->DisplayedObjects(allObjects);
+        
+        for (AIS_ListOfInteractive::Iterator anIter(allObjects); anIter.More(); anIter.Next()) {
+            Handle(AIS_Shape) aShape = Handle(AIS_Shape)::DownCast(anIter.Value());
+            if (!aShape.IsNull()) {
+                m_context->Activate(aShape, 0, Standard_False); // Whole shape
+                m_context->Activate(aShape, 4, Standard_False); // Faces
+                m_context->Activate(aShape, 2, Standard_False); // Edges
+            }
+        }
+    }
+}
+```
+
+### Improved Raw Material Positioning (v1.2)
+
+**Problem Resolved**: Raw material cylinders were not properly positioned relative to the chuck, and the rightmost part didn't always have the largest Z value.
+
+**Solution**: Enhanced positioning algorithm with proper lathe-oriented calculations:
+- **Axis-aligned Calculation**: Projects all workpiece bounding box corners onto the rotation axis
+- **Proper Extent Detection**: Finds true min/max extents along the machining axis
+- **Chuck-relative Positioning**: Positions raw material from chuck end (minimum Z) to rightmost end (maximum Z)
+- **Intelligent Allowances**: Adds proper machining allowances (10% minimum 5mm per end)
+
+```cpp
+// Enhanced positioning ensures rightmost part has largest Z value
+TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, double length, 
+                                                           const gp_Ax1& axis, const TopoDS_Shape& workpiece)
+{
+    // Project all 8 bounding box corners onto the axis
+    for (int i = 0; i < 8; i++) {
+        gp_Vec toCorner(axisLoc, corners[i]);
+        double projection = toCorner.Dot(axisDir);
+        minProjection = std::min(minProjection, projection);
+        maxProjection = std::max(maxProjection, projection);
+    }
+    
+    // Add machining allowance and position from chuck (minProjection) to rightmost (maxProjection)
+    double allowance = std::max((maxProjection - minProjection) * 0.1, 5.0);
+    cylinderStartPoint = axisLoc.Translated(gp_Vec(axisDir) * (minProjection - allowance));
+    length = (maxProjection - minProjection) + 2 * allowance;
+}
+```
 
 ### Recent Improvements (v1.1)
 
@@ -42,45 +108,40 @@ void OpenGL3DWidget::updateView()
 }
 ```
 
-#### Enhanced Raw Material Positioning
-**Problem**: Raw material cylinders didn't properly encompass the entire workpiece.
+## Selection System Architecture
 
-**Solution**: Implemented intelligent workpiece analysis:
-- Bounding box calculation along rotation axis
-- Proper cylinder positioning to encompass workpiece
-- Automatic length calculation with machining allowances
-- Support for custom and standard diameter selection
+### Native OCCT vs OpenGL Approaches
 
-## Usage
+**Current Implementation**: Uses native OCCT AIS_InteractiveContext - **This is the optimal approach**.
 
-### Basic Display Operations
+**Why OCCT Native Selection is Superior**:
+1. **Built-in Selection Modes**: Supports object, face, edge, vertex selection out of the box
+2. **Automatic Highlighting**: Provides visual feedback during detection
+3. **Precise Picking**: Accurate 3D point calculation and geometry intersection
+4. **Filters and Constraints**: Advanced selection filtering capabilities
+5. **Professional CAD Standard**: Industry-standard approach used by major CAD systems
 
-```cpp
-// Display a workpiece shape
-openglWidget->displayShape(workpieceShape);
+**Alternative Considered**: Custom OpenGL picking - Not recommended because:
+- Requires manual implementation of complex 3D picking algorithms
+- No built-in highlighting or visual feedback
+- Limited to basic object-level selection
+- Significantly more development effort for inferior results
 
-// Clear all objects
-openglWidget->clearAll();
+### Selection Workflow
 
-// Fit all objects in view
-openglWidget->fitAll();
-```
-
-### Continuous Updates
-
-```cpp
-// Enable continuous updates (useful for animations)
-openglWidget->setContinuousUpdate(true);
-
-// Disable continuous updates (default)
-openglWidget->setContinuousUpdate(false);
-```
+1. **Enable Selection Mode**: `setSelectionMode(true)` activates multi-mode selection
+2. **Visual Feedback**: Objects highlight on mouse hover due to automatic highlighting
+3. **Click Detection**: `MoveTo()` detects entities at mouse position
+4. **Selection Processing**: `SelectDetected()` confirms selection
+5. **Shape Extraction**: Extracts complete shapes or sub-shapes (faces/edges)
+6. **3D Point Calculation**: Calculates accurate 3D coordinates of selection point
+7. **Signal Emission**: Emits `shapeSelected()` with shape and 3D point
 
 ## Raw Material Management
 
 ### Automatic Sizing
 
-The raw material manager now automatically calculates optimal dimensions:
+The raw material manager now automatically calculates optimal dimensions with proper lathe-oriented positioning:
 
 ```cpp
 // Display raw material that encompasses the workpiece
@@ -98,6 +159,16 @@ rawMaterialManager->setCustomDiameter(customDiameter, workpiece, axis);
 // Get standard diameters for UI
 const QVector<double>& diameters = rawMaterialManager->getStandardDiameters();
 ```
+
+### Positioning Algorithm
+
+The enhanced algorithm ensures proper lathe-oriented positioning:
+
+1. **Bounding Box Analysis**: Calculates 3D bounding box of workpiece
+2. **Axis Projection**: Projects all 8 corners onto the rotation axis
+3. **Extent Calculation**: Finds minimum and maximum projections
+4. **Chuck Alignment**: Positions cylinder from chuck end (minimum) to tailstock end (maximum)
+5. **Allowance Addition**: Adds machining allowances for proper material coverage
 
 ## Technical Details
 
@@ -145,8 +216,12 @@ void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
 **Solution**: Enhanced focus event handling and continuous update support
 
 ### Issue: Raw Material Not Encompassing Part
-**Status**: ✅ Fixed in v1.1  
+**Status**: ✅ Fixed in v1.2
 **Solution**: Improved bounding box calculation and cylinder positioning
+
+### Issue: Selection Not Working Properly
+**Status**: ✅ Fixed in v1.2
+**Solution**: Enhanced multi-mode selection with proper OCCT integration
 
 ### Issue: Performance with Large Models
 **Status**: Ongoing optimization
@@ -155,7 +230,7 @@ void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
 ## Future Enhancements
 
 ### Planned Features
-- Manual axis selection by clicking on cylindrical features
+- Advanced selection filters for specific geometry types
 - Real-time material property editing
 - Advanced visualization modes (wireframe, shaded, transparent)
 - Performance profiling and optimization tools
@@ -177,8 +252,10 @@ See the header file `gui/include/opengl3dwidget.h` for complete API documentatio
 - `clearAll()`: Remove all displayed objects
 - `fitAll()`: Fit all objects in view
 - `setContinuousUpdate(bool enabled)`: Control continuous rendering
+- `setSelectionMode(bool enabled)`: Enable/disable interactive selection
 - `isViewerInitialized()`: Check initialization status
 
 ### Signals
 
-- `viewerInitialized()`: Emitted when OpenCASCADE viewer is ready 
+- `viewerInitialized()`: Emitted when OpenCASCADE viewer is ready
+- `shapeSelected(const TopoDS_Shape& shape, const gp_Pnt& point)`: Emitted when shape is selected in selection mode 

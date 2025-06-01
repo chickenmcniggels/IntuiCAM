@@ -16,12 +16,14 @@
 
 // OpenCASCADE includes
 #include <gp_Ax1.hxx>
+#include <gp_Pnt.hxx>
+#include <TopoDS_Shape.hxx>
 
 // Forward declarations for our custom classes
 class OpenGL3DWidget;
 class StepLoader;
 class WorkspaceController;
-class CylinderSelectionDialog;
+class PartLoadingPanel;
 
 // Include CylinderInfo definition
 #include "workpiecemanager.h"
@@ -64,6 +66,17 @@ private slots:
     void handleChuckCenterlineDetected(const gp_Ax1& axis);
     void handleMultipleCylindersDetected(const QVector<CylinderInfo>& cylinders);
     void handleCylinderAxisSelected(int index, const CylinderInfo& cylinderInfo);
+    
+    // Part loading panel handlers
+    void handlePartLoadingDistanceChanged(double distance);
+    void handlePartLoadingDiameterChanged(double diameter);
+    void handlePartLoadingOrientationFlipped(bool flipped);
+    void handlePartLoadingCylinderChanged(int index);
+    void handlePartLoadingManualSelection();
+    void handlePartLoadingReprocess();
+    
+    // 3D viewer handlers
+    void handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& clickPoint);
 
 private:
     void createMenus();
@@ -72,12 +85,7 @@ private:
     void createCentralWidget();
     void setupConnections();
     void setupWorkspaceConnections();
-    
-    /**
-     * @brief Show cylinder selection dialog when multiple cylinders are detected
-     * @param cylinders Vector of detected cylinder information
-     */
-    void showCylinderSelectionDialog(const QVector<CylinderInfo>& cylinders);
+    void setupPartLoadingConnections();
 
     // UI Components
     QWidget *m_centralWidget;
@@ -88,6 +96,9 @@ private:
     QTreeWidget *m_projectTree;
     QTextEdit *m_propertiesPanel;
     
+    // Part loading panel
+    PartLoadingPanel *m_partLoadingPanel;
+    
     // 3D Viewport - pure visualization component
     OpenGL3DWidget *m_3dViewer;
     
@@ -97,9 +108,6 @@ private:
     // Business logic controllers
     WorkspaceController *m_workspaceController;
     StepLoader *m_stepLoader;
-    
-    // Dialogs
-    CylinderSelectionDialog *m_cylinderSelectionDialog;
     
     // Menus
     QMenu *m_fileMenu;

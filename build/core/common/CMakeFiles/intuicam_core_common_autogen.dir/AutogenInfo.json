@@ -16,6 +16,12 @@
 	"HEADERS" : 
 	[
 		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/common/include/IntuiCAM/Common/Types.h",
+			"MU",
+			"5LIFM6HCDO/moc_Types.cpp",
+			null
+		],
+		[
 			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/common/include/IntuiCAM/Common/Version.h",
 			"MU",
 			"5LIFM6HCDO/moc_Version.cpp",
@@ -209,6 +215,11 @@
 	"SETTINGS_FILE_Release" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/core/common/CMakeFiles/intuicam_core_common_autogen.dir/AutogenUsed_Release.txt",
 	"SOURCES" : 
 	[
+		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/common/src/Types.cpp",
+			"MU",
+			null
+		],
 		[
 			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/common/src/test_app.cpp",
 			"MU",

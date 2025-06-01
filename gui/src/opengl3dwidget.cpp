@@ -13,6 +13,8 @@
 #include <V3d_AmbientLight.hxx>
 #include <Quantity_Color.hxx>
 #include <AIS_DisplayMode.hxx>
+#include <StdSelect_BRepOwner.hxx>
+#include <SelectMgr_SortCriterion.hxx>
 
 #ifdef _WIN32
 #include <WNT_Window.hxx>
@@ -29,6 +31,7 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_robustRefreshTimer(new QTimer(this))
     , m_isInitialized(false)
     , m_needsRefresh(false)
+    , m_selectionMode(false)
 {
     // Enable mouse tracking for proper interaction
     setMouseTracking(true);
@@ -309,17 +312,97 @@ void OpenGL3DWidget::fitAll()
 
 void OpenGL3DWidget::mousePressEvent(QMouseEvent *event)
 {
-    m_isDragging = true;
-    m_lastMousePos = event->pos();
-    m_dragButton = event->button();
-    
     if (!m_view.IsNull())
     {
+        if (m_selectionMode && event->button() == Qt::LeftButton)
+        {
+            // Handle selection in selection mode
+            if (!m_context.IsNull())
+            {
+                // Perform detection at mouse position
+                m_context->MoveTo(event->pos().x(), event->pos().y(), m_view, Standard_False);
+                
+                if (m_context->HasDetected())
+                {
+                    // Select the detected entity
+                    m_context->SelectDetected();
+                    
+                    // Process all selected entities
+                    for (m_context->InitSelected(); m_context->MoreSelected(); m_context->NextSelected())
+                    {
+                        Handle(SelectMgr_EntityOwner) anOwner = m_context->SelectedOwner();
+                        Handle(AIS_InteractiveObject) selectedObject = Handle(AIS_InteractiveObject)::DownCast(anOwner->Selectable());
+                        
+                        if (!selectedObject.IsNull())
+                        {
+                            // Try to get the shape from the selected object
+                            Handle(AIS_Shape) aisShape = Handle(AIS_Shape)::DownCast(selectedObject);
+                            if (!aisShape.IsNull())
+                            {
+                                TopoDS_Shape selectedShape;
+                                
+                                // Check if we have a sub-shape owner (face, edge, etc.)
+                                Handle(StdSelect_BRepOwner) aBRepOwner = Handle(StdSelect_BRepOwner)::DownCast(anOwner);
+                                if (!aBRepOwner.IsNull()) {
+                                    // We selected a specific face/edge/vertex
+                                    selectedShape = aBRepOwner->Shape();
+                                    qDebug() << "Selected sub-shape type:" << selectedShape.ShapeType();
+                                } else {
+                                    // We selected the whole shape
+                                    selectedShape = aisShape->Shape();
+                                    qDebug() << "Selected whole shape";
+                                }
+                                
+                                // Calculate 3D point from screen coordinates
+                                gp_Pnt clickPoint;
+                                if (m_context->HasDetected()) {
+                                    // Get the picked point from the detection
+                                    Handle(SelectMgr_ViewerSelector) aSelector = m_context->MainSelector();
+                                    if (aSelector->NbPicked() > 0) {
+                                        SelectMgr_SortCriterion aPickedData = aSelector->PickedData(1);
+                                        clickPoint = aPickedData.Point;
+                                    } else {
+                                        // Fallback to screen coordinate conversion
+                                        Standard_Real xv, yv, zv;
+                                        m_view->Convert(event->pos().x(), event->pos().y(), xv, yv, zv);
+                                        clickPoint = gp_Pnt(xv, yv, zv);
+                                    }
+                                } else {
+                                    // Fallback conversion
+                                    Standard_Real xv, yv, zv;
+                                    m_view->Convert(event->pos().x(), event->pos().y(), xv, yv, zv);
+                                    clickPoint = gp_Pnt(xv, yv, zv);
+                                }
+                                
+                                emit shapeSelected(selectedShape, clickPoint);
+                                qDebug() << "Shape selected at point:" << clickPoint.X() << clickPoint.Y() << clickPoint.Z();
+                                
+                                // Break after first successful selection
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Clear selection after processing
+                    m_context->ClearSelected(Standard_False);
+                    updateView();
+                } else {
+                    qDebug() << "No object detected at mouse position";
+                }
+            }
+            return; // Don't process as normal interaction
+        }
+        
+        // Normal interaction mode
         if (event->button() == Qt::LeftButton)
         {
             m_view->StartRotation(event->pos().x(), event->pos().y());
         }
     }
+    
+    m_isDragging = true;
+    m_lastMousePos = event->pos();
+    m_dragButton = event->button();
 }
 
 void OpenGL3DWidget::mouseMoveEvent(QMouseEvent *event)
@@ -388,6 +471,56 @@ void OpenGL3DWidget::setContinuousUpdate(bool enabled)
         m_updateTimer->start();
     } else {
         m_updateTimer->stop();
+    }
+}
+
+void OpenGL3DWidget::setSelectionMode(bool enabled)
+{
+    m_selectionMode = enabled;
+    
+    if (enabled) {
+        // Change cursor to indicate selection mode
+        setCursor(Qt::CrossCursor);
+        
+        // Enable proper selection modes for the context
+        if (!m_context.IsNull()) {
+            // Set automatic highlighting for better visual feedback
+            m_context->SetAutomaticHilight(Standard_True);
+            
+            // Enable default selection mode (0) for whole objects
+            m_context->SetAutoActivateSelection(Standard_True);
+            
+            // Activate selection for all displayed shapes
+            AIS_ListOfInteractive allObjects;
+            m_context->DisplayedObjects(allObjects);
+            
+            for (AIS_ListOfInteractive::Iterator anIter(allObjects); anIter.More(); anIter.Next()) {
+                Handle(AIS_InteractiveObject) anObj = anIter.Value();
+                Handle(AIS_Shape) aShape = Handle(AIS_Shape)::DownCast(anObj);
+                if (!aShape.IsNull()) {
+                    // Activate selection for whole shape (mode 0)
+                    m_context->Activate(aShape, 0, Standard_False);
+                    // Also activate face selection (mode 4) for cylindrical faces
+                    m_context->Activate(aShape, 4, Standard_False);
+                    // And edge selection (mode 2) for cylindrical edges
+                    m_context->Activate(aShape, 2, Standard_False);
+                }
+            }
+            
+            qDebug() << "Selection mode enabled - enhanced detection for shapes, faces, and edges";
+        }
+    } else {
+        // Restore normal cursor
+        setCursor(Qt::ArrowCursor);
+        
+        // Deactivate all selection modes
+        if (!m_context.IsNull()) {
+            m_context->Deactivate();
+            m_context->ClearSelected(Standard_False);
+            updateView();
+        }
+        
+        qDebug() << "Selection mode disabled";
     }
 }
 

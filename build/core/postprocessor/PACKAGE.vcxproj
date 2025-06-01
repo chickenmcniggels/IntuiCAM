@@ -210,7 +210,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </ProjectReference>
-    <ProjectReference Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\ALL_BUILD.vcxproj">
+    <ProjectReference Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\tests\ALL_BUILD.vcxproj">
       <Project>{83211D0B-AAD8-3FE8-87D2-E3A83A539CF0}</Project>
       <Name>ALL_BUILD</Name>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>

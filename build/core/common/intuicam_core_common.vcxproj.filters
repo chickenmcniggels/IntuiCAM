@@ -4,6 +4,9 @@
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\core\common\intuicam_core_common_autogen\mocs_compilation_Debug.cpp">
       <Filter>Source Files\Generated</Filter>
     </ClCompile>
+    <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\common\src\Types.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\common\src\test_app.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -18,6 +21,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\common\include\IntuiCAM\Common\Types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\core\common\include\IntuiCAM\Common\Version.h">
       <Filter>Header Files</Filter>
     </ClInclude>

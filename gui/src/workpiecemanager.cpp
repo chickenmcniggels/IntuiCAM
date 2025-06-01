@@ -1,6 +1,7 @@
 #include "workpiecemanager.h"
 
 #include <QDebug>
+#include <cmath>
 
 // OpenCASCADE includes
 #include <TopExp_Explorer.hxx>
@@ -22,6 +23,8 @@ WorkpieceManager::WorkpieceManager(QObject *parent)
     : QObject(parent)
     , m_detectedDiameter(0.0)
     , m_selectedCylinderIndex(-1)
+    , m_isFlipped(false)
+    , m_positionOffset(0.0)
 {
     // Initialize default main cylinder axis
     m_mainCylinderAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
@@ -313,6 +316,10 @@ void WorkpieceManager::clearWorkpieces()
     m_detectedCylinders.clear();
     m_selectedCylinderIndex = -1;
     
+    // Reset transformation state
+    m_isFlipped = false;
+    m_positionOffset = 0.0;
+    
     qDebug() << "All workpieces cleared";
 }
 
@@ -326,4 +333,92 @@ void WorkpieceManager::setWorkpieceMaterial(Handle(AIS_Shape) workpieceAIS)
     Graphic3d_MaterialAspect workpieceMaterial(Graphic3d_NOM_ALUMINIUM);
     workpieceMaterial.SetColor(Quantity_Color(0.8, 0.8, 0.9, Quantity_TOC_RGB));
     workpieceAIS->SetMaterial(workpieceMaterial);
+}
+
+bool WorkpieceManager::flipWorkpieceOrientation(bool flipped)
+{
+    if (m_context.IsNull() || m_workpieces.isEmpty()) {
+        emit errorOccurred("No workpieces available for transformation");
+        return false;
+    }
+
+    try {
+        // Only apply transformation if state actually changes
+        if (m_isFlipped == flipped) {
+            return true; // Already in desired state
+        }
+
+        // Create transformation matrix for 180-degree rotation around Y-axis
+        // This flips the workpiece end-for-end while keeping it on the same axis
+        gp_Trsf transformation;
+        gp_Ax1 rotationAxis(m_mainCylinderAxis.Location(), gp_Dir(0, 1, 0)); // Y-axis
+        transformation.SetRotation(rotationAxis, M_PI); // 180 degrees
+
+        // Apply transformation to all workpieces
+        for (Handle(AIS_Shape) workpiece : m_workpieces) {
+            if (!workpiece.IsNull()) {
+                if (flipped && !m_isFlipped) {
+                    // Apply flip transformation
+                    workpiece->SetLocalTransformation(transformation);
+                } else if (!flipped && m_isFlipped) {
+                    // Remove flip transformation (reset to identity)
+                    gp_Trsf identity;
+                    workpiece->SetLocalTransformation(identity);
+                }
+                
+                // Update display
+                m_context->Redisplay(workpiece, false);
+            }
+        }
+
+        m_isFlipped = flipped;
+        m_context->UpdateCurrentViewer();
+        
+        qDebug() << "WorkpieceManager: Workpiece orientation" << (flipped ? "flipped" : "restored");
+        return true;
+
+    } catch (const std::exception& e) {
+        emit errorOccurred(QString("Failed to flip workpiece orientation: %1").arg(e.what()));
+        return false;
+    }
+}
+
+bool WorkpieceManager::positionWorkpieceAlongAxis(double distance)
+{
+    if (m_context.IsNull() || m_workpieces.isEmpty()) {
+        emit errorOccurred("No workpieces available for positioning");
+        return false;
+    }
+
+    try {
+        // Calculate the translation vector along the main cylinder axis
+        gp_Vec translationVector = gp_Vec(m_mainCylinderAxis.Direction()) * (distance - m_positionOffset);
+
+        // Create transformation matrix for translation
+        gp_Trsf transformation;
+        transformation.SetTranslation(translationVector);
+
+        // Apply transformation to all workpieces
+        for (Handle(AIS_Shape) workpiece : m_workpieces) {
+            if (!workpiece.IsNull()) {
+                // Get current transformation and combine with new translation
+                gp_Trsf currentTransform = workpiece->LocalTransformation();
+                gp_Trsf newTransform = transformation * currentTransform;
+                workpiece->SetLocalTransformation(newTransform);
+                
+                // Update display
+                m_context->Redisplay(workpiece, false);
+            }
+        }
+
+        m_positionOffset = distance;
+        m_context->UpdateCurrentViewer();
+        
+        qDebug() << "WorkpieceManager: Workpiece positioned at offset" << distance << "mm";
+        return true;
+
+    } catch (const std::exception& e) {
+        emit errorOccurred(QString("Failed to position workpiece: %1").arg(e.what()));
+        return false;
+    }
 } 

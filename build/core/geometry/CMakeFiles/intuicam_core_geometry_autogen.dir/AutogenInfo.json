@@ -13,7 +13,21 @@
 	"CROSS_CONFIG" : false,
 	"DEP_FILE" : "",
 	"DEP_FILE_RULE_NAME" : "",
-	"HEADERS" : [],
+	"HEADERS" : 
+	[
+		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/geometry/include/IntuiCAM/Geometry/StepLoader.h",
+			"MU",
+			"42QCFZUT5Y/moc_StepLoader.cpp",
+			null
+		],
+		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/geometry/include/IntuiCAM/Geometry/Types.h",
+			"MU",
+			"42QCFZUT5Y/moc_Types.cpp",
+			null
+		]
+	],
 	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
 	"INCLUDE_DIR" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/core/geometry/intuicam_core_geometry_autogen/include",
 	"INCLUDE_DIR_Debug" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/core/geometry/intuicam_core_geometry_autogen/include_Debug",
@@ -205,6 +219,16 @@
 	"SETTINGS_FILE_Release" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/core/geometry/CMakeFiles/intuicam_core_geometry_autogen.dir/AutogenUsed_Release.txt",
 	"SOURCES" : 
 	[
+		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/geometry/src/StepLoader.cpp",
+			"MU",
+			null
+		],
+		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/geometry/src/Types.cpp",
+			"MU",
+			null
+		],
 		[
 			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/geometry/src/placeholder.cpp",
 			"MU",

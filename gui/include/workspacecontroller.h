@@ -114,6 +114,43 @@ public:
      */
     bool isChuckLoaded() const;
 
+    /**
+     * @brief Update raw material diameter with current workpiece and axis
+     * @param diameter New raw material diameter in mm
+     * @return True if update was successful
+     */
+    bool updateRawMaterialDiameter(double diameter);
+
+    /**
+     * @brief Update distance to chuck (workpiece positioning)
+     * @param distance Distance from chuck face in mm
+     * @return True if update was successful
+     */
+    bool updateDistanceToChuck(double distance);
+
+    /**
+     * @brief Flip the workpiece orientation
+     * @param flipped True to flip orientation, false to restore
+     * @return True if flip was successful
+     */
+    bool flipWorkpieceOrientation(bool flipped);
+
+    /**
+     * @brief Apply all current part loading settings from the panel
+     * @param distance Distance to chuck
+     * @param diameter Raw material diameter
+     * @param flipped Orientation flipped state
+     * @param cylinderIndex Selected cylinder index
+     * @return True if all settings applied successfully
+     */
+    bool applyPartLoadingSettings(double distance, double diameter, bool flipped, int cylinderIndex);
+
+    /**
+     * @brief Reprocess the current workpiece workflow from the beginning
+     * @return True if reprocessing was successful
+     */
+    bool reprocessCurrentWorkpiece();
+
     // Manager access for UI components (read-only interface)
     ChuckManager* getChuckManager() const { return m_chuckManager; }
     WorkpieceManager* getWorkpieceManager() const { return m_workpieceManager; }
@@ -211,6 +248,7 @@ private:
     
     // State
     bool m_initialized;
+    TopoDS_Shape m_currentWorkpiece; // Store original workpiece for re-processing
     
     /**
      * @brief Set up signal connections between managers

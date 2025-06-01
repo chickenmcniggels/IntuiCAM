@@ -28,7 +28,8 @@ const QVector<double> RawMaterialManager::STANDARD_DIAMETERS = {
 
 RawMaterialManager::RawMaterialManager(QObject *parent)
     : QObject(parent)
-    , m_rawMaterialTransparency(0.7)
+    , m_rawMaterialTransparency(0.6)
+    , m_currentDiameter(0.0)
 {
 }
 
@@ -63,6 +64,9 @@ void RawMaterialManager::displayRawMaterial(double diameter, double length, cons
         
         // Display the raw material
         m_context->Display(m_rawMaterialAIS, AIS_Shaded, 0, false);
+        
+        // Store the current diameter
+        m_currentDiameter = diameter;
         
         emit rawMaterialCreated(diameter, length);
         qDebug() << "Raw material displayed - Diameter:" << diameter << "mm, Length:" << length << "mm";
@@ -101,6 +105,9 @@ void RawMaterialManager::displayRawMaterialForWorkpiece(double diameter, const T
         // Display the raw material
         m_context->Display(m_rawMaterialAIS, AIS_Shaded, 0, false);
         
+        // Store the current diameter
+        m_currentDiameter = diameter;
+        
         emit rawMaterialCreated(diameter, length);
         qDebug() << "Raw material displayed for workpiece - Diameter:" << diameter << "mm, Length:" << length << "mm";
     } else {
@@ -126,13 +133,15 @@ void RawMaterialManager::clearRawMaterial()
         return;
     }
     
-    // Remove raw material
     if (!m_rawMaterialAIS.IsNull()) {
         m_context->Remove(m_rawMaterialAIS, false);
         m_rawMaterialAIS.Nullify();
+        m_context->UpdateCurrentViewer();
     }
     
-    m_currentRawMaterial = TopoDS_Shape();
+    // Reset current diameter
+    m_currentDiameter = 0.0;
+    
     qDebug() << "Raw material cleared";
 }
 
@@ -241,13 +250,15 @@ double RawMaterialManager::calculateOptimalLength(const TopoDS_Shape& workpiece,
         
         double workpieceLength = maxProjection - minProjection;
         
-        // Add 20% extra length (10% on each end) for machining allowance
-        double rawMaterialLength = workpieceLength * 1.2;
+        // Add proper machining allowance (10% on each end, minimum 5mm each)
+        double allowance = std::max(workpieceLength * 0.1, 5.0);
+        double rawMaterialLength = workpieceLength + 2 * allowance;
         
-        // Ensure minimum length of 10mm
-        rawMaterialLength = std::max(rawMaterialLength, 10.0);
+        // Ensure minimum length of 20mm (10mm workpiece + 5mm each end)
+        rawMaterialLength = std::max(rawMaterialLength, 20.0);
         
-        qDebug() << "Calculated raw material length:" << rawMaterialLength << "mm for workpiece length:" << workpieceLength << "mm";
+        qDebug() << "Calculated raw material length:" << rawMaterialLength << "mm for workpiece length:" << workpieceLength << "mm"
+                 << "with allowance:" << allowance << "mm per end";
         
         return rawMaterialLength;
         
@@ -266,31 +277,59 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, dou
         Bnd_Box bbox;
         BRepBndLib::Add(workpiece, bbox);
         
-        gp_Pnt cylinderCenter;
+        gp_Pnt cylinderStartPoint;
         if (!bbox.IsVoid()) {
-            // Calculate the center of the raw material cylinder along the axis
+            // Calculate the proper positioning along the axis
             double xmin, ymin, zmin, xmax, ymax, zmax;
             bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
             
             gp_Dir axisDir = axis.Direction();
             gp_Pnt axisLoc = axis.Location();
             
-            // Project bounding box center onto the axis
-            gp_Pnt bboxCenter((xmin + xmax) / 2.0, (ymin + ymax) / 2.0, (zmin + zmax) / 2.0);
-            gp_Vec toBboxCenter(axisLoc, bboxCenter);
-            double projection = toBboxCenter.Dot(axisDir);
+            // Project all bounding box corners onto the axis to find the true extent
+            double minProjection = std::numeric_limits<double>::max();
+            double maxProjection = std::numeric_limits<double>::lowest();
             
-            // Position cylinder center so that it encompasses the workpiece
-            cylinderCenter = axisLoc.Translated(gp_Vec(axisDir) * (projection - length / 2.0));
+            // Check all 8 corners of the bounding box
+            gp_Pnt corners[8] = {
+                gp_Pnt(xmin, ymin, zmin), gp_Pnt(xmax, ymin, zmin),
+                gp_Pnt(xmin, ymax, zmin), gp_Pnt(xmax, ymax, zmin),
+                gp_Pnt(xmin, ymin, zmax), gp_Pnt(xmax, ymin, zmax),
+                gp_Pnt(xmin, ymax, zmax), gp_Pnt(xmax, ymax, zmax)
+            };
+            
+            for (int i = 0; i < 8; i++) {
+                gp_Vec toCorner(axisLoc, corners[i]);
+                double projection = toCorner.Dot(axisDir);
+                minProjection = std::min(minProjection, projection);
+                maxProjection = std::max(maxProjection, projection);
+            }
+            
+            // Add machining allowance (10% on each end, minimum 5mm each)
+            double allowance = std::max((maxProjection - minProjection) * 0.1, 5.0);
+            
+            // For lathe operations, we want the raw material to start from the chuck 
+            // (minProjection - allowance) and extend to the rightmost part (maxProjection + allowance)
+            // The cylinder should start at the leftmost position (closest to chuck)
+            cylinderStartPoint = axisLoc.Translated(gp_Vec(axisDir) * (minProjection - allowance));
+            
+            // Update the length to match the actual needed length with allowances
+            length = (maxProjection - minProjection) + 2 * allowance;
+            
+            qDebug() << "Raw material positioned from" << (minProjection - allowance) 
+                     << "to" << (maxProjection + allowance) << "along axis";
+            qDebug() << "Workpiece extent:" << minProjection << "to" << maxProjection;
+            qDebug() << "Raw material length:" << length << "mm with allowance:" << allowance << "mm";
         } else {
             // Fallback to axis location if no valid bounds
-            cylinderCenter = axis.Location().Translated(gp_Vec(axis.Direction()) * (-length / 2.0));
+            cylinderStartPoint = axis.Location().Translated(gp_Vec(axis.Direction()) * (-length / 2.0));
+            qDebug() << "Using fallback positioning - no valid workpiece bounds";
         }
         
-        // Create coordinate system for the cylinder
-        gp_Ax2 cylinderAx2(cylinderCenter, axis.Direction());
+        // Create coordinate system for the cylinder starting at the calculated position
+        gp_Ax2 cylinderAx2(cylinderStartPoint, axis.Direction());
         
-        // Create cylinder
+        // Create cylinder starting from the calculated start point
         BRepPrimAPI_MakeCylinder cylinderMaker(cylinderAx2, radius, length);
         TopoDS_Shape cylinder = cylinderMaker.Shape();
         

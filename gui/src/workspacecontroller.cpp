@@ -105,6 +105,9 @@ void WorkspaceController::clearWorkpieces()
     m_workpieceManager->clearWorkpieces();
     m_rawMaterialManager->clearRawMaterial();
     
+    // Clear stored workpiece
+    m_currentWorkpiece = TopoDS_Shape();
+    
     qDebug() << "WorkspaceController: Workpieces cleared";
 }
 
@@ -119,6 +122,9 @@ void WorkspaceController::clearWorkspace()
     m_chuckManager->clearChuck();
     m_workpieceManager->clearWorkpieces();
     m_rawMaterialManager->clearRawMaterial();
+    
+    // Clear stored workpiece
+    m_currentWorkpiece = TopoDS_Shape();
     
     emit workspaceCleared();
     qDebug() << "WorkspaceController: Workspace cleared completely";
@@ -167,6 +173,9 @@ void WorkspaceController::setupManagerConnections()
 
 void WorkspaceController::executeWorkpieceWorkflow(const TopoDS_Shape& workpiece)
 {
+    // Store the original workpiece shape for later re-processing
+    m_currentWorkpiece = workpiece;
+    
     // Step 1: Add workpiece to scene
     bool workpieceAdded = m_workpieceManager->addWorkpiece(workpiece);
     if (!workpieceAdded) {
@@ -339,4 +348,238 @@ void WorkspaceController::handleCylinderDetected(double diameter, double length,
     Q_UNUSED(axis) // Axis information is handled in the main workflow
     qDebug() << "WorkspaceController: Cylinder detected - diameter:" << diameter 
              << "mm, estimated length:" << length << "mm";
+}
+
+bool WorkspaceController::updateRawMaterialDiameter(double diameter)
+{
+    if (!m_initialized) {
+        emit errorOccurred("WorkspaceController", "Workspace not initialized");
+        return false;
+    }
+
+    if (diameter <= 0.0) {
+        emit errorOccurred("WorkspaceController", "Invalid diameter specified");
+        return false;
+    }
+
+    // Get current workpiece and axis information
+    QVector<Handle(AIS_Shape)> workpieces = m_workpieceManager->getWorkpieces();
+    if (workpieces.isEmpty()) {
+        emit errorOccurred("WorkspaceController", "No workpiece loaded");
+        return false;
+    }
+
+    try {
+        // Get current axis from workpiece manager
+        gp_Ax1 currentAxis = m_workpieceManager->getMainCylinderAxis();
+        
+        // Store current workpiece shape (we need to get it from the original shape)
+        // For now, we'll use the current axis and regenerate the raw material
+        
+        // Clear existing raw material
+        m_rawMaterialManager->clearRawMaterial();
+        
+        // Apply chuck alignment if available
+        gp_Ax1 alignmentAxis = currentAxis;
+        if (m_chuckManager->hasValidCenterline()) {
+            alignmentAxis = alignWorkpieceWithChuckCenterline(currentAxis);
+        }
+        
+        // Use the stored workpiece shape for proper re-processing
+        if (!m_currentWorkpiece.IsNull()) {
+            m_rawMaterialManager->displayRawMaterialForWorkpiece(diameter, m_currentWorkpiece, alignmentAxis);
+        } else {
+            // Fallback: create with estimated length if no workpiece stored
+            double estimatedLength = 100.0; // Default length - should be calculated properly
+            m_rawMaterialManager->displayRawMaterial(diameter, estimatedLength, alignmentAxis);
+        }
+        
+        qDebug() << "WorkspaceController: Raw material diameter updated to" << diameter << "mm";
+        return true;
+        
+    } catch (const std::exception& e) {
+        QString errorMsg = QString("Failed to update raw material diameter: %1").arg(e.what());
+        emit errorOccurred("WorkspaceController", errorMsg);
+        return false;
+    }
+}
+
+bool WorkspaceController::updateDistanceToChuck(double distance)
+{
+    if (!m_initialized) {
+        emit errorOccurred("WorkspaceController", "Workspace not initialized");
+        return false;
+    }
+
+    if (!m_chuckManager->hasValidCenterline()) {
+        qDebug() << "WorkspaceController: No chuck centerline available for distance adjustment";
+        // This is not an error - just means chuck positioning isn't applicable
+        return true;
+    }
+
+    try {
+        // Use WorkpieceManager's positioning capabilities
+        bool success = m_workpieceManager->positionWorkpieceAlongAxis(distance);
+        
+        if (success) {
+            // Regenerate raw material to match the new workpiece position
+            if (!m_currentWorkpiece.IsNull()) {
+                // Get current settings
+                gp_Ax1 currentAxis = m_workpieceManager->getMainCylinderAxis();
+                double currentDiameter = m_rawMaterialManager->getCurrentDiameter();
+                
+                // Apply chuck alignment if available
+                gp_Ax1 alignmentAxis = currentAxis;
+                if (m_chuckManager->hasValidCenterline()) {
+                    alignmentAxis = alignWorkpieceWithChuckCenterline(currentAxis);
+                }
+                
+                // Clear and regenerate raw material
+                m_rawMaterialManager->clearRawMaterial();
+                m_rawMaterialManager->displayRawMaterialForWorkpiece(currentDiameter, m_currentWorkpiece, alignmentAxis);
+            }
+            
+            qDebug() << "WorkspaceController: Distance to chuck set to" << distance << "mm and raw material updated";
+        }
+        
+        return success;
+        
+    } catch (const std::exception& e) {
+        QString errorMsg = QString("Failed to update distance to chuck: %1").arg(e.what());
+        emit errorOccurred("WorkspaceController", errorMsg);
+        return false;
+    }
+}
+
+bool WorkspaceController::flipWorkpieceOrientation(bool flipped)
+{
+    if (!m_initialized) {
+        emit errorOccurred("WorkspaceController", "Workspace not initialized");
+        return false;
+    }
+
+    QVector<Handle(AIS_Shape)> workpieces = m_workpieceManager->getWorkpieces();
+    if (workpieces.isEmpty()) {
+        emit errorOccurred("WorkspaceController", "No workpiece loaded");
+        return false;
+    }
+
+    try {
+        // Use WorkpieceManager's transformation capabilities
+        bool success = m_workpieceManager->flipWorkpieceOrientation(flipped);
+        
+        if (success) {
+            // Regenerate raw material to match the new workpiece orientation
+            if (!m_currentWorkpiece.IsNull()) {
+                // Get current settings
+                gp_Ax1 currentAxis = m_workpieceManager->getMainCylinderAxis();
+                double currentDiameter = m_rawMaterialManager->getCurrentDiameter();
+                
+                // Apply chuck alignment if available
+                gp_Ax1 alignmentAxis = currentAxis;
+                if (m_chuckManager->hasValidCenterline()) {
+                    alignmentAxis = alignWorkpieceWithChuckCenterline(currentAxis);
+                }
+                
+                // Clear and regenerate raw material
+                m_rawMaterialManager->clearRawMaterial();
+                m_rawMaterialManager->displayRawMaterialForWorkpiece(currentDiameter, m_currentWorkpiece, alignmentAxis);
+            }
+            
+            qDebug() << "WorkspaceController: Workpiece orientation" << (flipped ? "flipped" : "restored") << "and raw material updated";
+        }
+        
+        return success;
+        
+    } catch (const std::exception& e) {
+        QString errorMsg = QString("Failed to flip workpiece orientation: %1").arg(e.what());
+        emit errorOccurred("WorkspaceController", errorMsg);
+        return false;
+    }
+}
+
+bool WorkspaceController::applyPartLoadingSettings(double distance, double diameter, bool flipped, int cylinderIndex)
+{
+    if (!m_initialized) {
+        emit errorOccurred("WorkspaceController", "Workspace not initialized");
+        return false;
+    }
+
+    bool allSuccessful = true;
+
+    try {
+        // Apply cylinder selection first if changed
+        if (cylinderIndex >= 0) {
+            bool cylinderSuccess = selectWorkpieceCylinderAxis(cylinderIndex);
+            if (!cylinderSuccess) {
+                qDebug() << "WorkspaceController: Failed to apply cylinder selection, continuing with other settings";
+                allSuccessful = false;
+            }
+        }
+
+        // Apply diameter change
+        bool diameterSuccess = updateRawMaterialDiameter(diameter);
+        if (!diameterSuccess) {
+            qDebug() << "WorkspaceController: Failed to apply diameter change";
+            allSuccessful = false;
+        }
+
+        // Apply distance change
+        bool distanceSuccess = updateDistanceToChuck(distance);
+        if (!distanceSuccess) {
+            qDebug() << "WorkspaceController: Failed to apply distance change";
+            allSuccessful = false;
+        }
+
+        // Apply orientation flip
+        bool orientationSuccess = flipWorkpieceOrientation(flipped);
+        if (!orientationSuccess) {
+            qDebug() << "WorkspaceController: Failed to apply orientation flip";
+            allSuccessful = false;
+        }
+
+        if (allSuccessful) {
+            qDebug() << "WorkspaceController: All part loading settings applied successfully";
+        } else {
+            qDebug() << "WorkspaceController: Some part loading settings failed to apply";
+        }
+
+        return allSuccessful;
+
+    } catch (const std::exception& e) {
+        QString errorMsg = QString("Failed to apply part loading settings: %1").arg(e.what());
+        emit errorOccurred("WorkspaceController", errorMsg);
+        return false;
+    }
+}
+
+bool WorkspaceController::reprocessCurrentWorkpiece()
+{
+    if (!m_initialized) {
+        emit errorOccurred("WorkspaceController", "Workspace not initialized");
+        return false;
+    }
+
+    if (m_currentWorkpiece.IsNull()) {
+        emit errorOccurred("WorkspaceController", "No workpiece available for reprocessing");
+        return false;
+    }
+
+    try {
+        qDebug() << "WorkspaceController: Starting workpiece reprocessing";
+        
+        // Clear existing workpieces and raw material while preserving chuck
+        clearWorkpieces();
+        
+        // Reprocess the stored workpiece through the complete workflow
+        executeWorkpieceWorkflow(m_currentWorkpiece);
+        
+        qDebug() << "WorkspaceController: Workpiece reprocessing completed successfully";
+        return true;
+        
+    } catch (const std::exception& e) {
+        QString errorMsg = QString("Failed to reprocess workpiece: %1").arg(e.what());
+        emit errorOccurred("WorkspaceController", errorMsg);
+        return false;
+    }
 } 

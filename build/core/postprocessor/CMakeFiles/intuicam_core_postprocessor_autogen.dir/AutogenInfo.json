@@ -13,7 +13,15 @@
 	"CROSS_CONFIG" : false,
 	"DEP_FILE" : "",
 	"DEP_FILE_RULE_NAME" : "",
-	"HEADERS" : [],
+	"HEADERS" : 
+	[
+		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/postprocessor/include/IntuiCAM/PostProcessor/Types.h",
+			"MU",
+			"WQ27VPEO4N/moc_Types.cpp",
+			null
+		]
+	],
 	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
 	"INCLUDE_DIR" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/core/postprocessor/intuicam_core_postprocessor_autogen/include",
 	"INCLUDE_DIR_Debug" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/core/postprocessor/intuicam_core_postprocessor_autogen/include_Debug",
@@ -110,6 +118,7 @@
 		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/postprocessor/src",
 		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/common/include",
 		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/toolpath/include",
+		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/geometry/include",
 		"C:/OpenCASCADE/occt-vc144-64-with-debug/inc",
 		"C:/OpenCASCADE/3rdparty-vc14-64/vtk-9.4.1-x64/include/vtk-9.4",
 		"C:/OpenCASCADE/3rdparty-vc14-64/vtk-9.4.1-x64/include/vtk-9.4/token",
@@ -126,6 +135,7 @@
 		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/postprocessor/src",
 		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/common/include",
 		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/toolpath/include",
+		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/geometry/include",
 		"C:/OpenCASCADE/occt-vc144-64-with-debug/inc",
 		"C:/OpenCASCADE/3rdparty-vc14-64/vtk-9.4.1-x64/include/vtk-9.4",
 		"C:/OpenCASCADE/3rdparty-vc14-64/vtk-9.4.1-x64/include/vtk-9.4/token",
@@ -142,6 +152,7 @@
 		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/postprocessor/src",
 		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/common/include",
 		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/toolpath/include",
+		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/geometry/include",
 		"C:/OpenCASCADE/occt-vc144-64-with-debug/inc",
 		"C:/OpenCASCADE/3rdparty-vc14-64/vtk-9.4.1-x64/include/vtk-9.4",
 		"C:/OpenCASCADE/3rdparty-vc14-64/vtk-9.4.1-x64/include/vtk-9.4/token",
@@ -158,6 +169,7 @@
 		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/postprocessor/src",
 		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/common/include",
 		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/toolpath/include",
+		"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/geometry/include",
 		"C:/OpenCASCADE/occt-vc144-64-with-debug/inc",
 		"C:/OpenCASCADE/3rdparty-vc14-64/vtk-9.4.1-x64/include/vtk-9.4",
 		"C:/OpenCASCADE/3rdparty-vc14-64/vtk-9.4.1-x64/include/vtk-9.4/token",
@@ -209,6 +221,11 @@
 	"SETTINGS_FILE_Release" : "C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/build/core/postprocessor/CMakeFiles/intuicam_core_postprocessor_autogen.dir/AutogenUsed_Release.txt",
 	"SOURCES" : 
 	[
+		[
+			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/postprocessor/src/Types.cpp",
+			"MU",
+			null
+		],
 		[
 			"C:/Users/nikla/OneDrive/lathe_ecosystem/cam/IntuiCAM/core/postprocessor/src/placeholder.cpp",
 			"MU",

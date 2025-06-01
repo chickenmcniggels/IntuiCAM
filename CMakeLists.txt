@@ -88,6 +88,22 @@ if(INTUICAM_BUILD_CLI)
     add_subdirectory(cli)
 endif()
 
+# Add plugins directory
+add_subdirectory(plugins)
+
+# Add examples directory
+add_subdirectory(examples)
+
+# Add tests if enabled
+if(INTUICAM_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+
+# Add Python bindings if enabled
+if(INTUICAM_BUILD_PYTHON)
+    add_subdirectory(core/python)
+endif()
 
 # The individual module CMakeLists.txt files will handle target linking
 # This section is kept minimal as targets are properly configured in their respective subdirectories

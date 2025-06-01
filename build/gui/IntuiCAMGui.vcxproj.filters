@@ -28,7 +28,7 @@
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\src\workspacecontroller.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\src\cylinderselectiondialog.cpp">
+    <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\src\partloadingpanel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\gui\IntuiCAMGui_autogen\3YJK5W5UP7_Debug\qrc_resources.cpp">
@@ -78,7 +78,7 @@
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\include\workspacecontroller.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\include\cylinderselectiondialog.h">
+    <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\gui\include\partloadingpanel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="C:\Users\nikla\OneDrive\lathe_ecosystem\cam\IntuiCAM\build\gui\IntuiCAMGui_autogen\include_Debug\resources\ui_mainwindow.h">

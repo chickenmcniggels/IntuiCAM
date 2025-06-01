@@ -1,0 +1,63 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"examples/custom_postprocessor/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 21,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 26,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "examples/custom_postprocessor",
+			"paths" : 
+			[
+				"examples/custom_postprocessor/MinSizeRel/custom_postprocessor_example.exe"
+			],
+			"targetId" : "custom_postprocessor_example::@4f853df32f285a817080",
+			"targetIndex" : 5,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "examples/custom_postprocessor/src",
+			"isOptional" : true,
+			"paths" : 
+			[
+				"examples/custom_postprocessor/custom_postprocessor.cpp",
+				"examples/custom_postprocessor/custom_postprocessor.h"
+			],
+			"type" : "file"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "examples/custom_postprocessor",
+		"source" : "examples/custom_postprocessor"
+	}
+}
