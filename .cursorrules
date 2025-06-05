@@ -1,0 +1,164 @@
+# IntuiCAM Cursor Rules
+# Professional CAM Application Development Guidelines
+
+## Project Overview
+You are working on **IntuiCAM**, a professional CAM (Computer-Aided Manufacturing) application for CNC turning operations. This is a C++17/20 desktop application with Qt 6 GUI, OpenCASCADE geometry processing, and modular architecture.
+
+## Core Technologies & Architecture
+
+### Primary Stack
+- **Language**: Modern C++17/20 with RAII and smart pointers
+- **GUI Framework**: Qt 6.2+ (tested with 6.9.0) with OpenGL and OpenGLWidgets
+- **Geometry Engine**: OpenCASCADE 7.6.0+ (OCCT with reorganized library names)
+- **3D Visualization**: VTK 9.4+ integrated with OpenCASCADE AIS
+- **Build System**: CMake 3.16+ with automated dependency management
+- **Testing**: GoogleTest for core, Qt Test for GUI components
+- **Python Bindings**: pybind11 2.9.0+ for scripting and automation
+
+### Project Structure
+```
+IntuiCAM/
+├── core/                    # Modular C++ libraries
+│   ├── common/             # Shared types and utilities
+│   ├── geometry/           # STEP import, B-Rep handling (OpenCASCADE)
+│   ├── toolpath/           # CAM algorithms (facing, roughing, finishing, parting)
+│   ├── postprocessor/      # G-code generation and machine adaptations
+│   ├── simulation/         # Material removal simulation
+│   └── python/             # pybind11 bindings for all modules
+├── gui/                    # Qt 6 frontend with MVC architecture
+├── cli/                    # Command-line interface
+├── docs/                   # Comprehensive documentation
+├── tests/                  # Integration and end-to-end tests
+└── examples/               # Sample projects and demos
+```
+
+## Coding Standards & Style
+
+### C++ Guidelines
+- **Modern C++**: Use C++17/20 features, RAII, smart pointers
+- **Memory Management**: Avoid raw owning pointers, prefer `std::unique_ptr`, `std::shared_ptr`
+- **Naming Conventions**:
+  - Classes: `CamelCase` (e.g., `WorkspaceController`, `ChuckManager`)
+  - Methods/Variables: `snake_case` (e.g., `load_step_file`, `cylinder_diameter`)
+  - Namespaces: `IntuiCAM::<Module>` (e.g., `IntuiCAM::Geometry`)
+- **Formatting**: 2-space indent, max 100 characters per line, braces on same line
+- **Documentation**: Doxygen comments for all public APIs
+
+### Qt-Specific Patterns
+- **Architecture**: Model-View-Controller (MVC) with clear separation
+- **Signals & Slots**: Use modern connect syntax with lambdas where appropriate
+- **Resource Management**: Use Qt's parent-child ownership model
+- **UI**: Separate business logic from UI components for testability
+
+### OpenCASCADE Integration
+- **Library Names**: Use updated OCCT library names:
+  - `TKDESTEP` (not `TKSTEP`) for STEP files
+  - `TKDEIGES` (not `TKIGES`) for IGES files
+  - `TKDESTL` (not `TKSTL`) for STL files
+- **Memory Management**: Use OpenCASCADE handles (`Handle_`) appropriately
+- **Error Handling**: Check for successful operations and handle geometry errors gracefully
+
+## Architecture Principles
+
+### Modular Design
+- **Single Responsibility**: Each component has one clear purpose
+- **Dependency Injection**: Use interfaces for loose coupling (e.g., `IStepLoader`)
+- **Manager Pattern**: Specialized managers for domain functionality:
+  - `WorkspaceController`: Top-level business logic coordinator
+  - `ChuckManager`: Chuck-specific functionality
+  - `WorkpieceManager`: Workpiece analysis and display
+  - `RawMaterialManager`: Raw material sizing and visualization
+  - `OpenGL3DWidget`: Pure 3D visualization component
+
+### Component Responsibilities
+- **Core Libraries**: Platform-independent CAM algorithms and geometry processing
+- **GUI Controllers**: Coordinate between UI and core libraries, handle workflows
+- **Managers**: Domain-specific functionality with clear interfaces
+- **Widgets**: Pure UI components with minimal business logic
+
+## Feature Implementation Guidelines
+
+### When Adding New Features
+1. **Reference Documentation**: Always check official docs first:
+   - Qt Documentation for GUI components
+   - OpenCASCADE Documentation for geometry operations
+   - Project architecture.md for design patterns
+
+2. **Follow Modular Architecture**:
+   - Core functionality goes in appropriate `core/` module
+   - GUI coordination in controllers and managers
+   - UI components remain focused on presentation
+
+3. **Maintain Compatibility**:
+   - Qt 6.2+ with OpenGL components
+   - OpenCASCADE 7.6.0+ with new library names
+   - C++17 standard compliance
+
+### Testing Requirements
+- **Core Libraries**: 90%+ test coverage for algorithms, 70%+ for utilities
+- **GUI Components**: Focus on critical workflows and user interactions
+- **Test Structure**: GoogleTest for core, Qt Test for GUI
+- **Integration Tests**: End-to-end workflow validation
+
+### CAM-Specific Considerations
+- **Operations**: Implement facing, roughing, finishing, and parting operations
+- **Geometry**: Handle STEP file import with B-Rep accuracy
+- **Toolpaths**: Generate reliable, optimized toolpaths for CNC turning
+- **G-code**: Produce ISO-compliant output with post-processor flexibility
+- **Visualization**: Provide real-time 3D preview with chuck and workpiece display
+
+## Code Quality & Practices
+
+### Error Handling
+- Use exceptions for exceptional cases, return values for expected failures
+- Provide meaningful error messages for user-facing operations
+- Log detailed information for debugging and support
+
+### Performance
+- Optimize geometry operations for large STEP files
+- Efficient 3D rendering with proper OpenGL context management
+- Background processing for compute-intensive CAM operations
+
+### Documentation
+- Update relevant documentation when adding features
+- Include code comments explaining CAM-specific algorithms
+- Maintain API documentation for core libraries
+
+## Build & Deployment
+
+### CMake Configuration
+- Use modular CMakeLists.txt files for each component
+- Automated DLL copying for Windows runtime dependencies
+- Support for optional components (GUI, CLI, Python bindings, tests)
+
+### Dependencies
+- Automated dependency resolution where possible
+- Clear documentation for manual dependency installation
+- Version constraints to ensure compatibility
+
+### Packaging
+- Professional installer generation via CPack
+- Include all required runtime dependencies
+- Support for both development and end-user deployments
+
+## AI Development Guidelines
+
+### Code Generation Principles
+- Always implement complete, functional features - no lazy partial implementations
+- Follow the established architecture patterns and component responsibilities
+- Use dependency injection and manager patterns for new functionality
+- Ensure all generated code includes appropriate tests
+
+### Integration Focus
+- Leverage OpenCASCADE for geometry operations
+- Use Qt's MVC patterns for GUI components
+- Follow the workspace management system for new workflows
+- Integrate with existing chuck and material management systems
+
+### Quality Assurance
+- Generated code must compile and run immediately
+- Include proper error handling and user feedback
+- Follow the project's memory management patterns
+- Maintain backwards compatibility within major versions
+
+Remember: IntuiCAM is a professional CAM application requiring high reliability, performance, and user experience. All implementations should reflect this quality standard. 
