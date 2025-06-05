@@ -66,6 +66,9 @@ void RawMaterialManager::displayRawMaterial(double diameter, double length, cons
         // Display the raw material
         m_context->Display(m_rawMaterialAIS, AIS_Shaded, 0, false);
         
+        // Force immediate context update for real-time feedback
+        m_context->UpdateCurrentViewer();
+        
         // Store the current diameter
         m_currentDiameter = diameter;
         
@@ -106,6 +109,9 @@ void RawMaterialManager::displayRawMaterialForWorkpiece(double diameter, const T
         // Display the raw material
         m_context->Display(m_rawMaterialAIS, AIS_Shaded, 0, false);
         
+        // Force immediate context update for real-time feedback
+        m_context->UpdateCurrentViewer();
+        
         // Store the current diameter
         m_currentDiameter = diameter;
         
@@ -137,8 +143,8 @@ void RawMaterialManager::clearRawMaterial()
     if (!m_rawMaterialAIS.IsNull()) {
         m_context->Remove(m_rawMaterialAIS, false);
         m_rawMaterialAIS.Nullify();
-        // Don't call UpdateCurrentViewer here - let the calling method handle updates
-        // to prevent unnecessary full refreshes that can cause black screens
+        // Force immediate update after removing raw material for real-time feedback
+        m_context->UpdateCurrentViewer();
     }
     
     // Reset current diameter
@@ -253,18 +259,26 @@ double RawMaterialManager::calculateOptimalLength(const TopoDS_Shape& workpiece,
         double workpieceLength = maxProjection - minProjection;
         
         // For lathe operations, ensure raw material:
-        // 1. Includes the full part in Z+ direction (+ small allowance)
-        // 2. Extends 50mm in Z- direction into the chuck
-        double chuckExtension = 50.0; // mm extension into chuck
-        double partAllowance = 5.0;   // mm allowance beyond the part
+        // 1. Always extends exactly 50mm in -Z direction (into chuck) from Z=0
+        // 2. Includes extra stock to the right of the part for facing operations
+        double chuckExtension = 50.0;     // Fixed 50mm extension into chuck
+        double facingAllowance = 10.0;    // Extra stock for facing operations (right side)
         
-        double rawMaterialLength = workpieceLength + chuckExtension + partAllowance;
+        // Chuck face is at Z=0, calculate total length needed
+        double chuckFacePosition = 0.0;   // Chuck face at Z=0
+        double rawMaterialStart = chuckFacePosition - chuckExtension;  // Always at Z=-50
+        double rawMaterialEnd = maxProjection + facingAllowance;
         
-        // Ensure minimum length of 60mm (5mm part + 50mm chuck + 5mm allowance)
-        rawMaterialLength = std::max(rawMaterialLength, 60.0);
+        // Ensure raw material extends far enough to cover the part
+        rawMaterialEnd = std::max(rawMaterialEnd, chuckFacePosition + 20.0); // Minimum 20mm past chuck face
+        
+        double rawMaterialLength = rawMaterialEnd - rawMaterialStart;
+        
+        // Ensure minimum length of 70mm (50mm chuck + 20mm minimum working length)
+        rawMaterialLength = std::max(rawMaterialLength, 70.0);
         
         qDebug() << "Calculated raw material length:" << rawMaterialLength << "mm for workpiece length:" << workpieceLength << "mm"
-                 << "with chuck extension:" << chuckExtension << "mm and part allowance:" << partAllowance << "mm";
+                 << "from chuck face at" << chuckFacePosition << "mm with chuck extension:" << chuckExtension << "mm and facing allowance:" << facingAllowance << "mm";
         
         return rawMaterialLength;
         
@@ -326,18 +340,26 @@ double RawMaterialManager::calculateOptimalLengthWithTransform(const TopoDS_Shap
         double workpieceLength = maxProjection - minProjection;
         
         // For lathe operations, ensure raw material:
-        // 1. Includes the full part in Z+ direction (+ small allowance)
-        // 2. Extends 50mm in Z- direction into the chuck
-        double chuckExtension = 50.0; // mm extension into chuck
-        double partAllowance = 5.0;   // mm allowance beyond the part
+        // 1. Always extends exactly 50mm in -Z direction (into chuck) from Z=0
+        // 2. Includes extra stock to the right of the part for facing operations
+        double chuckExtension = 50.0;     // Fixed 50mm extension into chuck
+        double facingAllowance = 10.0;    // Extra stock for facing operations (right side)
         
-        double rawMaterialLength = workpieceLength + chuckExtension + partAllowance;
+        // Chuck face is at Z=0, calculate total length needed
+        double chuckFacePosition = 0.0;   // Chuck face at Z=0
+        double rawMaterialStart = chuckFacePosition - chuckExtension;  // Always at Z=-50
+        double rawMaterialEnd = maxProjection + facingAllowance;
         
-        // Ensure minimum length of 60mm (5mm part + 50mm chuck + 5mm allowance)
-        rawMaterialLength = std::max(rawMaterialLength, 60.0);
+        // Ensure raw material extends far enough to cover the part
+        rawMaterialEnd = std::max(rawMaterialEnd, chuckFacePosition + 20.0); // Minimum 20mm past chuck face
+        
+        double rawMaterialLength = rawMaterialEnd - rawMaterialStart;
+        
+        // Ensure minimum length of 70mm (50mm chuck + 20mm minimum working length)
+        rawMaterialLength = std::max(rawMaterialLength, 70.0);
         
         qDebug() << "Calculated raw material length with transform:" << rawMaterialLength << "mm for transformed workpiece length:" << workpieceLength << "mm"
-                 << "with chuck extension:" << chuckExtension << "mm and part allowance:" << partAllowance << "mm";
+                 << "from chuck face at" << chuckFacePosition << "mm with chuck extension:" << chuckExtension << "mm and facing allowance:" << facingAllowance << "mm";
         
         return rawMaterialLength;
         
@@ -385,16 +407,21 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, dou
             }
             
             // For lathe operations, ensure raw material:
-            // 1. Includes the full part in Z+ direction (maxProjection + small allowance)
-            // 2. Extends 50mm in Z- direction into the chuck (minProjection - 50mm)
-            double chuckExtension = 50.0; // mm extension into chuck
-            double partAllowance = 5.0;   // mm allowance beyond the part
+            // 1. Always extends exactly 50mm in -Z direction (into chuck) from Z=0
+            // 2. Includes extra stock to the right of the part for facing operations
+            double chuckExtension = 50.0;     // Fixed 50mm extension into chuck
+            double facingAllowance = 10.0;    // Extra stock for facing operations (right side)
             
-            // Calculate start position: extend 50mm into chuck (Z- direction)
-            double rawMaterialStart = minProjection - chuckExtension;
+            // Chuck face is at Z=0, raw material starts at Z=-50
+            double chuckFacePosition = 0.0;   // Chuck face at Z=0
+            double rawMaterialStart = chuckFacePosition - chuckExtension;  // Always at Z=-50
             
-            // Calculate end position: include full part + small allowance (Z+ direction)
-            double rawMaterialEnd = maxProjection + partAllowance;
+            // Calculate end position: include full part + facing allowance (Z+ direction)
+            double rawMaterialEnd = maxProjection + facingAllowance;
+            
+            // Ensure raw material extends far enough in Z+ to cover the part
+            // If part is positioned away from chuck, raw material must extend further
+            rawMaterialEnd = std::max(rawMaterialEnd, chuckFacePosition + 20.0); // Minimum 20mm past chuck face
             
             // Update the cylinder start point and length
             cylinderStartPoint = axisLoc.Translated(gp_Vec(axisDir) * rawMaterialStart);
@@ -402,9 +429,10 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, dou
             
             qDebug() << "Raw material positioning:";
             qDebug() << "  Part extent:" << minProjection << "to" << maxProjection << "mm";
+            qDebug() << "  Chuck face position:" << chuckFacePosition << "mm";
             qDebug() << "  Raw material:" << rawMaterialStart << "to" << rawMaterialEnd << "mm";
             qDebug() << "  Chuck extension:" << chuckExtension << "mm";
-            qDebug() << "  Part allowance:" << partAllowance << "mm";
+            qDebug() << "  Facing allowance:" << facingAllowance << "mm";
             qDebug() << "  Total length:" << length << "mm";
             
         } else {
@@ -474,16 +502,21 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpieceWithTransform(double 
             }
             
             // For lathe operations, ensure raw material:
-            // 1. Includes the full part in Z+ direction (maxProjection + small allowance)
-            // 2. Extends 50mm in Z- direction into the chuck (minProjection - 50mm)
-            double chuckExtension = 50.0; // mm extension into chuck
-            double partAllowance = 5.0;   // mm allowance beyond the part
+            // 1. Always extends exactly 50mm in -Z direction (into chuck) from Z=0
+            // 2. Includes extra stock to the right of the part for facing operations
+            double chuckExtension = 50.0;     // Fixed 50mm extension into chuck
+            double facingAllowance = 10.0;    // Extra stock for facing operations (right side)
             
-            // Calculate start position: extend 50mm into chuck (Z- direction)
-            double rawMaterialStart = minProjection - chuckExtension;
+            // Chuck face is at Z=0, raw material starts at Z=-50
+            double chuckFacePosition = 0.0;   // Chuck face at Z=0
+            double rawMaterialStart = chuckFacePosition - chuckExtension;  // Always at Z=-50
             
-            // Calculate end position: include full part + small allowance (Z+ direction)
-            double rawMaterialEnd = maxProjection + partAllowance;
+            // Calculate end position: include full part + facing allowance (Z+ direction)
+            double rawMaterialEnd = maxProjection + facingAllowance;
+            
+            // Ensure raw material extends far enough in Z+ to cover the part
+            // If part is positioned away from chuck, raw material must extend further
+            rawMaterialEnd = std::max(rawMaterialEnd, chuckFacePosition + 20.0); // Minimum 20mm past chuck face
             
             // Update the cylinder start point and length
             cylinderStartPoint = axisLoc.Translated(gp_Vec(axisDir) * rawMaterialStart);
@@ -491,9 +524,10 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpieceWithTransform(double 
             
             qDebug() << "Raw material positioning with transform:";
             qDebug() << "  Transformed part extent:" << minProjection << "to" << maxProjection << "mm";
+            qDebug() << "  Chuck face position:" << chuckFacePosition << "mm";
             qDebug() << "  Raw material:" << rawMaterialStart << "to" << rawMaterialEnd << "mm";
             qDebug() << "  Chuck extension:" << chuckExtension << "mm";
-            qDebug() << "  Part allowance:" << partAllowance << "mm";
+            qDebug() << "  Facing allowance:" << facingAllowance << "mm";
             qDebug() << "  Total length:" << length << "mm";
             
         } else {
@@ -547,6 +581,9 @@ void RawMaterialManager::displayRawMaterialForWorkpieceWithTransform(double diam
         
         // Display the raw material
         m_context->Display(m_rawMaterialAIS, AIS_Shaded, 0, false);
+        
+        // Force immediate context update for real-time feedback
+        m_context->UpdateCurrentViewer();
         
         // Store the current diameter
         m_currentDiameter = diameter;

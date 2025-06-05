@@ -314,3 +314,95 @@ The modular architecture enables comprehensive testing:
 - Dependency injection facilitates mocking
 - Controller coordination is easily testable
 - UI layer can be tested independently of business logic 
+
+# Chuck Management
+
+## Overview
+
+The `ChuckManager` handles the persistent display and management of the 3-jaw chuck in IntuiCAM's 3D viewer. The chuck serves as a reference object for workpiece alignment and positioning.
+
+## Non-Selectable Chuck Implementation
+
+### Problem
+By default, all AIS objects displayed in the OpenCASCADE viewer are selectable and show hover highlighting. For the chuck, which serves as a permanent reference fixture, this behavior is undesirable as:
+
+1. **User Experience**: Users should not accidentally select the chuck when trying to select workpieces
+2. **Visual Clarity**: Hover highlighting on the chuck can be distracting during workpiece selection
+3. **Workflow**: The chuck is a fixture, not a workpiece, so it shouldn't be part of the selection workflow
+
+### Solution
+The implementation uses OpenCASCADE AIS APIs to make the chuck non-selectable and disable hover highlighting:
+
+```cpp
+// Method 1: Disable automatic highlighting for this specific object
+m_context->SetAutomaticHilight(m_chuckAIS, false);
+
+// Method 2: Deactivate all selection modes for the chuck to prevent selection
+m_context->Deactivate(m_chuckAIS);
+```
+
+### Implementation Details
+
+#### 1. SetAutomaticHilight(object, false)
+- **Purpose**: Disables hover highlighting for the specific chuck object
+- **Effect**: The chuck will not highlight when the mouse moves over it
+- **Scope**: Object-specific, doesn't affect other objects in the scene
+
+#### 2. Deactivate(object)
+- **Purpose**: Removes the object from all active selection modes
+- **Effect**: The chuck cannot be selected via mouse clicks
+- **Scope**: Object-specific, prevents chuck from being detected during MoveTo operations
+
+#### 3. Verification Method
+The `isChuckNonSelectable()` method provides verification that the chuck is properly configured:
+
+```cpp
+bool ChuckManager::isChuckNonSelectable() const
+{
+    // Check if automatic highlighting is disabled
+    bool highlightDisabled = !m_context->AutomaticHilight(m_chuckAIS);
+    
+    // Verify no active selection modes
+    bool hasActiveSelectionModes = false;
+    for (int mode = 0; mode <= 10; ++mode) {
+        if (m_context->IsActivated(m_chuckAIS, mode)) {
+            hasActiveSelectionModes = true;
+            break;
+        }
+    }
+    
+    return !hasActiveSelectionModes && highlightDisabled;
+}
+```
+
+### Integration with Context7 Research
+
+This implementation was developed using Context7 to research OpenCASCADE AIS best practices:
+
+1. **API Research**: Context7 provided documentation on `AIS_InteractiveContext` methods for selection control
+2. **Best Practices**: Learned proper sequence of operations (Display first, then configure selection)
+3. **Verification Patterns**: Discovered methods to verify object selection state
+
+### Benefits
+
+1. **Improved User Experience**: Chuck doesn't interfere with workpiece selection workflows
+2. **Visual Clarity**: No distracting hover effects on the reference fixture
+3. **Professional Behavior**: Matches expectations for CAM software where fixtures are non-interactive
+4. **Robust Implementation**: Includes verification to ensure proper configuration
+
+### Future Considerations
+
+- **Custom AIS Object**: For more complex chuck interactions, consider creating a custom `AIS_InteractiveObject` that inherits from `AIS_Shape` and overrides `ComputeSelection()` to be empty
+- **Context Menu**: Could add right-click context menu for chuck-specific operations while maintaining non-selectability for primary interactions
+- **Visual Indicators**: Could add visual styling to clearly indicate the chuck is a fixture (e.g., different material properties or transparency)
+
+## Usage
+
+The chuck is automatically configured as non-selectable when loaded through the `ChuckManager::loadChuck()` method. No additional configuration is required from the UI layer.
+
+The verification can be called manually for debugging:
+```cpp
+if (chuckManager->isChuckNonSelectable()) {
+    qDebug() << "Chuck properly configured as non-selectable";
+}
+``` 

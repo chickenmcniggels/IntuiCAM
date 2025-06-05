@@ -267,6 +267,13 @@ private:
      * @return The aligned axis
      */
     gp_Ax1 alignWorkpieceWithChuckCenterline(const gp_Ax1& workpieceAxis);
+    
+    /**
+     * @brief Recalculate and update raw material based on current workpiece state
+     * @param diameter Raw material diameter to use (if 0.0, use current diameter)
+     * @return True if recalculation was successful
+     */
+    bool recalculateRawMaterial(double diameter = 0.0);
 };
 
 #endif // WORKSPACECONTROLLER_H 

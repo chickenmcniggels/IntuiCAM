@@ -19,7 +19,10 @@
  * - Raw material cylinder creation and display
  * - Standard diameter matching
  * - Material properties and transparency
- * - Sizing calculations
+ * - Sizing calculations with precise positioning requirements:
+ *   * Always extends exactly 50mm in -Z direction (into chuck)
+ *   * Always includes 10mm extra stock to the right for facing operations
+ *   * Recalculates automatically when workpiece position, diameter, or orientation changes
  */
 class RawMaterialManager : public QObject
 {

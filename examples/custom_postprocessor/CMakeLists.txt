@@ -9,7 +9,6 @@ add_executable(custom_postprocessor_example
 
 target_link_libraries(custom_postprocessor_example
     intuicam_core
-    intuicam_postprocessors
 )
 
 # Set output directory

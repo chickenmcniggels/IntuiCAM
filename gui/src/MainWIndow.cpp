@@ -549,21 +549,9 @@ void MainWindow::handlePartLoadingDistanceChanged(double distance)
         bool success = m_workspaceController->updateDistanceToChuck(distance);
         if (success) {
             statusBar()->showMessage(QString("Distance to chuck updated: %1 mm").arg(distance, 0, 'f', 1), 2000);
-            // Use optimized update method to prevent black screens
+            // The WorkspaceController already handles the context update, just ensure the viewer refreshes
             if (m_3dViewer && m_3dViewer->isViewerInitialized()) {
-                // Disable auto-fit temporarily to prevent view jumping
-                bool autoFitWasEnabled = m_3dViewer->isAutoFitEnabled();
-                m_3dViewer->setAutoFitEnabled(false);
-                
-                // Use direct update instead of Qt's update() to avoid black screen
-                QTimer::singleShot(1, this, [this, autoFitWasEnabled]() {
-                    if (m_3dViewer) {
-                        // Just redraw without fitting
-                        m_3dViewer->update();
-                        // Restore auto-fit setting
-                        m_3dViewer->setAutoFitEnabled(autoFitWasEnabled);
-                    }
-                });
+                m_3dViewer->update();
             }
         } else {
             statusBar()->showMessage("Failed to update distance to chuck", 3000);
@@ -582,21 +570,9 @@ void MainWindow::handlePartLoadingDiameterChanged(double diameter)
         bool success = m_workspaceController->updateRawMaterialDiameter(diameter);
         if (success) {
             statusBar()->showMessage(QString("Raw material diameter updated: %1 mm").arg(diameter, 0, 'f', 1), 2000);
-            // Use optimized update method to prevent black screens
+            // The WorkspaceController already handles the context update, just ensure the viewer refreshes
             if (m_3dViewer && m_3dViewer->isViewerInitialized()) {
-                // Disable auto-fit temporarily to prevent view jumping
-                bool autoFitWasEnabled = m_3dViewer->isAutoFitEnabled();
-                m_3dViewer->setAutoFitEnabled(false);
-                
-                // Use direct update instead of Qt's update() to avoid black screen
-                QTimer::singleShot(1, this, [this, autoFitWasEnabled]() {
-                    if (m_3dViewer) {
-                        // Just redraw without fitting
-                        m_3dViewer->update();
-                        // Restore auto-fit setting
-                        m_3dViewer->setAutoFitEnabled(autoFitWasEnabled);
-                    }
-                });
+                m_3dViewer->update();
             }
         } else {
             statusBar()->showMessage("Failed to update raw material diameter", 3000);
@@ -615,21 +591,9 @@ void MainWindow::handlePartLoadingOrientationFlipped(bool flipped)
         bool success = m_workspaceController->flipWorkpieceOrientation(flipped);
         if (success) {
             statusBar()->showMessage(QString("Part orientation %1").arg(flipped ? "flipped" : "restored"), 2000);
-            // Use optimized update method to prevent black screens
+            // The WorkspaceController already handles the context update, just ensure the viewer refreshes
             if (m_3dViewer && m_3dViewer->isViewerInitialized()) {
-                // Disable auto-fit temporarily to prevent view jumping
-                bool autoFitWasEnabled = m_3dViewer->isAutoFitEnabled();
-                m_3dViewer->setAutoFitEnabled(false);
-                
-                // Use direct update instead of Qt's update() to avoid black screen
-                QTimer::singleShot(1, this, [this, autoFitWasEnabled]() {
-                    if (m_3dViewer) {
-                        // Just redraw without fitting
-                        m_3dViewer->update();
-                        // Restore auto-fit setting
-                        m_3dViewer->setAutoFitEnabled(autoFitWasEnabled);
-                    }
-                });
+                m_3dViewer->update();
             }
         } else {
             statusBar()->showMessage("Failed to flip part orientation", 3000);
@@ -650,21 +614,9 @@ void MainWindow::handlePartLoadingCylinderChanged(int index)
             if (m_outputWindow) {
                 m_outputWindow->append(QString("Applied cylinder axis selection: %1").arg(index));
             }
-            // Use optimized update method to prevent black screens
+            // The WorkspaceController already handles the context update, just ensure the viewer refreshes
             if (m_3dViewer && m_3dViewer->isViewerInitialized()) {
-                // Disable auto-fit temporarily to prevent view jumping
-                bool autoFitWasEnabled = m_3dViewer->isAutoFitEnabled();
-                m_3dViewer->setAutoFitEnabled(false);
-                
-                // Use direct update instead of Qt's update() to avoid black screen
-                QTimer::singleShot(1, this, [this, autoFitWasEnabled]() {
-                    if (m_3dViewer) {
-                        // Just redraw without fitting
-                        m_3dViewer->update();
-                        // Restore auto-fit setting
-                        m_3dViewer->setAutoFitEnabled(autoFitWasEnabled);
-                    }
-                });
+                m_3dViewer->update();
             }
         } else {
             QMessageBox::warning(this, "Selection Error", 

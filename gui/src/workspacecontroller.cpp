@@ -253,32 +253,24 @@ bool WorkspaceController::selectWorkpieceCylinderAxis(int cylinderIndex)
     
     bool success = m_workpieceManager->selectCylinderAxis(cylinderIndex);
     if (success) {
-        // Re-execute workflow with the newly selected axis
-        CylinderInfo selectedCylinder = m_workpieceManager->getCylinderInfo(cylinderIndex);
+        // Recalculate raw material with the newly selected axis
+        bool rawMaterialSuccess = recalculateRawMaterial();
         
-        // Get current workpiece (assuming single workpiece for now)
-        QVector<Handle(AIS_Shape)> workpieces = m_workpieceManager->getWorkpieces();
-        if (!workpieces.isEmpty()) {
-            // Clear raw material and regenerate with new axis
-            m_rawMaterialManager->clearRawMaterial();
-            
-            gp_Ax1 alignmentAxis = selectedCylinder.axis;
-            if (m_chuckManager->hasValidCenterline()) {
-                alignmentAxis = alignWorkpieceWithChuckCenterline(selectedCylinder.axis);
-            }
-            
-            double rawMaterialDiameter = m_rawMaterialManager->getNextStandardDiameter(selectedCylinder.diameter);
-            
-            // We need the workpiece shape, but AIS_Shape doesn't directly give us TopoDS_Shape
-            // For now, we'll use the axis and diameter information
-            // TODO: Store original workpiece shapes for re-processing
+        if (rawMaterialSuccess) {
+            // Get selected cylinder info for workflow completion signal
+            CylinderInfo selectedCylinder = m_workpieceManager->getCylinderInfo(cylinderIndex);
+            double rawMaterialDiameter = m_rawMaterialManager->getCurrentDiameter();
             
             emit workpieceWorkflowCompleted(selectedCylinder.diameter, rawMaterialDiameter);
-            qDebug() << "WorkspaceController: Workpiece workflow updated with selected cylinder" << cylinderIndex;
+            qDebug() << "WorkspaceController: Cylinder axis" << cylinderIndex << "selected and raw material recalculated";
+        } else {
+            qDebug() << "WorkspaceController: Cylinder axis selected but raw material recalculation failed";
         }
+        
+        return rawMaterialSuccess;
     }
     
-    return success;
+    return false;
 }
 
 QVector<CylinderInfo> WorkspaceController::getDetectedCylinders() const
@@ -352,6 +344,8 @@ void WorkspaceController::handleCylinderDetected(double diameter, double length,
 
 bool WorkspaceController::updateRawMaterialDiameter(double diameter)
 {
+    qDebug() << "WorkspaceController: updateRawMaterialDiameter called with diameter:" << diameter << "mm";
+    
     if (!m_initialized) {
         emit errorOccurred("WorkspaceController", "Workspace not initialized");
         return false;
@@ -370,35 +364,20 @@ bool WorkspaceController::updateRawMaterialDiameter(double diameter)
     }
 
     try {
-        // Get current axis from workpiece manager
-        gp_Ax1 currentAxis = m_workpieceManager->getMainCylinderAxis();
+        // Use centralized recalculation method
+        bool success = recalculateRawMaterial(diameter);
         
-        // Store current workpiece shape (we need to get it from the original shape)
-        // For now, we'll use the current axis and regenerate the raw material
-        
-        // Clear existing raw material
-        m_rawMaterialManager->clearRawMaterial();
-        
-        // Apply chuck alignment if available
-        gp_Ax1 alignmentAxis = currentAxis;
-        if (m_chuckManager->hasValidCenterline()) {
-            alignmentAxis = alignWorkpieceWithChuckCenterline(currentAxis);
-        }
-        
-        // Use the stored workpiece shape for proper re-processing
-        if (!m_currentWorkpiece.IsNull()) {
-            m_rawMaterialManager->displayRawMaterialForWorkpiece(diameter, m_currentWorkpiece, alignmentAxis);
+        if (success) {
+            qDebug() << "WorkspaceController: Raw material diameter successfully updated to" << diameter << "mm";
         } else {
-            // Fallback: create with estimated length if no workpiece stored
-            double estimatedLength = 100.0; // Default length - should be calculated properly
-            m_rawMaterialManager->displayRawMaterial(diameter, estimatedLength, alignmentAxis);
+            qDebug() << "WorkspaceController: Failed to update raw material diameter to" << diameter << "mm";
         }
         
-        qDebug() << "WorkspaceController: Raw material diameter updated to" << diameter << "mm";
-        return true;
+        return success;
         
     } catch (const std::exception& e) {
         QString errorMsg = QString("Failed to update raw material diameter: %1").arg(e.what());
+        qDebug() << errorMsg;
         emit errorOccurred("WorkspaceController", errorMsg);
         return false;
     }
@@ -406,6 +385,8 @@ bool WorkspaceController::updateRawMaterialDiameter(double diameter)
 
 bool WorkspaceController::updateDistanceToChuck(double distance)
 {
+    qDebug() << "WorkspaceController: updateDistanceToChuck called with distance:" << distance << "mm";
+    
     if (!m_initialized) {
         emit errorOccurred("WorkspaceController", "Workspace not initialized");
         return false;
@@ -419,34 +400,25 @@ bool WorkspaceController::updateDistanceToChuck(double distance)
 
     try {
         // Use WorkpieceManager's positioning capabilities
-        bool success = m_workpieceManager->positionWorkpieceAlongAxis(distance);
+        bool positionSuccess = m_workpieceManager->positionWorkpieceAlongAxis(distance);
         
-        if (success) {
-            // Regenerate raw material to match the new workpiece position
-            if (!m_currentWorkpiece.IsNull()) {
-                // Get current settings
-                gp_Ax1 currentAxis = m_workpieceManager->getMainCylinderAxis();
-                double currentDiameter = m_rawMaterialManager->getCurrentDiameter();
-                
-                // Get the current transformation from the workpiece manager
-                gp_Trsf currentTransform = m_workpieceManager->getCurrentTransformation();
-                
-                // Apply chuck alignment if available
-                gp_Ax1 alignmentAxis = currentAxis;
-                if (m_chuckManager->hasValidCenterline()) {
-                    alignmentAxis = alignWorkpieceWithChuckCenterline(currentAxis);
-                }
-                
-                // Clear and regenerate raw material using transform-aware method
-                m_rawMaterialManager->clearRawMaterial();
-                m_rawMaterialManager->displayRawMaterialForWorkpieceWithTransform(
-                    currentDiameter, m_currentWorkpiece, alignmentAxis, currentTransform);
+        if (positionSuccess) {
+            qDebug() << "WorkspaceController: Workpiece positioned successfully, now recalculating raw material";
+            // Recalculate raw material to match the new workpiece position
+            bool rawMaterialSuccess = recalculateRawMaterial();
+            
+            if (rawMaterialSuccess) {
+                qDebug() << "WorkspaceController: Distance to chuck set to" << distance << "mm and raw material updated successfully";
+            } else {
+                qDebug() << "WorkspaceController: Distance updated but raw material recalculation failed";
             }
             
-            qDebug() << "WorkspaceController: Distance to chuck set to" << distance << "mm and raw material updated with correct transform";
+            return rawMaterialSuccess;
+        } else {
+            qDebug() << "WorkspaceController: Failed to position workpiece at distance" << distance << "mm";
         }
         
-        return success;
+        return false;
         
     } catch (const std::exception& e) {
         QString errorMsg = QString("Failed to update distance to chuck: %1").arg(e.what());
@@ -457,6 +429,8 @@ bool WorkspaceController::updateDistanceToChuck(double distance)
 
 bool WorkspaceController::flipWorkpieceOrientation(bool flipped)
 {
+    qDebug() << "WorkspaceController: flipWorkpieceOrientation called with flipped:" << flipped;
+    
     if (!m_initialized) {
         emit errorOccurred("WorkspaceController", "Workspace not initialized");
         return false;
@@ -470,34 +444,25 @@ bool WorkspaceController::flipWorkpieceOrientation(bool flipped)
 
     try {
         // Use WorkpieceManager's transformation capabilities
-        bool success = m_workpieceManager->flipWorkpieceOrientation(flipped);
+        bool flipSuccess = m_workpieceManager->flipWorkpieceOrientation(flipped);
         
-        if (success) {
-            // Regenerate raw material to match the new workpiece orientation using transform
-            if (!m_currentWorkpiece.IsNull()) {
-                // Get current settings
-                gp_Ax1 currentAxis = m_workpieceManager->getMainCylinderAxis();
-                double currentDiameter = m_rawMaterialManager->getCurrentDiameter();
-                
-                // Get the current transformation from the workpiece manager
-                gp_Trsf currentTransform = m_workpieceManager->getCurrentTransformation();
-                
-                // Apply chuck alignment if available
-                gp_Ax1 alignmentAxis = currentAxis;
-                if (m_chuckManager->hasValidCenterline()) {
-                    alignmentAxis = alignWorkpieceWithChuckCenterline(currentAxis);
-                }
-                
-                // Clear and regenerate raw material using transform-aware method
-                m_rawMaterialManager->clearRawMaterial();
-                m_rawMaterialManager->displayRawMaterialForWorkpieceWithTransform(
-                    currentDiameter, m_currentWorkpiece, alignmentAxis, currentTransform);
+        if (flipSuccess) {
+            qDebug() << "WorkspaceController: Workpiece orientation" << (flipped ? "flipped" : "restored") << "successfully, now recalculating raw material";
+            // Recalculate raw material to match the new workpiece orientation
+            bool rawMaterialSuccess = recalculateRawMaterial();
+            
+            if (rawMaterialSuccess) {
+                qDebug() << "WorkspaceController: Workpiece orientation" << (flipped ? "flipped" : "restored") << "and raw material updated successfully";
+            } else {
+                qDebug() << "WorkspaceController: Orientation updated but raw material recalculation failed";
             }
             
-            qDebug() << "WorkspaceController: Workpiece orientation" << (flipped ? "flipped" : "restored") << "and raw material updated with correct transform";
+            return rawMaterialSuccess;
+        } else {
+            qDebug() << "WorkspaceController: Failed to" << (flipped ? "flip" : "restore") << "workpiece orientation";
         }
         
-        return success;
+        return false;
         
     } catch (const std::exception& e) {
         QString errorMsg = QString("Failed to flip workpiece orientation: %1").arg(e.what());
@@ -590,4 +555,62 @@ bool WorkspaceController::reprocessCurrentWorkpiece()
         emit errorOccurred("WorkspaceController", errorMsg);
         return false;
     }
-} 
+}
+
+bool WorkspaceController::recalculateRawMaterial(double diameter)
+{
+    if (!m_initialized || m_currentWorkpiece.IsNull()) {
+        qDebug() << "WorkspaceController: Cannot recalculate raw material - not initialized or no workpiece";
+        return false;
+    }
+
+    try {
+        // Get current settings
+        gp_Ax1 currentAxis = m_workpieceManager->getMainCylinderAxis();
+        double currentDiameter = (diameter > 0.0) ? diameter : m_rawMaterialManager->getCurrentDiameter();
+        
+        // Ensure we have a valid diameter
+        if (currentDiameter <= 0.0) {
+            currentDiameter = m_rawMaterialManager->getNextStandardDiameter(
+                m_workpieceManager->getDetectedDiameter());
+        }
+        
+        // Get the current transformation from the workpiece manager
+        gp_Trsf currentTransform = m_workpieceManager->getCurrentTransformation();
+        
+        // Debug transformation details
+        gp_XYZ translation = currentTransform.TranslationPart();
+        qDebug() << "WorkspaceController: Current transformation - Translation:" 
+                 << translation.X() << "," << translation.Y() << "," << translation.Z();
+        
+        // Apply chuck alignment if available
+        gp_Ax1 alignmentAxis = currentAxis;
+        if (m_chuckManager->hasValidCenterline()) {
+            alignmentAxis = alignWorkpieceWithChuckCenterline(currentAxis);
+        }
+        
+        // Clear and regenerate raw material using transform-aware method
+        m_rawMaterialManager->clearRawMaterial();
+        qDebug() << "WorkspaceController: Recalculating raw material with diameter:" << currentDiameter << "mm";
+        m_rawMaterialManager->displayRawMaterialForWorkpieceWithTransform(
+            currentDiameter, m_currentWorkpiece, alignmentAxis, currentTransform);
+        
+        // The raw material manager already calls UpdateCurrentViewer, but ensure it's called
+        if (!m_context.IsNull()) {
+            m_context->UpdateCurrentViewer();
+        }
+        
+        qDebug() << "WorkspaceController: Raw material recalculated successfully"
+                 << "- Diameter:" << currentDiameter << "mm";
+        
+        return true;
+        
+    } catch (const std::exception& e) {
+        QString errorMsg = QString("Failed to recalculate raw material: %1").arg(e.what());
+        qDebug() << errorMsg;
+        emit errorOccurred("WorkspaceController", errorMsg);
+        return false;
+    }
+}
+
+ 

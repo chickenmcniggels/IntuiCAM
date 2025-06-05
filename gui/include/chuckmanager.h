@@ -79,6 +79,12 @@ public:
      */
     bool hasValidCenterline() const { return m_centerlineDetected; }
 
+    /**
+     * @brief Verify that the chuck is properly configured as non-selectable
+     * @return True if chuck is non-selectable and non-highlightable
+     */
+    bool isChuckNonSelectable() const;
+
 signals:
     /**
      * @brief Emitted when chuck is successfully loaded

@@ -9,7 +9,6 @@ add_executable(simulation_demo
 
 target_link_libraries(simulation_demo
     intuicam_core
-    intuicam_operations
     ${VTK_LIBRARIES}
 )
 

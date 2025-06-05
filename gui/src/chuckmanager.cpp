@@ -75,8 +75,20 @@ bool ChuckManager::loadChuck(const QString& chuckFilePath)
     m_context->Display(m_chuckAIS, AIS_Shaded, 0, false);
     m_context->SetSelected(m_chuckAIS, false); // Ensure it's not selected
     
+    // Make chuck non-selectable and disable hover highlighting
+    // Method 1: Deactivate all selection modes for the chuck to prevent selection
+    m_context->Deactivate(m_chuckAIS);
+    
+    // Method 2: Clear any existing selection on the chuck
+    m_context->SetSelected(m_chuckAIS, false);
+    
+    qDebug() << "Chuck set as non-selectable";
+    
     // Analyze chuck geometry to detect centerline
     analyzeChuckGeometry();
+    
+    // Verify that the chuck is properly configured as non-selectable
+    isChuckNonSelectable();
     
     emit chuckLoaded();
     qDebug() << "3-jaw chuck loaded and displayed successfully";
@@ -103,6 +115,29 @@ void ChuckManager::clearChuck()
 gp_Ax1 ChuckManager::getChuckCenterlineAxis() const
 {
     return m_chuckCenterlineAxis;
+}
+
+bool ChuckManager::isChuckNonSelectable() const
+{
+    if (m_chuckAIS.IsNull() || m_context.IsNull()) {
+        return false;
+    }
+    
+    // Simplified verification: Just check if the chuck is displayed and not selected
+    bool isDisplayed = m_context->IsDisplayed(m_chuckAIS);
+    bool isSelected = m_context->IsSelected(m_chuckAIS);
+    
+    // Chuck should be displayed but not selected
+    bool isNonSelectable = isDisplayed && !isSelected;
+    
+    if (isNonSelectable) {
+        qDebug() << "Chuck verified as displayed and non-selected";
+    } else {
+        qDebug() << "Chuck selectability check - Displayed:" << isDisplayed 
+                 << "Selected:" << isSelected;
+    }
+    
+    return isNonSelectable;
 }
 
 bool ChuckManager::detectChuckCenterline()

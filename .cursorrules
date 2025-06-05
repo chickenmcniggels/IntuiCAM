@@ -162,3 +162,5 @@ IntuiCAM/
 - Maintain backwards compatibility within major versions
 
 Remember: IntuiCAM is a professional CAM application requiring high reliability, performance, and user experience. All implementations should reflect this quality standard. 
+
+USE POWERSHELL SYNTAX!!! Youre on Windows

@@ -348,35 +348,25 @@ bool WorkpieceManager::flipWorkpieceOrientation(bool flipped)
             return true; // Already in desired state
         }
 
-        // Create transformation matrix for 180-degree rotation around Y-axis
-        // This flips the workpiece end-for-end while keeping it on the same axis
-        gp_Trsf transformation;
-        gp_Ax1 rotationAxis(m_mainCylinderAxis.Location(), gp_Dir(0, 1, 0)); // Y-axis
-        transformation.SetRotation(rotationAxis, M_PI); // 180 degrees
+        // Update flip state
+        m_isFlipped = flipped;
+        
+        // Get the complete current transformation (position + flip)
+        gp_Trsf newTransformation = getCurrentTransformation();
 
-        // Apply transformation to all workpieces
+        // Apply complete transformation to all workpieces
         for (Handle(AIS_Shape) workpiece : m_workpieces) {
             if (!workpiece.IsNull()) {
-                if (flipped && !m_isFlipped) {
-                    // Apply flip transformation
-                    workpiece->SetLocalTransformation(transformation);
-                } else if (!flipped && m_isFlipped) {
-                    // Remove flip transformation (reset to identity)
-                    gp_Trsf identity;
-                    workpiece->SetLocalTransformation(identity);
-                }
-                
-                // Update display without triggering full viewer update
+                workpiece->SetLocalTransformation(newTransformation);
                 m_context->Redisplay(workpiece, false);
             }
         }
-
-        m_isFlipped = flipped;
         
-        // Use a single efficient update instead of UpdateCurrentViewer
+        // Use a single efficient update
         m_context->UpdateCurrentViewer();
         
-        qDebug() << "WorkpieceManager: Workpiece orientation" << (flipped ? "flipped" : "restored");
+        qDebug() << "WorkpieceManager: Workpiece orientation" << (flipped ? "flipped" : "restored") 
+                 << "with position offset" << m_positionOffset << "mm";
         return true;
 
     } catch (const std::exception& e) {
@@ -389,12 +379,22 @@ gp_Trsf WorkpieceManager::getCurrentTransformation() const
 {
     gp_Trsf transform;
     
+    // First apply flip transformation if needed (around original position)
     if (m_isFlipped) {
-        // Create the same transformation used in flipWorkpieceOrientation
         gp_Ax1 rotationAxis(m_mainCylinderAxis.Location(), gp_Dir(0, 1, 0)); // Y-axis
         transform.SetRotation(rotationAxis, M_PI); // 180 degrees
     }
-    // else: transform remains identity (default)
+    
+    // Then apply global position offset (always in Z+ direction)
+    if (std::abs(m_positionOffset) > 1e-6) {
+        // Always use Z+ direction for distance to chuck, regardless of flip state
+        gp_Vec globalTranslation(0, 0, m_positionOffset);  // Global Z+ direction
+        gp_Trsf translationTransform;
+        translationTransform.SetTranslation(globalTranslation);
+        
+        // Apply translation after flip: translation * flip
+        transform = translationTransform * transform;
+    }
     
     return transform;
 }
@@ -407,30 +407,24 @@ bool WorkpieceManager::positionWorkpieceAlongAxis(double distance)
     }
 
     try {
-        // Calculate the translation vector along the main cylinder axis
-        gp_Vec translationVector = gp_Vec(m_mainCylinderAxis.Direction()) * (distance - m_positionOffset);
+        // Update position offset
+        m_positionOffset = distance;
+        
+        // Get the complete current transformation (position + flip)
+        gp_Trsf newTransformation = getCurrentTransformation();
 
-        // Create transformation matrix for translation
-        gp_Trsf transformation;
-        transformation.SetTranslation(translationVector);
-
-        // Apply transformation to all workpieces
+        // Apply complete transformation to all workpieces
         for (Handle(AIS_Shape) workpiece : m_workpieces) {
             if (!workpiece.IsNull()) {
-                // Get current transformation and combine with new translation
-                gp_Trsf currentTransform = workpiece->LocalTransformation();
-                gp_Trsf newTransform = transformation * currentTransform;
-                workpiece->SetLocalTransformation(newTransform);
-                
-                // Update display
+                workpiece->SetLocalTransformation(newTransformation);
                 m_context->Redisplay(workpiece, false);
             }
         }
 
-        m_positionOffset = distance;
         m_context->UpdateCurrentViewer();
         
-        qDebug() << "WorkpieceManager: Workpiece positioned at offset" << distance << "mm";
+        qDebug() << "WorkpieceManager: Workpiece positioned at offset" << distance << "mm"
+                 << (m_isFlipped ? " (flipped)" : " (normal)");
         return true;
 
     } catch (const std::exception& e) {
