@@ -88,9 +88,6 @@ if(INTUICAM_BUILD_CLI)
     add_subdirectory(cli)
 endif()
 
-# Add plugins directory
-add_subdirectory(plugins)
-
 # Add examples directory
 add_subdirectory(examples)
 

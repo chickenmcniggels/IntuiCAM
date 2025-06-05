@@ -16,7 +16,7 @@ set(GUI_SOURCES
 )
 
 set(GUI_HEADERS
-    src/mainwindow.h
+    include/mainwindow.h
     include/opengl3dwidget.h
     include/isteploader.h
     include/steploader.h
