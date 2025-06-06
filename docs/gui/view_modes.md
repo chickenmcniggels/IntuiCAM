@@ -23,8 +23,8 @@ IntuiCAM's 3D viewer now supports two distinct viewing modes that can be seamles
 - **Description**: Locked to XZ plane view following standard lathe coordinate system
 - **Coordinate System**:
   - X-axis: Increases from top to bottom (vertical axis)
-  - Z-axis: Increases from left to right (horizontal axis)
-  - Y-axis: Depth (camera looks from positive Y toward origin)
+  - Z-axis: Increases from right to left (horizontal axis)
+  - Y-axis: Depth (camera looks from negative Y toward origin)
 - **Mouse Controls**:
   - Left Click + Drag: Pan the view (rotation disabled)
   - Middle Click + Drag: Pan the view
@@ -85,7 +85,7 @@ ViewMode currentMode = viewer->getViewMode();
 
 ### Usage Guidance
 When switching to Lathe XZ mode, users receive helpful information:
-- "View mode: Lathe XZ - X increases top to bottom, Z left to right"
+- "View mode: Lathe XZ - X increases top to bottom, Z right to left"
 - "Use left click to pan, wheel to zoom. Rotation disabled in this mode."
 
 ### Seamless Operation

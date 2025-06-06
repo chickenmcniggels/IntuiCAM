@@ -148,6 +148,25 @@ public:
      */
     double getWorkpiecePositionOffset() const { return m_positionOffset; }
 
+    /**
+     * @brief Set axis alignment transformation for manual selection
+     * @param transform The transformation to align the workpiece axis with Z-axis
+     * @return True if successful
+     */
+    bool setAxisAlignmentTransformation(const gp_Trsf& transform);
+
+    /**
+     * @brief Get the current axis alignment transformation
+     * @return The axis alignment transformation
+     */
+    gp_Trsf getAxisAlignmentTransformation() const { return m_axisAlignmentTransform; }
+
+    /**
+     * @brief Check if axis alignment transformation is active
+     * @return True if axis alignment transformation has been set
+     */
+    bool hasAxisAlignmentTransformation() const { return m_hasAxisAlignment; }
+
 signals:
     /**
      * @brief Emitted when a cylinder is detected in a workpiece
@@ -185,6 +204,10 @@ private:
     // Transformation state
     bool m_isFlipped;
     double m_positionOffset;
+    
+    // Axis alignment state (for manual axis selection)
+    gp_Trsf m_axisAlignmentTransform;
+    bool m_hasAxisAlignment;
     
     /**
      * @brief Helper to analyze shape topology for cylinders

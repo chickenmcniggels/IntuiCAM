@@ -103,6 +103,18 @@ public:
      */
     double getCurrentDiameter() const { return m_currentDiameter; }
 
+    /**
+     * @brief Get the current raw material AIS object
+     * @return Current raw material AIS object, or null if none displayed
+     */
+    Handle(AIS_Shape) getCurrentRawMaterialAIS() const { return m_rawMaterialAIS; }
+
+    /**
+     * @brief Make the raw material non-selectable
+     * Deactivates all selection modes for the raw material while keeping it visible
+     */
+    void makeRawMaterialNonSelectable();
+
 signals:
     /**
      * @brief Emitted when raw material is created and displayed

@@ -1,6 +1,9 @@
 # IntuiCAM Cursor Rules
 # Professional CAM Application Development Guidelines
 
+USE POWERSHELL SYNTAX (NOT THE && SYNTAX)!!! Youre on Windows
+
+
 ## Project Overview
 You are working on **IntuiCAM**, a professional CAM (Computer-Aided Manufacturing) application for CNC turning operations. This is a C++17/20 desktop application with Qt 6 GUI, OpenCASCADE geometry processing, and modular architecture.
 
@@ -163,4 +166,4 @@ IntuiCAM/
 
 Remember: IntuiCAM is a professional CAM application requiring high reliability, performance, and user experience. All implementations should reflect this quality standard. 
 
-USE POWERSHELL SYNTAX!!! Youre on Windows
+USE POWERSHELL SYNTAX (NOT THE && SYNTAX)!!! Youre on Windows

@@ -69,6 +69,7 @@ private slots:
     void handleChuckCenterlineDetected(const gp_Ax1& axis);
     void handleMultipleCylindersDetected(const QVector<CylinderInfo>& cylinders);
     void handleCylinderAxisSelected(int index, const CylinderInfo& cylinderInfo);
+    void handleManualAxisSelected(double diameter, const gp_Ax1& axis);
     
     // Part loading panel handlers
     void handlePartLoadingDistanceChanged(double distance);

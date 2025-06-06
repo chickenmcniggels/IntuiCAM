@@ -1,4 +1,6 @@
 #include "opengl3dwidget.h"
+#include "workspacecontroller.h"
+#include "rawmaterialmanager.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -38,6 +40,7 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_currentViewMode(ViewMode::Mode3D)
     , m_stored3DScale(1.0)
     , m_has3DCameraState(false)
+    , m_workspaceController(nullptr)
 {
     // Enable mouse tracking for proper interaction
     setMouseTracking(true);
@@ -535,14 +538,29 @@ void OpenGL3DWidget::setSelectionMode(bool enabled)
             // Enable default selection mode (0) for whole objects
             m_context->SetAutoActivateSelection(Standard_True);
             
-            // Activate selection for all displayed shapes
+            // Activate selection for all displayed shapes except raw material
             AIS_ListOfInteractive allObjects;
             m_context->DisplayedObjects(allObjects);
+            
+            // Get raw material AIS object if workspace controller is available
+            Handle(AIS_Shape) rawMaterialAIS;
+            if (m_workspaceController) {
+                RawMaterialManager* rawMaterialManager = m_workspaceController->getRawMaterialManager();
+                if (rawMaterialManager) {
+                    rawMaterialAIS = rawMaterialManager->getCurrentRawMaterialAIS();
+                }
+            }
             
             for (AIS_ListOfInteractive::Iterator anIter(allObjects); anIter.More(); anIter.Next()) {
                 Handle(AIS_InteractiveObject) anObj = anIter.Value();
                 Handle(AIS_Shape) aShape = Handle(AIS_Shape)::DownCast(anObj);
                 if (!aShape.IsNull()) {
+                    // Skip raw material - it should remain non-selectable
+                    if (!rawMaterialAIS.IsNull() && aShape == rawMaterialAIS) {
+                        qDebug() << "Skipping selection activation for raw material";
+                        continue;
+                    }
+                    
                     // Activate selection for whole shape (mode 0)
                     m_context->Activate(aShape, 0, Standard_False);
                     // Also activate face selection (mode 4) for cylindrical faces
@@ -929,12 +947,12 @@ void OpenGL3DWidget::setupCameraXZ()
     }
     
     // Set up XZ plane view for lathe operations
-    // Standard lathe coordinate system: X increases top to bottom, Z increases left to right
-    // This means we need to look from the Y-positive direction toward the origin
-    // and orient the view so X goes down and Z goes right
+    // Standard lathe coordinate system: X increases top to bottom, Z increases right to left
+    // This means we need to look from the Y-negative direction toward the origin
+    // and orient the view so X goes down and Z goes left
     
-    // Camera position: Look from positive Y toward origin
-    gp_Pnt eye(0.0, 200.0, 0.0);     // Camera position on Y axis
+    // Camera position: Look from negative Y toward origin (flips Z axis)
+    gp_Pnt eye(0.0, -200.0, 0.0);    // Camera position on negative Y axis
     gp_Pnt at(0.0, 0.0, 0.0);       // Look at origin
     gp_Dir up(-1.0, 0.0, 0.0);      // X axis points down (negative X direction as up vector)
     
@@ -947,16 +965,16 @@ void OpenGL3DWidget::setupCameraXZ()
     // behavior by using appropriate camera positioning and scaling
     
     // Position camera very far away to approximate orthographic projection
-    gp_Pnt farEye(0.0, 10000.0, 0.0);  // Very far away on Y axis
+    gp_Pnt farEye(0.0, -10000.0, 0.0);  // Very far away on negative Y axis (matches flipped Z)
     m_view->SetEye(farEye.X(), farEye.Y(), farEye.Z());
     
-    // Hide the 3D trihedron as it's not relevant for 2D lathe view
-    m_view->TriedronErase();
+    // Hides the 3D trihedron as it's not relevant for 2D lathe view
+    // m_view->TriedronErase();
     
     // Fit all to ensure objects are visible in the new view
     m_view->FitAll();
     
-    qDebug() << "XZ lathe camera mode configured (X: top to bottom, Z: left to right)";
+    qDebug() << "XZ lathe camera mode configured (X: top to bottom, Z: right to left)";
 }
 
 void OpenGL3DWidget::store3DCameraState()

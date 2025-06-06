@@ -12,7 +12,6 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
-#include <QComboBox>
 
 // OpenCASCADE includes
 #include <gp_Ax1.hxx>
@@ -29,7 +28,7 @@ struct CylinderInfo;
  * - Distance to chuck adjustment
  * - Raw material diameter control
  * - Part orientation flipping
- * - Manual axis selection from detected cylinders
+ * - Manual axis selection from 3D view only
  */
 class PartLoadingPanel : public QWidget
 {
@@ -41,6 +40,8 @@ public:
 
     /**
      * @brief Update panel with detected cylinder information
+     * @note This will automatically select the largest cylinder but 
+     * user must still manually confirm selection via 3D view
      */
     void updateCylinderInfo(const QVector<CylinderInfo>& cylinders);
 
@@ -64,10 +65,7 @@ public:
      */
     bool isOrientationFlipped() const;
 
-    /**
-     * @brief Get selected cylinder index (-1 for automatic)
-     */
-    int getSelectedCylinderIndex() const;
+
 
     /**
      * @brief Reset panel to default state
@@ -91,7 +89,7 @@ signals:
     void orientationFlipped(bool flipped);
 
     /**
-     * @brief Emitted when a different cylinder is selected
+     * @brief Emitted when a different cylinder is selected (for compatibility)
      */
     void cylinderSelectionChanged(int index);
 
@@ -105,7 +103,6 @@ private slots:
     void onDistanceSpinBoxChanged(double value);
     void onRawMaterialDiameterChanged(double value);
     void onOrientationFlipToggled(bool checked);
-    void onCylinderSelectionChanged(int index);
     void onManualAxisSelectionClicked();
 
 private:
@@ -114,7 +111,7 @@ private:
     void setupMaterialGroup();
     void setupAxisGroup();
     void updateDistanceControls(double distance);
-    void updateCylinderComboBox();
+    void updateCylinderComboBox(); // Kept for compatibility, does nothing
     void updateAxisInfo(const CylinderInfo& info);
 
     // UI Components
@@ -135,7 +132,6 @@ private:
     
     // Axis selection group
     QGroupBox* m_axisGroup;
-    QComboBox* m_cylinderComboBox;
     QPushButton* m_manualAxisButton;
     QLabel* m_axisInfoLabel;
     

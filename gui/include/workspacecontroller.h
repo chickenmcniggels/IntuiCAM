@@ -9,6 +9,18 @@
 #include <TopoDS_Shape.hxx>
 #include <AIS_InteractiveContext.hxx>
 #include <gp_Ax1.hxx>
+#include <gp_Pnt.hxx>
+#include <gp_Trsf.hxx>
+#include <TopoDS_Face.hxx>
+#include <TopoDS_Edge.hxx>
+#include <TopAbs_ShapeEnum.hxx>
+#include <BRepAdaptor_Surface.hxx>
+#include <BRepAdaptor_Curve.hxx>
+#include <GeomAbs_SurfaceType.hxx>
+#include <GeomAbs_CurveType.hxx>
+#include <gp_Cylinder.hxx>
+#include <gp_Circ.hxx>
+#include <Precision.hxx>
 
 // Forward declarations
 class ChuckManager;
@@ -76,11 +88,7 @@ public:
      */
     QVector<CylinderInfo> getDetectedCylinders() const;
 
-    /**
-     * @brief Get the index of the currently selected cylinder
-     * @return Index of selected cylinder, or -1 if none selected
-     */
-    int getSelectedCylinderIndex() const;
+
 
     /**
      * @brief Check if chuck centerline has been detected
@@ -140,10 +148,17 @@ public:
      * @param distance Distance to chuck
      * @param diameter Raw material diameter
      * @param flipped Orientation flipped state
-     * @param cylinderIndex Selected cylinder index
      * @return True if all settings applied successfully
      */
-    bool applyPartLoadingSettings(double distance, double diameter, bool flipped, int cylinderIndex);
+    bool applyPartLoadingSettings(double distance, double diameter, bool flipped);
+
+    /**
+     * @brief Process manually selected shape from 3D view and extract cylindrical axis
+     * @param selectedShape The shape selected in the 3D view
+     * @param clickPoint The 3D point where selection occurred
+     * @return True if a valid cylindrical axis was extracted and applied
+     */
+    bool processManualAxisSelection(const TopoDS_Shape& selectedShape, const gp_Pnt& clickPoint);
 
     /**
      * @brief Reprocess the current workpiece workflow from the beginning
@@ -180,6 +195,13 @@ signals:
      * @param cylinderInfo Information about the selected cylinder
      */
     void cylinderAxisSelected(int index, const CylinderInfo& cylinderInfo);
+
+    /**
+     * @brief Emitted when manual axis selection from 3D view is completed
+     * @param diameter Extracted axis diameter
+     * @param axis The extracted and aligned axis (now aligned with Z-axis)
+     */
+    void manualAxisSelected(double diameter, const gp_Ax1& axis);
 
     /**
      * @brief Emitted when workpiece workflow is completed
@@ -267,10 +289,19 @@ private:
      * @return The aligned axis
      */
     gp_Ax1 alignWorkpieceWithChuckCenterline(const gp_Ax1& workpieceAxis);
-    
+
     /**
-     * @brief Recalculate and update raw material based on current workpiece state
-     * @param diameter Raw material diameter to use (if 0.0, use current diameter)
+     * @brief Create transformation to align source axis with Z-axis
+     * @param sourceAxis The axis to be aligned with Z-axis
+     * @return Transformation matrix to perform the alignment
+     */
+    gp_Trsf createAxisAlignmentTransformation(const gp_Ax1& sourceAxis);
+
+
+
+    /**
+     * @brief Recalculate raw material for current workpiece and settings
+     * @param diameter Optional diameter override, uses current if <= 0
      * @return True if recalculation was successful
      */
     bool recalculateRawMaterial(double diameter = 0.0);

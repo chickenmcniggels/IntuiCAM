@@ -262,6 +262,9 @@ void MainWindow::setupWorkspaceConnections()
     if (m_workspaceController && m_3dViewer->isViewerInitialized()) {
         m_workspaceController->initialize(m_3dViewer->getContext(), m_stepLoader);
         
+        // Set workspace controller reference in 3D viewer for selection filtering
+        m_3dViewer->setWorkspaceController(m_workspaceController);
+        
         // Connect workspace controller signals
         connect(m_workspaceController, &WorkspaceController::errorOccurred,
                 this, &MainWindow::handleWorkspaceError);
@@ -283,6 +286,10 @@ void MainWindow::setupWorkspaceConnections()
         // Connect cylinder axis selection
         connect(m_workspaceController, &WorkspaceController::cylinderAxisSelected,
                 this, &MainWindow::handleCylinderAxisSelected);
+        
+        // Connect manual axis selection from 3D view
+        connect(m_workspaceController, &WorkspaceController::manualAxisSelected,
+                this, &MainWindow::handleManualAxisSelected);
         
         // Connect 3D viewer selection for manual axis selection
         connect(m_3dViewer, &OpenGL3DWidget::shapeSelected,
@@ -557,6 +564,22 @@ void MainWindow::handleCylinderAxisSelected(int index, const CylinderInfo& cylin
     statusBar()->showMessage("Turning axis selected and applied", 3000);
 }
 
+void MainWindow::handleManualAxisSelected(double diameter, const gp_Ax1& axis)
+{
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Manual rotational axis selected - Diameter: %1mm")
+                              .arg(diameter, 0, 'f', 1));
+        m_outputWindow->append(QString("Axis location: (%1, %2, %3), Direction: (%4, %5, %6)")
+                              .arg(axis.Location().X(), 0, 'f', 2)
+                              .arg(axis.Location().Y(), 0, 'f', 2)
+                              .arg(axis.Location().Z(), 0, 'f', 2)
+                              .arg(axis.Direction().X(), 0, 'f', 3)
+                              .arg(axis.Direction().Y(), 0, 'f', 3)
+                              .arg(axis.Direction().Z(), 0, 'f', 3));
+    }
+    statusBar()->showMessage("Manual rotational axis selected and workpiece aligned", 3000);
+}
+
 void MainWindow::handlePartLoadingDistanceChanged(double distance)
 {
     if (m_outputWindow) {
@@ -676,13 +699,31 @@ void MainWindow::handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& cl
     
     // Process the selected shape through workspace controller
     if (m_workspaceController) {
-        // TODO: Implement shape analysis to extract cylindrical axis
-        // For now, just provide feedback
-        statusBar()->showMessage("Shape selected - analyzing for cylindrical features...", 3000);
+        statusBar()->showMessage("Analyzing selected geometry for cylindrical features...", 3000);
         
         if (m_outputWindow) {
             m_outputWindow->append("Analyzing selected shape for cylindrical features...");
-            m_outputWindow->append("Note: Manual axis selection from 3D view is not yet fully implemented");
+        }
+        
+        // Use the new manual axis selection functionality
+        bool success = m_workspaceController->processManualAxisSelection(shape, clickPoint);
+        
+        if (success) {
+            if (m_outputWindow) {
+                m_outputWindow->append("✓ Successfully extracted cylindrical axis and aligned workpiece with Z-axis");
+            }
+            statusBar()->showMessage("Rotational axis selected and workpiece aligned", 3000);
+            
+            // Update the viewer to show the transformation
+            if (m_3dViewer && m_3dViewer->isViewerInitialized()) {
+                m_3dViewer->update();
+            }
+        } else {
+            if (m_outputWindow) {
+                m_outputWindow->append("✗ Failed to extract cylindrical axis from selected geometry");
+                m_outputWindow->append("Please select a cylindrical face or circular edge from the workpiece");
+            }
+            statusBar()->showMessage("Invalid selection - please select cylindrical geometry", 5000);
         }
     }
 }

@@ -140,6 +140,12 @@ public:
      */
     void toggleViewMode();
 
+    /**
+     * @brief Set the workspace controller for checking object selectability
+     * @param controller Pointer to the workspace controller
+     */
+    void setWorkspaceController(class WorkspaceController* controller) { m_workspaceController = controller; }
+
 signals:
     /**
      * @brief Emitted when the viewer is successfully initialized
@@ -278,6 +284,9 @@ private:
     gp_Dir m_stored3DUp;
     double m_stored3DScale;
     bool m_has3DCameraState;
+
+    // Workspace controller
+    class WorkspaceController* m_workspaceController;
 };
 
 #endif // OPENGL3DWIDGET_H 

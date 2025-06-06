@@ -30,7 +30,6 @@ PartLoadingPanel::PartLoadingPanel(QWidget *parent)
     , m_rawMaterialDiameterSpinBox(nullptr)
     , m_materialLengthLabel(nullptr)
     , m_axisGroup(nullptr)
-    , m_cylinderComboBox(nullptr)
     , m_manualAxisButton(nullptr)
     , m_axisInfoLabel(nullptr)
     , m_updating(false)
@@ -86,8 +85,6 @@ void PartLoadingPanel::setupUI()
             this, &PartLoadingPanel::onRawMaterialDiameterChanged);
     connect(m_flipOrientationCheckBox, &QCheckBox::toggled,
             this, &PartLoadingPanel::onOrientationFlipToggled);
-    connect(m_cylinderComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &PartLoadingPanel::onCylinderSelectionChanged);
     connect(m_manualAxisButton, &QPushButton::clicked,
             this, &PartLoadingPanel::onManualAxisSelectionClicked);
 }
@@ -215,22 +212,16 @@ void PartLoadingPanel::setupAxisGroup()
     QVBoxLayout* groupLayout = new QVBoxLayout(m_axisGroup);
     groupLayout->setSpacing(12);
 
-    // Cylinder selection
-    QLabel* cylinderLabel = new QLabel("Detected Axes:");
-    cylinderLabel->setStyleSheet("font-weight: bold; color: #333;");
-
-    m_cylinderComboBox = new QComboBox();
-    m_cylinderComboBox->setMinimumHeight(28);
-
-    // Manual axis selection button
-    m_manualAxisButton = new QPushButton("Select from 3D View");
-    m_manualAxisButton->setMinimumHeight(28);
+    // Manual axis selection button (only way to select axis)
+    m_manualAxisButton = new QPushButton("Select Rotational Axis from 3D View");
+    m_manualAxisButton->setMinimumHeight(32);
     m_manualAxisButton->setStyleSheet(
         "QPushButton {"
         "  background-color: #2196F3;"
         "  color: white;"
         "  border: none;"
         "  border-radius: 4px;"
+        "  font-weight: bold;"
         "}"
         "QPushButton:hover {"
         "  background-color: #1976D2;"
@@ -241,12 +232,10 @@ void PartLoadingPanel::setupAxisGroup()
     );
 
     // Axis information
-    m_axisInfoLabel = new QLabel("No axis selected");
+    m_axisInfoLabel = new QLabel("Click the button above, then select a cylindrical surface or circular edge in the 3D view");
     m_axisInfoLabel->setStyleSheet("color: #666; font-size: 11px;");
     m_axisInfoLabel->setWordWrap(true);
 
-    groupLayout->addWidget(cylinderLabel);
-    groupLayout->addWidget(m_cylinderComboBox);
     groupLayout->addWidget(m_manualAxisButton);
     groupLayout->addWidget(m_axisInfoLabel);
 }
@@ -254,12 +243,15 @@ void PartLoadingPanel::setupAxisGroup()
 void PartLoadingPanel::updateCylinderInfo(const QVector<CylinderInfo>& cylinders)
 {
     m_detectedCylinders = cylinders;
-    updateCylinderComboBox();
-
-    // Auto-select the largest cylinder (first in sorted list)
+    
+    // Update the UI to show information about detected cylinders
     if (!cylinders.isEmpty()) {
-        m_cylinderComboBox->setCurrentIndex(0);
-        updateAxisInfo(cylinders[0]);
+        QString detectedInfo = QString("Detected %1 cylindrical feature(s). ")
+                              .arg(cylinders.size());
+        detectedInfo += "Click 'Select Rotational Axis from 3D View' to choose which one to use for turning.";
+        m_axisInfoLabel->setText(detectedInfo);
+    } else {
+        m_axisInfoLabel->setText("No cylindrical features detected. Click 'Select Rotational Axis from 3D View' to manually select geometry.");
     }
 }
 
@@ -283,11 +275,7 @@ bool PartLoadingPanel::isOrientationFlipped() const
     return m_flipOrientationCheckBox->isChecked();
 }
 
-int PartLoadingPanel::getSelectedCylinderIndex() const
-{
-    int index = m_cylinderComboBox->currentIndex();
-    return (index >= 0 && index < m_detectedCylinders.size()) ? index : -1;
-}
+
 
 void PartLoadingPanel::reset()
 {
@@ -303,8 +291,7 @@ void PartLoadingPanel::reset()
     m_materialLengthLabel->setText("Length: Auto-calculated");
 
     // Reset axis controls
-    m_cylinderComboBox->clear();
-    m_axisInfoLabel->setText("No axis selected");
+    m_axisInfoLabel->setText("Click the button above, then select a cylindrical surface or circular edge in the 3D view");
 
     // Clear data
     m_detectedCylinders.clear();
@@ -350,16 +337,6 @@ void PartLoadingPanel::onOrientationFlipToggled(bool checked)
     emit orientationFlipped(checked);
 }
 
-void PartLoadingPanel::onCylinderSelectionChanged(int index)
-{
-    if (m_updating) return;
-    
-    if (index >= 0 && index < m_detectedCylinders.size()) {
-        updateAxisInfo(m_detectedCylinders[index]);
-        emit cylinderSelectionChanged(index);
-    }
-}
-
 void PartLoadingPanel::onManualAxisSelectionClicked()
 {
     emit manualAxisSelectionRequested();
@@ -376,24 +353,8 @@ void PartLoadingPanel::updateDistanceControls(double distance)
 
 void PartLoadingPanel::updateCylinderComboBox()
 {
-    m_updating = true;
-    m_cylinderComboBox->clear();
-
-    if (m_detectedCylinders.isEmpty()) {
-        m_cylinderComboBox->addItem("No axes detected");
-        m_cylinderComboBox->setEnabled(false);
-    } else {
-        m_cylinderComboBox->setEnabled(true);
-        for (int i = 0; i < m_detectedCylinders.size(); ++i) {
-            const CylinderInfo& info = m_detectedCylinders[i];
-            QString itemText = QString("%1 - Ø%2mm × %3mm")
-                              .arg(i == 0 ? "Main Axis" : QString("Axis %1").arg(i + 1))
-                              .arg(info.diameter, 0, 'f', 1)
-                              .arg(info.estimatedLength, 0, 'f', 1);
-            m_cylinderComboBox->addItem(itemText);
-        }
-    }
-    m_updating = false;
+    // This method is no longer used since we removed the dropdown
+    // but kept for backward compatibility - does nothing now
 }
 
 void PartLoadingPanel::updateAxisInfo(const CylinderInfo& info)
@@ -401,9 +362,11 @@ void PartLoadingPanel::updateAxisInfo(const CylinderInfo& info)
     gp_Pnt loc = info.axis.Location();
     gp_Dir dir = info.axis.Direction();
     
-    QString infoText = QString("Diameter: %1mm, Length: %2mm\n"
+    QString infoText = QString("✓ Rotational Axis Selected:\n"
+                              "Diameter: %1mm, Length: %2mm\n"
                               "Location: (%3, %4, %5)\n"
-                              "Direction: (%6, %7, %8)")
+                              "Direction: (%6, %7, %8)\n"
+                              "Workpiece has been aligned with Z-axis for turning.")
                       .arg(info.diameter, 0, 'f', 1)
                       .arg(info.estimatedLength, 0, 'f', 1)
                       .arg(loc.X(), 0, 'f', 1)

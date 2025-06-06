@@ -5,6 +5,22 @@
 #include "isteploader.h"
 
 #include <QDebug>
+#include <cmath>
+
+// OpenCASCADE includes
+#include <TopoDS.hxx>
+#include <TopoDS_Face.hxx>
+#include <TopoDS_Edge.hxx>
+#include <BRepAdaptor_Surface.hxx>
+#include <BRepAdaptor_Curve.hxx>
+#include <GeomAbs_SurfaceType.hxx>
+#include <GeomAbs_CurveType.hxx>
+#include <gp_Cylinder.hxx>
+#include <gp_Circ.hxx>
+#include <gp_Vec.hxx>
+#include <gp_Dir.hxx>
+#include <Precision.hxx>
+#include <AIS_Shape.hxx>
 
 WorkspaceController::WorkspaceController(QObject *parent)
     : QObject(parent)
@@ -281,13 +297,7 @@ QVector<CylinderInfo> WorkspaceController::getDetectedCylinders() const
     return QVector<CylinderInfo>();
 }
 
-int WorkspaceController::getSelectedCylinderIndex() const
-{
-    if (m_workpieceManager) {
-        return m_workpieceManager->getSelectedCylinderIndex();
-    }
-    return -1;
-}
+
 
 bool WorkspaceController::hasChuckCenterline() const
 {
@@ -471,83 +481,207 @@ bool WorkspaceController::flipWorkpieceOrientation(bool flipped)
     }
 }
 
-bool WorkspaceController::applyPartLoadingSettings(double distance, double diameter, bool flipped, int cylinderIndex)
+bool WorkspaceController::applyPartLoadingSettings(double distance, double diameter, bool flipped)
 {
     if (!m_initialized) {
         emit errorOccurred("WorkspaceController", "Workspace not initialized");
         return false;
     }
 
-    bool allSuccessful = true;
+    bool success = true;
+    
+    // Apply orientation flip
+    success &= flipWorkpieceOrientation(flipped);
+    
+    // Apply distance positioning
+    success &= updateDistanceToChuck(distance);
+    
+    // Apply raw material diameter
+    success &= updateRawMaterialDiameter(diameter);
+    
+    return success;
+}
+
+bool WorkspaceController::processManualAxisSelection(const TopoDS_Shape& selectedShape, const gp_Pnt& clickPoint)
+{
+    if (!m_initialized || selectedShape.IsNull()) {
+        emit errorOccurred("WorkspaceController", "Invalid selection for axis extraction");
+        return false;
+    }
 
     try {
-        // Apply cylinder selection first if changed
-        if (cylinderIndex >= 0) {
-            bool cylinderSuccess = selectWorkpieceCylinderAxis(cylinderIndex);
-            if (!cylinderSuccess) {
-                qDebug() << "WorkspaceController: Failed to apply cylinder selection, continuing with other settings";
-                allSuccessful = false;
+        gp_Ax1 extractedAxis;
+        double extractedDiameter = 0.0;
+        bool axisFound = false;
+
+        // Try to extract cylindrical axis from the selected shape
+        if (selectedShape.ShapeType() == TopAbs_FACE) {
+            // Analyze cylindrical face
+            TopoDS_Face face = TopoDS::Face(selectedShape);
+            BRepAdaptor_Surface surface(face);
+            
+            if (surface.GetType() == GeomAbs_Cylinder) {
+                gp_Cylinder cylinder = surface.Cylinder();
+                extractedAxis = cylinder.Axis();
+                extractedDiameter = cylinder.Radius() * 2.0;
+                axisFound = true;
+                qDebug() << "WorkspaceController: Extracted axis from cylindrical face - Diameter:" << extractedDiameter << "mm";
+            }
+        } else if (selectedShape.ShapeType() == TopAbs_EDGE) {
+            // Analyze circular edge
+            TopoDS_Edge edge = TopoDS::Edge(selectedShape);
+            BRepAdaptor_Curve curve(edge);
+            
+            if (curve.GetType() == GeomAbs_Circle) {
+                gp_Circ circle = curve.Circle();
+                extractedAxis = circle.Axis();
+                extractedDiameter = circle.Radius() * 2.0;
+                axisFound = true;
+                qDebug() << "WorkspaceController: Extracted axis from circular edge - Diameter:" << extractedDiameter << "mm";
             }
         }
 
-        // Apply diameter change
-        bool diameterSuccess = updateRawMaterialDiameter(diameter);
-        if (!diameterSuccess) {
-            qDebug() << "WorkspaceController: Failed to apply diameter change";
-            allSuccessful = false;
+        if (!axisFound) {
+            emit errorOccurred("WorkspaceController", "Selected geometry is not cylindrical or circular. Please select a cylindrical face or circular edge.");
+            return false;
         }
 
-        // Apply distance change
-        bool distanceSuccess = updateDistanceToChuck(distance);
-        if (!distanceSuccess) {
-            qDebug() << "WorkspaceController: Failed to apply distance change";
-            allSuccessful = false;
+        // Create transformation to align the extracted axis with the Z-axis
+        gp_Trsf alignmentTransform = createAxisAlignmentTransformation(extractedAxis);
+        
+        // Apply the transformation through WorkpieceManager for robust handling
+        if (!m_workpieceManager->setAxisAlignmentTransformation(alignmentTransform)) {
+            emit errorOccurred("WorkspaceController", "Failed to apply axis alignment transformation");
+            return false;
         }
 
-        // Apply orientation flip
-        bool orientationSuccess = flipWorkpieceOrientation(flipped);
-        if (!orientationSuccess) {
-            qDebug() << "WorkspaceController: Failed to apply orientation flip";
-            allSuccessful = false;
-        }
+        // Update the workpiece manager with the new custom axis (now aligned with Z)
+        gp_Ax1 alignedAxis(extractedAxis.Location(), gp_Dir(0, 0, 1));
+        m_workpieceManager->setCustomAxis(alignedAxis, extractedDiameter);
 
-        if (allSuccessful) {
-            qDebug() << "WorkspaceController: All part loading settings applied successfully";
+        // Recalculate raw material with the new alignment
+        bool rawMaterialSuccess = recalculateRawMaterial();
+        
+        if (rawMaterialSuccess) {
+            // Create CylinderInfo for the manually selected axis
+            CylinderInfo manualAxisInfo(alignedAxis, extractedDiameter, 100.0, "Manual Selection");
+            
+            // Emit signals for UI updates
+            emit manualAxisSelected(extractedDiameter, alignedAxis);
+            emit cylinderAxisSelected(-1, manualAxisInfo); // Use -1 to indicate manual selection
+            emit workpieceWorkflowCompleted(extractedDiameter, m_rawMaterialManager->getCurrentDiameter());
+            
+            qDebug() << "WorkspaceController: Manual axis selection completed successfully";
+            return true;
         } else {
-            qDebug() << "WorkspaceController: Some part loading settings failed to apply";
+            qDebug() << "WorkspaceController: Manual axis selection succeeded but raw material recalculation failed";
+            return false;
         }
-
-        return allSuccessful;
 
     } catch (const std::exception& e) {
-        QString errorMsg = QString("Failed to apply part loading settings: %1").arg(e.what());
+        QString errorMsg = QString("Error processing manual axis selection: %1").arg(e.what());
         emit errorOccurred("WorkspaceController", errorMsg);
         return false;
     }
 }
 
+gp_Trsf WorkspaceController::createAxisAlignmentTransformation(const gp_Ax1& sourceAxis)
+{
+    gp_Trsf transform;
+    
+    try {
+        // Target axis is Z-axis through origin
+        gp_Ax1 targetAxis(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
+        
+        // Get the direction vectors
+        gp_Dir sourceDir = sourceAxis.Direction();
+        gp_Dir targetDir = targetAxis.Direction();
+        
+        // Check if axes are already aligned
+        if (sourceDir.IsEqual(targetDir, Precision::Angular())) {
+            // Only need translation to move to origin
+            gp_Vec translation = gp_Vec(sourceAxis.Location(), targetAxis.Location());
+            if (translation.Magnitude() > Precision::Confusion()) {
+                transform.SetTranslation(translation);
+            }
+            return transform;
+        }
+        
+        // Check if axes are opposite
+        if (sourceDir.IsOpposite(targetDir, Precision::Angular())) {
+            // Rotate 180 degrees around Y-axis and translate
+            gp_Ax1 rotationAxis(sourceAxis.Location(), gp_Dir(0, 1, 0));
+            transform.SetRotation(rotationAxis, M_PI);
+            
+            // Then translate to origin
+            gp_Vec translation = gp_Vec(sourceAxis.Location(), targetAxis.Location());
+            if (translation.Magnitude() > Precision::Confusion()) {
+                gp_Trsf translationTransform;
+                translationTransform.SetTranslation(translation);
+                transform = translationTransform * transform;
+            }
+            return transform;
+        }
+        
+        // Calculate rotation axis as cross product of source and target directions
+        gp_Vec sourceVec(sourceDir);
+        gp_Vec targetVec(targetDir);
+        gp_Vec rotationVec = sourceVec.Crossed(targetVec);
+        
+        if (rotationVec.Magnitude() < Precision::Confusion()) {
+            // Vectors are parallel, no rotation needed, just translation
+            gp_Vec translation = gp_Vec(sourceAxis.Location(), targetAxis.Location());
+            if (translation.Magnitude() > Precision::Confusion()) {
+                transform.SetTranslation(translation);
+            }
+            return transform;
+        }
+        
+        // Normalize rotation vector and calculate angle
+        gp_Dir rotationDir(rotationVec);
+        double angle = sourceVec.Angle(targetVec);
+        
+        // Create rotation around the calculated axis through the source axis location
+        gp_Ax1 rotationAxis(sourceAxis.Location(), rotationDir);
+        transform.SetRotation(rotationAxis, angle);
+        
+        // Apply translation to move to target location
+        gp_Vec translation = gp_Vec(sourceAxis.Location(), targetAxis.Location());
+        if (translation.Magnitude() > Precision::Confusion()) {
+            gp_Trsf translationTransform;
+            translationTransform.SetTranslation(translation);
+            transform = translationTransform * transform;
+        }
+        
+        qDebug() << "WorkspaceController: Created axis alignment transformation - Rotation angle:" 
+                 << (angle * 180.0 / M_PI) << "degrees";
+        
+        return transform;
+        
+    } catch (const std::exception& e) {
+        qDebug() << "WorkspaceController: Error creating axis alignment transformation:" << e.what();
+        return gp_Trsf(); // Return identity transformation
+    }
+}
+
+
+
 bool WorkspaceController::reprocessCurrentWorkpiece()
 {
-    if (!m_initialized) {
-        emit errorOccurred("WorkspaceController", "Workspace not initialized");
-        return false;
-    }
-
-    if (m_currentWorkpiece.IsNull()) {
+    if (!m_initialized || m_currentWorkpiece.IsNull()) {
         emit errorOccurred("WorkspaceController", "No workpiece available for reprocessing");
         return false;
     }
 
     try {
-        qDebug() << "WorkspaceController: Starting workpiece reprocessing";
+        // Clear current workpieces and raw material
+        m_workpieceManager->clearWorkpieces();
+        m_rawMaterialManager->clearRawMaterial();
         
-        // Clear existing workpieces and raw material while preserving chuck
-        clearWorkpieces();
-        
-        // Reprocess the stored workpiece through the complete workflow
+        // Re-execute the complete workflow
         executeWorkpieceWorkflow(m_currentWorkpiece);
         
-        qDebug() << "WorkspaceController: Workpiece reprocessing completed successfully";
+        qDebug() << "WorkspaceController: Workpiece reprocessed successfully";
         return true;
         
     } catch (const std::exception& e) {
@@ -565,8 +699,18 @@ bool WorkspaceController::recalculateRawMaterial(double diameter)
     }
 
     try {
-        // Get current settings
-        gp_Ax1 currentAxis = m_workpieceManager->getMainCylinderAxis();
+        // Get current settings - use Z-aligned axis if axis alignment is active
+        gp_Ax1 currentAxis;
+        if (m_workpieceManager->hasAxisAlignmentTransformation()) {
+            // After manual axis selection, always use Z-axis for raw material
+            currentAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
+            qDebug() << "WorkspaceController: Using Z-aligned axis for raw material (manual selection active)";
+        } else {
+            // Use the detected/selected axis from workpiece manager
+            currentAxis = m_workpieceManager->getMainCylinderAxis();
+            qDebug() << "WorkspaceController: Using workpiece manager axis for raw material";
+        }
+        
         double currentDiameter = (diameter > 0.0) ? diameter : m_rawMaterialManager->getCurrentDiameter();
         
         // Ensure we have a valid diameter
@@ -578,10 +722,13 @@ bool WorkspaceController::recalculateRawMaterial(double diameter)
         // Get the current transformation from the workpiece manager
         gp_Trsf currentTransform = m_workpieceManager->getCurrentTransformation();
         
-        // Debug transformation details
+        // Debug transformation details for troubleshooting
         gp_XYZ translation = currentTransform.TranslationPart();
-        qDebug() << "WorkspaceController: Current transformation - Translation:" 
+        qDebug() << "WorkspaceController: Complete transformation - Translation:" 
                  << translation.X() << "," << translation.Y() << "," << translation.Z();
+        qDebug() << "WorkspaceController: Axis alignment active:" << m_workpieceManager->hasAxisAlignmentTransformation();
+        qDebug() << "WorkspaceController: Workpiece flipped:" << m_workpieceManager->isWorkpieceFlipped();
+        qDebug() << "WorkspaceController: Position offset:" << m_workpieceManager->getWorkpiecePositionOffset() << "mm";
         
         // Apply chuck alignment if available
         gp_Ax1 alignmentAxis = currentAxis;

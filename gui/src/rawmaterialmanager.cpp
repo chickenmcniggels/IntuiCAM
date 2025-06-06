@@ -66,6 +66,9 @@ void RawMaterialManager::displayRawMaterial(double diameter, double length, cons
         // Display the raw material
         m_context->Display(m_rawMaterialAIS, AIS_Shaded, 0, false);
         
+        // Make raw material non-selectable immediately after display
+        makeRawMaterialNonSelectable();
+        
         // Force immediate context update for real-time feedback
         m_context->UpdateCurrentViewer();
         
@@ -108,6 +111,9 @@ void RawMaterialManager::displayRawMaterialForWorkpiece(double diameter, const T
         
         // Display the raw material
         m_context->Display(m_rawMaterialAIS, AIS_Shaded, 0, false);
+        
+        // Make raw material non-selectable immediately after display
+        makeRawMaterialNonSelectable();
         
         // Force immediate context update for real-time feedback
         m_context->UpdateCurrentViewer();
@@ -212,6 +218,21 @@ void RawMaterialManager::setCustomDiameter(double diameter, const TopoDS_Shape& 
     } else {
         displayRawMaterialForWorkpiece(diameter, workpiece, axis);
     }
+}
+
+void RawMaterialManager::makeRawMaterialNonSelectable()
+{
+    if (m_context.IsNull() || m_rawMaterialAIS.IsNull()) {
+        return;
+    }
+    
+    // Deactivate all selection modes for the raw material to prevent selection
+    m_context->Deactivate(m_rawMaterialAIS);
+    
+    // Clear any existing selection on the raw material
+    m_context->SetSelected(m_rawMaterialAIS, false);
+    
+    qDebug() << "Raw material set as non-selectable";
 }
 
 double RawMaterialManager::calculateOptimalLength(const TopoDS_Shape& workpiece, const gp_Ax1& axis)
@@ -444,6 +465,11 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, dou
         // Create coordinate system for the cylinder starting at the calculated position
         gp_Ax2 cylinderAx2(cylinderStartPoint, axis.Direction());
         
+        qDebug() << "Raw material cylinder creation:";
+        qDebug() << "  Start point:" << cylinderStartPoint.X() << "," << cylinderStartPoint.Y() << "," << cylinderStartPoint.Z();
+        qDebug() << "  Axis direction:" << axis.Direction().X() << "," << axis.Direction().Y() << "," << axis.Direction().Z();
+        qDebug() << "  Radius:" << radius << "mm, Length:" << length << "mm";
+        
         // Create cylinder starting from the calculated start point
         BRepPrimAPI_MakeCylinder cylinderMaker(cylinderAx2, radius, length);
         TopoDS_Shape cylinder = cylinderMaker.Shape();
@@ -539,6 +565,11 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpieceWithTransform(double 
         // Create coordinate system for the cylinder starting at the calculated position
         gp_Ax2 cylinderAx2(cylinderStartPoint, axis.Direction());
         
+        qDebug() << "Raw material cylinder creation:";
+        qDebug() << "  Start point:" << cylinderStartPoint.X() << "," << cylinderStartPoint.Y() << "," << cylinderStartPoint.Z();
+        qDebug() << "  Axis direction:" << axis.Direction().X() << "," << axis.Direction().Y() << "," << axis.Direction().Z();
+        qDebug() << "  Radius:" << radius << "mm, Length:" << length << "mm";
+        
         // Create cylinder starting from the calculated start point
         BRepPrimAPI_MakeCylinder cylinderMaker(cylinderAx2, radius, length);
         TopoDS_Shape cylinder = cylinderMaker.Shape();
@@ -581,6 +612,9 @@ void RawMaterialManager::displayRawMaterialForWorkpieceWithTransform(double diam
         
         // Display the raw material
         m_context->Display(m_rawMaterialAIS, AIS_Shaded, 0, false);
+        
+        // Make raw material non-selectable immediately after display
+        makeRawMaterialNonSelectable();
         
         // Force immediate context update for real-time feedback
         m_context->UpdateCurrentViewer();

@@ -25,9 +25,12 @@ WorkpieceManager::WorkpieceManager(QObject *parent)
     , m_selectedCylinderIndex(-1)
     , m_isFlipped(false)
     , m_positionOffset(0.0)
+    , m_hasAxisAlignment(false)
 {
     // Initialize default main cylinder axis
     m_mainCylinderAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
+    // Initialize axis alignment transform as identity (default constructor already creates identity)
+    // m_axisAlignmentTransform is already identity by default
 }
 
 WorkpieceManager::~WorkpieceManager()
@@ -320,6 +323,10 @@ void WorkpieceManager::clearWorkpieces()
     m_isFlipped = false;
     m_positionOffset = 0.0;
     
+    // Reset axis alignment state
+    m_hasAxisAlignment = false;
+    m_axisAlignmentTransform = gp_Trsf(); // Reset to identity
+    
     qDebug() << "All workpieces cleared";
 }
 
@@ -377,22 +384,28 @@ bool WorkpieceManager::flipWorkpieceOrientation(bool flipped)
 
 gp_Trsf WorkpieceManager::getCurrentTransformation() const
 {
-    gp_Trsf transform;
+    gp_Trsf transform; // Default constructor creates identity
     
-    // First apply flip transformation if needed (around original position)
-    if (m_isFlipped) {
-        gp_Ax1 rotationAxis(m_mainCylinderAxis.Location(), gp_Dir(0, 1, 0)); // Y-axis
-        transform.SetRotation(rotationAxis, M_PI); // 180 degrees
+    // Step 1: Apply axis alignment transformation first (if present)
+    // This aligns the workpiece axis with the Z-axis
+    if (m_hasAxisAlignment) {
+        transform = m_axisAlignmentTransform * transform;
     }
     
-    // Then apply global position offset (always in Z+ direction)
+    // Step 2: Apply flip transformation (around the now-aligned axis)
+    if (m_isFlipped) {
+        // Flip around Y-axis at the origin (since axis is now aligned with Z)
+        gp_Ax1 rotationAxis(gp_Pnt(0, 0, 0), gp_Dir(0, 1, 0));
+        gp_Trsf flipTransform;
+        flipTransform.SetRotation(rotationAxis, M_PI); // 180 degrees
+        transform = flipTransform * transform;
+    }
+    
+    // Step 3: Apply global position offset (always in Z+ direction for chuck distance)
     if (std::abs(m_positionOffset) > 1e-6) {
-        // Always use Z+ direction for distance to chuck, regardless of flip state
         gp_Vec globalTranslation(0, 0, m_positionOffset);  // Global Z+ direction
         gp_Trsf translationTransform;
         translationTransform.SetTranslation(globalTranslation);
-        
-        // Apply translation after flip: translation * flip
         transform = translationTransform * transform;
     }
     
@@ -429,6 +442,40 @@ bool WorkpieceManager::positionWorkpieceAlongAxis(double distance)
 
     } catch (const std::exception& e) {
         emit errorOccurred(QString("Failed to position workpiece: %1").arg(e.what()));
+        return false;
+    }
+}
+
+bool WorkpieceManager::setAxisAlignmentTransformation(const gp_Trsf& transform)
+{
+    if (m_context.IsNull() || m_workpieces.isEmpty()) {
+        emit errorOccurred("No workpieces available for axis alignment transformation");
+        return false;
+    }
+
+    try {
+        // Store the axis alignment transformation
+        m_axisAlignmentTransform = transform;
+        m_hasAxisAlignment = true;
+        
+        // Apply the complete transformation (alignment + flip + position)
+        gp_Trsf completeTransform = getCurrentTransformation();
+
+        // Apply to all workpieces
+        for (Handle(AIS_Shape) workpiece : m_workpieces) {
+            if (!workpiece.IsNull()) {
+                workpiece->SetLocalTransformation(completeTransform);
+                m_context->Redisplay(workpiece, false);
+            }
+        }
+        
+        m_context->UpdateCurrentViewer();
+        
+        qDebug() << "WorkpieceManager: Axis alignment transformation applied successfully";
+        return true;
+
+    } catch (const std::exception& e) {
+        emit errorOccurred(QString("Failed to apply axis alignment transformation: %1").arg(e.what()));
         return false;
     }
 } 
