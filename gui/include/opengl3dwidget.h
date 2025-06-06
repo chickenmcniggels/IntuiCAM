@@ -23,6 +23,15 @@
 #include <AIS_Shape.hxx>
 #include <TopoDS_Shape.hxx>
 #include <gp_Pnt.hxx>
+#include <gp_Dir.hxx>
+
+/**
+ * @brief Viewing modes for the 3D widget
+ */
+enum class ViewMode {
+    Mode3D,     ///< Full 3D viewing with free rotation
+    LatheXZ     ///< Locked to XZ plane for lathe operations (X top to bottom, Z left to right)
+};
 
 /**
  * @brief Pure 3D visualization widget using OpenCASCADE
@@ -31,6 +40,7 @@
  * - Handles OpenGL rendering and OpenCASCADE integration
  * - Manages user interaction (mouse, wheel events)
  * - Provides basic display operations (show shape, clear, fit view)
+ * - Supports multiple viewing modes (3D and XZ lathe plane)
  * - Maintains clean separation from business logic
  * 
  * Business logic and workflow coordination are handled by WorkspaceController.
@@ -113,6 +123,23 @@ public:
      */
     void clearTurningAxisFace();
 
+    /**
+     * @brief Set the viewing mode (3D or XZ plane)
+     * @param mode The desired viewing mode
+     */
+    void setViewMode(ViewMode mode);
+
+    /**
+     * @brief Get the current viewing mode
+     * @return Current viewing mode
+     */
+    ViewMode getViewMode() const { return m_currentViewMode; }
+
+    /**
+     * @brief Toggle between 3D and XZ plane viewing modes
+     */
+    void toggleViewMode();
+
 signals:
     /**
      * @brief Emitted when the viewer is successfully initialized
@@ -125,6 +152,12 @@ signals:
      * @param clickPoint The 3D point where the selection occurred
      */
     void shapeSelected(const TopoDS_Shape& selectedShape, const gp_Pnt& clickPoint);
+
+    /**
+     * @brief Emitted when the view mode changes
+     * @param mode The new viewing mode
+     */
+    void viewModeChanged(ViewMode mode);
 
 protected:
     // Qt OpenGL widget overrides
@@ -175,6 +208,32 @@ private:
      * @brief Handle window activation changes
      */
     void handleActivationChange(bool active);
+
+    /**
+     * @brief Apply the camera settings for the current view mode
+     */
+    void applyCameraForViewMode();
+
+    /**
+     * @brief Set up camera for 3D mode with standard perspective view
+     */
+    void setupCamera3D();
+
+    /**
+     * @brief Set up camera for XZ plane mode (lathe coordinate system)
+     * X increases from top to bottom, Z increases from left to right
+     */
+    void setupCameraXZ();
+
+    /**
+     * @brief Store the current 3D camera state for restoration
+     */
+    void store3DCameraState();
+
+    /**
+     * @brief Restore the previously stored 3D camera state
+     */
+    void restore3DCameraState();
     
     // OpenCASCADE objects
     Handle(V3d_Viewer) m_viewer;
@@ -209,6 +268,16 @@ private:
     // Turning axis face highlighting
     Handle(AIS_Shape) m_turningAxisFaceAIS;
     TopoDS_Shape m_turningAxisFace;
+
+    // View mode management
+    ViewMode m_currentViewMode;
+    
+    // Camera state storage for 3D mode
+    gp_Pnt m_stored3DEye;
+    gp_Pnt m_stored3DAt;
+    gp_Dir m_stored3DUp;
+    double m_stored3DScale;
+    bool m_has3DCameraState;
 };
 
 #endif // OPENGL3DWIDGET_H 

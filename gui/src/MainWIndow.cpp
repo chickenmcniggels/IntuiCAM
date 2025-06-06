@@ -62,6 +62,11 @@ MainWindow::MainWindow(QWidget *parent)
     // Set initial status
     statusBar()->showMessage("Ready - Welcome to IntuiCAM", 2000);
     
+    // Initialize view mode action text (start in 3D mode)
+    if (m_toggleViewModeAction) {
+        m_toggleViewModeAction->setText(tr("Switch to &Lathe View"));
+    }
+    
     // Initialize workspace automatically after a short delay to ensure OpenGL is ready
     QTimer::singleShot(100, this, &MainWindow::initializeWorkspace);
 }
@@ -119,6 +124,12 @@ void MainWindow::createMenus()
     // Create View menu
     m_viewMenu = menuBar()->addMenu(tr("&View"));
     
+    m_toggleViewModeAction = new QAction(tr("Toggle &Lathe View"), this);
+    m_toggleViewModeAction->setShortcut(QKeySequence(Qt::Key_F2));
+    m_toggleViewModeAction->setStatusTip(tr("Toggle between 3D view and XZ plane (lathe) view"));
+    m_toggleViewModeAction->setCheckable(false);  // We'll update the text instead
+    m_viewMenu->addAction(m_toggleViewModeAction);
+    
     // Create Tools menu
     m_toolsMenu = menuBar()->addMenu(tr("&Tools"));
     
@@ -141,6 +152,9 @@ void MainWindow::createToolBars()
     if (m_saveAction) m_mainToolBar->addAction(m_saveAction);
     
     m_mainToolBar->addSeparator();
+    
+    // Add view mode toggle to toolbar
+    if (m_toggleViewModeAction) m_mainToolBar->addAction(m_toggleViewModeAction);
 }
 
 void MainWindow::createCentralWidget()
@@ -232,6 +246,7 @@ void MainWindow::setupConnections()
     if (m_exitAction) connect(m_exitAction, &QAction::triggered, this, &MainWindow::exitApplication);
     if (m_aboutAction) connect(m_aboutAction, &QAction::triggered, this, &MainWindow::aboutApplication);
     if (m_preferencesAction) connect(m_preferencesAction, &QAction::triggered, this, &MainWindow::showPreferences);
+    if (m_toggleViewModeAction) connect(m_toggleViewModeAction, &QAction::triggered, this, &MainWindow::toggleViewMode);
     
     // Connect 3D viewer initialization
     connect(m_3dViewer, &OpenGL3DWidget::viewerInitialized,
@@ -272,6 +287,10 @@ void MainWindow::setupWorkspaceConnections()
         // Connect 3D viewer selection for manual axis selection
         connect(m_3dViewer, &OpenGL3DWidget::shapeSelected,
                 this, &MainWindow::handleShapeSelected);
+        
+        // Connect view mode changes
+        connect(m_3dViewer, &OpenGL3DWidget::viewModeChanged,
+                this, &MainWindow::handleViewModeChanged);
         
         qDebug() << "Workspace controller connections established";
     }
@@ -689,6 +708,37 @@ void MainWindow::handlePartLoadingReprocess()
                 m_outputWindow->append("Failed to reprocess part loading workflow");
             }
             statusBar()->showMessage("Failed to reprocess workflow", 3000);
+        }
+    }
+}
+
+void MainWindow::toggleViewMode()
+{
+    if (m_3dViewer) {
+        m_3dViewer->toggleViewMode();
+    }
+}
+
+void MainWindow::handleViewModeChanged(ViewMode mode)
+{
+    if (mode == ViewMode::Mode3D) {
+        if (m_toggleViewModeAction) {
+            m_toggleViewModeAction->setText(tr("Switch to &Lathe View"));
+            m_toggleViewModeAction->setStatusTip(tr("Switch to XZ plane (lathe) view"));
+        }
+        statusBar()->showMessage("Switched to 3D view mode", 2000);
+        if (m_outputWindow) {
+            m_outputWindow->append("View mode: 3D - Full rotation and zoom available");
+        }
+    } else if (mode == ViewMode::LatheXZ) {
+        if (m_toggleViewModeAction) {
+            m_toggleViewModeAction->setText(tr("Switch to &3D View"));
+            m_toggleViewModeAction->setStatusTip(tr("Switch to full 3D view"));
+        }
+        statusBar()->showMessage("Switched to lathe XZ view mode", 2000);
+        if (m_outputWindow) {
+            m_outputWindow->append("View mode: Lathe XZ - X increases top to bottom, Z left to right");
+            m_outputWindow->append("Use left click to pan, wheel to zoom. Rotation disabled in this mode.");
         }
     }
 } 

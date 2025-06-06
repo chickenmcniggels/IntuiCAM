@@ -28,6 +28,9 @@ class PartLoadingPanel;
 // Include CylinderInfo definition
 #include "workpiecemanager.h"
 
+// Include ViewMode enum
+enum class ViewMode;  // Forward declaration
+
 QT_BEGIN_NAMESPACE
 class QLabel;
 class QMenuBar;
@@ -77,6 +80,8 @@ private slots:
     
     // 3D viewer handlers
     void handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& clickPoint);
+    void handleViewModeChanged(ViewMode mode);
+    void toggleViewMode();
 
 private:
     void createMenus();
@@ -124,6 +129,7 @@ private:
     QAction *m_exitAction;
     QAction *m_aboutAction;
     QAction *m_preferencesAction;
+    QAction *m_toggleViewModeAction;
 };
 
 #endif // MAINWINDOW_H

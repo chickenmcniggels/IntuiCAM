@@ -35,6 +35,9 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_selectionMode(false)
     , m_autoFitEnabled(true)
     , m_hoverHighlightEnabled(true)
+    , m_currentViewMode(ViewMode::Mode3D)
+    , m_stored3DScale(1.0)
+    , m_has3DCameraState(false)
 {
     // Enable mouse tracking for proper interaction
     setMouseTracking(true);
@@ -83,7 +86,7 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
         }
     });
     
-    qDebug() << "OpenGL3DWidget created as pure visualization component";
+    qDebug() << "OpenGL3DWidget created as pure visualization component with view mode support";
 }
 
 OpenGL3DWidget::~OpenGL3DWidget()
@@ -407,7 +410,13 @@ void OpenGL3DWidget::mousePressEvent(QMouseEvent *event)
         // Normal interaction mode
         if (event->button() == Qt::LeftButton)
         {
-            m_view->StartRotation(event->pos().x(), event->pos().y());
+            // In XZ plane mode, left click does panning instead of rotation
+            if (m_currentViewMode == ViewMode::LatheXZ) {
+                // Initialize panning for XZ mode
+            } else {
+                // Normal 3D rotation
+                m_view->StartRotation(event->pos().x(), event->pos().y());
+            }
         }
     }
     
@@ -422,18 +431,24 @@ void OpenGL3DWidget::mouseMoveEvent(QMouseEvent *event)
         if (m_isDragging) {
             if (m_dragButton == Qt::LeftButton)
             {
-                // Rotation
-                m_view->Rotation(event->pos().x(), event->pos().y());
+                if (m_currentViewMode == ViewMode::LatheXZ) {
+                    // In XZ mode, left click performs panning (no rotation allowed)
+                    m_view->Pan(event->pos().x() - m_lastMousePos.x(), 
+                               m_lastMousePos.y() - event->pos().y());
+                } else {
+                    // Normal 3D rotation
+                    m_view->Rotation(event->pos().x(), event->pos().y());
+                }
             }
             else if (m_dragButton == Qt::MiddleButton)
             {
-                // Panning
+                // Panning (works the same in both modes)
                 m_view->Pan(event->pos().x() - m_lastMousePos.x(), 
                            m_lastMousePos.y() - event->pos().y());
             }
             else if (m_dragButton == Qt::RightButton)
             {
-                // Zooming
+                // Zooming (works the same in both modes)
                 m_view->Zoom(m_lastMousePos.x(), m_lastMousePos.y(), 
                             event->pos().x(), event->pos().y());
             }
@@ -829,5 +844,173 @@ void OpenGL3DWidget::clearTurningAxisFace()
         } catch (const std::exception& e) {
             qDebug() << "Error clearing turning axis face:" << e.what();
         }
+    }
+}
+
+void OpenGL3DWidget::setViewMode(ViewMode mode)
+{
+    if (!m_view.IsNull() && m_currentViewMode != mode) {
+        // Store current 3D camera state if we're switching away from 3D mode
+        if (m_currentViewMode == ViewMode::Mode3D) {
+            store3DCameraState();
+        }
+        
+        m_currentViewMode = mode;
+        applyCameraForViewMode();
+        
+        // Emit signal for UI updates
+        emit viewModeChanged(mode);
+        
+        // Update the view
+        updateView();
+        
+        qDebug() << "View mode changed to:" << (mode == ViewMode::Mode3D ? "3D" : "Lathe XZ");
+    }
+}
+
+void OpenGL3DWidget::toggleViewMode()
+{
+    ViewMode newMode = (m_currentViewMode == ViewMode::Mode3D) ? ViewMode::LatheXZ : ViewMode::Mode3D;
+    setViewMode(newMode);
+}
+
+void OpenGL3DWidget::applyCameraForViewMode()
+{
+    if (m_view.IsNull()) {
+        return;
+    }
+    
+    try {
+        switch (m_currentViewMode) {
+            case ViewMode::Mode3D:
+                setupCamera3D();
+                break;
+                
+            case ViewMode::LatheXZ:
+                setupCameraXZ();
+                break;
+        }
+        
+        m_view->ZFitAll();
+        m_view->Redraw();
+        
+    } catch (const std::exception& e) {
+        qDebug() << "Error applying camera for view mode:" << e.what();
+    }
+}
+
+void OpenGL3DWidget::setupCamera3D()
+{
+    if (m_view.IsNull()) {
+        return;
+    }
+    
+    // Restore previous 3D camera state if available
+    if (m_has3DCameraState) {
+        restore3DCameraState();
+    } else {
+        // Set up default 3D perspective view
+        m_view->SetAt(0.0, 0.0, 0.0);
+        m_view->SetEye(100.0, 100.0, 100.0);
+        m_view->SetUp(0.0, 0.0, 1.0);
+        // Set perspective view (default for 3D mode)
+        
+        // Ensure the view shows the coordinate trihedron
+        m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_GOLD, 0.08, V3d_ZBUFFER);
+    }
+    
+    qDebug() << "3D camera mode configured";
+}
+
+void OpenGL3DWidget::setupCameraXZ()
+{
+    if (m_view.IsNull()) {
+        return;
+    }
+    
+    // Set up XZ plane view for lathe operations
+    // Standard lathe coordinate system: X increases top to bottom, Z increases left to right
+    // This means we need to look from the Y-positive direction toward the origin
+    // and orient the view so X goes down and Z goes right
+    
+    // Camera position: Look from positive Y toward origin
+    gp_Pnt eye(0.0, 200.0, 0.0);     // Camera position on Y axis
+    gp_Pnt at(0.0, 0.0, 0.0);       // Look at origin
+    gp_Dir up(-1.0, 0.0, 0.0);      // X axis points down (negative X direction as up vector)
+    
+    m_view->SetAt(at.X(), at.Y(), at.Z());
+    m_view->SetEye(eye.X(), eye.Y(), eye.Z());
+    m_view->SetUp(up.X(), up.Y(), up.Z());
+    
+    // For orthographic projection in XZ mode, we'll use view manipulation
+    // The view type is set during view creation, but we can achieve orthographic-like
+    // behavior by using appropriate camera positioning and scaling
+    
+    // Position camera very far away to approximate orthographic projection
+    gp_Pnt farEye(0.0, 10000.0, 0.0);  // Very far away on Y axis
+    m_view->SetEye(farEye.X(), farEye.Y(), farEye.Z());
+    
+    // Hide the 3D trihedron as it's not relevant for 2D lathe view
+    m_view->TriedronErase();
+    
+    // Fit all to ensure objects are visible in the new view
+    m_view->FitAll();
+    
+    qDebug() << "XZ lathe camera mode configured (X: top to bottom, Z: left to right)";
+}
+
+void OpenGL3DWidget::store3DCameraState()
+{
+    if (m_view.IsNull()) {
+        return;
+    }
+    
+    try {
+        // Store current camera parameters
+        Standard_Real eyeX, eyeY, eyeZ;
+        Standard_Real atX, atY, atZ;
+        Standard_Real upX, upY, upZ;
+        
+        m_view->Eye(eyeX, eyeY, eyeZ);
+        m_view->At(atX, atY, atZ);
+        m_view->Up(upX, upY, upZ);
+        
+        m_stored3DEye = gp_Pnt(eyeX, eyeY, eyeZ);
+        m_stored3DAt = gp_Pnt(atX, atY, atZ);
+        m_stored3DUp = gp_Dir(upX, upY, upZ);
+        m_stored3DScale = m_view->Scale();
+        
+        m_has3DCameraState = true;
+        
+        qDebug() << "3D camera state stored";
+        
+    } catch (const std::exception& e) {
+        qDebug() << "Error storing 3D camera state:" << e.what();
+        m_has3DCameraState = false;
+    }
+}
+
+void OpenGL3DWidget::restore3DCameraState()
+{
+    if (m_view.IsNull() || !m_has3DCameraState) {
+        return;
+    }
+    
+    try {
+        // Restore stored camera parameters
+        m_view->SetAt(m_stored3DAt.X(), m_stored3DAt.Y(), m_stored3DAt.Z());
+        m_view->SetEye(m_stored3DEye.X(), m_stored3DEye.Y(), m_stored3DEye.Z());
+        m_view->SetUp(m_stored3DUp.X(), m_stored3DUp.Y(), m_stored3DUp.Z());
+        m_view->SetScale(m_stored3DScale);
+        
+        // Restore perspective projection (default for 3D mode)
+        
+        // Restore trihedron display
+        m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_GOLD, 0.08, V3d_ZBUFFER);
+        
+        qDebug() << "3D camera state restored";
+        
+    } catch (const std::exception& e) {
+        qDebug() << "Error restoring 3D camera state:" << e.what();
     }
 } 
