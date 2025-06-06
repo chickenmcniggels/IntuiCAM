@@ -13,6 +13,8 @@
 #include <QLabel>
 #include <QAction>
 #include <QApplication>
+#include <QTabWidget>
+#include <QPushButton>
 
 // OpenCASCADE includes
 #include <gp_Ax1.hxx>
@@ -42,6 +44,7 @@ class QSplitter;
 class QTextEdit;
 class QTreeWidget;
 class QAction;
+class QTabWidget;
 QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow
@@ -61,6 +64,7 @@ private slots:
     void aboutApplication();
     void showPreferences();
     void initializeWorkspace();  // Initialize the workspace after UI is ready
+    void onTabChanged(int index);
     
     // Workspace controller event handlers
     void handleWorkspaceError(const QString& source, const QString& message);
@@ -83,6 +87,9 @@ private slots:
     void handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& clickPoint);
     void handleViewModeChanged(ViewMode mode);
     void toggleViewMode();
+    
+    // Setup tab actions
+    void simulateToolpaths();
 
 private:
     void createMenus();
@@ -92,23 +99,43 @@ private:
     void setupConnections();
     void setupWorkspaceConnections();
     void setupPartLoadingConnections();
+    
+    // Tab creation methods
+    QWidget* createHomeTab();
+    QWidget* createSetupTab();
+    QWidget* createSimulationTab();
+    QWidget* createMachineTab();
 
     // UI Components
     QWidget *m_centralWidget;
+    QTabWidget *m_tabWidget;
+    
+    // Home tab components
+    QWidget *m_homeTab;
+    
+    // Setup tab components (current main interface)
+    QWidget *m_setupTab;
     QSplitter *m_mainSplitter;
     QSplitter *m_leftSplitter;
-    
-    // Project tree and properties
     QTreeWidget *m_projectTree;
     QTextEdit *m_propertiesPanel;
-    
-    // Part loading panel
     PartLoadingPanel *m_partLoadingPanel;
-    
-    // 3D Viewport - pure visualization component
     OpenGL3DWidget *m_3dViewer;
+    QPushButton *m_simulateButton;
     
-    // Output/Log window
+    // Simulation tab components
+    QWidget *m_simulationTab;
+    QWidget *m_simulationViewport;
+    QWidget *m_simulationControls;
+    QPushButton *m_uploadToMachineButton;
+    QPushButton *m_exportGCodeButton;
+    
+    // Machine tab components
+    QWidget *m_machineTab;
+    QWidget *m_machineFeedWidget;
+    QWidget *m_machineControlPanel;
+    
+    // Output/Log window (shared)
     QTextEdit *m_outputWindow;
     
     // Business logic controllers

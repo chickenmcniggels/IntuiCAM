@@ -28,6 +28,9 @@
 #include <QStandardPaths>
 #include <QTimer>
 #include <QDebug>  // Add this include for qDebug()
+#include <QPushButton>
+#include <QGroupBox>
+#include <QFrame>
 
 // OpenCASCADE includes for gp_Ax1
 #include <gp_Ax1.hxx>
@@ -35,19 +38,31 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_centralWidget(nullptr)
+    , m_tabWidget(nullptr)
+    , m_homeTab(nullptr)
+    , m_setupTab(nullptr)
     , m_mainSplitter(nullptr)
     , m_leftSplitter(nullptr)
     , m_projectTree(nullptr)
     , m_propertiesPanel(nullptr)
     , m_partLoadingPanel(nullptr)
     , m_3dViewer(nullptr)
+    , m_simulateButton(nullptr)
+    , m_simulationTab(nullptr)
+    , m_simulationViewport(nullptr)
+    , m_simulationControls(nullptr)
+    , m_uploadToMachineButton(nullptr)
+    , m_exportGCodeButton(nullptr)
+    , m_machineTab(nullptr)
+    , m_machineFeedWidget(nullptr)
+    , m_machineControlPanel(nullptr)
     , m_outputWindow(nullptr)
     , m_workspaceController(nullptr)
     , m_stepLoader(nullptr)
 {
     setWindowTitle("IntuiCAM - Computer Aided Manufacturing");
-    setMinimumSize(1024, 768);
-    resize(1400, 900);
+    setMinimumSize(1200, 800);
+    resize(1600, 1000);
     
     // Initialize components following modular architecture
     m_stepLoader = new StepLoader();
@@ -162,73 +177,45 @@ void MainWindow::createCentralWidget()
     m_centralWidget = new QWidget;
     setCentralWidget(m_centralWidget);
     
-    // Main horizontal splitter
-    m_mainSplitter = new QSplitter(Qt::Horizontal);
+    // Create main tab widget
+    m_tabWidget = new QTabWidget;
+    m_tabWidget->setTabPosition(QTabWidget::North);
+    m_tabWidget->setMovable(false);
+    m_tabWidget->setUsesScrollButtons(false);
     
-    // Left vertical splitter for project tree, part loading panel, and properties
-    m_leftSplitter = new QSplitter(Qt::Vertical);
+    // Use default Qt styling
     
-    // Project tree
-    m_projectTree = new QTreeWidget;
-    m_projectTree->setHeaderLabel("Project");
-    m_projectTree->setMinimumWidth(280);
-    m_projectTree->setMaximumWidth(450);
+    // Create tabs
+    m_homeTab = createHomeTab();
+    m_setupTab = createSetupTab();
+    m_simulationTab = createSimulationTab();
+    m_machineTab = createMachineTab();
     
-    // Add some example project structure
-    QTreeWidgetItem *rootItem = new QTreeWidgetItem(m_projectTree);
-    rootItem->setText(0, "CAM Project");
+    // Add tabs to tab widget
+    m_tabWidget->addTab(m_homeTab, "Home");
+    m_tabWidget->addTab(m_setupTab, "Setup");
+    m_tabWidget->addTab(m_simulationTab, "Simulation");
+    m_tabWidget->addTab(m_machineTab, "Machine");
     
-    QTreeWidgetItem *partsItem = new QTreeWidgetItem(rootItem);
-    partsItem->setText(0, "Parts");
-    
-    QTreeWidgetItem *toolsItem = new QTreeWidgetItem(rootItem);
-    toolsItem->setText(0, "Tools");
-    
-    QTreeWidgetItem *operationsItem = new QTreeWidgetItem(rootItem);
-    operationsItem->setText(0, "Operations");
-    
-    m_projectTree->expandAll();
-    
-    // Part loading panel
-    m_partLoadingPanel = new PartLoadingPanel();
-    m_partLoadingPanel->setMinimumHeight(300);
-    m_partLoadingPanel->setMaximumHeight(600);
-    
-    // Properties panel
-    m_propertiesPanel = new QTextEdit;
-    m_propertiesPanel->setMaximumHeight(150);
-    m_propertiesPanel->setPlainText("Properties panel - Select an item to view details");
-    m_propertiesPanel->setReadOnly(true);
-    
-    // Add to left splitter
-    m_leftSplitter->addWidget(m_projectTree);
-    m_leftSplitter->addWidget(m_partLoadingPanel);
-    m_leftSplitter->addWidget(m_propertiesPanel);
-    m_leftSplitter->setSizes({200, 350, 100});
-    
-    // 3D Viewport - Pure visualization component
-    m_3dViewer = new OpenGL3DWidget();
-    m_3dViewer->setMinimumSize(600, 400);
-    
-    // Output window
+    // Output window (shared across all tabs)
     m_outputWindow = new QTextEdit;
     m_outputWindow->setMaximumHeight(150);
     m_outputWindow->setPlainText("Output Log:\nWelcome to IntuiCAM - Computer Aided Manufacturing\nApplication started successfully.\n");
     m_outputWindow->setReadOnly(true);
     
-    // Add to main splitter
-    m_mainSplitter->addWidget(m_leftSplitter);
-    m_mainSplitter->addWidget(m_3dViewer);
-    
-    // Set splitter sizes (left panel 30%, viewport 70%)
-    m_mainSplitter->setSizes({350, 800});
-    
     // Main layout
     QVBoxLayout *mainLayout = new QVBoxLayout;
-    mainLayout->addWidget(m_mainSplitter);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->addWidget(m_tabWidget);
     mainLayout->addWidget(m_outputWindow);
     
     m_centralWidget->setLayout(mainLayout);
+    
+    // Connect tab change signal
+    connect(m_tabWidget, &QTabWidget::currentChanged, this, &MainWindow::onTabChanged);
+    
+    // Start on Setup tab (index 1) since that's where the action is
+    m_tabWidget->setCurrentIndex(1);
 }
 
 void MainWindow::createStatusBar()
@@ -782,4 +769,413 @@ void MainWindow::handleViewModeChanged(ViewMode mode)
             m_outputWindow->append("Use left click to pan, wheel to zoom. Rotation disabled in this mode.");
         }
     }
+}
+
+void MainWindow::onTabChanged(int index)
+{
+    QString tabName;
+    switch (index) {
+        case 0: tabName = "Home"; break;
+        case 1: tabName = "Setup"; break;
+        case 2: tabName = "Simulation"; break;
+        case 3: tabName = "Machine"; break;
+        default: tabName = "Unknown"; break;
+    }
+    
+    statusBar()->showMessage(QString("Switched to %1 tab").arg(tabName), 2000);
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Switched to %1 tab").arg(tabName));
+    }
+}
+
+void MainWindow::simulateToolpaths()
+{
+    if (m_outputWindow) {
+        m_outputWindow->append("Generating toolpaths and G-code...");
+    }
+    statusBar()->showMessage("Generating toolpaths...", 3000);
+    
+    // TODO: Implement actual toolpath generation
+    // For now, just switch to simulation tab
+    m_tabWidget->setCurrentIndex(2); // Switch to Simulation tab
+    
+    if (m_outputWindow) {
+        m_outputWindow->append("✓ Toolpaths generated successfully - Switching to Simulation view");
+    }
+    statusBar()->showMessage("Ready for simulation", 2000);
+}
+
+QWidget* MainWindow::createHomeTab()
+{
+    QWidget* homeWidget = new QWidget;
+    QVBoxLayout* layout = new QVBoxLayout(homeWidget);
+    layout->setSpacing(20);
+    layout->setContentsMargins(40, 40, 40, 40);
+    
+    // Welcome section
+    QLabel* welcomeLabel = new QLabel("Welcome to IntuiCAM");
+    QFont titleFont = welcomeLabel->font();
+    titleFont.setPointSize(20);
+    titleFont.setBold(true);
+    welcomeLabel->setFont(titleFont);
+    
+    QLabel* subtitleLabel = new QLabel("Professional CAM software for CNC turning operations");
+    QFont subtitleFont = subtitleLabel->font();
+    subtitleFont.setPointSize(12);
+    subtitleLabel->setFont(subtitleFont);
+    
+    // Quick actions section
+    QGroupBox* quickActionsGroup = new QGroupBox("Quick Actions");
+    
+    QHBoxLayout* actionsLayout = new QHBoxLayout(quickActionsGroup);
+    actionsLayout->setSpacing(15);
+    
+    QPushButton* newProjectBtn = new QPushButton("New Project");
+    QPushButton* openProjectBtn = new QPushButton("Open Project");
+    QPushButton* importStepBtn = new QPushButton("Import STEP File");
+    
+    // Use default button styling
+    newProjectBtn->setMinimumWidth(140);
+    openProjectBtn->setMinimumWidth(140);
+    importStepBtn->setMinimumWidth(140);
+    
+    actionsLayout->addWidget(newProjectBtn);
+    actionsLayout->addWidget(openProjectBtn);
+    actionsLayout->addWidget(importStepBtn);
+    actionsLayout->addStretch();
+    
+    // Recent projects section
+    QGroupBox* recentGroup = new QGroupBox("Recent Projects");
+    
+    QVBoxLayout* recentLayout = new QVBoxLayout(recentGroup);
+    
+    QLabel* noRecentLabel = new QLabel("No recent projects");
+    QFont italicFont = noRecentLabel->font();
+    italicFont.setItalic(true);
+    noRecentLabel->setFont(italicFont);
+    recentLayout->addWidget(noRecentLabel);
+    
+    // Get started section
+    QGroupBox* getStartedGroup = new QGroupBox("Getting Started");
+    
+    QVBoxLayout* startedLayout = new QVBoxLayout(getStartedGroup);
+    
+    QLabel* stepLabel = new QLabel(
+        "1. Import your STEP file in the Setup tab\n"
+        "2. Configure part positioning and raw material\n"
+        "3. Generate toolpaths and G-code\n"
+        "4. Simulate the machining process\n"
+        "5. Export or upload to your CNC machine"
+    );
+    startedLayout->addWidget(stepLabel);
+    
+    // Layout
+    layout->addWidget(welcomeLabel);
+    layout->addWidget(subtitleLabel);
+    layout->addWidget(quickActionsGroup);
+    layout->addWidget(recentGroup);
+    layout->addWidget(getStartedGroup);
+    layout->addStretch();
+    
+    // Connect buttons
+    connect(newProjectBtn, &QPushButton::clicked, this, &MainWindow::newProject);
+    connect(openProjectBtn, &QPushButton::clicked, this, &MainWindow::openProject);
+    connect(importStepBtn, &QPushButton::clicked, [this]() {
+        m_tabWidget->setCurrentIndex(1); // Switch to Setup tab
+        openStepFile();
+    });
+    
+    return homeWidget;
+}
+
+QWidget* MainWindow::createSetupTab()
+{
+    QWidget* setupWidget = new QWidget;
+    QVBoxLayout* setupLayout = new QVBoxLayout(setupWidget);
+    setupLayout->setContentsMargins(0, 0, 0, 0);
+    setupLayout->setSpacing(0);
+    
+    // Main horizontal splitter (this is the current main interface)
+    m_mainSplitter = new QSplitter(Qt::Horizontal);
+    
+    // Left vertical splitter for project tree, part loading panel, and properties
+    m_leftSplitter = new QSplitter(Qt::Vertical);
+    
+    // Project tree
+    m_projectTree = new QTreeWidget;
+    m_projectTree->setHeaderLabel("Project");
+    m_projectTree->setMinimumWidth(280);
+    m_projectTree->setMaximumWidth(450);
+    
+    // Add some example project structure
+    QTreeWidgetItem *rootItem = new QTreeWidgetItem(m_projectTree);
+    rootItem->setText(0, "CAM Project");
+    
+    QTreeWidgetItem *partsItem = new QTreeWidgetItem(rootItem);
+    partsItem->setText(0, "Parts");
+    
+    QTreeWidgetItem *toolsItem = new QTreeWidgetItem(rootItem);
+    toolsItem->setText(0, "Tools");
+    
+    QTreeWidgetItem *operationsItem = new QTreeWidgetItem(rootItem);
+    operationsItem->setText(0, "Operations");
+    
+    m_projectTree->expandAll();
+    
+    // Part loading panel
+    m_partLoadingPanel = new PartLoadingPanel();
+    m_partLoadingPanel->setMinimumHeight(300);
+    m_partLoadingPanel->setMaximumHeight(600);
+    
+    // Properties panel
+    m_propertiesPanel = new QTextEdit;
+    m_propertiesPanel->setMaximumHeight(150);
+    m_propertiesPanel->setPlainText("Properties panel - Select an item to view details");
+    m_propertiesPanel->setReadOnly(true);
+    
+    // Add to left splitter
+    m_leftSplitter->addWidget(m_projectTree);
+    m_leftSplitter->addWidget(m_partLoadingPanel);
+    m_leftSplitter->addWidget(m_propertiesPanel);
+    m_leftSplitter->setSizes({200, 350, 100});
+    
+    // Right side: 3D viewer and simulate button
+    QWidget* rightWidget = new QWidget;
+    QVBoxLayout* rightLayout = new QVBoxLayout(rightWidget);
+    rightLayout->setContentsMargins(0, 0, 0, 0);
+    
+    // 3D Viewport - Pure visualization component
+    m_3dViewer = new OpenGL3DWidget();
+    m_3dViewer->setMinimumSize(600, 400);
+    
+    // Simulate button
+    m_simulateButton = new QPushButton("Simulate Toolpaths");
+    QFont buttonFont = m_simulateButton->font();
+    buttonFont.setBold(true);
+    m_simulateButton->setFont(buttonFont);
+    
+    connect(m_simulateButton, &QPushButton::clicked, this, &MainWindow::simulateToolpaths);
+    
+    rightLayout->addWidget(m_3dViewer);
+    rightLayout->addWidget(m_simulateButton);
+    
+    // Add to main splitter
+    m_mainSplitter->addWidget(m_leftSplitter);
+    m_mainSplitter->addWidget(rightWidget);
+    
+    // Set splitter sizes (left panel 30%, viewport 70%)
+    m_mainSplitter->setSizes({350, 800});
+    
+    setupLayout->addWidget(m_mainSplitter);
+    
+    return setupWidget;
+}
+
+QWidget* MainWindow::createSimulationTab()
+{
+    QWidget* simulationWidget = new QWidget;
+    QHBoxLayout* layout = new QHBoxLayout(simulationWidget);
+    layout->setContentsMargins(0, 0, 0, 0);
+    
+    // Left panel - simulation controls
+    m_simulationControls = new QWidget;
+    m_simulationControls->setMinimumWidth(300);
+    m_simulationControls->setMaximumWidth(400);
+    
+    QVBoxLayout* controlsLayout = new QVBoxLayout(m_simulationControls);
+    controlsLayout->setContentsMargins(15, 15, 15, 15);
+    controlsLayout->setSpacing(15);
+    
+    // Simulation controls title
+    QLabel* titleLabel = new QLabel("Simulation Controls");
+    QFont titleFont = titleLabel->font();
+    titleFont.setPointSize(14);
+    titleFont.setBold(true);
+    titleLabel->setFont(titleFont);
+    
+    // Playback controls
+    QGroupBox* playbackGroup = new QGroupBox("Playback");
+    QVBoxLayout* playbackLayout = new QVBoxLayout(playbackGroup);
+    
+    QPushButton* playBtn = new QPushButton("▶ Play");
+    QPushButton* pauseBtn = new QPushButton("⏸ Pause");
+    QPushButton* stopBtn = new QPushButton("⏹ Stop");
+    QPushButton* resetBtn = new QPushButton("⏮ Reset");
+    
+    playbackLayout->addWidget(playBtn);
+    playbackLayout->addWidget(pauseBtn);
+    playbackLayout->addWidget(stopBtn);
+    playbackLayout->addWidget(resetBtn);
+    
+    // Export controls
+    QGroupBox* exportGroup = new QGroupBox("Export & Upload");
+    QVBoxLayout* exportLayout = new QVBoxLayout(exportGroup);
+    
+    m_exportGCodeButton = new QPushButton("Export G-Code");
+    m_uploadToMachineButton = new QPushButton("Upload to Machine");
+    
+    // Use default button styling
+    QFont buttonFont = m_exportGCodeButton->font();
+    buttonFont.setWeight(QFont::Medium);
+    m_exportGCodeButton->setFont(buttonFont);
+    m_uploadToMachineButton->setFont(buttonFont);
+    
+    exportLayout->addWidget(m_exportGCodeButton);
+    exportLayout->addWidget(m_uploadToMachineButton);
+    
+    // Simulation info
+    QGroupBox* infoGroup = new QGroupBox("Simulation Info");
+    QVBoxLayout* infoLayout = new QVBoxLayout(infoGroup);
+    
+    QLabel* infoLabel = new QLabel(
+        "• Toolpath visualization\n"
+        "• Material removal simulation\n"
+        "• Collision detection\n"
+        "• Machining time estimation"
+    );
+    infoLayout->addWidget(infoLabel);
+    
+    // Layout controls
+    controlsLayout->addWidget(titleLabel);
+    controlsLayout->addWidget(playbackGroup);
+    controlsLayout->addWidget(exportGroup);
+    controlsLayout->addWidget(infoGroup);
+    controlsLayout->addStretch();
+    
+    // Right side - simulation viewport
+    m_simulationViewport = new QWidget;
+    
+    QVBoxLayout* viewportLayout = new QVBoxLayout(m_simulationViewport);
+    QLabel* placeholderLabel = new QLabel("Simulation Viewport\n\n[Toolpath visualization will be displayed here]");
+    placeholderLabel->setAlignment(Qt::AlignCenter);
+    QFont placeholderFont = placeholderLabel->font();
+    placeholderFont.setPointSize(12);
+    placeholderLabel->setFont(placeholderFont);
+    placeholderLabel->setFrameStyle(QFrame::Box | QFrame::Raised);
+    placeholderLabel->setMargin(40);
+    viewportLayout->addWidget(placeholderLabel);
+    
+    // Connect buttons (skeleton functionality)
+    connect(m_exportGCodeButton, &QPushButton::clicked, [this]() {
+        if (m_outputWindow) {
+            m_outputWindow->append("Exporting G-Code... (not yet implemented)");
+        }
+        statusBar()->showMessage("G-Code export functionality coming soon", 3000);
+    });
+    
+    connect(m_uploadToMachineButton, &QPushButton::clicked, [this]() {
+        if (m_outputWindow) {
+            m_outputWindow->append("Uploading to machine... (not yet implemented)");
+        }
+        statusBar()->showMessage("Machine upload functionality coming soon", 3000);
+        // Switch to Machine tab
+        m_tabWidget->setCurrentIndex(3);
+    });
+    
+    layout->addWidget(m_simulationControls);
+    layout->addWidget(m_simulationViewport, 1);
+    
+    return simulationWidget;
+}
+
+QWidget* MainWindow::createMachineTab()
+{
+    QWidget* machineWidget = new QWidget;
+    QHBoxLayout* layout = new QHBoxLayout(machineWidget);
+    layout->setContentsMargins(0, 0, 0, 0);
+    
+    // Left panel - machine controls
+    m_machineControlPanel = new QWidget;
+    m_machineControlPanel->setMinimumWidth(300);
+    m_machineControlPanel->setMaximumWidth(400);
+    
+    QVBoxLayout* controlLayout = new QVBoxLayout(m_machineControlPanel);
+    controlLayout->setContentsMargins(15, 15, 15, 15);
+    controlLayout->setSpacing(15);
+    
+    // Machine controls title
+    QLabel* titleLabel = new QLabel("Machine Control");
+    QFont titleFont = titleLabel->font();
+    titleFont.setPointSize(14);
+    titleFont.setBold(true);
+    titleLabel->setFont(titleFont);
+    
+    // Connection status
+    QGroupBox* connectionGroup = new QGroupBox("Connection Status");
+    QVBoxLayout* connectionLayout = new QVBoxLayout(connectionGroup);
+    
+    QLabel* statusLabel = new QLabel("Status: Disconnected");
+    QFont statusFont = statusLabel->font();
+    statusFont.setBold(true);
+    statusLabel->setFont(statusFont);
+    
+    QPushButton* connectBtn = new QPushButton("Connect to Machine");
+    
+    connectionLayout->addWidget(statusLabel);
+    connectionLayout->addWidget(connectBtn);
+    
+    // Machine control buttons
+    QGroupBox* controlGroup = new QGroupBox("Manual Control");
+    QVBoxLayout* manualLayout = new QVBoxLayout(controlGroup);
+    
+    QPushButton* homeBtn = new QPushButton("Home Machine");
+    QPushButton* jogBtn = new QPushButton("Jog Mode");
+    QPushButton* emergencyBtn = new QPushButton("Emergency Stop");
+    
+    // Make emergency button bold to indicate importance
+    QFont emergencyFont = emergencyBtn->font();
+    emergencyFont.setBold(true);
+    emergencyBtn->setFont(emergencyFont);
+    
+    manualLayout->addWidget(homeBtn);
+    manualLayout->addWidget(jogBtn);
+    manualLayout->addWidget(emergencyBtn);
+    
+    // Machine info
+    QGroupBox* infoGroup = new QGroupBox("Machine Information");
+    QVBoxLayout* infoLayout = new QVBoxLayout(infoGroup);
+    
+    QLabel* infoLabel = new QLabel(
+        "Model: Not Connected\n"
+        "Position: X: 0.00  Z: 0.00\n"
+        "Spindle: Stopped\n"
+        "Feed Rate: 0 mm/min"
+    );
+    QFont monoFont("Courier", infoLabel->font().pointSize());
+    infoLabel->setFont(monoFont);
+    infoLayout->addWidget(infoLabel);
+    
+    // Layout controls
+    controlLayout->addWidget(titleLabel);
+    controlLayout->addWidget(connectionGroup);
+    controlLayout->addWidget(controlGroup);
+    controlLayout->addWidget(infoGroup);
+    controlLayout->addStretch();
+    
+    // Right side - machine feed/camera view
+    m_machineFeedWidget = new QWidget;
+    
+    QVBoxLayout* feedLayout = new QVBoxLayout(m_machineFeedWidget);
+    QLabel* feedLabel = new QLabel("Machine Camera Feed\n\n[Live feed from CNC machine will be displayed here]");
+    feedLabel->setAlignment(Qt::AlignCenter);
+    QFont feedFont = feedLabel->font();
+    feedFont.setPointSize(12);
+    feedLabel->setFont(feedFont);
+    feedLabel->setFrameStyle(QFrame::Box | QFrame::Raised);
+    feedLabel->setMargin(40);
+    feedLayout->addWidget(feedLabel);
+    
+    // Connect buttons (skeleton functionality)
+    connect(connectBtn, &QPushButton::clicked, [this, statusLabel]() {
+        if (m_outputWindow) {
+            m_outputWindow->append("Attempting to connect to machine... (not yet implemented)");
+        }
+        statusLabel->setText("Status: Connecting...");
+        statusBar()->showMessage("Machine connection functionality coming soon", 3000);
+    });
+    
+    layout->addWidget(m_machineControlPanel);
+    layout->addWidget(m_machineFeedWidget, 1);
+    
+    return machineWidget;
 } 
