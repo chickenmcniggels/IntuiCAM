@@ -21,13 +21,17 @@ void test_common_types() {
 
 void test_version_info() {
     std::cout << "Testing IntuiCAM Version Info..." << std::endl;
-    
+
     // Test that version constants are defined
-    std::cout << "IntuiCAM Version: " 
+    std::cout << "IntuiCAM Version: "
               << IntuiCAM::Common::Version::MAJOR << "."
               << IntuiCAM::Common::Version::MINOR << "."
               << IntuiCAM::Common::Version::PATCH << std::endl;
-    
+
+    // Verify getVersionString() returns the expected value
+    std::string version = IntuiCAM::Common::Version::getVersionString();
+    assert(version == "0.1.0");
+
     std::cout << "✓ Version info test passed" << std::endl;
 }
 
