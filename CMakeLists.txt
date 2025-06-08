@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(IntuiCAM LANGUAGES CXX)
+project(IntuiCAM LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -24,30 +24,17 @@ list(APPEND CMAKE_PREFIX_PATH "C:/OpenCASCADE/3rdparty-vc14-64/vtk-9.4.1-x64/lib
 list(APPEND CMAKE_PREFIX_PATH "C:/OpenCASCADE/occt-vc144-64-with-debug/cmake")
 
 # Add EGL and other 3rdparty library paths
-link_directories("C:/OpenCASCADE/3rdparty-vc14-64/angle-gles2-2.1.0-vc14-64/lib")
-link_directories("C:/OpenCASCADE/3rdparty-vc14-64/draco-1.4.1-vc14-64/lib")
-link_directories("C:/OpenCASCADE/3rdparty-vc14-64/jemalloc-vc14-64/lib")
-link_directories("C:/OpenCASCADE/3rdparty-vc14-64/openvr-1.14.15-64/lib/win64")
-link_directories("C:/OpenCASCADE/3rdparty-vc14-64/freeimage-3.18.0-x64/lib")
-link_directories("C:/OpenCASCADE/3rdparty-vc14-64/ffmpeg-3.3.4-64/lib")
-link_directories("C:/OpenCASCADE/3rdparty-vc14-64/freetype-2.13.3-x64/lib")
-link_directories("C:/OpenCASCADE/3rdparty-vc14-64/tbb-2021.13.0-x64/lib")
-link_directories("C:/OpenCASCADE/3rdparty-vc14-64/tcltk-8.6.15-x64/lib")
 
 # Add OpenCASCADE library paths
-link_directories("C:/OpenCASCADE/occt-vc144-64-with-debug/win64/vc14/lib")
-link_directories("C:/OpenCASCADE/occt-vc144-64-with-debug/win64/vc14/libd")
 
 # Find Qt6 with components
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets)
 qt_standard_project_setup()
 
 # Find VTK first (required by OpenCASCADE)
-set(VTK_DIR "C:/OpenCASCADE/3rdparty-vc14-64/vtk-9.4.1-x64/lib/cmake/vtk-9.4")
 find_package(VTK REQUIRED)
 
 # Set up OpenCASCADE
-set(OpenCASCADE_DIR "C:/OpenCASCADE/occt-vc144-64-with-debug/cmake")
 find_package(OpenCASCADE REQUIRED)
 
 # Fix hardcoded jemalloc path issue in OpenCASCADE configuration
