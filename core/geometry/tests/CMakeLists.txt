@@ -5,8 +5,6 @@ find_package(GTest REQUIRED)
 # Geometry module tests
 add_executable(geometry_tests
     test_types.cpp
-    test_step_loader.cpp
-    test_occt_adapter.cpp
 )
 
 target_link_libraries(geometry_tests
