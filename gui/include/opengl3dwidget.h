@@ -25,6 +25,9 @@
 #include <gp_Pnt.hxx>
 #include <gp_Dir.hxx>
 
+// Qt includes for the overlay button
+#include <QPushButton>
+
 /**
  * @brief Viewing modes for the 3D widget
  */
@@ -232,16 +235,16 @@ private:
     void setupCameraXZ();
 
     /**
-     * @brief Store the current 3D camera state for restoration
+     * @brief Store current 3D camera state before switching to lathe mode
      */
     void store3DCameraState();
 
     /**
-     * @brief Restore the previously stored 3D camera state
+     * @brief Restore 3D camera state when switching back from lathe mode
      */
     void restore3DCameraState();
-    
-    // OpenCASCADE objects
+
+    // OpenCASCADE handles
     Handle(V3d_Viewer) m_viewer;
     Handle(V3d_View) m_view;
     Handle(AIS_InteractiveContext) m_context;

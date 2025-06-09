@@ -46,8 +46,8 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
     
-    // Set update behavior to ensure consistent rendering
-    setUpdateBehavior(QOpenGLWidget::NoPartialUpdate);
+    // Set update behavior to reduce flickering - use partial updates for better performance
+    setUpdateBehavior(QOpenGLWidget::PartialUpdate);
     
     // Ensure the widget gets proper resize events
     setAttribute(Qt::WA_OpaquePaintEvent);
@@ -55,16 +55,19 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     setAttribute(Qt::WA_PaintOnScreen, false);  // Important for proper rendering
     setAttribute(Qt::WA_NativeWindow, true);    // Helps with focus management
     
-    // Setup continuous update timer
+    // Setup simplified update timer - reduced complexity to minimize flickering
     m_updateTimer->setSingleShot(false);
     m_updateTimer->setInterval(16); // ~60 FPS
     connect(m_updateTimer, &QTimer::timeout, this, QOverload<>::of(&QOpenGLWidget::update));
     
-    // Setup robust refresh timer for recovery from black screens
+    // Simplified refresh timer for critical recovery only
     m_robustRefreshTimer->setSingleShot(true);
-    m_robustRefreshTimer->setInterval(50); // Quick recovery
+    m_robustRefreshTimer->setInterval(100); // Less aggressive timing
     connect(m_robustRefreshTimer, &QTimer::timeout, this, [this]() {
-        forceRedraw();
+        if (!m_view.IsNull() && isVisible()) {
+            makeCurrent();
+            m_view->Redraw();
+        }
     });
     
     // Connect to application focus changes to handle external app switching
@@ -89,7 +92,7 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
         }
     });
     
-    qDebug() << "OpenGL3DWidget created as pure visualization component with view mode support";
+    qDebug() << "OpenGL3DWidget created as pure visualization component with simplified rendering";
 }
 
 OpenGL3DWidget::~OpenGL3DWidget()
@@ -245,33 +248,23 @@ void OpenGL3DWidget::updateView()
 {
     if (!m_view.IsNull() && !m_window.IsNull() && m_isInitialized)
     {
-        // Ensure the OpenGL context is current before updating
-        makeCurrent();
-        
-        // Check if the widget is visible and has a valid size
+        // Simplified update logic to reduce context switching and flickering
         if (isVisible() && width() > 0 && height() > 0)
         {
             try {
-                // Ensure the view is properly sized
+                // Only resize if needed
                 if (m_needsRefresh) {
+                    makeCurrent();
                     m_view->MustBeResized();
                     m_window->DoResize();
                     m_needsRefresh = false;
                 }
                 
-                // Force redraw regardless of focus state with error handling
+                // Simple redraw without excessive context management
                 m_view->Redraw();
                 
-                // Ensure immediate flush for better responsiveness without full swap
-                if (context() && context()->surface()) {
-                    context()->functions()->glFlush();
-                    // Use doneCurrent() instead of swapBuffers to prevent frame buffer issues
-                    doneCurrent();
-                    makeCurrent();
-                }
             } catch (...) {
-                qDebug() << "Error during view update, attempting recovery";
-                // Mark for refresh and attempt recovery
+                qDebug() << "Error during view update";
                 m_needsRefresh = true;
                 m_robustRefreshTimer->start();
             }
@@ -656,10 +649,9 @@ void OpenGL3DWidget::forceRedraw()
     if (!m_view.IsNull() && isVisible() && width() > 0 && height() > 0)
     {
         try {
-            makeCurrent();
-            
-            // Ensure proper sizing before redraw
+            // Simplified forced redraw
             if (m_needsRefresh) {
+                makeCurrent();
                 m_view->MustBeResized();
                 m_window->DoResize();
                 m_needsRefresh = false;
@@ -667,28 +659,9 @@ void OpenGL3DWidget::forceRedraw()
             
             m_view->Redraw();
             
-            // Use a more conservative flush approach
-            if (context()) {
-                context()->functions()->glFlush();
-                context()->functions()->glFinish(); // Ensure completion
-            }
         } catch (...) {
-            qDebug() << "Error during force redraw - will retry";
+            qDebug() << "Error during force redraw";
             m_needsRefresh = true;
-            // Schedule another attempt with a short delay
-            QTimer::singleShot(10, this, [this]() {
-                if (!m_view.IsNull() && isVisible()) {
-                    try {
-                        makeCurrent();
-                        m_view->Redraw();
-                        if (context()) {
-                            context()->functions()->glFlush();
-                        }
-                    } catch (...) {
-                        qDebug() << "Backup redraw also failed";
-                    }
-                }
-            });
         }
     }
 }

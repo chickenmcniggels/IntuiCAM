@@ -59,6 +59,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_outputWindow(nullptr)
     , m_workspaceController(nullptr)
     , m_stepLoader(nullptr)
+    , m_viewModeOverlayButton(nullptr)
 {
     setWindowTitle("IntuiCAM - Computer Aided Manufacturing");
     setMinimumSize(1200, 800);
@@ -69,10 +70,12 @@ MainWindow::MainWindow(QWidget *parent)
     m_workspaceController = new WorkspaceController(this);
     
     createMenus();
-    createToolBars();
     createCentralWidget();
     createStatusBar();
     setupConnections();
+    
+    // Create the view mode overlay button
+    createViewModeOverlayButton();
     
     // Set initial status
     statusBar()->showMessage("Ready - Welcome to IntuiCAM", 2000);
@@ -156,21 +159,8 @@ void MainWindow::createMenus()
     m_helpMenu->addAction(m_aboutAction);
 }
 
-void MainWindow::createToolBars()
-{
-    QToolBar* m_mainToolBar = addToolBar(tr("Main"));
-    m_mainToolBar->setMovable(false);
-    
-    if (m_newAction) m_mainToolBar->addAction(m_newAction);
-    if (m_openAction) m_mainToolBar->addAction(m_openAction);
-    if (m_openStepAction) m_mainToolBar->addAction(m_openStepAction);
-    if (m_saveAction) m_mainToolBar->addAction(m_saveAction);
-    
-    m_mainToolBar->addSeparator();
-    
-    // Add view mode toggle to toolbar
-    if (m_toggleViewModeAction) m_mainToolBar->addAction(m_toggleViewModeAction);
-}
+// Toolbar removed per user request - project actions are available in File menu
+// and view toggle button moved to Setup tab
 
 void MainWindow::createCentralWidget()
 {
@@ -782,6 +772,9 @@ void MainWindow::onTabChanged(int index)
         default: tabName = "Unknown"; break;
     }
     
+    // Update overlay button visibility and position based on current tab
+    positionViewModeOverlayButton();
+    
     statusBar()->showMessage(QString("Switched to %1 tab").arg(tabName), 2000);
     if (m_outputWindow) {
         m_outputWindow->append(QString("Switched to %1 tab").arg(tabName));
@@ -1178,4 +1171,111 @@ QWidget* MainWindow::createMachineTab()
     layout->addWidget(m_machineFeedWidget, 1);
     
     return machineWidget;
+}
+
+void MainWindow::createViewModeOverlayButton()
+{
+    // Create the overlay button as a direct child of the main window
+    m_viewModeOverlayButton = new QPushButton("Switch to Lathe View", this);
+    m_viewModeOverlayButton->setMaximumWidth(150);
+    m_viewModeOverlayButton->setMaximumHeight(30);
+    
+    // Style the button to be semi-transparent and visually appealing
+    m_viewModeOverlayButton->setStyleSheet(
+        "QPushButton {"
+        "  background-color: rgba(240, 240, 240, 220);"
+        "  border: 2px solid #666666;"
+        "  border-radius: 6px;"
+        "  padding: 6px 12px;"
+        "  font-size: 11px;"
+        "  font-weight: bold;"
+        "  color: #333333;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: rgba(255, 255, 255, 240);"
+        "  border: 2px solid #444444;"
+        "  color: #222222;"
+        "}"
+        "QPushButton:pressed {"
+        "  background-color: rgba(200, 200, 200, 220);"
+        "  border: 2px solid #555555;"
+        "}"
+    );
+    
+    // Connect the button to the toggle function
+    connect(m_viewModeOverlayButton, &QPushButton::clicked, this, &MainWindow::toggleViewMode);
+    
+    // Connect to view mode changes to update button text
+    connect(m_3dViewer, &OpenGL3DWidget::viewModeChanged, this, &MainWindow::updateViewModeOverlayButton);
+    
+    // Initially position the button
+    positionViewModeOverlayButton();
+    
+    // Show the button - it will always be visible now
+    m_viewModeOverlayButton->show();
+    m_viewModeOverlayButton->raise();
+    
+    qDebug() << "View mode overlay button created in MainWindow";
+}
+
+void MainWindow::updateViewModeOverlayButton()
+{
+    if (!m_viewModeOverlayButton || !m_3dViewer) {
+        return;
+    }
+    
+    // Update button text based on current view mode
+    ViewMode currentMode = m_3dViewer->getViewMode();
+    if (currentMode == ViewMode::Mode3D) {
+        m_viewModeOverlayButton->setText("Switch to Lathe View");
+    } else {
+        m_viewModeOverlayButton->setText("Switch to 3D View");
+    }
+    
+    // Ensure button stays positioned correctly and on top
+    positionViewModeOverlayButton();
+    m_viewModeOverlayButton->raise();
+}
+
+void MainWindow::positionViewModeOverlayButton()
+{
+    if (!m_viewModeOverlayButton || !m_3dViewer) {
+        return;
+    }
+    
+    // Only show the button when we're on the Setup tab (where the 3D viewer is)
+    bool onSetupTab = (m_tabWidget && m_tabWidget->currentIndex() == 1);
+    if (!onSetupTab) {
+        m_viewModeOverlayButton->hide();
+        return;
+    }
+    
+    m_viewModeOverlayButton->show();
+    
+    // Calculate position relative to the 3D viewer widget
+    QPoint viewerGlobalPos = m_3dViewer->mapToGlobal(QPoint(0, 0));
+    QPoint mainWindowPos = this->mapFromGlobal(viewerGlobalPos);
+    
+    // Position in top-right corner of the 3D viewer with margin
+    const int margin = 15;
+    const int buttonWidth = m_viewModeOverlayButton->sizeHint().width();
+    const int buttonHeight = m_viewModeOverlayButton->sizeHint().height();
+    
+    int x = mainWindowPos.x() + m_3dViewer->width() - buttonWidth - margin;
+    int y = mainWindowPos.y() + margin;
+    
+    // Ensure the button stays within the main window bounds
+    x = qMax(margin, qMin(x, width() - buttonWidth - margin));
+    y = qMax(margin, qMin(y, height() - buttonHeight - margin));
+    
+    m_viewModeOverlayButton->move(x, y);
+    m_viewModeOverlayButton->raise();
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    
+    // Reposition the overlay button when the window is resized
+    QTimer::singleShot(0, this, &MainWindow::positionViewModeOverlayButton);
 } 

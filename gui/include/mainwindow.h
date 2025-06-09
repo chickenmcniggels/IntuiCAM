@@ -93,7 +93,6 @@ private slots:
 
 private:
     void createMenus();
-    void createToolBars();
     void createStatusBar();
     void createCentralWidget();
     void setupConnections();
@@ -158,6 +157,17 @@ private:
     QAction *m_aboutAction;
     QAction *m_preferencesAction;
     QAction *m_toggleViewModeAction;
+    
+    // Overlay UI elements
+    QPushButton *m_viewModeOverlayButton;
+    
+private:
+    void createViewModeOverlayButton();
+    void updateViewModeOverlayButton();
+    void positionViewModeOverlayButton();
+
+protected:
+    void resizeEvent(QResizeEvent *event) override;
 };
 
 #endif // MAINWINDOW_H
