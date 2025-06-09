@@ -2,11 +2,14 @@
 #include "setupconfigurationpanel.h"
 #include "../include/toolpathmanager.h"
 #include "../include/toolpathtimelinewidget.h"
+#include "../include/operationparameterdialog.h"
+#include "../include/workspacecontroller.h"
 
 #include <QDebug>
 #include <QProgressBar>
 #include <QTextEdit>
 #include <QCoreApplication>
+#include <QApplication>
 #include <QMutexLocker>
 #include <QDateTime>
 
@@ -82,6 +85,7 @@ IntuiCAM::GUI::ToolpathGenerationController::ToolpathGenerationController(QObjec
     , m_connectedProgressBar(nullptr)
     , m_connectedStatusText(nullptr)
     , m_toolpathManager(nullptr)
+    , m_workspaceController(nullptr)
 {
     // Setup process timer for step-by-step generation
     m_processTimer->setSingleShot(true);
@@ -117,6 +121,11 @@ void IntuiCAM::GUI::ToolpathGenerationController::initialize(Handle(AIS_Interact
     if (m_toolpathManager) {
         m_toolpathManager->initialize(context);
     }
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::setWorkspaceController(WorkspaceController* workspaceController)
+{
+    m_workspaceController = workspaceController;
 }
 
 void IntuiCAM::GUI::ToolpathGenerationController::generateToolpaths(const GenerationRequest& request)
@@ -698,7 +707,8 @@ std::unique_ptr<IntuiCAM::Toolpath::Operation> IntuiCAM::GUI::ToolpathGeneration
     return nullptr;
 }
 
-// Add this method to generate and display a single toolpath when added to the timeline
+// Fix the generateAndDisplayToolpath method
+
 void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
     const QString& operationName,
     const QString& operationType,
@@ -708,6 +718,9 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
         logMessage("Cannot generate toolpath: Toolpath manager not initialized");
         return;
     }
+
+    // Store the tool for this operation
+    m_operationTools[operationName] = tool;
 
     // Create a simple part for toolpath generation
     auto part = std::make_unique<IntuiCAM::Geometry::SimplePart>();
@@ -723,6 +736,9 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
         IntuiCAM::Toolpath::FacingOperation::Parameters params;
         // You could update these parameters from UI or stored configurations
         facingOp->setParameters(params);
+        
+        // Store the parameters
+        m_facingParams[operationName] = params;
         
         operation = std::move(facingOp);
     }
@@ -740,6 +756,9 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
         
         roughingOp->setParameters(params);
         
+        // Store the parameters
+        m_roughingParams[operationName] = params;
+        
         operation = std::move(roughingOp);
     }
     else if (operationType == "Finishing") {
@@ -754,6 +773,9 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
         
         finishingOp->setParameters(params);
         
+        // Store the parameters
+        m_finishingParams[operationName] = params;
+        
         operation = std::move(finishingOp);
     }
     else if (operationType == "Parting") {
@@ -763,6 +785,9 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
         IntuiCAM::Toolpath::PartingOperation::Parameters params;
         // Configure parameters
         partingOp->setParameters(params);
+        
+        // Store the parameters
+        m_partingParams[operationName] = params;
         
         operation = std::move(partingOp);
     }
@@ -805,100 +830,11 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
         return;
     }
     
-    // Use the new display function that includes transformation
-    displayGeneratedToolpath(operationName, QString::fromStdString(tool->getName()), std::move(toolpath));
-}
-
-// Update the existing connection with ToolpathTimelineWidget to handle adding toolpaths
-void IntuiCAM::GUI::ToolpathGenerationController::connectTimelineWidget(ToolpathTimelineWidget* timelineWidget)
-{
-    if (!timelineWidget) return;
+    // Convert tool name to QString
+    QString toolName = QString::fromStdString(tool->getName());
     
-    // Connect timeline signals to controller
-    connect(timelineWidget, &ToolpathTimelineWidget::addToolpathRequested,
-            this, [this](const QString& operationType) {
-                // Generate a default name based on operation type
-                QString name = QString("%1_%2").arg(operationType).arg(QDateTime::currentDateTime().toString("hhmmss"));
-                
-                // Create default tool for this operation type
-                auto tool = createDefaultTool(operationType);
-                
-                // Generate and display the toolpath
-                generateAndDisplayToolpath(name, operationType, tool);
-                
-                // Add the toolpath to the timeline
-                emit toolpathAdded(name, operationType, tool->getName().c_str());
-            });
-    
-    // Connect toolpath selection signal
-    connect(timelineWidget, &ToolpathTimelineWidget::toolpathSelected,
-            this, [this, timelineWidget](int index) {
-                QString name = timelineWidget->getToolpathName(index);
-                QString type = timelineWidget->getToolpathType(index);
-                
-                // Highlight the selected toolpath in the 3D view
-                if (m_toolpathManager) {
-                    // Hide all toolpaths first
-                    for (const auto& tpName : m_generatedToolpaths.keys()) {
-                        m_toolpathManager->setToolpathVisible(tpName, false);
-                    }
-                    
-                    // Show only the selected toolpath
-                    m_toolpathManager->setToolpathVisible(name, true);
-                }
-                
-                emit toolpathSelected(name, type);
-            });
-    
-    // Connect remove toolpath signal
-    connect(timelineWidget, &ToolpathTimelineWidget::removeToolpathRequested,
-            this, [this, timelineWidget](int index) {
-                QString name = timelineWidget->getToolpathName(index);
-                
-                // Remove the toolpath from the 3D view
-                if (m_toolpathManager) {
-                    m_toolpathManager->removeToolpath(name);
-                }
-                
-                // Remove from stored toolpaths
-                m_generatedToolpaths.remove(name);
-                
-                emit toolpathRemoved(name);
-            });
-}
-
-// Helper method to create a default tool based on operation type
-std::shared_ptr<IntuiCAM::Toolpath::Tool> IntuiCAM::GUI::ToolpathGenerationController::createDefaultTool(
-    const QString& operationType)
-{
-    IntuiCAM::Toolpath::Tool::Type toolType;
-    
-    if (operationType == "Facing") {
-        toolType = IntuiCAM::Toolpath::Tool::Type::Facing;
-    }
-    else if (operationType == "Roughing" || operationType == "Finishing") {
-        toolType = IntuiCAM::Toolpath::Tool::Type::Turning;
-    }
-    else if (operationType == "Parting") {
-        toolType = IntuiCAM::Toolpath::Tool::Type::Parting;
-    }
-    else if (operationType == "Threading") {
-        toolType = IntuiCAM::Toolpath::Tool::Type::Threading;
-    }
-    else if (operationType == "Grooving") {
-        toolType = IntuiCAM::Toolpath::Tool::Type::Grooving;
-    }
-    else {
-        toolType = IntuiCAM::Toolpath::Tool::Type::Turning; // Default
-    }
-    
-    // Create the tool with default name
-    auto tool = std::make_shared<IntuiCAM::Toolpath::Tool>(
-        toolType, QString("Default %1 Tool").arg(operationType).toStdString());
-    
-    // Configure tool parameters if needed
-    
-    return tool;
+    // Use the display function that includes transformation
+    displayGeneratedToolpath(operationName, toolName, std::move(toolpath));
 }
 
 void IntuiCAM::GUI::ToolpathGenerationController::displayGeneratedToolpath(
@@ -951,4 +887,434 @@ QString IntuiCAM::GUI::ToolpathGenerationController::getOperationTypeString(cons
     
     // Fallback
     return "Unknown";
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::updateOperationParameters(
+    const QString& operationName, 
+    const QString& operationType, 
+    void* params)
+{
+    if (operationType == "Roughing") {
+        auto* roughingParams = static_cast<IntuiCAM::Toolpath::RoughingOperation::Parameters*>(params);
+        if (roughingParams) {
+            m_roughingParams[operationName] = *roughingParams;
+            logMessage(QString("Updated roughing parameters for %1").arg(operationName));
+        }
+    }
+    else if (operationType == "Facing") {
+        auto* facingParams = static_cast<IntuiCAM::Toolpath::FacingOperation::Parameters*>(params);
+        if (facingParams) {
+            m_facingParams[operationName] = *facingParams;
+            logMessage(QString("Updated facing parameters for %1").arg(operationName));
+        }
+    }
+    else if (operationType == "Finishing") {
+        auto* finishingParams = static_cast<IntuiCAM::Toolpath::FinishingOperation::Parameters*>(params);
+        if (finishingParams) {
+            m_finishingParams[operationName] = *finishingParams;
+            logMessage(QString("Updated finishing parameters for %1").arg(operationName));
+        }
+    }
+    else if (operationType == "Parting") {
+        auto* partingParams = static_cast<IntuiCAM::Toolpath::PartingOperation::Parameters*>(params);
+        if (partingParams) {
+            m_partingParams[operationName] = *partingParams;
+            logMessage(QString("Updated parting parameters for %1").arg(operationName));
+        }
+    }
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::connectParameterDialog(
+    OperationParameterDialog* dialog, 
+    const QString& operationName, 
+    const QString& operationType)
+{
+    if (!dialog) return;
+    
+    // Connect parameter changed signal to regenerate toolpath
+    connect(dialog, &IntuiCAM::GUI::OperationParameterDialog::parametersChanged,
+            this, [this, operationName, operationType]() {
+                onOperationParametersChanged(operationName, operationType);
+            });
+    
+    // Set initial parameters based on operation type
+    if (operationType == "Roughing") {
+        IntuiCAM::GUI::OperationParameterDialog::RoughingParameters dialogParams;
+        
+        // Convert core parameters to dialog parameters
+        if (m_roughingParams.contains(operationName)) {
+            const auto& coreParams = m_roughingParams[operationName];
+            dialogParams.depthOfCut = coreParams.depthOfCut;
+            dialogParams.stockAllowance = coreParams.stockAllowance;
+            dialogParams.feedRate = 150.0; // mm/min (converted from mm/rev)
+            dialogParams.spindleSpeed = 1000.0; // RPM
+            dialogParams.stepover = 75.0; // % of tool diameter
+        }
+        
+        dialog->setRoughingParameters(dialogParams);
+    }
+    // Other operation types would be implemented similarly
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::onOperationParametersChanged(
+    const QString& operationName, 
+    const QString& operationType)
+{
+    // Update the core parameters based on dialog parameters
+    if (operationType == "Roughing") {
+        auto dialogParams = static_cast<IntuiCAM::GUI::OperationParameterDialog*>(sender())->getRoughingParameters();
+        
+        // Convert dialog parameters to core parameters
+        IntuiCAM::Toolpath::RoughingOperation::Parameters coreParams;
+        if (m_roughingParams.contains(operationName)) {
+            coreParams = m_roughingParams[operationName];
+        }
+        
+        coreParams.depthOfCut = dialogParams.depthOfCut;
+        coreParams.stockAllowance = dialogParams.stockAllowance;
+        
+        // Store updated parameters
+        m_roughingParams[operationName] = coreParams;
+        
+        // Update the tool's cutting parameters
+        if (m_operationTools.contains(operationName)) {
+            IntuiCAM::Toolpath::Tool::CuttingParameters toolParams;
+            toolParams.feedRate = dialogParams.feedRate / dialogParams.spindleSpeed; // Convert to mm/rev
+            toolParams.spindleSpeed = dialogParams.spindleSpeed;
+            toolParams.depthOfCut = dialogParams.depthOfCut;
+            toolParams.stepover = dialogParams.stepover / 100.0; // Convert from percentage
+            
+            m_operationTools[operationName]->setCuttingParameters(toolParams);
+        }
+        
+        // Regenerate the toolpath with updated parameters
+        regenerateToolpath(operationName, operationType);
+    }
+    // Other operation types would be implemented similarly
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::connectTimelineWidget(ToolpathTimelineWidget* timelineWidget)
+{
+    if (!timelineWidget) return;
+    m_timelineWidget = timelineWidget;
+    
+    // Connect timeline signals to controller
+    connect(timelineWidget, &ToolpathTimelineWidget::addToolpathRequested,
+            this, [this](const QString& operationType) {
+                // Generate a default name based on operation type
+                QString name = QString("%1_%2").arg(operationType).arg(QDateTime::currentDateTime().toString("hhmmss"));
+                
+                // Create default tool for this operation type
+                auto tool = createDefaultTool(operationType);
+                
+                // Convert tool name to QString before using in generateAndDisplayToolpath
+                QString toolName = QString::fromStdString(tool->getName());
+                
+                // Generate and display the toolpath
+                generateAndDisplayToolpath(name, operationType, tool);
+                
+                // Add the toolpath to the timeline
+                emit toolpathAdded(name, operationType, toolName);
+            });
+    
+    // Connect toolpath selection signal
+    connect(timelineWidget, &ToolpathTimelineWidget::toolpathSelected,
+            this, [this, timelineWidget](int index) {
+                if (index < 0) {
+                    // Hide all toolpaths
+                    if (m_toolpathManager) {
+                        for (const auto& tpName : m_generatedToolpaths.keys()) {
+                            m_toolpathManager->setToolpathVisible(tpName, false);
+                        }
+                    }
+                    return;
+                }
+                
+                QString name = timelineWidget->getToolpathName(index);
+                QString type = timelineWidget->getToolpathType(index);
+                
+                // Highlight the selected toolpath in the 3D view
+                if (m_toolpathManager) {
+                    // Hide all toolpaths first
+                    for (const auto& tpName : m_generatedToolpaths.keys()) {
+                        m_toolpathManager->setToolpathVisible(tpName, false);
+                    }
+                    
+                    // Show only the selected toolpath
+                    m_toolpathManager->setToolpathVisible(name, true);
+                }
+                
+                emit toolpathSelected(name, type);
+            });
+    
+    // Connect remove toolpath signal
+    connect(timelineWidget, &ToolpathTimelineWidget::removeToolpathRequested,
+            this, [this, timelineWidget](int index) {
+                QString name = timelineWidget->getToolpathName(index);
+                
+                // Remove the toolpath from the 3D view
+                if (m_toolpathManager) {
+                    m_toolpathManager->removeToolpath(name);
+                }
+                
+                // Remove from stored toolpaths
+                m_generatedToolpaths.remove(name);
+                m_operationTools.remove(name);
+                m_roughingParams.remove(name);
+                m_facingParams.remove(name);
+                m_finishingParams.remove(name);
+                m_partingParams.remove(name);
+                
+                emit toolpathRemoved(name);
+            });
+    
+    // Connect toolpath parameter editing signal
+    connect(timelineWidget, &ToolpathTimelineWidget::toolpathParametersRequested,
+            this, [this, timelineWidget](int index, const QString& operationType) {
+                QString name = timelineWidget->getToolpathName(index);
+                
+                // Create and show the parameter dialog
+                auto dialog = new IntuiCAM::GUI::OperationParameterDialog(
+                    getOperationParameterDialogType(operationType), 
+                    QApplication::activeWindow());
+                
+                // Connect the dialog to the controller
+                connectParameterDialog(dialog, name, operationType);
+                
+                // Show the dialog
+                dialog->exec();
+                
+                // Dialog will be deleted when closed (Qt::WA_DeleteOnClose is set)
+                dialog->setAttribute(Qt::WA_DeleteOnClose);
+            });
+    
+    // Connect toolpath regeneration signal
+    connect(timelineWidget, &ToolpathTimelineWidget::toolpathRegenerateRequested,
+            this, [this, timelineWidget](int index) {
+                QString name = timelineWidget->getToolpathName(index);
+                QString type = timelineWidget->getToolpathType(index);
+                
+                // Regenerate the toolpath
+                regenerateToolpath(name, type);
+            });
+}
+
+// Helper method to convert operation type string to parameter dialog type
+IntuiCAM::GUI::OperationParameterDialog::OperationType 
+IntuiCAM::GUI::ToolpathGenerationController::getOperationParameterDialogType(
+    const QString& operationType) const
+{
+    if (operationType == "Facing")
+        return IntuiCAM::GUI::OperationParameterDialog::OperationType::Facing;
+    else if (operationType == "Roughing")
+        return IntuiCAM::GUI::OperationParameterDialog::OperationType::Roughing;
+    else if (operationType == "Finishing")
+        return IntuiCAM::GUI::OperationParameterDialog::OperationType::Finishing;
+    else if (operationType == "Parting")
+        return IntuiCAM::GUI::OperationParameterDialog::OperationType::Parting;
+    
+    // Default to roughing
+    return IntuiCAM::GUI::OperationParameterDialog::OperationType::Roughing;
+}
+
+// Helper method to create a default tool based on operation type
+std::shared_ptr<IntuiCAM::Toolpath::Tool> IntuiCAM::GUI::ToolpathGenerationController::createDefaultTool(
+    const QString& operationType)
+{
+    IntuiCAM::Toolpath::Tool::Type toolType;
+    
+    if (operationType == "Facing") {
+        toolType = IntuiCAM::Toolpath::Tool::Type::Facing;
+    }
+    else if (operationType == "Roughing" || operationType == "Finishing") {
+        toolType = IntuiCAM::Toolpath::Tool::Type::Turning;
+    }
+    else if (operationType == "Parting") {
+        toolType = IntuiCAM::Toolpath::Tool::Type::Parting;
+    }
+    else if (operationType == "Threading") {
+        toolType = IntuiCAM::Toolpath::Tool::Type::Threading;
+    }
+    else if (operationType == "Grooving") {
+        toolType = IntuiCAM::Toolpath::Tool::Type::Grooving;
+    }
+    else {
+        toolType = IntuiCAM::Toolpath::Tool::Type::Turning; // Default
+    }
+    
+    // Create the tool with default name
+    auto tool = std::make_shared<IntuiCAM::Toolpath::Tool>(
+        toolType, QString("Default %1 Tool").arg(operationType).toStdString());
+    
+    // Configure tool parameters if needed
+    
+    return tool;
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::regenerateToolpath(
+    const QString& operationName, 
+    const QString& operationType)
+{
+    // Get the tool for this operation
+    std::shared_ptr<IntuiCAM::Toolpath::Tool> tool;
+    if (m_operationTools.contains(operationName)) {
+        tool = m_operationTools[operationName];
+    } else {
+        tool = createDefaultTool(operationType);
+        m_operationTools[operationName] = tool;
+    }
+    
+    // Create a part for toolpath generation
+    std::unique_ptr<IntuiCAM::Geometry::Part> part;
+    
+    // Check if we have a shape stored in the workspace controller
+    if (m_workspaceController && m_workspaceController->hasPartShape()) {
+        try {
+            // Get the part shape from the workspace controller
+            TopoDS_Shape partShape = m_workspaceController->getPartShape();
+            
+            if (!partShape.IsNull()) {
+                // Create an OCCTPart with the shape
+                part = std::make_unique<IntuiCAM::Geometry::OCCTPart>(&partShape);
+                logMessage(QString("Using actual part geometry for %1 operation").arg(operationName));
+            } else {
+                // Fallback to simple part if shape is null
+                part = std::make_unique<IntuiCAM::Geometry::SimplePart>();
+                logMessage(QString("Using simplified part geometry for %1 (null shape)").arg(operationName));
+            }
+        } catch (const std::exception& e) {
+            // Fallback to simple part on exception
+            part = std::make_unique<IntuiCAM::Geometry::SimplePart>();
+            logMessage(QString("Exception creating OCCTPart: %1").arg(e.what()));
+        }
+    } else {
+        // Fallback to simple part if no shape is available
+        part = std::make_unique<IntuiCAM::Geometry::SimplePart>();
+        logMessage(QString("Using simplified part geometry for %1 (no workspace part)").arg(operationName));
+    }
+    
+    // Create the appropriate operation type with updated parameters
+    std::unique_ptr<IntuiCAM::Toolpath::Operation> operation;
+    
+    if (operationType == "Roughing") {
+        auto roughingOp = std::make_unique<IntuiCAM::Toolpath::RoughingOperation>(
+            operationName.toStdString(), tool);
+        
+        // Use stored parameters if available
+        if (m_roughingParams.contains(operationName)) {
+            roughingOp->setParameters(m_roughingParams[operationName]);
+        } else {
+            // Create default parameters based on part size
+            IntuiCAM::Toolpath::RoughingOperation::Parameters params;
+            
+            // Get part bounding box
+            IntuiCAM::Geometry::BoundingBox bbox = part->getBoundingBox();
+            
+            // Calculate diameter from bounding box
+            double maxXY = 2.0 * std::max(
+                std::max(std::abs(bbox.min.x), std::abs(bbox.max.x)),
+                std::max(std::abs(bbox.min.y), std::abs(bbox.max.y))
+            );
+            
+            // Add margins for safety
+            params.startDiameter = maxXY + 10.0;
+            params.endDiameter = maxXY * 0.4; // Rough target is 40% of original size
+            
+            // Set Z range
+            params.startZ = bbox.max.z + 5.0;
+            params.endZ = bbox.min.z - 5.0;
+            
+            // Standard cutting parameters
+            params.depthOfCut = 2.0;
+            params.stockAllowance = 0.5;
+            
+            roughingOp->setParameters(params);
+            m_roughingParams[operationName] = params;
+        }
+        
+        operation = std::move(roughingOp);
+    }
+    else if (operationType == "Facing") {
+        auto facingOp = std::make_unique<IntuiCAM::Toolpath::FacingOperation>(
+            operationName.toStdString(), tool);
+        
+        // Use stored parameters if available
+        if (m_facingParams.contains(operationName)) {
+            facingOp->setParameters(m_facingParams[operationName]);
+        } else {
+            // Create default parameters based on part size
+            IntuiCAM::Toolpath::FacingOperation::Parameters params;
+            
+            // Get part bounding box
+            IntuiCAM::Geometry::BoundingBox bbox = part->getBoundingBox();
+            
+            // Calculate diameter from bounding box
+            double maxXY = 2.0 * std::max(
+                std::max(std::abs(bbox.min.x), std::abs(bbox.max.x)),
+                std::max(std::abs(bbox.min.y), std::abs(bbox.max.y))
+            );
+            
+            params.startDiameter = maxXY + 5.0;
+            params.endDiameter = 0.0;
+            params.stepover = 0.5;
+            params.stockAllowance = 0.2;
+            
+            facingOp->setParameters(params);
+            m_facingParams[operationName] = params;
+        }
+        
+        operation = std::move(facingOp);
+    }
+    else if (operationType == "Finishing") {
+        auto finishingOp = std::make_unique<IntuiCAM::Toolpath::FinishingOperation>(
+            operationName.toStdString(), tool);
+        
+        // Use stored parameters if available
+        if (m_finishingParams.contains(operationName)) {
+            finishingOp->setParameters(m_finishingParams[operationName]);
+        }
+        
+        operation = std::move(finishingOp);
+    }
+    else if (operationType == "Parting") {
+        auto partingOp = std::make_unique<IntuiCAM::Toolpath::PartingOperation>(
+            operationName.toStdString(), tool);
+        
+        // Use stored parameters if available
+        if (m_partingParams.contains(operationName)) {
+            partingOp->setParameters(m_partingParams[operationName]);
+        }
+        
+        operation = std::move(partingOp);
+    }
+    else {
+        logMessage(QString("Unknown operation type: %1").arg(operationType));
+        return;
+    }
+    
+    // Validate the operation parameters
+    if (!operation->validate()) {
+        logMessage(QString("Invalid parameters for %1 operation").arg(operationType));
+        return;
+    }
+    
+    // Generate the toolpath
+    logMessage(QString("Generating toolpath for %1...").arg(operationName));
+    auto toolpath = operation->generateToolpath(*part);
+    
+    if (!toolpath) {
+        logMessage(QString("Failed to generate toolpath for %1").arg(operationName));
+        return;
+    }
+    
+    logMessage(QString("Toolpath generation successful: %1 points").arg(toolpath->getPointCount()));
+    
+    // Get the tool name and convert to QString
+    QString toolName = QString::fromStdString(tool->getName());
+    
+    // Display the generated toolpath
+    displayGeneratedToolpath(operationName, toolName, std::move(toolpath));
+    
+    // Emit signal for toolpath regeneration
+    emit toolpathRegenerated(operationName, operationType);
 } 

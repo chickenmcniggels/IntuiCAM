@@ -749,4 +749,21 @@ bool WorkspaceController::recalculateRawMaterial(double diameter)
     }
 }
 
+bool WorkspaceController::hasPartShape() const
+{
+    // Check if the workpiece manager exists and has a part
+    return m_workpieceManager && m_workpieceManager->hasWorkpiece();
+}
+
+TopoDS_Shape WorkspaceController::getPartShape() const
+{
+    // If we have a workpiece manager and it has a part, return it
+    if (m_workpieceManager && m_workpieceManager->hasWorkpiece()) {
+        return m_workpieceManager->getWorkpieceShape();
+    }
+    
+    // Otherwise return a null shape
+    return TopoDS_Shape();
+}
+
  

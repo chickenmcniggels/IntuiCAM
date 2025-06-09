@@ -501,4 +501,18 @@ bool WorkpieceManager::setAxisAlignmentTransformation(const gp_Trsf& transform)
         emit errorOccurred(QString("Failed to apply axis alignment transformation: %1").arg(e.what()));
         return false;
     }
+}
+
+TopoDS_Shape WorkpieceManager::getWorkpieceShape() const
+{
+    if (!m_workpieces.isEmpty()) {
+        // Return the shape of the first workpiece
+        Handle(AIS_Shape) aisShape = m_workpieces.first();
+        if (!aisShape.IsNull()) {
+            return aisShape->Shape();
+        }
+    }
+    
+    // Return null shape if no workpiece or invalid shape
+    return TopoDS_Shape();
 } 

@@ -101,6 +101,18 @@ public:
     QVector<Handle(AIS_Shape)> getWorkpieces() const { return m_workpieces; }
 
     /**
+     * @brief Check if there is at least one workpiece loaded
+     * @return True if at least one workpiece is loaded
+     */
+    bool hasWorkpiece() const { return !m_workpieces.isEmpty(); }
+
+    /**
+     * @brief Get the shape of the current workpiece
+     * @return The TopoDS_Shape of the first workpiece, or null shape if none
+     */
+    TopoDS_Shape getWorkpieceShape() const;
+
+    /**
      * @brief Get the main cylinder axis from the current workpiece
      */
     gp_Ax1 getMainCylinderAxis() const { return m_mainCylinderAxis; }

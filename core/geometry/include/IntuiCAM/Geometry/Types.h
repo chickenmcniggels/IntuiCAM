@@ -5,6 +5,9 @@
 #include <optional>
 #include <IntuiCAM/Common/Types.h>
 
+// Forward declare OpenCASCADE types
+class TopoDS_Shape;
+
 namespace IntuiCAM {
 namespace Geometry {
 
@@ -93,6 +96,33 @@ public:
     // Geometric queries
     virtual std::vector<Point3D> detectCylindricalFeatures() const = 0;
     virtual std::optional<double> getLargestCylinderDiameter() const = 0;
+};
+
+// OpenCASCADE-based implementation of Part
+class OCCTPart : public Part {
+private:
+    void* m_shape; // Actually TopoDS_Shape but stored as void* to avoid header dependencies
+    mutable BoundingBox m_boundingBox;
+    mutable bool m_boundingBoxComputed = false;
+
+public:
+    OCCTPart(const void* shape);
+    virtual ~OCCTPart();
+
+    // Part interface implementation
+    BoundingBox getBoundingBox() const override;
+    std::unique_ptr<GeometricEntity> clone() const override;
+    double getVolume() const override;
+    double getSurfaceArea() const override;
+    std::unique_ptr<Mesh> generateMesh(double tolerance = 0.1) const override;
+    
+    // Cylinder detection
+    std::vector<Point3D> detectCylindricalFeatures() const override;
+    std::optional<double> getLargestCylinderDiameter() const override;
+    
+    // OCC-specific methods
+    const TopoDS_Shape& getOCCTShape() const;
+    void setOCCTShape(const TopoDS_Shape& shape);
 };
 
 } // namespace Geometry

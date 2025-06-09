@@ -9,6 +9,7 @@
 #include <QContextMenuEvent>
 #include <QChildEvent>
 #include <QMouseEvent>
+#include <QMessageBox>
 
 ToolpathTimelineWidget::ToolpathTimelineWidget(QWidget *parent)
     : QWidget(parent),
@@ -239,39 +240,44 @@ void ToolpathTimelineWidget::onToolpathRightClicked(int index, const QPoint& pos
     // Create context menu
     QMenu contextMenu(this);
     
-    QAction* editAction = contextMenu.addAction("Edit Parameters...");
+    QAction* editAction = contextMenu.addAction("Edit Parameters");
+    QAction* regenerateAction = contextMenu.addAction("Regenerate Toolpath");
+    QAction* showAction = contextMenu.addAction("Show Toolpath");
+    QAction* hideAction = contextMenu.addAction("Hide Toolpath");
+    contextMenu.addSeparator();
     QAction* removeAction = contextMenu.addAction("Remove");
     
-    if (index > 0) {
-        contextMenu.addSeparator();
-        contextMenu.addAction("Move Left");
-    }
-    
-    if (index < m_toolpathFrames.size() - 1) {
-        if (contextMenu.actions().size() < 4) {
-            contextMenu.addSeparator();
-        }
-        contextMenu.addAction("Move Right");
-    }
-    
-    // Connect actions
-    connect(editAction, &QAction::triggered, [this, index]() {
-        onToolpathClicked(index);
-    });
-    
-    connect(removeAction, &QAction::triggered, [this, index]() {
-        emit removeToolpathRequested(index);
-    });
-    
-    // Show the menu
+    // Show context menu
     QAction* selectedAction = contextMenu.exec(pos);
     
-    // Handle move actions
-    if (selectedAction) {
-        if (selectedAction->text() == "Move Left" && index > 0) {
-            emit toolpathReordered(index, index - 1);
-        } else if (selectedAction->text() == "Move Right" && index < m_toolpathFrames.size() - 1) {
-            emit toolpathReordered(index, index + 1);
+    // Handle selected action
+    if (selectedAction == editAction) {
+        onToolpathParameterEdit(index);
+    }
+    else if (selectedAction == regenerateAction) {
+        // Emit signal to regenerate toolpath
+        emit toolpathRegenerateRequested(index);
+    }
+    else if (selectedAction == showAction) {
+        // Emit signal to show toolpath
+        setActiveToolpath(index);
+    }
+    else if (selectedAction == hideAction) {
+        // Clear active toolpath
+        m_activeToolpathIndex = -1;
+        updateToolpathFrameStyles();
+        // Emit signal with -1 to hide all
+        emit toolpathSelected(-1);
+    }
+    else if (selectedAction == removeAction) {
+        // Ask for confirmation
+        QMessageBox::StandardButton confirmation = 
+            QMessageBox::question(this, "Remove Toolpath", 
+                                "Are you sure you want to remove this toolpath?",
+                                QMessageBox::Yes | QMessageBox::No);
+        
+        if (confirmation == QMessageBox::Yes) {
+            emit removeToolpathRequested(index);
         }
     }
 }
@@ -472,4 +478,17 @@ QString ToolpathTimelineWidget::getToolpathName(int index) const
         return m_toolpathNames.at(index);
     }
     return QString();
+}
+
+// Add this new method to handle parameter editing
+void ToolpathTimelineWidget::onToolpathParameterEdit(int index)
+{
+    if (index < 0 || index >= m_toolpathFrames.size())
+        return;
+    
+    QString operationType = m_toolpathTypes.at(index);
+    QString operationName = m_toolpathNames.at(index);
+    
+    // Emit signal to request parameter editing
+    emit toolpathParametersRequested(index, operationType);
 } 

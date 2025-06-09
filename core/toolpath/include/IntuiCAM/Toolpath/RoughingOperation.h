@@ -1,8 +1,33 @@
 #pragma once
 
 #include <IntuiCAM/Toolpath/Types.h>
+#include <vector>
+
+// OpenCASCADE headers
+#include <TopoDS_Shape.hxx>
+#include <BRepAlgoAPI_Section.hxx>
+#include <gp_Pln.hxx>
+#include <gp_Ax1.hxx>
+#include <TopoDS.hxx>
+#include <TopoDS_Edge.hxx>
+#include <BRepAdaptor_Curve.hxx>
+#include <TopExp_Explorer.hxx>
+#include <TopAbs_ShapeEnum.hxx>
+#include <GeomAbs_CurveType.hxx>
 
 namespace IntuiCAM {
+namespace Geometry {
+    struct Point2D {
+        double x, z;
+        
+        Point2D() : x(0), z(0) {}
+        Point2D(double x_, double z_) : x(x_), z(z_) {}
+    };
+    
+    // Forward declare OCCTPart for dynamic_cast
+    class OCCTPart;
+}
+
 namespace Toolpath {
 
 // Roughing operation for material removal
@@ -19,6 +44,14 @@ public:
     
 private:
     Parameters params_;
+    
+    // Helper methods for profile-based roughing
+    std::vector<Geometry::Point2D> extractProfile(const Geometry::Part& part);
+    std::vector<Geometry::Point2D> generateSimpleProfile(const Geometry::BoundingBox& bbox);
+    double findMaxRadiusFromSection(const TopoDS_Shape& sectionShape);
+    double getProfileRadiusAtZ(const std::vector<Geometry::Point2D>& profile, double z);
+    std::unique_ptr<Toolpath> generateBasicRoughing();
+    std::vector<Geometry::Point3D> simplifyPath(const std::vector<Geometry::Point3D>& points, double tolerance);
     
 public:
     RoughingOperation(const std::string& name, std::shared_ptr<Tool> tool);

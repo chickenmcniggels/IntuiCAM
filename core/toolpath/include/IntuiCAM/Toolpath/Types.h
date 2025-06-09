@@ -30,6 +30,7 @@ public:
         double spindleSpeed = 1000;     // RPM
         double depthOfCut = 1.0;        // mm
         double stepover = 0.5;          // mm
+        double rapidFeedRate = 5000.0;  // mm/min (for rapid movements)
     };
     
     struct Geometry {
@@ -105,6 +106,7 @@ public:
     
     // Analysis
     size_t getMovementCount() const { return movements_.size(); }
+    size_t getPointCount() const { return movements_.size(); }
     double estimateMachiningTime() const;
     Geometry::BoundingBox getBoundingBox() const;
     

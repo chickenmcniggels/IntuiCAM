@@ -171,6 +171,18 @@ public:
     WorkpieceManager* getWorkpieceManager() const { return m_workpieceManager; }
     RawMaterialManager* getRawMaterialManager() const { return m_rawMaterialManager; }
 
+    /**
+     * @brief Check if there is a part shape loaded
+     * @return True if a part shape is loaded
+     */
+    bool hasPartShape() const;
+
+    /**
+     * @brief Get the current part shape
+     * @return The current part shape
+     */
+    TopoDS_Shape getPartShape() const;
+
 signals:
     /**
      * @brief Emitted when chuck is successfully initialized

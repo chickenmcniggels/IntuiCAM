@@ -14,9 +14,19 @@
 #include <TopoDS_Shape.hxx>
 #include <AIS_InteractiveContext.hxx>
 
+// Include operation headers for Parameters types
+#include <IntuiCAM/Toolpath/RoughingOperation.h>
+#include <IntuiCAM/Toolpath/FacingOperation.h>
+#include <IntuiCAM/Toolpath/FinishingOperation.h>
+#include <IntuiCAM/Toolpath/PartingOperation.h>
+
+// Include GUI operation parameter dialog
+#include "operationparameterdialog.h"
+
 // Forward declarations
 class ToolpathManager;
 class ToolpathTimelineWidget;
+class WorkspaceController;  // Forward declaration for the WorkspaceController
 
 namespace IntuiCAM {
 namespace GUI {
@@ -99,6 +109,9 @@ public:
     // Initialize with 3D viewer context
     void initialize(Handle(AIS_InteractiveContext) context);
 
+    // Set the workspace controller
+    void setWorkspaceController(WorkspaceController* workspaceController);
+
     // Main generation interface
     void generateToolpaths(const GenerationRequest& request);
     void cancelGeneration();
@@ -120,9 +133,16 @@ public:
     void connectTimelineWidget(ToolpathTimelineWidget* timelineWidget);
     
     std::shared_ptr<IntuiCAM::Toolpath::Tool> createDefaultTool(const QString& operationType);
+    
+    // New methods for operation parameter updates
+    void updateOperationParameters(const QString& operationName, const QString& operationType, void* params);
+    void regenerateToolpath(const QString& operationName, const QString& operationType);
+    void connectParameterDialog(OperationParameterDialog* dialog, const QString& operationName, 
+                               const QString& operationType);
 
 public slots:
     void onGenerationRequested(const GenerationRequest& request);
+    void onOperationParametersChanged(const QString& operationName, const QString& operationType);
 
 signals:
     void generationStarted();
@@ -136,6 +156,7 @@ signals:
     void toolpathAdded(const QString& name, const QString& type, const QString& toolName);
     void toolpathSelected(const QString& name, const QString& type);
     void toolpathRemoved(const QString& name);
+    void toolpathRegenerated(const QString& name, const QString& type);
 
 private slots:
     void performAnalysis();
@@ -194,6 +215,7 @@ private:
     Handle(AIS_InteractiveContext) m_context;
     ToolpathTimelineWidget* m_timelineWidget;
     QTextEdit* m_statusText;
+    WorkspaceController* m_workspaceController;
     
     // State
     std::map<QString, std::unique_ptr<IntuiCAM::Toolpath::Toolpath>> m_toolpaths;
@@ -201,6 +223,13 @@ private:
     bool m_isGenerating;
     int m_currentOperationIndex;
     int m_totalOperations;
+    
+    // Operation parameters storage - fixed QMap template parameters
+    QMap<QString, IntuiCAM::Toolpath::RoughingOperation::Parameters> m_roughingParams;
+    QMap<QString, IntuiCAM::Toolpath::FacingOperation::Parameters> m_facingParams;
+    QMap<QString, IntuiCAM::Toolpath::FinishingOperation::Parameters> m_finishingParams;
+    QMap<QString, IntuiCAM::Toolpath::PartingOperation::Parameters> m_partingParams;
+    QMap<QString, std::shared_ptr<IntuiCAM::Toolpath::Tool>> m_operationTools;
     
     // Helper methods
     QString getOperationTypeString(const QString& operationName) const;
@@ -215,6 +244,9 @@ private:
         const QString& operationName,
         const QString& toolName,
         std::unique_ptr<IntuiCAM::Toolpath::Toolpath> toolpath);
+        
+    // Helper method to determine parameter dialog type
+    OperationParameterDialog::OperationType getOperationParameterDialogType(const QString& operationType) const;
 };
 
 } // namespace GUI

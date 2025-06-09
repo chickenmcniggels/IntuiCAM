@@ -12,6 +12,7 @@
 #include <QAction>
 #include <QVector>
 #include <QMap>
+#include <QMessageBox>
 
 namespace IntuiCAM {
 namespace GUI {
@@ -107,6 +108,12 @@ public slots:
      * @brief Handle click on the add toolpath button
      */
     void onAddToolpathClicked();
+    
+    /**
+     * @brief Handle parameter editing for a toolpath
+     * @param index The index of the toolpath to edit parameters for
+     */
+    void onToolpathParameterEdit(int index);
 
 signals:
     /**
@@ -140,6 +147,12 @@ signals:
      * @param toIndex New position
      */
     void toolpathReordered(int fromIndex, int toIndex);
+    
+    /**
+     * @brief Emitted when a toolpath should be regenerated
+     * @param index The index of the toolpath to regenerate
+     */
+    void toolpathRegenerateRequested(int index);
 
 private slots:
     /**
