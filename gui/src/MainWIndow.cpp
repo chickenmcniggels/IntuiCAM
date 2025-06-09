@@ -2,14 +2,15 @@
 #include "opengl3dwidget.h"
 #include "steploader.h"
 #include "workspacecontroller.h"
+#include "toolpathmanager.h"
+#include "workpiecemanager.h"
+#include "toolpathtimelinewidget.h"
 #include "partloadingpanel.h"
 #include "setupconfigurationpanel.h"
-#include "toolpathgenerationcontroller.h"
-#include "toolpathtimelinewidget.h"
 #include "operationparameterdialog.h"
 #include "materialmanager.h"
 #include "toolmanager.h"
-#include "workpiecemanager.h"  // For CylinderInfo definition
+#include "toolpathgenerationcontroller.h"
 #include "rawmaterialmanager.h"  // For RawMaterialManager signals
 
 #include <QLabel>
@@ -70,6 +71,8 @@ MainWindow::MainWindow(QWidget *parent)
     , m_outputWindow(nullptr)
     , m_workspaceController(nullptr)
     , m_stepLoader(nullptr)
+    , m_toolpathManager(nullptr)
+    , m_workpieceManager(nullptr)
     , m_materialManager(nullptr)
     , m_toolManager(nullptr)
     , m_toolpathGenerationController(nullptr)
@@ -89,8 +92,10 @@ MainWindow::MainWindow(QWidget *parent)
     , m_viewModeOverlayButton(nullptr)
 {
     // Create business logic components
-    m_stepLoader = new StepLoader();
     m_workspaceController = new WorkspaceController(this);
+    m_stepLoader = new StepLoader();
+    m_toolpathManager = new ToolpathManager(this);
+    m_workpieceManager = new WorkpieceManager(this);
     
     // Create material and tool managers
     m_materialManager = new IntuiCAM::GUI::MaterialManager(this);
@@ -187,6 +192,20 @@ void MainWindow::createMenus()
     m_aboutAction = new QAction(tr("&About IntuiCAM"), this);
     m_aboutAction->setStatusTip(tr("Show information about the application"));
     m_helpMenu->addAction(m_aboutAction);
+    
+    // Debug menu
+    QMenu* debugMenu = menuBar()->addMenu(tr("Debug"));
+    
+    QAction* actionUpdateToolpaths = debugMenu->addAction(tr("Force Update Toolpaths"));
+    connect(actionUpdateToolpaths, &QAction::triggered, this, [this]() {
+        if (m_toolpathManager) {
+            // Force toolpath update with current workpiece transformation
+            m_toolpathManager->applyWorkpieceTransformationToToolpaths();
+            
+            // Log to output window
+            logToOutput("Forced update of all toolpaths with current workpiece transformation");
+        }
+    });
 }
 
 // Toolbar removed per user request - project actions are available in File menu
@@ -236,6 +255,9 @@ void MainWindow::createCentralWidget()
     
     // Start on Setup tab (index 1) since that's where the action is
     m_tabWidget->setCurrentIndex(1);
+    
+    // Setup all connections after UI components are created
+    setupUiConnections();
 }
 
 void MainWindow::createStatusBar()
@@ -294,18 +316,69 @@ void MainWindow::setupConnections()
     // Connect simulate button
     connect(m_simulateButton, &QPushButton::clicked, this, &MainWindow::simulateToolpaths);
     
-    // Connect toolpath timeline signals
-    if (m_toolpathTimeline) {
-        connect(m_toolpathTimeline, &ToolpathTimelineWidget::toolpathSelected,
-                this, &MainWindow::handleToolpathSelected);
-        connect(m_toolpathTimeline, &ToolpathTimelineWidget::toolpathParametersRequested,
-                this, &MainWindow::handleToolpathParametersRequested);
-        connect(m_toolpathTimeline, &ToolpathTimelineWidget::addToolpathRequested,
-                this, &MainWindow::handleAddToolpathRequested);
-        connect(m_toolpathTimeline, &ToolpathTimelineWidget::removeToolpathRequested,
-                this, &MainWindow::handleRemoveToolpathRequested);
-        connect(m_toolpathTimeline, &ToolpathTimelineWidget::toolpathReordered,
-                this, &MainWindow::handleToolpathReordered);
+    // Connect toolpath timeline with toolpath generation controller
+    if (m_toolpathTimeline && m_toolpathGenerationController) {
+        m_toolpathGenerationController->connectTimelineWidget(m_toolpathTimeline);
+        
+        // Connect toolpath generation controller signals to main window
+        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::toolpathAdded,
+                this, [this](const QString& name, const QString& type, const QString& toolName) {
+                    // Add the toolpath to the timeline
+                    m_toolpathTimeline->addToolpath(name, type, toolName, QString());
+                    
+                    // Log to output window
+                    logToOutput(QString("Added %1 toolpath: %2 with tool: %3").arg(type, name, toolName));
+                });
+        
+        // Handle existing connection slots from MainWindow for timeline widget
+        // These will now be handled by the ToolpathGenerationController
+    }
+    
+    // Connect WorkpieceManager to ToolpathManager
+    if (m_toolpathManager && m_workpieceManager) {
+        m_toolpathManager->setWorkpieceManager(m_workpieceManager);
+        
+        // Connect workpiece transformation signals to update toolpaths
+        connect(m_workpieceManager, &WorkpieceManager::workpieceTransformed, 
+                m_toolpathManager, &ToolpathManager::applyWorkpieceTransformationToToolpaths);
+    }
+    
+    // Connect workpiece position changes to toolpath updates
+    if (m_workspaceController && m_toolpathManager) {
+        // Connect using a direct connection to ensure immediate update
+        connect(m_workspaceController, &WorkspaceController::workpiecePositionChanged,
+                this, [this](double distance) {
+                    // Ensure toolpaths update when workpiece position changes
+                    if (m_toolpathManager) {
+                        qDebug() << "MainWindow: Workpiece position changed to" << distance << "mm, updating toolpaths";
+                        
+                        // Force toolpath update with current workpiece transformation
+                        QTimer::singleShot(100, [this]() {
+                            if (m_toolpathManager) {
+                                m_toolpathManager->applyWorkpieceTransformationToToolpaths();
+                                qDebug() << "MainWindow: Applied toolpath transformations after position change";
+                            }
+                        });
+                    }
+                }, Qt::DirectConnection);
+    }
+    
+    // Connect to the toolpath generation controller
+    if (m_toolpathGenerationController) {
+        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::generationStarted,
+                this, &MainWindow::handleToolpathGenerationStarted);
+        
+        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::progressUpdated,
+                this, &MainWindow::handleToolpathProgressUpdated);
+        
+        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::operationCompleted,
+                this, &MainWindow::handleToolpathOperationCompleted);
+        
+        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::generationCompleted,
+                this, &MainWindow::handleToolpathGenerationCompleted);
+        
+        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::errorOccurred,
+                this, &MainWindow::handleToolpathGenerationError);
     }
 }
 
@@ -1832,4 +1905,62 @@ void MainWindow::handleToolpathReordered(int fromIndex, int toIndex)
     // For now, just log the request - in a real implementation we would
     // need to move the actual toolpath data and update the timeline
     statusBar()->showMessage(tr("Reordering toolpaths is not yet implemented"), 2000);
+}
+
+// Add this method to log messages to the output window
+void MainWindow::logToOutput(const QString& message)
+{
+    if (m_outputWindow) {
+        m_outputWindow->append(message);
+    }
+}
+
+void MainWindow::setupUiConnections()
+{
+    // Connect WorkpieceManager to ToolpathManager
+    if (m_toolpathManager && m_workpieceManager) {
+        m_toolpathManager->setWorkpieceManager(m_workpieceManager);
+        
+        // Connect workpiece transformation signals to update toolpaths
+        connect(m_workpieceManager, &WorkpieceManager::workpieceTransformed, 
+                m_toolpathManager, &ToolpathManager::applyWorkpieceTransformationToToolpaths);
+    }
+    
+    // Connect workpiece position changes to toolpath updates
+    if (m_workspaceController && m_toolpathManager) {
+        // Connect using a direct connection to ensure immediate update
+        connect(m_workspaceController, &WorkspaceController::workpiecePositionChanged,
+                this, [this](double distance) {
+                    // Ensure toolpaths update when workpiece position changes
+                    if (m_toolpathManager) {
+                        qDebug() << "MainWindow: Workpiece position changed to" << distance << "mm, updating toolpaths";
+                        
+                        // Force toolpath update with current workpiece transformation
+                        QTimer::singleShot(100, [this]() {
+                            if (m_toolpathManager) {
+                                m_toolpathManager->applyWorkpieceTransformationToToolpaths();
+                                qDebug() << "MainWindow: Applied toolpath transformations after position change";
+                            }
+                        });
+                    }
+                }, Qt::DirectConnection);
+    }
+    
+    // Connect to the toolpath generation controller
+    if (m_toolpathGenerationController) {
+        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::generationStarted,
+                this, &MainWindow::handleToolpathGenerationStarted);
+        
+        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::progressUpdated,
+                this, &MainWindow::handleToolpathProgressUpdated);
+        
+        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::operationCompleted,
+                this, &MainWindow::handleToolpathOperationCompleted);
+        
+        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::generationCompleted,
+                this, &MainWindow::handleToolpathGenerationCompleted);
+        
+        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::errorOccurred,
+                this, &MainWindow::handleToolpathGenerationError);
+    }
 }

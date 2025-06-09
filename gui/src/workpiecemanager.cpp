@@ -372,6 +372,9 @@ bool WorkpieceManager::flipWorkpieceOrientation(bool flipped)
         // Use a single efficient update
         m_context->UpdateCurrentViewer();
         
+        // Notify that workpiece transformation has changed
+        emit workpieceTransformed();
+        
         qDebug() << "WorkpieceManager: Workpiece orientation" << (flipped ? "flipped" : "restored") 
                  << "with position offset" << m_positionOffset << "mm";
         return true;
@@ -386,10 +389,17 @@ gp_Trsf WorkpieceManager::getCurrentTransformation() const
 {
     gp_Trsf transform; // Default constructor creates identity
     
+    // Debug current state
+    qDebug() << "WorkpieceManager: Building current transformation:";
+    qDebug() << "  - Position offset:" << m_positionOffset << "mm";
+    qDebug() << "  - Flipped:" << (m_isFlipped ? "Yes" : "No");
+    qDebug() << "  - Has axis alignment:" << (m_hasAxisAlignment ? "Yes" : "No");
+    
     // Step 1: Apply axis alignment transformation first (if present)
     // This aligns the workpiece axis with the Z-axis
     if (m_hasAxisAlignment) {
         transform = m_axisAlignmentTransform * transform;
+        qDebug() << "  - Applied axis alignment transformation";
     }
     
     // Step 2: Apply flip transformation (around the now-aligned axis)
@@ -399,6 +409,7 @@ gp_Trsf WorkpieceManager::getCurrentTransformation() const
         gp_Trsf flipTransform;
         flipTransform.SetRotation(rotationAxis, M_PI); // 180 degrees
         transform = flipTransform * transform;
+        qDebug() << "  - Applied flip transformation (180° around Y axis)";
     }
     
     // Step 3: Apply global position offset (always in Z+ direction for chuck distance)
@@ -407,7 +418,13 @@ gp_Trsf WorkpieceManager::getCurrentTransformation() const
         gp_Trsf translationTransform;
         translationTransform.SetTranslation(globalTranslation);
         transform = translationTransform * transform;
+        qDebug() << "  - Applied position offset:" << m_positionOffset << "mm in Z+ direction";
     }
+    
+    // Debug the resulting transformation
+    gp_XYZ translation = transform.TranslationPart();
+    qDebug() << "  - Final transformation - Translation:" << translation.X() << "," << translation.Y() << "," << translation.Z();
+    qDebug() << "  - Final transformation - Form:" << transform.Form();
     
     return transform;
 }
@@ -435,6 +452,9 @@ bool WorkpieceManager::positionWorkpieceAlongAxis(double distance)
         }
 
         m_context->UpdateCurrentViewer();
+        
+        // Notify that workpiece transformation has changed
+        emit workpieceTransformed();
         
         qDebug() << "WorkpieceManager: Workpiece positioned at offset" << distance << "mm"
                  << (m_isFlipped ? " (flipped)" : " (normal)");
@@ -470,6 +490,9 @@ bool WorkpieceManager::setAxisAlignmentTransformation(const gp_Trsf& transform)
         }
         
         m_context->UpdateCurrentViewer();
+        
+        // Notify that workpiece transformation has changed
+        emit workpieceTransformed();
         
         qDebug() << "WorkpieceManager: Axis alignment transformation applied successfully";
         return true;

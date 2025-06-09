@@ -16,6 +16,7 @@
 
 // Forward declarations
 class ToolpathManager;
+class ToolpathTimelineWidget;
 
 namespace IntuiCAM {
 namespace GUI {
@@ -111,6 +112,15 @@ public:
     void connectProgressBar(QProgressBar* progressBar);
     void connectStatusText(QTextEdit* statusText);
 
+    // New methods for direct toolpath handling
+    void generateAndDisplayToolpath(const QString& operationName, 
+                                   const QString& operationType,
+                                   std::shared_ptr<IntuiCAM::Toolpath::Tool> tool);
+    
+    void connectTimelineWidget(ToolpathTimelineWidget* timelineWidget);
+    
+    std::shared_ptr<IntuiCAM::Toolpath::Tool> createDefaultTool(const QString& operationType);
+
 public slots:
     void onGenerationRequested(const GenerationRequest& request);
 
@@ -121,6 +131,11 @@ signals:
     void generationCompleted(const GenerationResult& result);
     void generationCancelled();
     void errorOccurred(const QString& errorMessage);
+    
+    // New signals for toolpath handling
+    void toolpathAdded(const QString& name, const QString& type, const QString& toolName);
+    void toolpathSelected(const QString& name, const QString& type);
+    void toolpathRemoved(const QString& name);
 
 private slots:
     void performAnalysis();
@@ -171,6 +186,35 @@ private:
     // Static configuration
     static const QStringList DEFAULT_OPERATION_ORDER;
     static const QMap<QString, double> OPERATION_TIME_ESTIMATES; // minutes per operation
+    
+    // Toolpath storage
+    QMap<QString, std::shared_ptr<IntuiCAM::Toolpath::Toolpath>> m_generatedToolpaths;
+
+    // Dependencies
+    Handle(AIS_InteractiveContext) m_context;
+    ToolpathTimelineWidget* m_timelineWidget;
+    QTextEdit* m_statusText;
+    
+    // State
+    std::map<QString, std::unique_ptr<IntuiCAM::Toolpath::Toolpath>> m_toolpaths;
+    std::vector<QString> m_operationOrder;
+    bool m_isGenerating;
+    int m_currentOperationIndex;
+    int m_totalOperations;
+    
+    // Helper methods
+    QString getOperationTypeString(const QString& operationName) const;
+    
+    /**
+     * @brief Display a generated toolpath and apply transformations
+     * @param operationName Name of the operation
+     * @param toolName Name of the tool used
+     * @param toolpath The generated toolpath
+     */
+    void displayGeneratedToolpath(
+        const QString& operationName,
+        const QString& toolName,
+        std::unique_ptr<IntuiCAM::Toolpath::Toolpath> toolpath);
 };
 
 } // namespace GUI

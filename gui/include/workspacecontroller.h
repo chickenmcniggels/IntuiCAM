@@ -204,14 +204,14 @@ signals:
     void manualAxisSelected(double diameter, const gp_Ax1& axis);
 
     /**
-     * @brief Emitted when workpiece workflow is completed
-     * @param diameter Detected workpiece diameter
+     * @brief Emitted when the workpiece workflow is completed
+     * @param detectedDiameter Detected workpiece diameter
      * @param rawMaterialDiameter Selected raw material diameter
      */
-    void workpieceWorkflowCompleted(double diameter, double rawMaterialDiameter);
+    void workpieceWorkflowCompleted(double detectedDiameter, double rawMaterialDiameter);
 
     /**
-     * @brief Emitted when workspace is cleared
+     * @brief Emitted when the workspace is cleared
      */
     void workspaceCleared();
 
@@ -221,6 +221,12 @@ signals:
      * @param message Error description
      */
     void errorOccurred(const QString& source, const QString& message);
+
+    /**
+     * @brief Emitted when the workpiece position is changed
+     * @param distance New distance from chuck
+     */
+    void workpiecePositionChanged(double distance);
 
 private slots:
     /**

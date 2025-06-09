@@ -1,4 +1,5 @@
 #include "../include/toolpathmanager.h"
+#include "../include/workpiecemanager.h"
 
 #include <QDebug>
 
@@ -16,9 +17,13 @@
 #include <Prs3d_Arrow.hxx>
 #include <Prs3d_ArrowAspect.hxx>
 #include <V3d_View.hxx>
+#include <BRepBuilderAPI_Transform.hxx>
+#include <gp_Pnt.hxx>
+#include <AIS_Shape.hxx>
 
 ToolpathManager::ToolpathManager(QObject *parent)
     : QObject(parent)
+    , m_workpieceManager(nullptr)
 {
 }
 
@@ -36,6 +41,11 @@ void ToolpathManager::initialize(Handle(AIS_InteractiveContext) context)
     } else {
         qDebug() << "ToolpathManager initialized successfully";
     }
+}
+
+void ToolpathManager::setWorkpieceManager(WorkpieceManager* workpieceManager)
+{
+    m_workpieceManager = workpieceManager;
 }
 
 bool ToolpathManager::displayToolpath(const IntuiCAM::Toolpath::Toolpath& toolpath, const QString& name)
@@ -58,8 +68,38 @@ bool ToolpathManager::displayToolpath(const IntuiCAM::Toolpath::Toolpath& toolpa
         return false;
     }
     
+    // Store the original untransformed shape for later transformations
+    m_originalToolpathShapes[name] = toolpathShape;
+    
+    // Apply workpiece transformation to the toolpath shape
+    gp_Trsf transformation = getWorkpieceTransformation();
+    TopoDS_Shape transformedShape;
+    
+    // Debug transformation details for toolpath display
+    gp_XYZ translation = transformation.TranslationPart();
+    qDebug() << "ToolpathManager: Displaying toolpath with transformation:";
+    qDebug() << "  - Toolpath name:" << name;
+    qDebug() << "  - Translation vector:" << translation.X() << "," << translation.Y() << "," << translation.Z();
+    qDebug() << "  - Transformation form:" << transformation.Form();
+    
+    // Only transform if we have a non-identity transformation
+    if (transformation.Form() != gp_Identity) {
+        BRepBuilderAPI_Transform transformer(toolpathShape, transformation, Standard_True);
+        if (transformer.IsDone()) {
+            transformedShape = transformer.Shape();
+            qDebug() << "ToolpathManager: Successfully applied transformation to new toolpath";
+        } else {
+            emit errorOccurred(QString("Failed to transform toolpath '%1'").arg(name));
+            transformedShape = toolpathShape; // Use original as fallback
+            qDebug() << "ToolpathManager: Failed to transform toolpath, using original shape";
+        }
+    } else {
+        transformedShape = toolpathShape;
+        qDebug() << "ToolpathManager: No transformation needed (identity)";
+    }
+    
     // Create AIS shape for visualization
-    Handle(AIS_Shape) toolpathAIS = new AIS_Shape(toolpathShape);
+    Handle(AIS_Shape) toolpathAIS = new AIS_Shape(transformedShape);
     
     // Set display properties
     setToolpathDisplayProperties(toolpathAIS, false); // Default to cutting movement style
@@ -75,7 +115,6 @@ bool ToolpathManager::displayToolpath(const IntuiCAM::Toolpath::Toolpath& toolpa
     
     emit toolpathDisplayed(name);
     qDebug() << "Toolpath displayed:" << name;
-    
     return true;
 }
 
@@ -111,8 +150,9 @@ void ToolpathManager::removeToolpath(const QString& name)
             m_context->Erase(toolpathAIS, Standard_False);
         }
         
-        // Remove from map
+        // Remove from maps
         m_displayedToolpaths.remove(name);
+        m_originalToolpathShapes.remove(name);
         
         m_context->UpdateCurrentViewer();
         
@@ -139,8 +179,9 @@ void ToolpathManager::clearAllToolpaths()
         }
     }
     
-    // Clear the map
+    // Clear the maps
     m_displayedToolpaths.clear();
+    m_originalToolpathShapes.clear();
     
     // Force view update
     m_context->UpdateCurrentViewer();
@@ -349,4 +390,117 @@ Quantity_Color ToolpathManager::getMovementColor(const IntuiCAM::Toolpath::Movem
         default:
             return Quantity_Color(0.5, 0.5, 0.5, Quantity_TOC_RGB); // Gray for unknown
     }
+}
+
+void ToolpathManager::applyWorkpieceTransformationToToolpaths()
+{
+    if (m_context.IsNull()) {
+        qDebug() << "ToolpathManager: Cannot apply transformations - context null";
+        return;
+    }
+    
+    if (m_displayedToolpaths.isEmpty()) {
+        qDebug() << "ToolpathManager: No toolpaths to transform";
+        return;
+    }
+    
+    if (!m_workpieceManager) {
+        qDebug() << "ToolpathManager: Cannot apply transformations - no workpiece manager set";
+        emit errorOccurred("Cannot update toolpaths: Workpiece manager not set");
+        return;
+    }
+    
+    qDebug() << "\n==== TOOLPATH TRANSFORMATION UPDATE ====";
+    qDebug() << "ToolpathManager: Applying transformations to" << m_displayedToolpaths.size() 
+             << "toolpaths and" << m_originalToolpathShapes.size() << "original shapes";
+    
+    // Get the current workpiece transformation
+    gp_Trsf transformation = getWorkpieceTransformation();
+    
+    if (transformation.Form() == gp_Identity) {
+        qDebug() << "ToolpathManager: No transformation needed (identity transformation)";
+        return;
+    }
+    
+    // Debug transformation details
+    gp_XYZ translation = transformation.TranslationPart();
+    double scale = transformation.ScaleFactor();
+    qDebug() << "ToolpathManager: Workpiece transformation:";
+    qDebug() << "  - Translation vector:" << translation.X() << "," << translation.Y() << "," << translation.Z();
+    qDebug() << "  - Scale factor:" << scale;
+    qDebug() << "  - Transformation form:" << transformation.Form();
+    
+    // Get all keys to avoid modifying map during iteration
+    QStringList keys = m_displayedToolpaths.keys();
+    int successCount = 0;
+    int failureCount = 0;
+    
+    // Process each toolpath
+    for (const QString& name : keys) {
+        qDebug() << "ToolpathManager: Processing toolpath:" << name;
+        
+        // Erase the current displayed toolpath
+        Handle(AIS_Shape) toolpathAIS = m_displayedToolpaths[name];
+        if (!toolpathAIS.IsNull()) {
+            m_context->Erase(toolpathAIS, Standard_False);
+        }
+        
+        // Get the original untransformed shape
+        if (!m_originalToolpathShapes.contains(name)) {
+            qDebug() << "ToolpathManager: ERROR - No original shape found for toolpath:" << name;
+            failureCount++;
+            continue;
+        }
+        
+        TopoDS_Shape originalShape = m_originalToolpathShapes[name];
+        
+        // Apply transformation to the original shape
+        BRepBuilderAPI_Transform transformer(originalShape, transformation, Standard_True);
+        if (transformer.IsDone()) {
+            // Create new AIS shape with transformed geometry
+            Handle(AIS_Shape) newToolpathAIS = new AIS_Shape(transformer.Shape());
+            
+            // Set display properties
+            setToolpathDisplayProperties(newToolpathAIS, false);
+            
+            // Update in map and display
+            m_displayedToolpaths[name] = newToolpathAIS;
+            m_context->Display(newToolpathAIS, Standard_False);
+            
+            qDebug() << "ToolpathManager: Successfully transformed toolpath:" << name;
+            successCount++;
+        } else {
+            qDebug() << "ToolpathManager: Failed to transform toolpath:" << name;
+            failureCount++;
+            emit errorOccurred(QString("Failed to transform toolpath: %1").arg(name));
+        }
+    }
+    
+    m_context->UpdateCurrentViewer();
+    qDebug() << "ToolpathManager: Transformation complete -" << successCount << "succeeded," 
+             << failureCount << "failed";
+    qDebug() << "==== END TOOLPATH TRANSFORMATION ====\n";
+}
+
+gp_Trsf ToolpathManager::getWorkpieceTransformation() const
+{
+    // Return identity transformation if workpiece manager not set
+    if (!m_workpieceManager) {
+        qDebug() << "ToolpathManager: No workpiece manager set, returning identity transformation";
+        return gp_Trsf(); // Identity transformation
+    }
+    
+    // Get transformation from workpiece manager
+    gp_Trsf transform = m_workpieceManager->getCurrentTransformation();
+    
+    // Debug transformation details
+    gp_XYZ translation = transform.TranslationPart();
+    qDebug() << "ToolpathManager: Current workpiece transformation:";
+    qDebug() << "  - Translation vector:" << translation.X() << "," << translation.Y() << "," << translation.Z();
+    qDebug() << "  - Transformation form:" << transform.Form();
+    qDebug() << "  - Workpiece position offset:" << m_workpieceManager->getWorkpiecePositionOffset() << "mm";
+    qDebug() << "  - Workpiece flipped:" << (m_workpieceManager->isWorkpieceFlipped() ? "Yes" : "No");
+    qDebug() << "  - Has axis alignment:" << (m_workpieceManager->hasAxisAlignmentTransformation() ? "Yes" : "No");
+    
+    return transform;
 } 

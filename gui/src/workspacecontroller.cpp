@@ -297,8 +297,6 @@ QVector<CylinderInfo> WorkspaceController::getDetectedCylinders() const
     return QVector<CylinderInfo>();
 }
 
-
-
 bool WorkspaceController::hasChuckCenterline() const
 {
     return m_chuckManager && m_chuckManager->hasValidCenterline();
@@ -395,44 +393,37 @@ bool WorkspaceController::updateRawMaterialDiameter(double diameter)
 
 bool WorkspaceController::updateDistanceToChuck(double distance)
 {
-    qDebug() << "WorkspaceController: updateDistanceToChuck called with distance:" << distance << "mm";
-    
-    if (!m_initialized) {
-        emit errorOccurred("WorkspaceController", "Workspace not initialized");
+    if (!m_initialized || !m_workpieceManager) {
+        emit errorOccurred("WorkspaceController", "Cannot update chuck distance - workspace not initialized");
         return false;
     }
 
-    if (!m_chuckManager->hasValidCenterline()) {
-        qDebug() << "WorkspaceController: No chuck centerline available for distance adjustment";
-        // This is not an error - just means chuck positioning isn't applicable
-        return true;
-    }
+    qDebug() << "WorkspaceController: Updating distance to chuck:" << distance << "mm";
 
     try {
-        // Use WorkpieceManager's positioning capabilities
-        bool positionSuccess = m_workpieceManager->positionWorkpieceAlongAxis(distance);
+        // Update position in workpiece manager
+        bool success = m_workpieceManager->positionWorkpieceAlongAxis(distance);
         
-        if (positionSuccess) {
-            qDebug() << "WorkspaceController: Workpiece positioned successfully, now recalculating raw material";
-            // Recalculate raw material to match the new workpiece position
-            bool rawMaterialSuccess = recalculateRawMaterial();
+        if (success) {
+            qDebug() << "WorkspaceController: Workpiece positioned at" << distance << "mm from chuck";
             
-            if (rawMaterialSuccess) {
-                qDebug() << "WorkspaceController: Distance to chuck set to" << distance << "mm and raw material updated successfully";
-            } else {
-                qDebug() << "WorkspaceController: Distance updated but raw material recalculation failed";
+            // If raw material is loaded, update it to match workpiece position
+            if (m_rawMaterialManager && m_rawMaterialManager->isRawMaterialDisplayed()) {
+                recalculateRawMaterial(-1.0); // Use current diameter
+                qDebug() << "WorkspaceController: Recalculated raw material for new position";
             }
             
-            return rawMaterialSuccess;
+            // Make sure toolpaths are properly transformed
+            qDebug() << "WorkspaceController: Emitting workpiecePositionChanged signal for toolpath updates";
+            emit workpiecePositionChanged(distance);
+            
+            return true;
         } else {
-            qDebug() << "WorkspaceController: Failed to position workpiece at distance" << distance << "mm";
+            emit errorOccurred("WorkspaceController", "Failed to position workpiece");
+            return false;
         }
-        
-        return false;
-        
     } catch (const std::exception& e) {
-        QString errorMsg = QString("Failed to update distance to chuck: %1").arg(e.what());
-        emit errorOccurred("WorkspaceController", errorMsg);
+        emit errorOccurred("WorkspaceController", QString("Exception while updating chuck distance: %1").arg(e.what()));
         return false;
     }
 }
@@ -663,8 +654,6 @@ gp_Trsf WorkspaceController::createAxisAlignmentTransformation(const gp_Ax1& sou
         return gp_Trsf(); // Return identity transformation
     }
 }
-
-
 
 bool WorkspaceController::reprocessCurrentWorkpiece()
 {

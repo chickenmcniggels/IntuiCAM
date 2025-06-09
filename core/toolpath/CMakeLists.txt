@@ -2,10 +2,25 @@
 
 set(CORE_TOOLPATH_LIB_NAME intuicam_core_toolpath)
 
-file(GLOB_RECURSE CORE_TOOLPATH_SOURCES
-    "src/*.cpp"
-    "src/*.h"
-    "include/IntuiCAM/Toolpath/*.h"
+# Explicitly list all source files
+set(CORE_TOOLPATH_SOURCES
+    "src/Types.cpp"
+    "src/Operations.cpp"
+    "src/FacingOperation.cpp"
+    "src/RoughingOperation.cpp"
+    "src/FinishingOperation.cpp"
+    "src/PartingOperation.cpp"
+    "src/ThreadingOperation.cpp"
+    "src/GroovingOperation.cpp"
+    "src/placeholder.cpp"
+    "include/IntuiCAM/Toolpath/Types.h"
+    "include/IntuiCAM/Toolpath/Operations.h"
+    "include/IntuiCAM/Toolpath/FacingOperation.h"
+    "include/IntuiCAM/Toolpath/RoughingOperation.h"
+    "include/IntuiCAM/Toolpath/FinishingOperation.h"
+    "include/IntuiCAM/Toolpath/PartingOperation.h"
+    "include/IntuiCAM/Toolpath/ThreadingOperation.h"
+    "include/IntuiCAM/Toolpath/GroovingOperation.h"
 )
 
 add_library(${CORE_TOOLPATH_LIB_NAME} STATIC ${CORE_TOOLPATH_SOURCES})

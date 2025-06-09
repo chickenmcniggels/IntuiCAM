@@ -190,6 +190,13 @@ signals:
      * @brief Emitted when an error occurs
      */
     void errorOccurred(const QString& message);
+    
+    /**
+     * @brief Emitted when the workpiece transformation changes
+     * This signal is emitted when the workpiece position, orientation, 
+     * or alignment changes, indicating that toolpaths need to be updated
+     */
+    void workpieceTransformed();
 
 private:
     Handle(AIS_InteractiveContext) m_context;

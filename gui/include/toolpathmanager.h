@@ -19,9 +19,13 @@
 #include <Graphic3d_AspectLine3d.hxx>
 #include <Quantity_Color.hxx>
 #include <Aspect_TypeOfLine.hxx>
+#include <gp_Trsf.hxx>
 
 // Core includes
 #include <IntuiCAM/Toolpath/Types.h>
+
+// Forward declarations
+class WorkpieceManager;
 
 /**
  * @brief Manager for displaying toolpaths in the 3D view
@@ -67,6 +71,11 @@ public:
      * @brief Initialize with AIS context
      */
     void initialize(Handle(AIS_InteractiveContext) context);
+
+    /**
+     * @brief Set the workpiece manager to get transformations from
+     */
+    void setWorkpieceManager(WorkpieceManager* workpieceManager);
 
     /**
      * @brief Display a toolpath in the 3D view
@@ -117,6 +126,13 @@ public:
      * @brief Update all toolpath visualizations with current settings
      */
     void updateAllToolpathVisualizations();
+
+    /**
+     * @brief Apply current workpiece transformation to all toolpaths
+     * This ensures toolpaths are displayed in the correct position
+     * relative to the transformed workpiece
+     */
+    void applyWorkpieceTransformationToToolpaths();
 
 signals:
     /**
@@ -171,10 +187,19 @@ private:
      */
     Quantity_Color getMovementColor(const IntuiCAM::Toolpath::Movement& movement);
 
+    /**
+     * @brief Get the current workpiece transformation
+     * @return The transformation to apply to toolpaths
+     */
+    gp_Trsf getWorkpieceTransformation() const;
+
 private:
     Handle(AIS_InteractiveContext) m_context;
     QMap<QString, Handle(AIS_Shape)> m_displayedToolpaths;
+    // Store original untransformed toolpath shapes to avoid accumulating transformations
+    QMap<QString, TopoDS_Shape> m_originalToolpathShapes;
     ToolpathDisplaySettings m_displaySettings;
+    WorkpieceManager* m_workpieceManager;
 };
 
 #endif // TOOLPATHMANAGER_H 

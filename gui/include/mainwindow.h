@@ -31,6 +31,7 @@ class WorkspaceController;
 class PartLoadingPanel;
 class ToolpathTimelineWidget;
 class ToolpathManager;
+class WorkpieceManager;
 
 // Forward declarations for namespaced types
 namespace IntuiCAM {
@@ -139,6 +140,8 @@ private:
     void setupConnections();
     void setupWorkspaceConnections();
     void setupPartLoadingConnections();
+    void setupUiConnections();
+    void logToOutput(const QString& message);
     
     // Tab creation methods
     QWidget* createHomeTab();
@@ -185,6 +188,8 @@ private:
     // Business logic controllers
     WorkspaceController *m_workspaceController;
     StepLoader *m_stepLoader;
+    ToolpathManager *m_toolpathManager;
+    WorkpieceManager *m_workpieceManager;
     
     // Material and Tool Management
     IntuiCAM::GUI::MaterialManager *m_materialManager;
