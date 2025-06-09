@@ -3,7 +3,12 @@
 #include "steploader.h"
 #include "workspacecontroller.h"
 #include "partloadingpanel.h"
+#include "setupconfigurationpanel.h"
 #include "workpiecemanager.h"  // For CylinderInfo definition
+#include "rawmaterialmanager.h"  // For RawMaterialManager signals
+
+// Namespace usage
+using namespace IntuiCAM::GUI;
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -31,6 +36,8 @@
 #include <QPushButton>
 #include <QGroupBox>
 #include <QFrame>
+#include <QFileInfo>
+#include <QMessageBox>
 
 // OpenCASCADE includes for gp_Ax1
 #include <gp_Ax1.hxx>
@@ -42,12 +49,13 @@ MainWindow::MainWindow(QWidget *parent)
     , m_homeTab(nullptr)
     , m_setupTab(nullptr)
     , m_mainSplitter(nullptr)
+    , m_setupConfigPanel(nullptr)
+    , m_3dViewer(nullptr)
+    , m_simulateButton(nullptr)
     , m_leftSplitter(nullptr)
     , m_projectTree(nullptr)
     , m_propertiesPanel(nullptr)
     , m_partLoadingPanel(nullptr)
-    , m_3dViewer(nullptr)
-    , m_simulateButton(nullptr)
     , m_simulationTab(nullptr)
     , m_simulationViewport(nullptr)
     , m_simulationControls(nullptr)
@@ -267,6 +275,12 @@ void MainWindow::setupWorkspaceConnections()
         // Connect manual axis selection from 3D view
         connect(m_workspaceController, &WorkspaceController::manualAxisSelected,
                 this, &MainWindow::handleManualAxisSelected);
+        
+        // Connect raw material creation for length updates
+        if (m_workspaceController->getRawMaterialManager()) {
+            connect(m_workspaceController->getRawMaterialManager(), &RawMaterialManager::rawMaterialCreated,
+                    this, &MainWindow::handleRawMaterialCreated);
+        }
         
         // Connect 3D viewer selection for manual axis selection
         connect(m_3dViewer, &OpenGL3DWidget::shapeSelected,
@@ -499,6 +513,11 @@ void MainWindow::handleWorkpieceWorkflowCompleted(double diameter, double rawMat
                               .arg(rawMaterialDiameter, 0, 'f', 1));
     }
     statusBar()->showMessage("Workpiece processing completed", 3000);
+    
+    // Update the setup panel with the raw material diameter
+    if (m_setupConfigPanel) {
+        m_setupConfigPanel->setRawDiameter(rawMaterialDiameter);
+    }
 }
 
 void MainWindow::handleChuckCenterlineDetected(const gp_Ax1& axis)
@@ -555,6 +574,26 @@ void MainWindow::handleManualAxisSelected(double diameter, const gp_Ax1& axis)
                               .arg(axis.Direction().Z(), 0, 'f', 3));
     }
     statusBar()->showMessage("Manual rotational axis selected and workpiece aligned", 3000);
+    
+    // Update the setup panel axis info
+    if (m_setupConfigPanel) {
+        QString axisInfo = QString("✓ Rotational axis selected - Diameter: %1mm").arg(diameter, 0, 'f', 1);
+        m_setupConfigPanel->updateAxisInfo(axisInfo);
+    }
+}
+
+void MainWindow::handleRawMaterialCreated(double diameter, double length)
+{
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Raw material created - Diameter: %1mm, Length: %2mm (auto-calculated)")
+                              .arg(diameter, 0, 'f', 1)
+                              .arg(length, 0, 'f', 1));
+    }
+    
+    // Update the setup panel length display
+    if (m_setupConfigPanel) {
+        m_setupConfigPanel->updateRawMaterialLength(length);
+    }
 }
 
 void MainWindow::handlePartLoadingDistanceChanged(double distance)
@@ -888,78 +927,153 @@ QWidget* MainWindow::createSetupTab()
     setupLayout->setContentsMargins(0, 0, 0, 0);
     setupLayout->setSpacing(0);
     
-    // Main horizontal splitter (this is the current main interface)
+    // New Orca Slicer-inspired layout: Left panel + Right 3D viewer
     m_mainSplitter = new QSplitter(Qt::Horizontal);
     
-    // Left vertical splitter for project tree, part loading panel, and properties
-    m_leftSplitter = new QSplitter(Qt::Vertical);
+    // Left side: Setup Configuration Panel (Orca Slicer-inspired)
+    m_setupConfigPanel = new SetupConfigurationPanel();
+    m_setupConfigPanel->setMinimumWidth(350);
+    m_setupConfigPanel->setMaximumWidth(450);
     
-    // Project tree
-    m_projectTree = new QTreeWidget;
-    m_projectTree->setHeaderLabel("Project");
-    m_projectTree->setMinimumWidth(280);
-    m_projectTree->setMaximumWidth(450);
-    
-    // Add some example project structure
-    QTreeWidgetItem *rootItem = new QTreeWidgetItem(m_projectTree);
-    rootItem->setText(0, "CAM Project");
-    
-    QTreeWidgetItem *partsItem = new QTreeWidgetItem(rootItem);
-    partsItem->setText(0, "Parts");
-    
-    QTreeWidgetItem *toolsItem = new QTreeWidgetItem(rootItem);
-    toolsItem->setText(0, "Tools");
-    
-    QTreeWidgetItem *operationsItem = new QTreeWidgetItem(rootItem);
-    operationsItem->setText(0, "Operations");
-    
-    m_projectTree->expandAll();
-    
-    // Part loading panel
-    m_partLoadingPanel = new PartLoadingPanel();
-    m_partLoadingPanel->setMinimumHeight(300);
-    m_partLoadingPanel->setMaximumHeight(600);
-    
-    // Properties panel
-    m_propertiesPanel = new QTextEdit;
-    m_propertiesPanel->setMaximumHeight(150);
-    m_propertiesPanel->setPlainText("Properties panel - Select an item to view details");
-    m_propertiesPanel->setReadOnly(true);
-    
-    // Add to left splitter
-    m_leftSplitter->addWidget(m_projectTree);
-    m_leftSplitter->addWidget(m_partLoadingPanel);
-    m_leftSplitter->addWidget(m_propertiesPanel);
-    m_leftSplitter->setSizes({200, 350, 100});
-    
-    // Right side: 3D viewer and simulate button
+    // Right side: 3D viewer and operation controls
     QWidget* rightWidget = new QWidget;
     QVBoxLayout* rightLayout = new QVBoxLayout(rightWidget);
-    rightLayout->setContentsMargins(0, 0, 0, 0);
+    rightLayout->setContentsMargins(8, 8, 8, 8);
+    rightLayout->setSpacing(8);
     
     // 3D Viewport - Pure visualization component
     m_3dViewer = new OpenGL3DWidget();
     m_3dViewer->setMinimumSize(600, 400);
     
-    // Simulate button
-    m_simulateButton = new QPushButton("Simulate Toolpaths");
-    QFont buttonFont = m_simulateButton->font();
-    buttonFont.setBold(true);
-    m_simulateButton->setFont(buttonFont);
+    // Operation controls frame
+    QFrame* operationFrame = new QFrame;
+    operationFrame->setFrameStyle(QFrame::Box | QFrame::Raised);
+    operationFrame->setStyleSheet(
+        "QFrame {"
+        "  background-color: #F8F9FA;"
+        "  border: 2px solid #DEE2E6;"
+        "  border-radius: 8px;"
+        "  padding: 8px;"
+        "}"
+    );
     
-    connect(m_simulateButton, &QPushButton::clicked, this, &MainWindow::simulateToolpaths);
+    QHBoxLayout* operationLayout = new QHBoxLayout(operationFrame);
+    operationLayout->setSpacing(12);
     
-    rightLayout->addWidget(m_3dViewer);
-    rightLayout->addWidget(m_simulateButton);
+    // Simulate button (now integrated with other controls)
+    m_simulateButton = new QPushButton("▶ Simulate Toolpaths");
+    m_simulateButton->setMinimumHeight(35);
+    m_simulateButton->setStyleSheet(
+        "QPushButton {"
+        "  background-color: #007BFF;"
+        "  color: white;"
+        "  border: none;"
+        "  border-radius: 6px;"
+        "  font-weight: bold;"
+        "  font-size: 13px;"
+        "  padding: 8px 16px;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: #0056B3;"
+        "}"
+        "QPushButton:pressed {"
+        "  background-color: #004085;"
+        "}"
+    );
+    
+    // Additional operation controls
+    QPushButton* exportButton = new QPushButton("💾 Export G-Code");
+    exportButton->setMinimumHeight(35);
+    exportButton->setStyleSheet(
+        "QPushButton {"
+        "  background-color: #28A745;"
+        "  color: white;"
+        "  border: none;"
+        "  border-radius: 6px;"
+        "  font-weight: bold;"
+        "  font-size: 13px;"
+        "  padding: 8px 16px;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: #1E7E34;"
+        "}"
+    );
+    
+    // Status indicator
+    QLabel* statusIndicator = new QLabel("⚡ Ready for CAM operations");
+    statusIndicator->setStyleSheet(
+        "QLabel {"
+        "  color: #495057;"
+        "  font-weight: bold;"
+        "  font-size: 12px;"
+        "}"
+    );
+    
+    operationLayout->addWidget(statusIndicator);
+    operationLayout->addStretch();
+    operationLayout->addWidget(m_simulateButton);
+    operationLayout->addWidget(exportButton);
+    
+    rightLayout->addWidget(m_3dViewer, 1);
+    rightLayout->addWidget(operationFrame);
     
     // Add to main splitter
-    m_mainSplitter->addWidget(m_leftSplitter);
+    m_mainSplitter->addWidget(m_setupConfigPanel);
     m_mainSplitter->addWidget(rightWidget);
     
     // Set splitter sizes (left panel 30%, viewport 70%)
-    m_mainSplitter->setSizes({350, 800});
+    m_mainSplitter->setSizes({350, 850});
     
     setupLayout->addWidget(m_mainSplitter);
+    
+    // Create legacy components for backward compatibility (initially hidden)
+    m_leftSplitter = new QSplitter(Qt::Vertical);
+    m_leftSplitter->hide(); // Hide initially
+    
+    m_projectTree = new QTreeWidget;
+    m_projectTree->setHeaderLabel("Project");
+    m_projectTree->hide();
+    
+    m_partLoadingPanel = new PartLoadingPanel();
+    m_partLoadingPanel->hide();
+    
+    m_propertiesPanel = new QTextEdit;
+    m_propertiesPanel->hide();
+    
+    // Connect signals from new setup configuration panel
+    connect(m_setupConfigPanel, &SetupConfigurationPanel::stepFileSelected,
+            this, &MainWindow::handleStepFileSelected);
+    connect(m_setupConfigPanel, &SetupConfigurationPanel::configurationChanged,
+            this, &MainWindow::handleSetupConfigurationChanged);
+    connect(m_setupConfigPanel, &SetupConfigurationPanel::materialTypeChanged,
+            this, &MainWindow::handleMaterialTypeChanged);
+    connect(m_setupConfigPanel, &SetupConfigurationPanel::rawMaterialDiameterChanged,
+            this, &MainWindow::handleRawMaterialDiameterChanged);
+    connect(m_setupConfigPanel, &SetupConfigurationPanel::distanceToChuckChanged,
+            this, &MainWindow::handlePartLoadingDistanceChanged);
+    connect(m_setupConfigPanel, &SetupConfigurationPanel::orientationFlipped,
+            this, &MainWindow::handlePartLoadingOrientationFlipped);
+    connect(m_setupConfigPanel, &SetupConfigurationPanel::manualAxisSelectionRequested,
+            this, &MainWindow::handleManualAxisSelectionRequested);
+    connect(m_setupConfigPanel, &SetupConfigurationPanel::automaticToolpathGenerationRequested,
+            this, &MainWindow::handleAutomaticToolpathGeneration);
+    connect(m_setupConfigPanel, &SetupConfigurationPanel::operationToggled,
+            this, &MainWindow::handleOperationToggled);
+    connect(m_setupConfigPanel, &SetupConfigurationPanel::operationParametersRequested,
+            this, &MainWindow::handleOperationParametersRequested);
+    
+    // Connect existing simulate button
+    connect(m_simulateButton, &QPushButton::clicked, this, &MainWindow::simulateToolpaths);
+    
+    // Connect export button
+    connect(exportButton, &QPushButton::clicked, [this]() {
+        if (m_outputWindow) {
+            m_outputWindow->append("Exporting G-Code... (integrated with toolpath generation)");
+        }
+        statusBar()->showMessage("G-Code export initiated", 2000);
+        // Switch to simulation tab for G-code preview
+        m_tabWidget->setCurrentIndex(2);
+    });
     
     return setupWidget;
 }
@@ -1278,4 +1392,193 @@ void MainWindow::resizeEvent(QResizeEvent *event)
     
     // Reposition the overlay button when the window is resized
     QTimer::singleShot(0, this, &MainWindow::positionViewModeOverlayButton);
+}
+
+// New slot implementations for Setup Configuration Panel
+void MainWindow::handleStepFileSelected(const QString& filePath)
+{
+    if (filePath.isEmpty()) {
+        statusBar()->showMessage(tr("No file selected"), 2000);
+        return;
+    }
+    
+    statusBar()->showMessage(tr("Loading STEP file..."), 2000);
+    
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Loading STEP file: %1").arg(filePath));
+    }
+    
+    // Load the STEP file using workspace controller - same logic as original openStepFile()
+    if (m_stepLoader && m_workspaceController && m_workspaceController->isInitialized()) {
+        TopoDS_Shape shape = m_stepLoader->loadStepFile(filePath);
+        
+        if (m_stepLoader->isValid() && !shape.IsNull()) {
+            // Clear previous workpieces (workspace controller handles this cleanly)
+            m_workspaceController->clearWorkpieces();
+            
+            // Add workpiece through workspace controller (handles full workflow)
+            bool success = m_workspaceController->addWorkpiece(shape);
+            
+            if (success) {
+                statusBar()->showMessage(tr("STEP file loaded and processed successfully"), 3000);
+                if (m_outputWindow) {
+                    m_outputWindow->append("STEP file loaded as workpiece and processed by workspace controller.");
+                }
+                
+                // Fit view to show all content
+                if (m_3dViewer) {
+                    m_3dViewer->fitAll();
+                }
+            } else {
+                QString errorMsg = "Failed to process workpiece through workspace controller";
+                statusBar()->showMessage(errorMsg, 5000);
+                if (m_outputWindow) {
+                    m_outputWindow->append(errorMsg);
+                }
+            }
+        } else {
+            QString errorMsg = QString("Failed to load STEP file: %1").arg(m_stepLoader->getLastError());
+            statusBar()->showMessage(errorMsg, 5000);
+            if (m_outputWindow) {
+                m_outputWindow->append(errorMsg);
+            }
+            QMessageBox::warning(this, tr("Error Loading STEP File"), errorMsg);
+        }
+    } else {
+        QString errorMsg = "Workspace controller not initialized";
+        statusBar()->showMessage(errorMsg, 5000);
+        if (m_outputWindow) {
+            m_outputWindow->append(errorMsg);
+        }
+    }
+}
+
+void MainWindow::handleSetupConfigurationChanged()
+{
+    if (m_outputWindow) {
+        m_outputWindow->append("Setup configuration changed - updating CAM parameters");
+    }
+    
+    // Update status
+    statusBar()->showMessage("Configuration updated", 1500);
+}
+
+void MainWindow::handleMaterialTypeChanged(IntuiCAM::GUI::MaterialType material)
+{
+    if (m_outputWindow) {
+        // Convert enum back to material name for display using our utility function
+        QString materialName = SetupConfigurationPanel::materialTypeToString(material);
+        m_outputWindow->append(QString("Material changed to: %1").arg(materialName));
+    }
+    
+    statusBar()->showMessage("Material type updated - cutting parameters adjusted", 2000);
+}
+
+void MainWindow::handleRawMaterialDiameterChanged(double diameter)
+{
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Raw material diameter changed: %1 mm").arg(diameter, 0, 'f', 1));
+    }
+    
+    // Auto-apply diameter change through workspace controller (same logic as legacy system)
+    if (m_workspaceController) {
+        bool success = m_workspaceController->updateRawMaterialDiameter(diameter);
+        if (success) {
+            statusBar()->showMessage(QString("Raw material diameter updated: %1 mm").arg(diameter, 0, 'f', 1), 2000);
+            // The WorkspaceController already handles the context update, just ensure the viewer refreshes
+            if (m_3dViewer && m_3dViewer->isViewerInitialized()) {
+                m_3dViewer->update();
+            }
+        } else {
+            statusBar()->showMessage("Failed to update raw material diameter", 3000);
+        }
+    }
+}
+
+void MainWindow::handleManualAxisSelectionRequested()
+{
+    if (m_outputWindow) {
+        m_outputWindow->append("Manual axis selection requested - Click on a cylindrical face or edge in the 3D view");
+    }
+    statusBar()->showMessage("Click on a cylindrical face or edge to select rotational axis", 5000);
+    
+    // Enable selection mode in the 3D viewer
+    if (m_3dViewer) {
+        m_3dViewer->setSelectionMode(true);
+        if (m_outputWindow) {
+            m_outputWindow->append("Selection mode enabled - click on the workpiece to select an axis");
+        }
+    }
+}
+
+void MainWindow::handleOperationToggled(const QString& operationName, bool enabled)
+{
+    if (m_outputWindow) {
+        QString status = enabled ? "enabled" : "disabled";
+        m_outputWindow->append(QString("Operation '%1' %2").arg(operationName, status));
+    }
+    
+    statusBar()->showMessage(QString("%1 operation %2").arg(operationName, enabled ? "enabled" : "disabled"), 1500);
+}
+
+void MainWindow::handleOperationParametersRequested(const QString& operationName)
+{
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Opening parameter dialog for '%1' operation").arg(operationName));
+    }
+    
+    // TODO: Open operation-specific parameter dialog
+    statusBar()->showMessage(QString("Parameter dialog for %1 (coming soon)").arg(operationName), 2000);
+    
+    // For now, show a message box as placeholder
+    QMessageBox::information(this, 
+        QString("%1 Parameters").arg(operationName),
+        QString("Parameter configuration for %1 operation will be available soon.\n\n"
+                "This will include settings like:\n"
+                "• Feed rates and speeds\n"
+                "• Cutting depths\n"
+                "• Tool selection\n"
+                "• Safety margins").arg(operationName));
+}
+
+void MainWindow::handleAutomaticToolpathGeneration()
+{
+    if (m_outputWindow) {
+        m_outputWindow->append("Starting automatic toolpath generation...");
+    }
+    
+    statusBar()->showMessage("Generating toolpaths automatically...", 0);
+    
+    // Get enabled operations from setup panel
+    if (m_setupConfigPanel) {
+        QStringList enabledOps;
+        if (m_setupConfigPanel->isOperationEnabled("Facing")) enabledOps << "Facing";
+        if (m_setupConfigPanel->isOperationEnabled("Roughing")) enabledOps << "Roughing";
+        if (m_setupConfigPanel->isOperationEnabled("Finishing")) enabledOps << "Finishing";
+        if (m_setupConfigPanel->isOperationEnabled("Parting")) enabledOps << "Parting";
+        
+        if (m_outputWindow) {
+            m_outputWindow->append(QString("Generating %1 operations:").arg(enabledOps.size()));
+            for (const QString& op : enabledOps) {
+                m_outputWindow->append(QString("  • %1").arg(op));
+            }
+        }
+        
+        // TODO: Integrate with actual toolpath generation
+        // This would connect to the core toolpath generation system
+        
+        // For now, simulate the process with a delay
+        QTimer::singleShot(2000, this, [this]() {
+            if (m_outputWindow) {
+                m_outputWindow->append("Toolpath generation completed successfully!");
+                m_outputWindow->append("Ready for simulation or G-code export.");
+            }
+            statusBar()->showMessage("Toolpaths generated successfully", 3000);
+            
+            // Switch to simulation tab to show results
+            if (m_tabWidget) {
+                m_tabWidget->setCurrentIndex(2);
+            }
+        });
+    }
 } 

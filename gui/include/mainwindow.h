@@ -27,6 +27,14 @@ class StepLoader;
 class WorkspaceController;
 class PartLoadingPanel;
 
+// Forward declarations for namespaced types
+namespace IntuiCAM {
+namespace GUI {
+    class SetupConfigurationPanel;
+    enum class MaterialType;
+}
+}
+
 // Include CylinderInfo definition
 #include "workpiecemanager.h"
 
@@ -74,14 +82,25 @@ private slots:
     void handleMultipleCylindersDetected(const QVector<CylinderInfo>& cylinders);
     void handleCylinderAxisSelected(int index, const CylinderInfo& cylinderInfo);
     void handleManualAxisSelected(double diameter, const gp_Ax1& axis);
+    void handleRawMaterialCreated(double diameter, double length);
     
-    // Part loading panel handlers
+    // Part loading panel handlers (legacy)
     void handlePartLoadingDistanceChanged(double distance);
     void handlePartLoadingDiameterChanged(double diameter);
     void handlePartLoadingOrientationFlipped(bool flipped);
     void handlePartLoadingCylinderChanged(int index);
     void handlePartLoadingManualSelection();
     void handlePartLoadingReprocess();
+    
+    // Setup configuration panel handlers (new)
+    void handleStepFileSelected(const QString& filePath);
+    void handleSetupConfigurationChanged();
+    void handleMaterialTypeChanged(IntuiCAM::GUI::MaterialType material);
+    void handleRawMaterialDiameterChanged(double diameter);
+    void handleManualAxisSelectionRequested();
+    void handleOperationToggled(const QString& operationName, bool enabled);
+    void handleOperationParametersRequested(const QString& operationName);
+    void handleAutomaticToolpathGeneration();
     
     // 3D viewer handlers
     void handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& clickPoint);
@@ -112,15 +131,18 @@ private:
     // Home tab components
     QWidget *m_homeTab;
     
-    // Setup tab components (current main interface)
+    // Setup tab components (new Orca Slicer-inspired interface)
     QWidget *m_setupTab;
     QSplitter *m_mainSplitter;
+    IntuiCAM::GUI::SetupConfigurationPanel *m_setupConfigPanel;
+    OpenGL3DWidget *m_3dViewer;
+    QPushButton *m_simulateButton;
+    
+    // Legacy components (for gradual migration)
     QSplitter *m_leftSplitter;
     QTreeWidget *m_projectTree;
     QTextEdit *m_propertiesPanel;
     PartLoadingPanel *m_partLoadingPanel;
-    OpenGL3DWidget *m_3dViewer;
-    QPushButton *m_simulateButton;
     
     // Simulation tab components
     QWidget *m_simulationTab;

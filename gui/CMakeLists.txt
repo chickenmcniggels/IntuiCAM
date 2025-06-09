@@ -13,6 +13,7 @@ set(GUI_SOURCES
     src/rawmaterialmanager.cpp
     src/workspacecontroller.cpp
     src/partloadingpanel.cpp
+    src/setupconfigurationpanel.cpp
 )
 
 set(GUI_HEADERS
@@ -25,6 +26,7 @@ set(GUI_HEADERS
     include/rawmaterialmanager.h
     include/workspacecontroller.h
     include/partloadingpanel.h
+    include/setupconfigurationpanel.h
 )
 
 set(GUI_UI_FILES
