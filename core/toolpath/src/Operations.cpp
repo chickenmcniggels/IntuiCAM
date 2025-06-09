@@ -56,28 +56,51 @@ std::unique_ptr<Toolpath> RoughingOperation::generateToolpath(const Geometry::Pa
     double currentDiameter = params_.startDiameter;
     double targetDiameter = params_.endDiameter + params_.stockAllowance;
     
-    // Rapid to start position
+    // Rapid to safe position
     toolpath->addRapidMove(Geometry::Point3D(currentDiameter/2.0 + 5.0, 0, params_.startZ + 5.0));
     
+    // Iterate through roughing passes, reducing diameter with each pass
     while (currentDiameter > targetDiameter) {
-        // Move to start of cut
-        toolpath->addRapidMove(Geometry::Point3D(currentDiameter/2.0, 0, params_.startZ + 2.0));
-        toolpath->addLinearMove(Geometry::Point3D(currentDiameter/2.0, 0, params_.startZ), tool_->getCuttingParameters().feedRate);
+        double currentRadius = currentDiameter / 2.0;
         
-        // Cut along Z axis
-        toolpath->addLinearMove(Geometry::Point3D(currentDiameter/2.0, 0, params_.endZ), tool_->getCuttingParameters().feedRate);
+        // Move to start of cut (safe approach)
+        toolpath->addRapidMove(Geometry::Point3D(currentRadius, 0, params_.startZ + 2.0));
         
-        // Retract and move to next diameter
-        toolpath->addRapidMove(Geometry::Point3D(currentDiameter/2.0, 0, params_.endZ - 2.0));
-        currentDiameter -= params_.depthOfCut * 2.0; // Diameter reduction
+        // Feed down to cutting depth
+        toolpath->addLinearMove(Geometry::Point3D(currentRadius, 0, params_.startZ), 
+                               tool_->getCuttingParameters().feedRate);
         
-        if (currentDiameter > targetDiameter) {
-            toolpath->addRapidMove(Geometry::Point3D(currentDiameter/2.0, 0, params_.endZ - 2.0));
-        }
+        // Cut along Z axis (main cutting pass)
+        toolpath->addLinearMove(Geometry::Point3D(currentRadius, 0, params_.endZ), 
+                               tool_->getCuttingParameters().feedRate);
+        
+        // Retract from cut
+        toolpath->addRapidMove(Geometry::Point3D(currentRadius + 2.0, 0, params_.endZ));
+        
+        // Return to starting Z position for next pass
+        toolpath->addRapidMove(Geometry::Point3D(currentRadius + 2.0, 0, params_.startZ + 2.0));
+        
+        // Reduce diameter for next pass
+        currentDiameter -= params_.depthOfCut * 2.0; // Reduce diameter (2x radius)
     }
     
-    // Final retract
-    toolpath->addRapidMove(Geometry::Point3D(targetDiameter/2.0, 0, params_.startZ + 10.0));
+    // Final pass at target diameter (if we didn't hit it exactly with our step calculations)
+    if (currentDiameter < targetDiameter) {
+        double finalRadius = targetDiameter / 2.0;
+        
+        // Approach and cut
+        toolpath->addRapidMove(Geometry::Point3D(finalRadius, 0, params_.startZ + 2.0));
+        toolpath->addLinearMove(Geometry::Point3D(finalRadius, 0, params_.startZ), 
+                               tool_->getCuttingParameters().feedRate);
+        toolpath->addLinearMove(Geometry::Point3D(finalRadius, 0, params_.endZ), 
+                               tool_->getCuttingParameters().feedRate);
+        
+        // Final retract
+        toolpath->addRapidMove(Geometry::Point3D(finalRadius + 2.0, 0, params_.endZ));
+    }
+    
+    // Final safe position
+    toolpath->addRapidMove(Geometry::Point3D(params_.startDiameter/2.0 + 5.0, 0, params_.startZ + 5.0));
     
     return toolpath;
 }

@@ -21,17 +21,26 @@
 #include <gp_Pnt.hxx>
 #include <TopoDS_Shape.hxx>
 
+// Project includes
+#include "operationparameterdialog.h"
+
 // Forward declarations for our custom classes
 class OpenGL3DWidget;
 class StepLoader;
 class WorkspaceController;
 class PartLoadingPanel;
+class ToolpathTimelineWidget;
+class ToolpathManager;
 
 // Forward declarations for namespaced types
 namespace IntuiCAM {
 namespace GUI {
     class SetupConfigurationPanel;
+    class MaterialManager;
+    class ToolManager;
+    class ToolpathGenerationController;
     enum class MaterialType;
+    enum class SurfaceFinish;
 }
 }
 
@@ -71,7 +80,6 @@ private slots:
     void exitApplication();
     void aboutApplication();
     void showPreferences();
-    void initializeWorkspace();  // Initialize the workspace after UI is ready
     void onTabChanged(int index);
     
     // Workspace controller event handlers
@@ -109,6 +117,20 @@ private slots:
     
     // Setup tab actions
     void simulateToolpaths();
+    
+    // Toolpath generation handlers
+    void handleToolpathGenerationStarted();
+    void handleToolpathProgressUpdated(int percentage, const QString& statusMessage);
+    void handleToolpathOperationCompleted(const QString& operationName, bool success, const QString& message);
+    void handleToolpathGenerationCompleted();
+    void handleToolpathGenerationError(const QString& errorMessage);
+    
+    // Toolpath timeline handlers
+    void handleToolpathSelected(int index);
+    void handleToolpathParametersRequested(int index, const QString& operationType);
+    void handleAddToolpathRequested(const QString& operationType);
+    void handleRemoveToolpathRequested(int index);
+    void handleToolpathReordered(int fromIndex, int toIndex);
 
 private:
     void createMenus();
@@ -136,6 +158,7 @@ private:
     QSplitter *m_mainSplitter;
     IntuiCAM::GUI::SetupConfigurationPanel *m_setupConfigPanel;
     OpenGL3DWidget *m_3dViewer;
+    ToolpathTimelineWidget *m_toolpathTimeline;
     QPushButton *m_simulateButton;
     
     // Legacy components (for gradual migration)
@@ -163,6 +186,13 @@ private:
     WorkspaceController *m_workspaceController;
     StepLoader *m_stepLoader;
     
+    // Material and Tool Management
+    IntuiCAM::GUI::MaterialManager *m_materialManager;
+    IntuiCAM::GUI::ToolManager *m_toolManager;
+    
+    // Toolpath Generation Controller
+    IntuiCAM::GUI::ToolpathGenerationController *m_toolpathGenerationController;
+    
     // Menus
     QMenu *m_fileMenu;
     QMenu *m_editMenu;
@@ -187,6 +217,7 @@ private:
     void createViewModeOverlayButton();
     void updateViewModeOverlayButton();
     void positionViewModeOverlayButton();
+    void initializeWorkspace();
 
 protected:
     void resizeEvent(QResizeEvent *event) override;

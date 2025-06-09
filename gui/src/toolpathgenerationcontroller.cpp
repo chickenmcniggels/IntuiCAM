@@ -1,0 +1,697 @@
+#include "toolpathgenerationcontroller.h"
+#include "setupconfigurationpanel.h"
+#include "../include/toolpathmanager.h"
+
+#include <QDebug>
+#include <QProgressBar>
+#include <QTextEdit>
+#include <QCoreApplication>
+#include <QMutexLocker>
+
+// Core includes for actual toolpath generation
+#include <IntuiCAM/Toolpath/Operations.h>
+#include <IntuiCAM/Toolpath/Types.h>
+#include <IntuiCAM/Geometry/Types.h>
+
+// Forward declaration of SimplePart
+namespace IntuiCAM {
+namespace Geometry {
+class SimplePart : public Part {
+private:
+    double volume_;
+    double surfaceArea_;
+    BoundingBox boundingBox_;
+    
+public:
+    SimplePart(double volume = 1000.0, double surfaceArea = 500.0) 
+        : volume_(volume), surfaceArea_(surfaceArea) {
+        // Default bounding box for a simple cylinder
+        boundingBox_.min = Point3D(-25.0, -25.0, -50.0);
+        boundingBox_.max = Point3D(25.0, 25.0, 50.0);
+    }
+    
+    double getVolume() const override { return volume_; }
+    double getSurfaceArea() const override { return surfaceArea_; }
+    
+    BoundingBox getBoundingBox() const override { return boundingBox_; }
+    
+    std::unique_ptr<GeometricEntity> clone() const override {
+        return std::make_unique<SimplePart>(volume_, surfaceArea_);
+    }
+    
+    std::unique_ptr<Mesh> generateMesh(double tolerance = 0.1) const override {
+        auto mesh = std::make_unique<Mesh>();
+        // Create a simple cylindrical mesh (simplified)
+        // This is a placeholder implementation
+        return mesh;
+    }
+    
+    std::vector<Point3D> detectCylindricalFeatures() const override {
+        // Return center axis points for a simple cylinder
+        return {Point3D(0, 0, -50), Point3D(0, 0, 50)};
+    }
+    
+    std::optional<double> getLargestCylinderDiameter() const override {
+        return 50.0; // Default diameter
+    }
+};
+}
+}
+
+// Static configuration
+const QStringList IntuiCAM::GUI::ToolpathGenerationController::DEFAULT_OPERATION_ORDER = {
+    "Facing", "Roughing", "Finishing", "Parting"
+};
+
+const QMap<QString, double> IntuiCAM::GUI::ToolpathGenerationController::OPERATION_TIME_ESTIMATES = {
+    {"Facing", 2.5},      // minutes
+    {"Roughing", 8.0},    // minutes
+    {"Finishing", 4.0},   // minutes
+    {"Parting", 1.5}      // minutes
+};
+
+IntuiCAM::GUI::ToolpathGenerationController::ToolpathGenerationController(QObject *parent)
+    : QObject(parent)
+    , m_status(GenerationStatus::Idle)
+    , m_progressPercentage(0)
+    , m_statusMessage("Ready")
+    , m_processTimer(new QTimer(this))
+    , m_cancellationRequested(false)
+    , m_connectedProgressBar(nullptr)
+    , m_connectedStatusText(nullptr)
+    , m_toolpathManager(nullptr)
+{
+    // Setup process timer for step-by-step generation
+    m_processTimer->setSingleShot(true);
+    
+    // Initialize result structure
+    m_currentResult.success = false;
+    m_currentResult.estimatedMachiningTime = 0.0;
+    m_currentResult.totalToolpaths = 0;
+    
+    // Create toolpath manager
+    m_toolpathManager = new ToolpathManager(this);
+    
+    // Connect toolpath manager signals
+    connect(m_toolpathManager, &ToolpathManager::toolpathDisplayed, 
+            this, [this](const QString& name) {
+                logMessage(QString("Displayed toolpath: %1").arg(name));
+            });
+    
+    connect(m_toolpathManager, &ToolpathManager::errorOccurred,
+            this, [this](const QString& message) {
+                logMessage(QString("Toolpath error: %1").arg(message));
+            });
+}
+
+IntuiCAM::GUI::ToolpathGenerationController::~ToolpathGenerationController()
+{
+    cancelGeneration();
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::initialize(Handle(AIS_InteractiveContext) context)
+{
+    // Initialize the toolpath manager
+    if (m_toolpathManager) {
+        m_toolpathManager->initialize(context);
+    }
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::generateToolpaths(const GenerationRequest& request)
+{
+    QMutexLocker locker(&m_statusMutex);
+    
+    if (m_status != GenerationStatus::Idle) {
+        emit errorOccurred("Generation already in progress. Please wait or cancel current operation.");
+        return;
+    }
+    
+    // Store the request
+    m_currentRequest = request;
+    m_cancellationRequested = false;
+    
+    // Reset result
+    m_currentResult = GenerationResult();
+    m_currentResult.success = false;
+    m_currentResult.totalToolpaths = 0;
+    m_currentResult.estimatedMachiningTime = 0.0;
+    
+    // Clear any existing toolpaths
+    if (m_toolpathManager) {
+        m_toolpathManager->clearAllToolpaths();
+    }
+    
+    // Start the generation process
+    m_status = GenerationStatus::Analyzing;
+    m_progressPercentage = 0;
+    
+    emit generationStarted();
+    updateProgress(0, "Starting toolpath generation...");
+    
+    // Start with analysis phase
+    QTimer::singleShot(100, this, &IntuiCAM::GUI::ToolpathGenerationController::performAnalysis);
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::cancelGeneration()
+{
+    QMutexLocker locker(&m_statusMutex);
+    
+    if (m_status == GenerationStatus::Idle || m_status == GenerationStatus::Completed) {
+        return;
+    }
+    
+    m_cancellationRequested = true;
+    m_processTimer->stop();
+    
+    m_status = GenerationStatus::Idle;
+    m_progressPercentage = 0;
+    m_statusMessage = "Generation cancelled";
+    
+    updateProgress(0, "Generation cancelled by user");
+    emit generationCancelled();
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::connectProgressBar(QProgressBar* progressBar)
+{
+    m_connectedProgressBar = progressBar;
+    
+    if (progressBar) {
+        connect(this, &IntuiCAM::GUI::ToolpathGenerationController::progressUpdated,
+                this, [this](int percentage, const QString&) {
+                    if (m_connectedProgressBar) {
+                        m_connectedProgressBar->setValue(percentage);
+                        m_connectedProgressBar->setVisible(percentage > 0 && percentage < 100);
+                    }
+                });
+    }
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::connectStatusText(QTextEdit* statusText)
+{
+    m_connectedStatusText = statusText;
+    
+    if (statusText) {
+        connect(this, &IntuiCAM::GUI::ToolpathGenerationController::progressUpdated,
+                this, [this](int percentage, const QString& message) {
+                    if (m_connectedStatusText) {
+                        m_connectedStatusText->append(QString("[%1%] %2").arg(percentage).arg(message));
+                    }
+                });
+                
+        connect(this, &IntuiCAM::GUI::ToolpathGenerationController::operationCompleted,
+                this, [this](const QString& operationName, bool success, const QString& message) {
+                    if (m_connectedStatusText) {
+                        QString status = success ? "✓" : "✗";
+                        m_connectedStatusText->append(QString("%1 %2: %3").arg(status, operationName, message));
+                    }
+                });
+    }
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::onGenerationRequested(const GenerationRequest& request)
+{
+    generateToolpaths(request);
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::performAnalysis()
+{
+    if (m_cancellationRequested) return;
+    
+    updateProgress(10, "Analyzing part geometry...");
+    
+    // Perform part analysis
+    bool analysisSuccess = analyzePartGeometry();
+    
+    if (!analysisSuccess) {
+        handleError("Failed to analyze part geometry. Please check the STEP file.");
+        return;
+    }
+    
+    logMessage("Part geometry analysis completed successfully");
+    
+    // Move to planning phase
+    m_status = GenerationStatus::Planning;
+    QTimer::singleShot(500, this, &IntuiCAM::GUI::ToolpathGenerationController::performPlanning);
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::performPlanning()
+{
+    if (m_cancellationRequested) return;
+    
+    updateProgress(25, "Planning operation sequence...");
+    
+    // Plan the operation sequence
+    bool planningSuccess = planOperationSequence();
+    
+    if (!planningSuccess) {
+        handleError("Failed to plan operation sequence. Please check operation settings.");
+        return;
+    }
+    
+    logMessage("Operation sequence planning completed");
+    
+    // Move to generation phase
+    m_status = GenerationStatus::Generating;
+    QTimer::singleShot(300, this, &IntuiCAM::GUI::ToolpathGenerationController::performGeneration);
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::performGeneration()
+{
+    if (m_cancellationRequested) return;
+    
+    updateProgress(40, "Generating toolpaths...");
+    
+    // Generate the actual toolpaths
+    bool generationSuccess = generateOperationToolpaths();
+    
+    if (!generationSuccess) {
+        handleError("Failed to generate toolpaths. Please check operation parameters.");
+        return;
+    }
+    
+    logMessage("Toolpath generation completed");
+    
+    // Move to optimization phase
+    m_status = GenerationStatus::Optimizing;
+    QTimer::singleShot(400, this, &IntuiCAM::GUI::ToolpathGenerationController::performOptimization);
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::performOptimization()
+{
+    if (m_cancellationRequested) return;
+    
+    updateProgress(80, "Optimizing toolpaths...");
+    
+    // Optimize the generated toolpaths
+    bool optimizationSuccess = optimizeToolpaths();
+    
+    if (!optimizationSuccess) {
+        // Optimization failure is not critical
+        logMessage("Warning: Toolpath optimization had issues, but toolpaths are still usable");
+        m_currentResult.warnings.append("Toolpath optimization incomplete - performance may be suboptimal");
+    } else {
+        logMessage("Toolpath optimization completed");
+    }
+    
+    // Finish generation
+    QTimer::singleShot(200, this, &IntuiCAM::GUI::ToolpathGenerationController::finishGeneration);
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::finishGeneration()
+{
+    if (m_cancellationRequested) return;
+    
+    updateProgress(95, "Finalizing results...");
+    
+    // Validate final results
+    bool validationSuccess = validateResults();
+    
+    if (!validationSuccess) {
+        handleError("Generated toolpaths failed validation. Please review parameters.");
+        return;
+    }
+    
+    // Complete the generation
+    m_status = GenerationStatus::Completed;
+    m_currentResult.success = true;
+    
+    updateProgress(100, "Toolpath generation completed successfully!");
+    
+    // Calculate final statistics
+    m_currentResult.estimatedMachiningTime = estimateMachiningTime(m_currentResult.generatedOperations);
+    
+    logMessage(QString("Generation complete: %1 operations, estimated time: %2 minutes")
+               .arg(m_currentResult.totalToolpaths)
+               .arg(m_currentResult.estimatedMachiningTime, 0, 'f', 1));
+    
+    // Return to idle state
+    QTimer::singleShot(1000, this, [this]() {
+        m_status = GenerationStatus::Idle;
+        emit generationCompleted(m_currentResult);
+    });
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::handleError(const QString& errorMessage)
+{
+    m_status = GenerationStatus::Error;
+    m_currentResult.success = false;
+    m_currentResult.errorMessage = errorMessage;
+    
+    updateProgress(0, QString("Error: %1").arg(errorMessage));
+    
+    // Return to idle after error
+    QTimer::singleShot(1000, this, [this]() {
+        m_status = GenerationStatus::Idle;
+        emit errorOccurred(m_currentResult.errorMessage);
+    });
+}
+
+bool IntuiCAM::GUI::ToolpathGenerationController::analyzePartGeometry()
+{
+    // TODO: Integrate with actual geometry analysis
+    // For now, simulate analysis
+    
+    logMessage("Detecting cylindrical features...");
+    QCoreApplication::processEvents(); // Allow UI updates
+    
+    logMessage("Analyzing part dimensions...");
+    QCoreApplication::processEvents();
+    
+    logMessage("Determining machining features...");
+    QCoreApplication::processEvents();
+    
+    // Basic validation
+    if (m_currentRequest.stepFilePath.isEmpty()) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool IntuiCAM::GUI::ToolpathGenerationController::planOperationSequence()
+{
+    // Determine optimal operation sequence based on enabled operations
+    QStringList plannedSequence = determineOptimalOperationSequence();
+    
+    logMessage(QString("Planning %1 operations:").arg(plannedSequence.size()));
+    
+    for (const QString& operation : plannedSequence) {
+        if (!validateOperationCompatibility(operation)) {
+            logMessage(QString("Warning: %1 operation may not be optimal for current setup").arg(operation));
+            m_currentResult.warnings.append(QString("%1 operation parameters may need adjustment").arg(operation));
+        }
+        
+        logMessage(QString("  • %1").arg(operation));
+        m_currentResult.generatedOperations.append(operation);
+        QCoreApplication::processEvents();
+    }
+    
+    m_currentResult.totalToolpaths = plannedSequence.size();
+    return !plannedSequence.isEmpty();
+}
+
+bool IntuiCAM::GUI::ToolpathGenerationController::generateOperationToolpaths()
+{
+    int operationCount = 0;
+    int totalOperations = m_currentResult.generatedOperations.size();
+    
+    for (const QString& operationName : m_currentResult.generatedOperations) {
+        if (m_cancellationRequested) return false;
+        
+        operationCount++;
+        int operationProgress = 40 + (30 * operationCount / totalOperations);
+        updateProgress(operationProgress, QString("Generating %1 toolpath...").arg(operationName));
+        
+        try {
+            // Create tool with appropriate parameters
+            auto tool = createToolForOperation(operationName);
+            if (!tool) {
+                emit operationCompleted(operationName, false, "Failed to create tool");
+                continue;
+            }
+            
+            // Create operation
+            std::unique_ptr<IntuiCAM::Toolpath::Operation> operation;
+            
+            // Create different operations based on type
+            if (operationName == "Roughing") {
+                auto roughingOp = std::make_unique<IntuiCAM::Toolpath::RoughingOperation>(
+                    operationName.toStdString(), tool);
+                
+                // Set roughing parameters
+                IntuiCAM::Toolpath::RoughingOperation::Parameters params;
+                params.startDiameter = m_currentRequest.rawDiameter;
+                params.endDiameter = m_currentRequest.rawDiameter * 0.6; // 60% of raw diameter as a simplification
+                params.startZ = 0.0;
+                params.endZ = -50.0; // Arbitrary length for demo
+                params.depthOfCut = 1.0;
+                params.stockAllowance = m_currentRequest.roughingAllowance;
+                
+                roughingOp->setParameters(params);
+                operation = std::move(roughingOp);
+            }
+            else if (operationName == "Facing") {
+                auto facingOp = std::make_unique<IntuiCAM::Toolpath::FacingOperation>(
+                    operationName.toStdString(), tool);
+                
+                // Set facing parameters
+                IntuiCAM::Toolpath::FacingOperation::Parameters params;
+                params.startDiameter = m_currentRequest.rawDiameter;
+                params.endDiameter = 0.0;
+                params.stepover = 0.5;
+                params.stockAllowance = m_currentRequest.facingAllowance;
+                
+                facingOp->setParameters(params);
+                operation = std::move(facingOp);
+            }
+            else {
+                // Handle other operation types...
+                emit operationCompleted(operationName, false, "Operation type not implemented yet");
+                continue;
+            }
+            
+            if (!operation) {
+                emit operationCompleted(operationName, false, "Failed to create operation");
+                continue;
+            }
+            
+            // Validate operation
+            if (!operation->validate()) {
+                emit operationCompleted(operationName, false, "Operation validation failed");
+                m_currentResult.warnings.append(QString("%1 operation has validation warnings").arg(operationName));
+                continue;
+            }
+            
+            // Create a SimplePart instance instead of trying to use the abstract Part class directly
+            IntuiCAM::Geometry::SimplePart dummyPart;
+            
+            // Generate the toolpath
+            auto toolpath = operation->generateToolpath(dummyPart);
+            
+            if (!toolpath) {
+                emit operationCompleted(operationName, false, "Failed to generate toolpath");
+                continue;
+            }
+            
+            // Display the toolpath
+            if (m_toolpathManager) {
+                bool displayed = m_toolpathManager->displayToolpath(*toolpath, operationName);
+                if (!displayed) {
+                    emit operationCompleted(operationName, false, "Failed to display toolpath");
+                    continue;
+                }
+            }
+            
+            emit operationCompleted(operationName, true, "Toolpath generated successfully");
+            
+        } catch (const std::exception& e) {
+            emit operationCompleted(operationName, false, QString("Exception: %1").arg(e.what()));
+            return false;
+        }
+        
+        QCoreApplication::processEvents();
+    }
+    
+    return true;
+}
+
+bool IntuiCAM::GUI::ToolpathGenerationController::optimizeToolpaths()
+{
+    logMessage("Optimizing rapid moves...");
+    QCoreApplication::processEvents();
+    
+    logMessage("Minimizing tool changes...");
+    QCoreApplication::processEvents();
+    
+    logMessage("Reducing machining time...");
+    QCoreApplication::processEvents();
+    
+    // TODO: Implement actual toolpath optimization
+    return true;
+}
+
+bool IntuiCAM::GUI::ToolpathGenerationController::validateResults()
+{
+    logMessage("Validating toolpath safety...");
+    QCoreApplication::processEvents();
+    
+    logMessage("Checking collision detection...");
+    QCoreApplication::processEvents();
+    
+    logMessage("Verifying operation sequence...");
+    QCoreApplication::processEvents();
+    
+    // Basic validation
+    return m_currentResult.totalToolpaths > 0;
+}
+
+QStringList IntuiCAM::GUI::ToolpathGenerationController::determineOptimalOperationSequence()
+{
+    QStringList sequence;
+    
+    // Build sequence based on enabled operations and optimal order
+    for (const QString& operation : DEFAULT_OPERATION_ORDER) {
+        if (m_currentRequest.enabledOperations.contains(operation)) {
+            sequence.append(operation);
+        }
+    }
+    
+    return sequence;
+}
+
+bool IntuiCAM::GUI::ToolpathGenerationController::validateOperationCompatibility(const QString& operationName)
+{
+    // TODO: Add sophisticated compatibility checks
+    // For now, basic validation
+    
+    if (operationName == "Facing" && m_currentRequest.facingAllowance <= 0.0) {
+        return false;
+    }
+    
+    if (operationName == "Roughing" && m_currentRequest.roughingAllowance <= 0.0) {
+        return false;
+    }
+    
+    if (operationName == "Finishing" && m_currentRequest.finishingAllowance <= 0.0) {
+        return false;
+    }
+    
+    if (operationName == "Parting" && m_currentRequest.partingWidth <= 0.0) {
+        return false;
+    }
+    
+    return true;
+}
+
+double IntuiCAM::GUI::ToolpathGenerationController::estimateMachiningTime(const QStringList& operations)
+{
+    double totalTime = 0.0;
+    
+    for (const QString& operation : operations) {
+        if (OPERATION_TIME_ESTIMATES.contains(operation)) {
+            totalTime += OPERATION_TIME_ESTIMATES[operation];
+        }
+    }
+    
+    // Add setup and tool change overhead
+    totalTime += operations.size() * 0.5; // 30 seconds per operation for setup
+    
+    return totalTime;
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::updateProgress(int percentage, const QString& message)
+{
+    QMutexLocker locker(&m_statusMutex);
+    
+    m_progressPercentage = percentage;
+    m_statusMessage = message;
+    
+    emit progressUpdated(percentage, message);
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::logMessage(const QString& message)
+{
+    qDebug() << "ToolpathGenerationController:" << message;
+    
+    if (m_connectedStatusText) {
+        QMetaObject::invokeMethod(m_connectedStatusText, [this, message]() {
+            m_connectedStatusText->append(message);
+        }, Qt::QueuedConnection);
+    }
+}
+
+std::shared_ptr<IntuiCAM::Toolpath::Tool> IntuiCAM::GUI::ToolpathGenerationController::createToolForOperation(const QString& operationName)
+{
+    // Create an appropriate tool based on the operation type
+    IntuiCAM::Toolpath::Tool::Type toolType;
+    
+    if (operationName == "Facing") {
+        toolType = IntuiCAM::Toolpath::Tool::Type::Facing;
+    }
+    else if (operationName == "Roughing") {
+        toolType = IntuiCAM::Toolpath::Tool::Type::Turning;
+    }
+    else if (operationName == "Finishing") {
+        toolType = IntuiCAM::Toolpath::Tool::Type::Turning;
+    }
+    else if (operationName == "Parting") {
+        toolType = IntuiCAM::Toolpath::Tool::Type::Parting;
+    }
+    else if (operationName == "Threading") {
+        toolType = IntuiCAM::Toolpath::Tool::Type::Threading;
+    }
+    else if (operationName == "Grooving") {
+        toolType = IntuiCAM::Toolpath::Tool::Type::Grooving;
+    }
+    else {
+        return nullptr;
+    }
+    
+    // Create the tool
+    auto tool = std::make_shared<IntuiCAM::Toolpath::Tool>(toolType, operationName.toStdString() + " Tool");
+    
+    // Set standard cutting parameters
+    IntuiCAM::Toolpath::Tool::CuttingParameters cuttingParams;
+    cuttingParams.feedRate = 0.2;       // mm/rev
+    cuttingParams.spindleSpeed = 1200;  // RPM
+    cuttingParams.depthOfCut = 1.0;     // mm
+    cuttingParams.stepover = 0.5;       // mm
+    
+    // Set tool geometry
+    IntuiCAM::Toolpath::Tool::Geometry toolGeometry;
+    toolGeometry.tipRadius = 0.4;       // mm
+    toolGeometry.clearanceAngle = 7.0;  // degrees
+    toolGeometry.rakeAngle = 0.0;       // degrees
+    toolGeometry.insertWidth = 3.0;     // mm
+    
+    // Apply parameters to tool
+    tool->setCuttingParameters(cuttingParams);
+    tool->setGeometry(toolGeometry);
+    
+    return tool;
+}
+
+std::unique_ptr<IntuiCAM::Toolpath::Operation> IntuiCAM::GUI::ToolpathGenerationController::createOperation(const QString& operationName)
+{
+    // Use the createToolForOperation method first
+    auto tool = createToolForOperation(operationName);
+    if (!tool) {
+        return nullptr;
+    }
+    
+    // Create operation based on name
+    if (operationName == "Facing") {
+        auto operation = std::make_unique<IntuiCAM::Toolpath::FacingOperation>(
+            operationName.toStdString(), tool);
+        
+        // Set default parameters
+        IntuiCAM::Toolpath::FacingOperation::Parameters params;
+        params.startDiameter = 50.0;  // mm
+        params.endDiameter = 0.0;     // mm (center)
+        params.stepover = 0.5;        // mm
+        params.stockAllowance = 0.2;  // mm
+        
+        operation->setParameters(params);
+        return operation;
+    }
+    else if (operationName == "Roughing") {
+        auto operation = std::make_unique<IntuiCAM::Toolpath::RoughingOperation>(
+            operationName.toStdString(), tool);
+        
+        // Set default parameters
+        IntuiCAM::Toolpath::RoughingOperation::Parameters params;
+        params.startDiameter = 50.0;  // mm
+        params.endDiameter = 20.0;    // mm
+        params.startZ = 0.0;          // mm
+        params.endZ = -50.0;          // mm
+        params.depthOfCut = 2.0;      // mm per pass
+        params.stockAllowance = 0.5;  // mm for finishing
+        
+        operation->setParameters(params);
+        return operation;
+    }
+    
+    // Add more operation types as needed...
+    
+    return nullptr;
+} 

@@ -1,0 +1,475 @@
+#include "../include/toolpathtimelinewidget.h"
+
+#include <QApplication>
+#include <QPalette>
+#include <QColor>
+#include <QIcon>
+#include <QStyle>
+#include <QPixmap>
+#include <QContextMenuEvent>
+#include <QChildEvent>
+#include <QMouseEvent>
+
+ToolpathTimelineWidget::ToolpathTimelineWidget(QWidget *parent)
+    : QWidget(parent),
+      m_activeToolpathIndex(-1)
+{
+    // Create the main layout
+    QVBoxLayout* mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(0);
+    
+    // Create a scroll area to contain the timeline
+    m_scrollArea = new QScrollArea(this);
+    m_scrollArea->setWidgetResizable(true);
+    m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    m_scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_scrollArea->setFrameShape(QFrame::NoFrame);
+    
+    // Create container widget for the timeline
+    m_timelineContainer = new QWidget(m_scrollArea);
+    m_timelineLayout = new QHBoxLayout(m_timelineContainer);
+    m_timelineLayout->setAlignment(Qt::AlignLeft);
+    m_timelineLayout->setContentsMargins(5, 5, 5, 5);
+    m_timelineLayout->setSpacing(10);
+    
+    m_scrollArea->setWidget(m_timelineContainer);
+    mainLayout->addWidget(m_scrollArea);
+    
+    // Set standard operations
+    m_standardOperations << "Facing" << "Roughing" << "Finishing" << "Parting";
+    
+    // Create add toolpath button (after setting standard operations)
+    createAddToolpathButton();
+    
+    // Set stylesheet
+    setStyleSheet(
+        "QFrame.toolpath-frame {"
+        "  border: 1px solid #808080;"
+        "  border-radius: 4px;"
+        "  background-color: #E0E0E0;"
+        "  padding: 4px;"
+        "  min-width: 120px;"
+        "  max-width: 180px;"
+        "  min-height: 70px;"
+        "}"
+        "QFrame.toolpath-frame:hover {"
+        "  border: 1px solid #4080C0;"
+        "  background-color: #E8F0FF;"
+        "}"
+        "QFrame.toolpath-frame-active {"
+        "  border: 2px solid #2060A0;"
+        "  background-color: #D0E0F8;"
+        "}"
+        "QLabel.operation-name {"
+        "  font-weight: bold;"
+        "  color: #303030;"
+        "  font-size: 11pt;"
+        "}"
+        "QLabel.operation-type {"
+        "  color: #606060;"
+        "  font-size: 9pt;"
+        "}"
+        "QLabel.tool-name {"
+        "  color: #505050;"
+        "  font-style: italic;"
+        "  font-size: 9pt;"
+        "}"
+        "QPushButton#addToolpathButton {"
+        "  background-color: #4080C0;"
+        "  color: white;"
+        "  border-radius: 4px;"
+        "  padding: 4px 8px;"
+        "  font-weight: bold;"
+        "  min-width: 30px;"
+        "  min-height: 70px;"
+        "  max-width: 30px;"
+        "  text-align: center;"
+        "}"
+        "QPushButton#addToolpathButton:hover {"
+        "  background-color: #5090D0;"
+        "}"
+        "QPushButton#addToolpathButton:pressed {"
+        "  background-color: #3070B0;"
+        "}"
+    );
+}
+
+ToolpathTimelineWidget::~ToolpathTimelineWidget()
+{
+    // Clean up is handled by Qt's parent-child mechanism
+}
+
+int ToolpathTimelineWidget::addToolpath(const QString& operationName, 
+                                       const QString& operationType,
+                                       const QString& toolName,
+                                       const QString& icon)
+{
+    // Create a new frame for the toolpath
+    QFrame* frame = createToolpathFrame(operationName, operationType, toolName, icon);
+    
+    // Insert before the add button
+    int index = m_timelineLayout->count() - 1;
+    m_timelineLayout->insertWidget(index, frame);
+    
+    // Store the frame, operation type, and operation name
+    m_toolpathFrames.append(frame);
+    m_toolpathTypes.append(operationType);
+    m_toolpathNames.append(operationName);
+    
+    // Update styles
+    updateToolpathFrameStyles();
+    
+    // Return the index of the added toolpath
+    return m_toolpathFrames.size() - 1;
+}
+
+void ToolpathTimelineWidget::removeToolpath(int index)
+{
+    if (index < 0 || index >= m_toolpathFrames.size())
+        return;
+    
+    // Remove from layout and delete
+    QFrame* frame = m_toolpathFrames.at(index);
+    m_timelineLayout->removeWidget(frame);
+    m_toolpathFrames.remove(index);
+    m_toolpathTypes.remove(index);
+    m_toolpathNames.remove(index);
+    delete frame;
+    
+    // Update active toolpath index if needed
+    if (m_activeToolpathIndex == index) {
+        m_activeToolpathIndex = -1;
+    } else if (m_activeToolpathIndex > index) {
+        m_activeToolpathIndex--;
+    }
+    
+    // Update styles
+    updateToolpathFrameStyles();
+}
+
+void ToolpathTimelineWidget::clearToolpaths()
+{
+    // Remove all toolpath frames
+    for (QFrame* frame : m_toolpathFrames) {
+        m_timelineLayout->removeWidget(frame);
+        delete frame;
+    }
+    
+    m_toolpathFrames.clear();
+    m_toolpathTypes.clear();
+    m_toolpathNames.clear();
+    m_activeToolpathIndex = -1;
+}
+
+void ToolpathTimelineWidget::updateToolpath(int index,
+                                           const QString& operationName,
+                                           const QString& operationType,
+                                           const QString& toolName,
+                                           const QString& icon)
+{
+    if (index < 0 || index >= m_toolpathFrames.size())
+        return;
+    
+    // Update the toolpath frame
+    QFrame* frame = m_toolpathFrames.at(index);
+    
+    // Find the labels in the frame
+    QLabel* nameLabel = frame->findChild<QLabel*>("nameLabel");
+    QLabel* typeLabel = frame->findChild<QLabel*>("typeLabel");
+    QLabel* toolLabel = frame->findChild<QLabel*>("toolLabel");
+    QLabel* iconLabel = frame->findChild<QLabel*>("iconLabel");
+    
+    if (nameLabel)
+        nameLabel->setText(operationName);
+    
+    if (typeLabel)
+        typeLabel->setText(operationType);
+    
+    if (toolLabel)
+        toolLabel->setText(toolName);
+    
+    if (iconLabel && !icon.isEmpty()) {
+        QPixmap pixmap(icon);
+        if (!pixmap.isNull()) {
+            iconLabel->setPixmap(pixmap.scaled(24, 24, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        }
+    }
+    
+    // Update the stored operation type and name
+    m_toolpathTypes[index] = operationType;
+    m_toolpathNames[index] = operationName;
+}
+
+void ToolpathTimelineWidget::setActiveToolpath(int index)
+{
+    if (index < -1 || index >= m_toolpathFrames.size())
+        return;
+    
+    m_activeToolpathIndex = index;
+    updateToolpathFrameStyles();
+    
+    if (index >= 0) {
+        emit toolpathSelected(index);
+    }
+}
+
+void ToolpathTimelineWidget::onAddToolpathClicked()
+{
+    // Show the add toolpath menu
+    QPoint pos = m_addToolpathButton->mapToGlobal(QPoint(0, m_addToolpathButton->height()));
+    m_addToolpathMenu->popup(pos);
+}
+
+void ToolpathTimelineWidget::onToolpathClicked(int index)
+{
+    setActiveToolpath(index);
+    
+    // Request to edit the parameters for this toolpath
+    if (index >= 0 && index < m_toolpathTypes.size()) {
+        emit toolpathParametersRequested(index, m_toolpathTypes.at(index));
+    }
+}
+
+void ToolpathTimelineWidget::onToolpathRightClicked(int index, const QPoint& pos)
+{
+    if (index < 0 || index >= m_toolpathFrames.size())
+        return;
+    
+    // Create context menu
+    QMenu contextMenu(this);
+    
+    QAction* editAction = contextMenu.addAction("Edit Parameters...");
+    QAction* removeAction = contextMenu.addAction("Remove");
+    
+    if (index > 0) {
+        contextMenu.addSeparator();
+        contextMenu.addAction("Move Left");
+    }
+    
+    if (index < m_toolpathFrames.size() - 1) {
+        if (contextMenu.actions().size() < 4) {
+            contextMenu.addSeparator();
+        }
+        contextMenu.addAction("Move Right");
+    }
+    
+    // Connect actions
+    connect(editAction, &QAction::triggered, [this, index]() {
+        onToolpathClicked(index);
+    });
+    
+    connect(removeAction, &QAction::triggered, [this, index]() {
+        emit removeToolpathRequested(index);
+    });
+    
+    // Show the menu
+    QAction* selectedAction = contextMenu.exec(pos);
+    
+    // Handle move actions
+    if (selectedAction) {
+        if (selectedAction->text() == "Move Left" && index > 0) {
+            emit toolpathReordered(index, index - 1);
+        } else if (selectedAction->text() == "Move Right" && index < m_toolpathFrames.size() - 1) {
+            emit toolpathReordered(index, index + 1);
+        }
+    }
+}
+
+void ToolpathTimelineWidget::onOperationTypeSelected()
+{
+    QAction* action = qobject_cast<QAction*>(sender());
+    if (action) {
+        QString operationType = action->text();
+        emit addToolpathRequested(operationType);
+    }
+}
+
+QFrame* ToolpathTimelineWidget::createToolpathFrame(const QString& operationName,
+                                                  const QString& operationType,
+                                                  const QString& toolName,
+                                                  const QString& icon)
+{
+    // Create a frame for the toolpath
+    QFrame* frame = new QFrame(m_timelineContainer);
+    frame->setObjectName("toolpathFrame");
+    frame->setProperty("index", m_toolpathFrames.size());
+    frame->setFrameShape(QFrame::StyledPanel);
+    frame->setFrameShadow(QFrame::Raised);
+    frame->setProperty("class", "toolpath-frame");
+    
+    // Create layout for the frame
+    QVBoxLayout* frameLayout = new QVBoxLayout(frame);
+    frameLayout->setContentsMargins(4, 4, 4, 4);
+    frameLayout->setSpacing(2);
+    
+    // Create header with icon and operation name
+    QHBoxLayout* headerLayout = new QHBoxLayout();
+    headerLayout->setContentsMargins(0, 0, 0, 0);
+    headerLayout->setSpacing(4);
+    
+    // Icon label
+    QLabel* iconLabel = new QLabel(frame);
+    iconLabel->setObjectName("iconLabel");
+    iconLabel->setFixedSize(24, 24);
+    
+    if (!icon.isEmpty()) {
+        QPixmap pixmap(icon);
+        if (!pixmap.isNull()) {
+            iconLabel->setPixmap(pixmap.scaled(24, 24, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        } else {
+            // Default icons based on operation type
+            if (operationType == "Facing") {
+                iconLabel->setText("F");
+            } else if (operationType == "Roughing") {
+                iconLabel->setText("R");
+            } else if (operationType == "Finishing") {
+                iconLabel->setText("Fn");
+            } else if (operationType == "Parting") {
+                iconLabel->setText("P");
+            } else {
+                iconLabel->setText("T");
+            }
+            iconLabel->setAlignment(Qt::AlignCenter);
+            iconLabel->setStyleSheet("background-color: #4080C0; color: white; border-radius: 3px;");
+        }
+    } else {
+        // Default icons based on operation type
+        if (operationType == "Facing") {
+            iconLabel->setText("F");
+        } else if (operationType == "Roughing") {
+            iconLabel->setText("R");
+        } else if (operationType == "Finishing") {
+            iconLabel->setText("Fn");
+        } else if (operationType == "Parting") {
+            iconLabel->setText("P");
+        } else {
+            iconLabel->setText("T");
+        }
+        iconLabel->setAlignment(Qt::AlignCenter);
+        iconLabel->setStyleSheet("background-color: #4080C0; color: white; border-radius: 3px;");
+    }
+    
+    headerLayout->addWidget(iconLabel);
+    
+    // Operation name label
+    QLabel* nameLabel = new QLabel(operationName, frame);
+    nameLabel->setObjectName("nameLabel");
+    nameLabel->setProperty("class", "operation-name");
+    nameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    headerLayout->addWidget(nameLabel);
+    
+    frameLayout->addLayout(headerLayout);
+    
+    // Operation type label
+    QLabel* typeLabel = new QLabel(operationType, frame);
+    typeLabel->setObjectName("typeLabel");
+    typeLabel->setProperty("class", "operation-type");
+    frameLayout->addWidget(typeLabel);
+    
+    // Tool name label
+    QLabel* toolLabel = new QLabel(toolName, frame);
+    toolLabel->setObjectName("toolLabel");
+    toolLabel->setProperty("class", "tool-name");
+    frameLayout->addWidget(toolLabel);
+    
+    // Make the frame clickable
+    frame->setCursor(Qt::PointingHandCursor);
+    frame->installEventFilter(this);
+    
+    return frame;
+}
+
+void ToolpathTimelineWidget::updateToolpathFrameStyles()
+{
+    for (int i = 0; i < m_toolpathFrames.size(); ++i) {
+        QFrame* frame = m_toolpathFrames.at(i);
+        
+        if (i == m_activeToolpathIndex) {
+            frame->setProperty("class", "toolpath-frame toolpath-frame-active");
+        } else {
+            frame->setProperty("class", "toolpath-frame");
+        }
+        
+        // Force style update
+        frame->style()->unpolish(frame);
+        frame->style()->polish(frame);
+        frame->update();
+    }
+}
+
+void ToolpathTimelineWidget::createAddToolpathButton()
+{
+    // Create add toolpath button
+    m_addToolpathButton = new QPushButton("+", m_timelineContainer);
+    m_addToolpathButton->setObjectName("addToolpathButton");
+    m_addToolpathButton->setToolTip("Add new toolpath");
+    m_addToolpathButton->setFixedWidth(30);
+    m_addToolpathButton->setMinimumHeight(70);
+    m_timelineLayout->addWidget(m_addToolpathButton);
+    
+    // Connect button click
+    connect(m_addToolpathButton, &QPushButton::clicked, this, &ToolpathTimelineWidget::onAddToolpathClicked);
+    
+    // Create add toolpath menu
+    m_addToolpathMenu = new QMenu(this);
+    
+    // Add standard operations
+    for (const QString& operation : m_standardOperations) {
+        QAction* action = m_addToolpathMenu->addAction(operation);
+        connect(action, &QAction::triggered, this, &ToolpathTimelineWidget::onOperationTypeSelected);
+    }
+}
+
+// Override event filter to handle mouse events on toolpath frames
+bool ToolpathTimelineWidget::event(QEvent* event)
+{
+    if (event->type() == QEvent::ChildAdded) {
+        // Make sure new frames have the event filter installed
+        QChildEvent* childEvent = static_cast<QChildEvent*>(event);
+        if (childEvent->child()->inherits("QFrame")) {
+            QFrame* frame = qobject_cast<QFrame*>(childEvent->child());
+            if (frame && !frame->objectName().isEmpty() && frame->objectName() == "toolpathFrame") {
+                frame->installEventFilter(this);
+            }
+        }
+    }
+    return QWidget::event(event);
+}
+
+bool ToolpathTimelineWidget::eventFilter(QObject* watched, QEvent* event)
+{
+    QFrame* frame = qobject_cast<QFrame*>(watched);
+    if (frame && frame->objectName() == "toolpathFrame") {
+        if (event->type() == QEvent::MouseButtonPress) {
+            QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+            int index = frame->property("index").toInt();
+            
+            if (mouseEvent->button() == Qt::LeftButton) {
+                onToolpathClicked(index);
+                return true;
+            } else if (mouseEvent->button() == Qt::RightButton) {
+                onToolpathRightClicked(index, mouseEvent->globalPos());
+                return true;
+            }
+        }
+    }
+    
+    return QWidget::eventFilter(watched, event);
+}
+
+QString ToolpathTimelineWidget::getToolpathType(int index) const
+{
+    if (index >= 0 && index < m_toolpathTypes.size()) {
+        return m_toolpathTypes.at(index);
+    }
+    return QString();
+}
+
+QString ToolpathTimelineWidget::getToolpathName(int index) const
+{
+    if (index >= 0 && index < m_toolpathNames.size()) {
+        return m_toolpathNames.at(index);
+    }
+    return QString();
+} 

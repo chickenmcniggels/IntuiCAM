@@ -14,6 +14,12 @@ set(GUI_SOURCES
     src/workspacecontroller.cpp
     src/partloadingpanel.cpp
     src/setupconfigurationpanel.cpp
+    src/toolpathgenerationcontroller.cpp
+    src/operationparameterdialog.cpp
+    src/materialmanager.cpp
+    src/toolmanager.cpp
+    src/toolpathtimelinewidget.cpp
+    src/toolpathmanager.cpp
 )
 
 set(GUI_HEADERS
@@ -27,6 +33,12 @@ set(GUI_HEADERS
     include/workspacecontroller.h
     include/partloadingpanel.h
     include/setupconfigurationpanel.h
+    include/toolpathgenerationcontroller.h
+    include/operationparameterdialog.h
+    include/materialmanager.h
+    include/toolmanager.h
+    include/toolpathtimelinewidget.h
+    include/toolpathmanager.h
 )
 
 set(GUI_UI_FILES

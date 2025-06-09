@@ -17,6 +17,13 @@
 #include <QFrame>
 #include <QTabWidget>
 
+// Forward declarations
+class QListWidget;
+
+// Include manager headers
+#include "materialmanager.h"
+#include "toolmanager.h"
+
 namespace IntuiCAM {
 namespace GUI {
 
@@ -90,6 +97,14 @@ public:
     void setOperationEnabled(const QString& operationName, bool enabled);
     void updateAxisInfo(const QString& info);
 
+    // Material and Tool Management
+    void setMaterialManager(MaterialManager* materialManager);
+    void setToolManager(ToolManager* toolManager);
+    QString getSelectedMaterialName() const;
+    QStringList getRecommendedTools() const;
+    void updateMaterialProperties();
+    void updateToolRecommendations();
+
     // Utility methods
     static QString materialTypeToString(MaterialType type);
     static MaterialType stringToMaterialType(const QString& typeStr);
@@ -107,6 +122,8 @@ signals:
     void operationToggled(const QString& operationName, bool enabled);
     void operationParametersRequested(const QString& operationName);
     void automaticToolpathGenerationRequested();
+    void materialSelectionChanged(const QString& materialName);
+    void toolRecommendationsUpdated(const QStringList& toolIds);
 
 public slots:
     void onBrowseStepFile();
@@ -115,6 +132,8 @@ public slots:
     void onOperationToggled();
     void onOperationParametersClicked();
     void onGenerateToolpaths();
+    void onMaterialChanged();
+    void onToolSelectionRequested();
 
 private:
     void setupUI();
@@ -192,17 +211,24 @@ private:
     QLabel* m_toleranceLabel;
     QDoubleSpinBox* m_toleranceSpin;
 
-    // Generation Controls (bottom of machining tab)
+    // Generation Controls
     QFrame* m_generationFrame;
     QVBoxLayout* m_generationLayout;
     QPushButton* m_generateButton;
-    QProgressBar* m_progressBar;
-    QTextEdit* m_statusText;
 
-    // Static data
-    static const QStringList MATERIAL_NAMES;
-    static const QStringList SURFACE_FINISH_NAMES;
-    static const QStringList OPERATION_ORDER;
+    // Material and Tool Management Integration
+    MaterialManager* m_materialManager;
+    ToolManager* m_toolManager;
+    QGroupBox* m_toolSelectionGroup;
+    QVBoxLayout* m_toolLayout;
+    QLabel* m_recommendedToolsLabel;
+    QListWidget* m_recommendedToolsList;
+    QPushButton* m_toolDetailsButton;
+    QPushButton* m_customizeToolsButton;
+
+    // Enhanced material display
+    QLabel* m_materialPropertiesLabel;
+    QPushButton* m_materialDetailsButton;
 };
 
 } // namespace GUI
