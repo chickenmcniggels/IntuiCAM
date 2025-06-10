@@ -11,7 +11,7 @@
 #include "materialmanager.h"
 #include "toolmanager.h"
 #include "toolpathgenerationcontroller.h"
-#include "rawmaterialmanager.h"  // For RawMaterialManager signals
+#include "rawmaterialmanager.h"
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -277,41 +277,40 @@ void MainWindow::setupConnections()
     connect(m_preferencesAction, &QAction::triggered, this, &MainWindow::showPreferences);
     connect(m_toggleViewModeAction, &QAction::triggered, this, &MainWindow::toggleViewMode);
     
-    // Connect 3D viewer initialization
-    connect(m_3dViewer, &OpenGL3DWidget::viewerInitialized,
-            this, &MainWindow::setupWorkspaceConnections);
-    
-    // Connect 3D viewer signals
-    connect(m_3dViewer, &OpenGL3DWidget::shapeSelected, this, &MainWindow::handleShapeSelected);
-    connect(m_3dViewer, &OpenGL3DWidget::viewModeChanged, this, &MainWindow::handleViewModeChanged);
-    
-    // Setup part loading panel connections
-    setupPartLoadingConnections();
-    
-    // Connect tab changed signals
+    // Connect tab widget signal
     connect(m_tabWidget, &QTabWidget::currentChanged, this, &MainWindow::onTabChanged);
     
+    // Connect 3D viewer signals
+    if (m_3dViewer) {
+        connect(m_3dViewer, &OpenGL3DWidget::shapeSelected, 
+                this, &MainWindow::handleShapeSelected);
+        connect(m_3dViewer, &OpenGL3DWidget::viewModeChanged,
+                this, &MainWindow::handleViewModeChanged);
+    }
+    
     // Connect setup configuration panel signals
-    connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::stepFileSelected,
-            this, &MainWindow::handleStepFileSelected);
-    connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::configurationChanged,
-            this, &MainWindow::handleSetupConfigurationChanged);
-    connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::materialTypeChanged,
-            this, &MainWindow::handleMaterialTypeChanged);
-    connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::rawMaterialDiameterChanged,
-            this, &MainWindow::handleRawMaterialDiameterChanged);
-    connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::distanceToChuckChanged,
-            this, &MainWindow::handlePartLoadingDistanceChanged);
-    connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::orientationFlipped,
-            this, &MainWindow::handlePartLoadingOrientationFlipped);
-    connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::manualAxisSelectionRequested,
-            this, &MainWindow::handleManualAxisSelectionRequested);
-    connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::automaticToolpathGenerationRequested,
-            this, &MainWindow::handleAutomaticToolpathGeneration);
-    connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::operationToggled,
-            this, &MainWindow::handleOperationToggled);
-    connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::operationParametersRequested,
-            this, &MainWindow::handleOperationParametersRequested);
+    if (m_setupConfigPanel) {
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::stepFileSelected,
+                this, &MainWindow::handleStepFileSelected);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::configurationChanged,
+                this, &MainWindow::handleSetupConfigurationChanged);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::materialTypeChanged,
+                this, &MainWindow::handleMaterialTypeChanged);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::rawMaterialDiameterChanged,
+                this, &MainWindow::handleRawMaterialDiameterChanged);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::distanceToChuckChanged,
+                this, &MainWindow::handlePartLoadingDistanceChanged);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::orientationFlipped,
+                this, &MainWindow::handlePartLoadingOrientationFlipped);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::manualAxisSelectionRequested,
+                this, &MainWindow::handleManualAxisSelectionRequested);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::automaticToolpathGenerationRequested,
+                this, &MainWindow::handleAutomaticToolpathGeneration);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::operationToggled,
+                this, &MainWindow::handleOperationToggled);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::operationParametersRequested,
+                this, &MainWindow::handleOperationParametersRequested);
+    }
     
     // Connect simulate button
     connect(m_simulateButton, &QPushButton::clicked, this, &MainWindow::simulateToolpaths);
@@ -330,8 +329,28 @@ void MainWindow::setupConnections()
                     logToOutput(QString("Added %1 toolpath: %2 with tool: %3").arg(type, name, toolName));
                 });
         
-        // Handle existing connection slots from MainWindow for timeline widget
-        // These will now be handled by the ToolpathGenerationController
+        // IMPORTANT: The following connections will result in the same operations being performed twice
+        // because the ToolpathGenerationController already connects to these signals.
+        // We will keep connections that the controller doesn't handle, but remove duplicate handlers.
+        
+        // Connect to toolpath selected signal (not handled by controller)
+        connect(m_toolpathTimeline, &ToolpathTimelineWidget::toolpathSelected,
+                this, &MainWindow::handleToolpathSelected);
+        
+        // REMOVED: Connect to parameters requested signal
+        // This signal is already handled by ToolpathGenerationController
+        // connect(m_toolpathTimeline, &ToolpathTimelineWidget::toolpathParametersRequested,
+        //        this, &MainWindow::handleToolpathParametersRequested);
+        
+        // REMOVED: Connect to add toolpath requested signal
+        // This signal is already handled by ToolpathGenerationController
+        // connect(m_toolpathTimeline, &ToolpathTimelineWidget::addToolpathRequested,
+        //        this, &MainWindow::handleAddToolpathRequested);
+        
+        // REMOVED: Connect to remove toolpath requested signal  
+        // This signal is already handled by ToolpathGenerationController
+        // connect(m_toolpathTimeline, &ToolpathTimelineWidget::removeToolpathRequested,
+        //        this, &MainWindow::handleRemoveToolpathRequested);
     }
     
     // Connect WorkpieceManager to ToolpathManager
@@ -1374,7 +1393,20 @@ void MainWindow::handleRawMaterialDiameterChanged(double diameter)
 
 void MainWindow::handleManualAxisSelectionRequested()
 {
-    // Placeholder
+    if (!m_workspaceController || !m_3dViewer) {
+        statusBar()->showMessage(tr("Error: Cannot start axis selection mode"), 3000);
+        return;
+    }
+    
+    // Enable selection mode in the 3D viewer
+    m_3dViewer->setSelectionMode(true);
+    
+    // Inform the user
+    statusBar()->showMessage(tr("Select a cylindrical surface or circular edge in the 3D view"), 5000);
+    
+    if (m_outputWindow) {
+        m_outputWindow->append("Axis selection mode enabled. Please select a cylindrical surface or circular edge in the 3D view.");
+    }
 }
 
 void MainWindow::handleOperationToggled(const QString& operationName, bool enabled)
@@ -1661,7 +1693,32 @@ void MainWindow::handlePartLoadingReprocess()
 // 3D viewer handlers
 void MainWindow::handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& clickPoint)
 {
-    // Placeholder
+    // Only process selection if the 3D viewer is in selection mode
+    if (m_3dViewer && m_3dViewer->isSelectionModeActive()) {
+        if (!m_workspaceController) {
+            statusBar()->showMessage(tr("Error: Workspace controller not initialized"), 3000);
+            m_3dViewer->setSelectionMode(false); // Disable selection mode
+            return;
+        }
+        
+        // Process the selection with the workspace controller
+        bool success = m_workspaceController->processManualAxisSelection(shape, clickPoint);
+        
+        if (success) {
+            statusBar()->showMessage(tr("Axis selected successfully"), 3000);
+            if (m_outputWindow) {
+                m_outputWindow->append("Rotational axis selected successfully");
+            }
+        } else {
+            statusBar()->showMessage(tr("Failed to extract axis from selection. Try selecting a cylindrical face or circular edge."), 5000);
+            if (m_outputWindow) {
+                m_outputWindow->append("Failed to extract axis. Please try selecting a different cylindrical face or circular edge.");
+            }
+        }
+        
+        // Disable selection mode after processing
+        m_3dViewer->setSelectionMode(false);
+    }
 }
 
 void MainWindow::initializeWorkspace()
@@ -1732,7 +1789,11 @@ void MainWindow::handleToolpathSelected(int index)
 
 void MainWindow::handleToolpathParametersRequested(int index, const QString& operationType)
 {
-    // Map operation type string to enum
+    // NOTE: This method is no longer directly connected to the toolpathTimeline's toolpathParametersRequested signal
+    // as it was causing duplicate parameter windows to be opened. The signal is now exclusively handled by
+    // ToolpathGenerationController. This method is kept for potential future use or manual invocation.
+    
+    // Convert operation type string to enum
     IntuiCAM::GUI::OperationParameterDialog::OperationType type;
     
     if (operationType == "Facing") {
@@ -1744,26 +1805,19 @@ void MainWindow::handleToolpathParametersRequested(int index, const QString& ope
     } else if (operationType == "Parting") {
         type = IntuiCAM::GUI::OperationParameterDialog::OperationType::Parting;
     } else {
-        // Default to roughing for unknown types
+        // Default to roughing if type is unknown
         type = IntuiCAM::GUI::OperationParameterDialog::OperationType::Roughing;
     }
     
-    // Create and show parameter dialog
+    // Create and configure the dialog
     IntuiCAM::GUI::OperationParameterDialog dialog(type, this);
     
-    // Set context information if available
-    if (m_materialManager && m_workspaceController) {
-        // For now, just use a default material type since getCurrentMaterialType doesn't exist
-        dialog.setMaterialType(IntuiCAM::GUI::MaterialType::Aluminum6061);
-    }
+    // Set dialog title based on operation type
+    dialog.setWindowTitle(tr("Edit %1 Parameters").arg(operationType));
     
-    // Set part dimensions if available from workspace controller
-    if (m_workspaceController) {
-        // Use the detected diameter instead of a non-existent method
-        double diameter = 0.0;
-        if (m_workspaceController->getWorkpieceManager()) {
-            diameter = m_workspaceController->getWorkpieceManager()->getDetectedDiameter();
-        }
+    // If we have a workpiece controller, get part diameter to pre-populate fields
+    if (m_workspaceController && m_workspaceController->getWorkpieceManager()) {
+        double diameter = m_workspaceController->getWorkpieceManager()->getDetectedDiameter();
         
         // Use raw material diameter as fallback
         double length = 100.0; // Default length
@@ -1861,6 +1915,10 @@ void MainWindow::handleToolpathParametersRequested(int index, const QString& ope
 
 void MainWindow::handleAddToolpathRequested(const QString& operationType)
 {
+    // NOTE: This method is no longer directly connected to the toolpathTimeline's addToolpathRequested signal
+    // as it was causing duplicate operations to be added. The signal is now exclusively handled by
+    // ToolpathGenerationController. This method is kept for potential future use or manual invocation.
+    
     // In a real implementation, this would create a new toolpath operation
     // and add it to the workspace controller
     
