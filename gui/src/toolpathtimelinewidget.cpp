@@ -39,9 +39,11 @@ ToolpathTimelineWidget::ToolpathTimelineWidget(QWidget *parent)
     
     // Set standard operations
     m_standardOperations << "Contouring" << "Threading" << "Chamfering" << "Parting";
-    
-    // Create add toolpath button (after setting standard operations)
-    createAddToolpathButton();
+
+    // Create default tiles for each standard operation
+    for (const QString& op : m_standardOperations) {
+        addToolpath(op, op, "Default Tool");
+    }
     
     // Set stylesheet
     setStyleSheet(
@@ -76,23 +78,6 @@ ToolpathTimelineWidget::ToolpathTimelineWidget(QWidget *parent)
         "  font-style: italic;"
         "  font-size: 9pt;"
         "}"
-        "QPushButton#addToolpathButton {"
-        "  background-color: #4080C0;"
-        "  color: white;"
-        "  border-radius: 4px;"
-        "  padding: 4px 8px;"
-        "  font-weight: bold;"
-        "  min-width: 30px;"
-        "  min-height: 70px;"
-        "  max-width: 30px;"
-        "  text-align: center;"
-        "}"
-        "QPushButton#addToolpathButton:hover {"
-        "  background-color: #5090D0;"
-        "}"
-        "QPushButton#addToolpathButton:pressed {"
-        "  background-color: #3070B0;"
-        "}"
     );
 }
 
@@ -110,7 +95,7 @@ int ToolpathTimelineWidget::addToolpath(const QString& operationName,
     QFrame* frame = createToolpathFrame(operationName, operationType, toolName, icon);
     
     // Insert before the add button
-    int index = m_timelineLayout->count() - 1;
+    int index = m_timelineLayout->count();
     m_timelineLayout->insertWidget(index, frame);
     
     // Store the frame, operation type, and operation name
@@ -234,12 +219,6 @@ void ToolpathTimelineWidget::setToolpathEnabled(int index, bool enabled)
     m_enabledChecks.at(index)->setChecked(enabled);
 }
 
-void ToolpathTimelineWidget::onAddToolpathClicked()
-{
-    // Show the add toolpath menu
-    QPoint pos = m_addToolpathButton->mapToGlobal(QPoint(0, m_addToolpathButton->height()));
-    m_addToolpathMenu->popup(pos);
-}
 
 void ToolpathTimelineWidget::onToolpathClicked(int index)
 {
@@ -433,28 +412,6 @@ void ToolpathTimelineWidget::updateToolpathFrameStyles()
     }
 }
 
-void ToolpathTimelineWidget::createAddToolpathButton()
-{
-    // Create add toolpath button
-    m_addToolpathButton = new QPushButton("+", m_timelineContainer);
-    m_addToolpathButton->setObjectName("addToolpathButton");
-    m_addToolpathButton->setToolTip("Add new toolpath");
-    m_addToolpathButton->setFixedWidth(30);
-    m_addToolpathButton->setMinimumHeight(70);
-    m_timelineLayout->addWidget(m_addToolpathButton);
-    
-    // Connect button click
-    connect(m_addToolpathButton, &QPushButton::clicked, this, &ToolpathTimelineWidget::onAddToolpathClicked);
-    
-    // Create add toolpath menu
-    m_addToolpathMenu = new QMenu(this);
-    
-    // Add standard operations
-    for (const QString& operation : m_standardOperations) {
-        QAction* action = m_addToolpathMenu->addAction(operation);
-        connect(action, &QAction::triggered, this, &ToolpathTimelineWidget::onOperationTypeSelected);
-    }
-}
 
 // Override event filter to handle mouse events on toolpath frames
 bool ToolpathTimelineWidget::event(QEvent* event)
