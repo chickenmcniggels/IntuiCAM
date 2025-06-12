@@ -24,20 +24,6 @@ cd build
 ./bin/IntuiCAMGui
 ```
 
-### Command Line Interface
-
-For batch processing or scripting, use the CLI:
-
-**Windows:**
-```powershell
-cd build
-.\Release\IntuiCAMCli.exe --help
-```
-
-**Linux/macOS:**
-```bash
-cd build
-./bin/IntuiCAMCli --help
 ```
 
 ## First Steps

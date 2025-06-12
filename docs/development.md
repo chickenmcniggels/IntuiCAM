@@ -31,7 +31,6 @@ The fastest way to get started with IntuiCAM development on Windows:
    cmake --build . --config Debug
    
    # Run the applications (Note: Qt DLLs are automatically deployed)
-   .\Debug\IntuiCAMCli.exe --help
    .\Debug\IntuiCAMGui.exe
    ```
 

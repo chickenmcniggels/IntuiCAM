@@ -10,7 +10,6 @@ set(CMAKE_AUTORCC ON)
 
 # --- Options to control build targets ---
 option(INTUICAM_BUILD_GUI "Build the IntuiCAM Qt GUI application" ON)
-option(INTUICAM_BUILD_CLI "Build the IntuiCAM command-line interface" ON)
 option(INTUICAM_BUILD_PYTHON "Build Python bindings for Core libraries" OFF)
 option(INTUICAM_BUILD_TESTS "Build unit and integration tests" ON)
 
@@ -34,9 +33,6 @@ if(INTUICAM_BUILD_GUI)
     add_subdirectory(gui)
 endif()
 
-if(INTUICAM_BUILD_CLI)
-    add_subdirectory(cli)
-endif()
 
 
 # Add tests if enabled
@@ -77,12 +73,6 @@ if(INTUICAM_BUILD_GUI)
             RUNTIME DESTINATION bin
             COMPONENT Applications)
             
-        # Install the CLI executable
-        if(INTUICAM_BUILD_CLI)
-            install(TARGETS IntuiCAMCli 
-                RUNTIME DESTINATION bin
-                COMPONENT Applications)
-        endif()
     endif()
     
     include(CPack)

@@ -65,7 +65,6 @@ cmake --preset ninja-release
 cmake --build --preset ninja-release
 
 .\build_ninja\IntuiCAMGui.exe    # Qt GUI Application
-.\build_ninja\IntuiCAMCli.exe    # Command Line Interface
 ```
 
 **Note:** vcpkg installs all runtime dependencies and `windeployqt` is invoked automatically during the build, so no manual DLL copying or PATH setup is necessary.
@@ -101,5 +100,4 @@ cmake --preset ninja-release
 cmake --build --preset ninja-release
 
 ./build_ninja/IntuiCAMGui    # Qt GUI Application
-./build_ninja/IntuiCAMCli    # Command Line Interface
 ```

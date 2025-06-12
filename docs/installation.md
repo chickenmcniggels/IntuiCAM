@@ -101,7 +101,6 @@ vcpkg is the recommended way to manage dependencies on Windows as it ensures con
    cmake --build . --config Release
    
    # Test the build
-   .\Release\IntuiCAMCli.exe --help
    .\Release\IntuiCAMGui.exe
    ```
 
