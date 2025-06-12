@@ -31,8 +31,7 @@ IntuiCAM/
 ├── gui/                    # Qt 6 frontend with MVC architecture
 ├── cli/                    # Command-line interface
 ├── docs/                   # Comprehensive documentation
-├── tests/                  # Integration and end-to-end tests
-└── examples/               # Sample projects and demos
+└── tests/                  # Integration and end-to-end tests
 ```
 
 ## Coding Standards & Style
