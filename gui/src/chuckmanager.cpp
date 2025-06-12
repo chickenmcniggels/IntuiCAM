@@ -264,7 +264,7 @@ void ChuckManager::setChuckMaterial(Handle(AIS_Shape) chuckAIS)
     chuckMaterial.SetAmbientColor(Quantity_Color(0.3, 0.3, 0.3, Quantity_TOC_RGB));
     chuckMaterial.SetDiffuseColor(Quantity_Color(0.7, 0.7, 0.7, Quantity_TOC_RGB));
     chuckMaterial.SetSpecularColor(Quantity_Color(0.9, 0.9, 0.9, Quantity_TOC_RGB));
-    chuckMaterial.SetShininess(0.8);
+    chuckMaterial.SetShininess(0.8f);
     
     chuckAIS->SetMaterial(chuckMaterial);
 }
