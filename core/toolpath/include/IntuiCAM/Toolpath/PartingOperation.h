@@ -12,6 +12,7 @@ public:
         double partingDiameter = 20.0;  // mm
         double partingZ = -50.0;        // mm
         double centerHoleDiameter = 3.0; // mm (0 for solid)
+        double partingWidth = 3.0;      // mm width of cut
         double feedRate = 0.02;         // mm/rev
         double retractDistance = 2.0;   // mm
         double partingWidth = 3.0;      // mm
