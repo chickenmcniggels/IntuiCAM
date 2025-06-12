@@ -12,10 +12,11 @@ Whether you’re a user looking to generate your first turning job or a develope
 - [Windows Setup Guide](windows_setup.md)  
   Comprehensive Windows-specific setup guide with tested configuration and troubleshooting.
 
-- [Getting Started](getting_started.md)  
+- [Getting Started](getting_started.md)
   Quick tutorial to import a model, define your setup, and generate your first toolpaths.
-
-- [Chuck Management User Guide](user_guide_chuck.md)  
+- [Toolpath Workflow](toolpath_workflow.md)
+  Overview of the default machining steps and how to configure them.
+- [Chuck Management User Guide](user_guide_chuck.md)
   Complete guide to using the 3-jaw chuck management and workpiece alignment features.
 
 - [Architecture Overview](architecture.md)  

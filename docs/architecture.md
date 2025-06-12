@@ -79,7 +79,7 @@ IntuiCAM/                   # Root of the repo
 * **Modular Architecture**:
   * **`common`**: Shared data structures, utilities, and interfaces
   * **`geometry`**: STEP import and B-Rep handling (via OpenCASCADE)
-  * **`toolpath`**: Lathe operations algorithms (Facing, Roughing, Finishing, Parting)
+  * **`toolpath`**: Lathe operations algorithms (Contouring, Threading, Chamfering, Parting)
   * **`postprocessor`**: G-code generation and machine-specific adaptations
   * **`simulation`**: Material removal simulation
 * **Design**:
@@ -274,7 +274,7 @@ The workspace management system exemplifies the application's modular architectu
 
 1. **Import**: User loads a STEP file → Core geometry module parses into B-Rep model.
 2. **Setup**: User defines rotation axis, stock, and chuck in GUI → WorkspaceController coordinates setup.
-3. **Tool & Operation**: GUI or script configures tools and operations → WorkspaceController validates and manages workflow.
+3. **Operations**: The GUI automatically creates a timeline of Contouring, Threading, Chamfering, and Parting steps which can be toggled before computation.
 4. **Compute**: GUI calls WorkspaceController methods → Core computes and stores toolpaths.
 5. **Preview**: GUI queries managers through WorkspaceController → 3D viewport renders model + toolpaths.
 6. **Export**: GUI or CLI invokes postprocessor → G-Code is formatted and written to file.

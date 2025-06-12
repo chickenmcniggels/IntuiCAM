@@ -1,29 +1,16 @@
-# Details regarding the CAM-Core-Engine
-## Turning Toolpath Generation
-**The following turning toolpaths are proposed:**
-* Outside roughing
-* Outside finishing
-* Inside roughing
-* Inside finishing
-* Drilling
-* Facing
-* Parting
-* Threading
-* Outside grooving
-* Inside grooving
-* Chamfering
-* (Trepaning - Grooving on the face of the part)
-* (Adaptive Roughing)
+# CAM Core Engine Overview
 
-All turning need to support cam-side cutter radius compensation. This can also be done on the machine-side therefore it must be toggleable.
+## Automatic Turning Workflow
+IntuiCAM's initial focus is CNC turning. The core automatically creates four default steps when a new job is generated:
 
-## Milling Toolpath Generation
-**The following milling toolpaths are proposed:**
-* Basic Linear Roughing
-* Adaptive Roughing
-* Contouring
-* Drilling
-* Chamfer Milling
-* Radius Milling
-* (Thread Milling)
+1. **Contouring**
+2. **Threading**
+3. **Chamfering**
+4. **Parting**
 
+These steps appear in the GUI as a timeline. Each can be toggled on or off before toolpath computation. Support for additional operations such as roughing and drilling is planned for future versions.
+
+All turning operations support cutter radius compensation. It can be applied on the CAM side or delegated to the machine controller.
+
+## Future Milling Capabilities
+Milling toolpaths are not yet implemented but the architecture allows for future extensions (e.g. adaptive roughing, contour milling, drilling).

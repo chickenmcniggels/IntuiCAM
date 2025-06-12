@@ -43,6 +43,16 @@ cd build
 ## First Steps
 
 🚧 **Note**: IntuiCAM is currently in active development. The user interface and workflows are being implemented.
+### Part Setup and Default Steps
+When you import a model, IntuiCAM opens the **Part Setup** tab. The top portion contains orientation and chuck settings. Below that, a timeline displays four predefined machining steps:
+
+1. **Contouring**
+2. **Threading**
+3. **Chamfering**
+4. **Parting**
+
+These steps are created automatically and can be toggled on or off before you generate the toolpath.
+
 
 ### Current Status
 
@@ -52,7 +62,7 @@ cd build
 - 🔄 **GUI Implementation**: In progress
 - 🔄 **CAM Algorithms**: In development
 - 🔄 **STEP Import**: Planned
-- 🔄 **Toolpath Generation**: Planned
+- ✅ **Toolpath Generation**: Automatic default steps implemented
 - 🔄 **G-Code Export**: Planned
 
 ### Development Roadmap
