@@ -4,7 +4,7 @@ TODO (Bugs)
 - apply a stylesheet
 - calculate raw material with user specified facing allowance
 - update documentation to include all changes 
-- ensure consistent file, method and class naming conventions (rename MainWIndow.h to mainwindow.h)
+- ensure consistent file, method and class naming conventions (rename MainWIndow.cpp to mainwindow.cpp)
 - correctly apply the transformations of the generated toolpath to be synced with the parts transformation along the z axis
 - change the initial viewer orientation to correspond to the standard lathe orientation
 - select part orientation axis from 3d view is not working but used to work flawlessly
