@@ -695,59 +695,12 @@ void MainWindow::onTabChanged(int index)
     }
 }
 
-void MainWindow::simulateToolpaths()
-{
-    if (!m_toolpathGenerationController) {
-        if (m_outputWindow) {
-            m_outputWindow->append("Error: Toolpath generation controller not initialized");
-        }
-        statusBar()->showMessage("Error: Toolpath generation controller not initialized", 3000);
-        return;
-    }
-    
-    // Switch to the simulation tab
-    m_tabWidget->setCurrentIndex(2); // Simulation tab
-    
-    // For now, just generate the roughing toolpath if it's not already generated
-    if (m_outputWindow) {
-        m_outputWindow->append("Simulating toolpaths...");
-        m_outputWindow->append("Checking for existing toolpaths...");
-    }
-    
-    // Check if we have any existing toolpaths in the timeline
-    bool hasRoughing = false;
-    if (m_toolpathTimeline) {
-        for (int i = 0; i < m_toolpathTimeline->getToolpathCount(); ++i) {
-            if (m_toolpathTimeline->getToolpathType(i).contains("Roughing", Qt::CaseInsensitive)) {
-                hasRoughing = true;
-                break;
-            }
-        }
-    }
-    
-    // If we don't have a roughing toolpath, generate one
-    if (!hasRoughing) {
-        if (m_outputWindow) {
-            m_outputWindow->append("No roughing toolpath found. Generating one now...");
-        }
-        
-        // Call the automated toolpath generation
-        handleAutomaticToolpathGeneration();
-    } else {
-        if (m_outputWindow) {
-            m_outputWindow->append("Using existing roughing toolpath for simulation");
-        }
-        
-        // TODO: Implement actual simulation based on existing toolpaths
-        statusBar()->showMessage("Simulating existing toolpaths...", 3000);
-    }
-    
-    // Placeholder for future simulation implementation
-    if (m_outputWindow) {
-        m_outputWindow->append("Simulation completed - View displayed in simulation tab");
-    }
-    
-    statusBar()->showMessage("Toolpath simulation completed", 3000);
+void MainWindow::simulateToolpaths() {
+  // Temporarily disable simulation functionality.
+  if (m_outputWindow) {
+    m_outputWindow->append("Toolpath simulation is currently disabled.");
+  }
+  statusBar()->showMessage("Toolpath simulation not implemented yet", 3000);
 }
 
 QWidget* MainWindow::createHomeTab()
