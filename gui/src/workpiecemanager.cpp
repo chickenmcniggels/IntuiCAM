@@ -342,7 +342,7 @@ void WorkpieceManager::setWorkpiecesVisible(bool visible)
         if (!workpiece.IsNull()) {
             if (visible) {
                 if (!m_context->IsDisplayed(workpiece)) {
-                    m_context->Display(workpiece, Standard_False);
+                    m_context->Display(workpiece, AIS_Shaded, 0, Standard_False);
                 }
             } else {
                 m_context->Erase(workpiece, Standard_False);
