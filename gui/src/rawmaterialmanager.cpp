@@ -171,6 +171,28 @@ void RawMaterialManager::setRawMaterialTransparency(double transparency)
     }
 }
 
+void RawMaterialManager::setRawMaterialVisible(bool visible)
+{
+    if (m_context.IsNull() || m_rawMaterialAIS.IsNull()) {
+        return;
+    }
+
+    if (visible) {
+        if (!m_context->IsDisplayed(m_rawMaterialAIS)) {
+            m_context->Display(m_rawMaterialAIS, Standard_False);
+        }
+    } else {
+        m_context->Erase(m_rawMaterialAIS, Standard_False);
+    }
+
+    m_context->UpdateCurrentViewer();
+}
+
+bool RawMaterialManager::isRawMaterialVisible() const
+{
+    return !m_context.IsNull() && !m_rawMaterialAIS.IsNull() && m_context->IsDisplayed(m_rawMaterialAIS);
+}
+
 TopoDS_Shape RawMaterialManager::createCylinder(double diameter, double length, const gp_Ax1& axis)
 {
     try {

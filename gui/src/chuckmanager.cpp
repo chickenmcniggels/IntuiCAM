@@ -298,4 +298,26 @@ void ChuckManager::redisplayChuck()
     catch (const std::exception& e) {
         qDebug() << "ChuckManager: Error redisplaying chuck:" << e.what();
     }
-} 
+}
+
+void ChuckManager::setChuckVisible(bool visible)
+{
+    if (m_context.IsNull() || m_chuckAIS.IsNull()) {
+        return;
+    }
+
+    if (visible) {
+        if (!m_context->IsDisplayed(m_chuckAIS)) {
+            m_context->Display(m_chuckAIS, Standard_False);
+        }
+    } else {
+        m_context->Erase(m_chuckAIS, Standard_False);
+    }
+
+    m_context->UpdateCurrentViewer();
+}
+
+bool ChuckManager::isChuckVisible() const
+{
+    return !m_context.IsNull() && !m_chuckAIS.IsNull() && m_context->IsDisplayed(m_chuckAIS);
+}
