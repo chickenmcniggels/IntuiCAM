@@ -79,7 +79,7 @@ IntuiCAM/                   # Root of the repo
 * **Modular Architecture**:
   * **`common`**: Shared data structures, utilities, and interfaces
   * **`geometry`**: STEP import and B-Rep handling (via OpenCASCADE)
-  * **`toolpath`**: Lathe operations algorithms (Facing, Roughing, Finishing, Parting)
+  * **`toolpath`**: Lathe operation algorithms (Contouring, Threading, Chamfering, Parting)
   * **`postprocessor`**: G-code generation and machine-specific adaptations
   * **`simulation`**: Material removal simulation
 * **Design**:

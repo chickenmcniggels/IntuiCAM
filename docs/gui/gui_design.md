@@ -5,29 +5,19 @@
 - Allows for selection of rotary
 - Workpiece is shown inside of raw material is shown held by the chuck
 
-### Manual Path Generation
-- User can manually select which feature to turn where
-- The following toolpaths are proposed:
-  - Outside roughing
-  - Outside finishing
-  - Inside roughing
-  - Inside finishing
-  - Drilling
-  - Facing
-  - Parting
-  - Threading
-  - (Trepaning - Turning on the face of the part)
-  - (Adaptive Roughing)
-- The toolpath selection should be stored in a list where the order of the list corresponds to the order of machining operations
-- When a toolpath is first set up or selected in the list, a menu opens where the user can adjust parameters
+### Automatic Toolpath Timeline
+After a STEP file is loaded, IntuiCAM automatically creates a fixed sequence of machining steps. These steps appear at the bottom of the window in the **toolpath timeline**. Each step can be toggled on or off and edited individually.
 
-  ### Atomatic Toolpath Generation
-  The User can click a button and the following steps are automated.
-  - The standard order of operations is automatically added to the toolpath list <br>
+The standard steps are:
+1. **Contouring** – performs facing, roughing and finishing in one operation.
+2. **Threading** – user selects faces and pitch.
+3. **Chamfering** – user selects edges and chamfer size.
+4. **Parting** – defines part‑off strategy.
 
-    Facing &rarr; Drilling &rarr; Internal Roughing &rarr; Internal Finishing &rarr; External Roughing &rarr; External Finishing &rarr; Parting <br>
+Users may adjust parameters or disable steps directly from the timeline tabs.
 
-    (If the part doesnt have internal features for example, the corresponding steps will be skipped)
+### Automatic Generation
+Toolpaths are created as soon as a STEP file is loaded. The timeline always starts with Contouring followed by Threading, Chamfering and Parting. Users simply review the steps and disable or modify them as needed.
 
   ### Simulation
   A simulation combinded with collision detection will be automatically invoked (Similiar to 3D-Printing Slicers)

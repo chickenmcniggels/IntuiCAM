@@ -32,7 +32,7 @@ Restructure the setup tab layout based on Orca Slicer/Bambu Studio's intuitive d
    - **Part Setup**: STEP file loading, axis selection, positioning
    - **Material Settings**: Raw material diameter, material type selection, surface finish requirements
    - **Machining Parameters**: Facing allowance, stock allowance, safety margins
-   - **Operations Control**: Individual operation toggles (facing, roughing, finishing, parting)
+   - **Operations Control**: Individual toggles for Contouring, Threading, Chamfering and Parting
    - **Quality Settings**: Surface finish specifications, precision levels
 
 3. **Add Operation Controls**
@@ -185,7 +185,7 @@ Restructure the setup tab layout based on Orca Slicer/Bambu Studio's intuitive d
   - ✅ Implemented Part Setup group (STEP loading, axis selection, positioning)
   - ✅ Implemented Material Settings group (material type, raw dimensions, properties)
   - ✅ Implemented Machining Parameters group (allowances, safety margins)
-  - ✅ Implemented Operations Control group (enable/disable operations, parameters access)
+  - ✅ Implemented Operations Control group (toggle Contouring, Threading, Chamfering and Parting)
   - ✅ Implemented Quality Settings group (surface finish, tolerance)
   - ✅ Implemented Automatic Generation Controls (prominent button, progress tracking)
   - ✅ Added modern styling inspired by Orca Slicer with color-coded sections

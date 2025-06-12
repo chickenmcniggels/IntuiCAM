@@ -44,6 +44,8 @@ cd build
 
 🚧 **Note**: IntuiCAM is currently in active development. The user interface and workflows are being implemented.
 
+When you load a STEP file, IntuiCAM automatically creates four machining steps—Contouring, Threading, Chamfering and Parting. These appear in the toolpath timeline at the bottom of the window, where you can enable or disable each step.
+
 ### Current Status
 
 - ✅ **Build System**: Complete and verified
