@@ -1125,14 +1125,33 @@ void IntuiCAM::GUI::ToolpathGenerationController::connectTimelineWidget(Toolpath
                 dialog->setAttribute(Qt::WA_DeleteOnClose);
             });
     
+
     // Connect toolpath regeneration signal
     connect(timelineWidget, &ToolpathTimelineWidget::toolpathRegenerateRequested,
             this, [this, timelineWidget](int index) {
                 QString name = timelineWidget->getToolpathName(index);
                 QString type = timelineWidget->getToolpathType(index);
-                
+
                 // Regenerate the toolpath
                 regenerateToolpath(name, type);
+            });
+
+    // --- Connect controller signals back to the timeline --------------------
+    connect(this, &ToolpathGenerationController::toolpathAdded,
+            timelineWidget,
+            [timelineWidget](const QString& name, const QString& type, const QString& toolName) {
+                timelineWidget->addToolpath(name, type, toolName);
+            });
+
+    connect(this, &ToolpathGenerationController::toolpathRemoved,
+            timelineWidget,
+            [timelineWidget](const QString& name) {
+                for (int i = 0; i < timelineWidget->getToolpathCount(); ++i) {
+                    if (timelineWidget->getToolpathName(i) == name) {
+                        timelineWidget->removeToolpath(i);
+                        break;
+                    }
+                }
             });
 }
 

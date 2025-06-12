@@ -323,19 +323,9 @@ void MainWindow::setupConnections()
     if (m_toolpathTimeline && m_toolpathGenerationController) {
         m_toolpathGenerationController->connectTimelineWidget(m_toolpathTimeline);
         
-        // Connect toolpath generation controller signals to main window
-        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::toolpathAdded,
-                this, [this](const QString& name, const QString& type, const QString& toolName) {
-                    // Add the toolpath to the timeline
-                    m_toolpathTimeline->addToolpath(name, type, toolName, QString());
-                    
-                    // Log to output window
-                    logToOutput(QString("Added %1 toolpath: %2 with tool: %3").arg(type, name, toolName));
-                });
-        
-        // IMPORTANT: The following connections will result in the same operations being performed twice
-        // because the ToolpathGenerationController already connects to these signals.
-        // We will keep connections that the controller doesn't handle, but remove duplicate handlers.
+        // The controller will directly update the timeline when toolpaths are
+        // added or removed. Only connect signals that the controller does not
+        // handle itself.
         
         // Connect to toolpath selected signal (not handled by controller)
         connect(m_toolpathTimeline, &ToolpathTimelineWidget::toolpathSelected,
