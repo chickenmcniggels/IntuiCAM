@@ -38,7 +38,7 @@ ToolpathTimelineWidget::ToolpathTimelineWidget(QWidget *parent)
     mainLayout->addWidget(m_scrollArea);
     
     // Set standard operations
-    m_standardOperations << "Facing" << "Roughing" << "Finishing" << "Parting";
+    m_standardOperations << "Contouring" << "Threading" << "Chamfering" << "Parting";
     
     // Create add toolpath button (after setting standard operations)
     createAddToolpathButton();
@@ -136,6 +136,8 @@ void ToolpathTimelineWidget::removeToolpath(int index)
     m_toolpathFrames.remove(index);
     m_toolpathTypes.remove(index);
     m_toolpathNames.remove(index);
+    QCheckBox* chk = m_enabledChecks.takeAt(index);
+    delete chk;
     delete frame;
     
     // Update active toolpath index if needed
@@ -156,6 +158,9 @@ void ToolpathTimelineWidget::clearToolpaths()
         m_timelineLayout->removeWidget(frame);
         delete frame;
     }
+
+    qDeleteAll(m_enabledChecks);
+    m_enabledChecks.clear();
     
     m_toolpathFrames.clear();
     m_toolpathTypes.clear();
@@ -213,6 +218,20 @@ void ToolpathTimelineWidget::setActiveToolpath(int index)
     if (index >= 0) {
         emit toolpathSelected(index);
     }
+}
+
+bool ToolpathTimelineWidget::isToolpathEnabled(int index) const
+{
+    if (index < 0 || index >= m_enabledChecks.size())
+        return false;
+    return m_enabledChecks.at(index)->isChecked();
+}
+
+void ToolpathTimelineWidget::setToolpathEnabled(int index, bool enabled)
+{
+    if (index < 0 || index >= m_enabledChecks.size())
+        return;
+    m_enabledChecks.at(index)->setChecked(enabled);
 }
 
 void ToolpathTimelineWidget::onAddToolpathClicked()
@@ -309,10 +328,20 @@ QFrame* ToolpathTimelineWidget::createToolpathFrame(const QString& operationName
     frameLayout->setContentsMargins(4, 4, 4, 4);
     frameLayout->setSpacing(2);
     
-    // Create header with icon and operation name
+    // Create header with enable checkbox, icon and operation name
     QHBoxLayout* headerLayout = new QHBoxLayout();
     headerLayout->setContentsMargins(0, 0, 0, 0);
     headerLayout->setSpacing(4);
+
+    // Enable checkbox
+    QCheckBox* enableCheck = new QCheckBox(frame);
+    enableCheck->setChecked(true);
+    headerLayout->addWidget(enableCheck);
+    m_enabledChecks.append(enableCheck);
+    connect(enableCheck, &QCheckBox::toggled, this, [this, frame](bool checked) {
+        int idx = frame->property("index").toInt();
+        emit toolpathEnabledChanged(idx, checked);
+    });
     
     // Icon label
     QLabel* iconLabel = new QLabel(frame);
@@ -325,12 +354,12 @@ QFrame* ToolpathTimelineWidget::createToolpathFrame(const QString& operationName
             iconLabel->setPixmap(pixmap.scaled(24, 24, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         } else {
             // Default icons based on operation type
-            if (operationType == "Facing") {
-                iconLabel->setText("F");
-            } else if (operationType == "Roughing") {
-                iconLabel->setText("R");
-            } else if (operationType == "Finishing") {
-                iconLabel->setText("Fn");
+            if (operationType == "Contouring") {
+                iconLabel->setText("C");
+            } else if (operationType == "Threading") {
+                iconLabel->setText("T");
+            } else if (operationType == "Chamfering") {
+                iconLabel->setText("Ch");
             } else if (operationType == "Parting") {
                 iconLabel->setText("P");
             } else {
@@ -341,12 +370,12 @@ QFrame* ToolpathTimelineWidget::createToolpathFrame(const QString& operationName
         }
     } else {
         // Default icons based on operation type
-        if (operationType == "Facing") {
-            iconLabel->setText("F");
-        } else if (operationType == "Roughing") {
-            iconLabel->setText("R");
-        } else if (operationType == "Finishing") {
-            iconLabel->setText("Fn");
+        if (operationType == "Contouring") {
+            iconLabel->setText("C");
+        } else if (operationType == "Threading") {
+            iconLabel->setText("T");
+        } else if (operationType == "Chamfering") {
+            iconLabel->setText("Ch");
         } else if (operationType == "Parting") {
             iconLabel->setText("P");
         } else {

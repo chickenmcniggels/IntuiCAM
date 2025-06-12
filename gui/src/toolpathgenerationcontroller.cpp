@@ -74,14 +74,14 @@ static IntuiCAM::Geometry::Matrix4x4 toMatrix4x4(const gp_Trsf& trsf);
 
 // Static configuration
 const QStringList IntuiCAM::GUI::ToolpathGenerationController::DEFAULT_OPERATION_ORDER = {
-    "Facing", "Roughing", "Finishing", "Parting"
+    "Contouring", "Threading", "Chamfering", "Parting"
 };
 
 const QMap<QString, double> IntuiCAM::GUI::ToolpathGenerationController::OPERATION_TIME_ESTIMATES = {
-    {"Facing", 2.5},      // minutes
-    {"Roughing", 8.0},    // minutes
-    {"Finishing", 4.0},   // minutes
-    {"Parting", 1.5}      // minutes
+    {"Contouring", 10.0},  // minutes
+    {"Threading", 5.0},    // minutes
+    {"Chamfering", 2.0},   // minutes
+    {"Parting", 1.5}       // minutes
 };
 
 IntuiCAM::GUI::ToolpathGenerationController::ToolpathGenerationController(QObject *parent)
@@ -441,7 +441,7 @@ bool IntuiCAM::GUI::ToolpathGenerationController::generateOperationToolpaths()
             std::unique_ptr<IntuiCAM::Toolpath::Operation> operation;
             
             // Create different operations based on type
-            if (operationName == "Roughing") {
+            if (operationName == "Contouring") {
                 auto roughingOp = std::make_unique<IntuiCAM::Toolpath::RoughingOperation>(
                     operationName.toStdString(), tool);
                 
@@ -469,19 +469,28 @@ bool IntuiCAM::GUI::ToolpathGenerationController::generateOperationToolpaths()
                 roughingOp->setParameters(params);
                 operation = std::move(roughingOp);
             }
-            else if (operationName == "Facing") {
-                auto facingOp = std::make_unique<IntuiCAM::Toolpath::FacingOperation>(
+            else if (operationName == "Threading") {
+                auto threadingOp = std::make_unique<IntuiCAM::Toolpath::ThreadingOperation>(
                     operationName.toStdString(), tool);
-                
-                // Set facing parameters
-                IntuiCAM::Toolpath::FacingOperation::Parameters params;
-                params.startDiameter = m_currentRequest.rawDiameter;
-                params.endDiameter = 0.0;
-                params.stepover = 0.5;
-                params.stockAllowance = m_currentRequest.facingAllowance;
-                
-                facingOp->setParameters(params);
-                operation = std::move(facingOp);
+
+                IntuiCAM::Toolpath::ThreadingOperation::Parameters params;
+                threadingOp->setParameters(params);
+                operation = std::move(threadingOp);
+            }
+            else if (operationName == "Chamfering") {
+                auto chamferOp = std::make_unique<IntuiCAM::Toolpath::FinishingOperation>(
+                    operationName.toStdString(), tool);
+                IntuiCAM::Toolpath::FinishingOperation::Parameters params;
+                chamferOp->setParameters(params);
+                operation = std::move(chamferOp);
+            }
+            else if (operationName == "Parting") {
+                auto partingOp = std::make_unique<IntuiCAM::Toolpath::PartingOperation>(
+                    operationName.toStdString(), tool);
+                IntuiCAM::Toolpath::PartingOperation::Parameters params;
+                params.partingWidth = m_currentRequest.partingWidth;
+                partingOp->setParameters(params);
+                operation = std::move(partingOp);
             }
             else {
                 // Handle other operation types...
@@ -583,18 +592,18 @@ bool IntuiCAM::GUI::ToolpathGenerationController::validateOperationCompatibility
     // TODO: Add sophisticated compatibility checks
     // For now, basic validation
     
-    if (operationName == "Facing" && m_currentRequest.facingAllowance <= 0.0) {
+    if (operationName == "Contouring" && m_currentRequest.roughingAllowance <= 0.0) {
         return false;
     }
-    
-    if (operationName == "Roughing" && m_currentRequest.roughingAllowance <= 0.0) {
+
+    if (operationName == "Threading") {
+        return true; // no numeric parameter check
+    }
+
+    if (operationName == "Chamfering" && m_currentRequest.finishingAllowance <= 0.0) {
         return false;
     }
-    
-    if (operationName == "Finishing" && m_currentRequest.finishingAllowance <= 0.0) {
-        return false;
-    }
-    
+
     if (operationName == "Parting" && m_currentRequest.partingWidth <= 0.0) {
         return false;
     }
@@ -644,20 +653,17 @@ std::shared_ptr<IntuiCAM::Toolpath::Tool> IntuiCAM::GUI::ToolpathGenerationContr
     // Create an appropriate tool based on the operation type
     IntuiCAM::Toolpath::Tool::Type toolType;
     
-    if (operationName == "Facing") {
-        toolType = IntuiCAM::Toolpath::Tool::Type::Facing;
-    }
-    else if (operationName == "Roughing") {
+    if (operationName == "Contouring") {
         toolType = IntuiCAM::Toolpath::Tool::Type::Turning;
     }
-    else if (operationName == "Finishing") {
+    else if (operationName == "Threading") {
+        toolType = IntuiCAM::Toolpath::Tool::Type::Threading;
+    }
+    else if (operationName == "Chamfering") {
         toolType = IntuiCAM::Toolpath::Tool::Type::Turning;
     }
     else if (operationName == "Parting") {
         toolType = IntuiCAM::Toolpath::Tool::Type::Parting;
-    }
-    else if (operationName == "Threading") {
-        toolType = IntuiCAM::Toolpath::Tool::Type::Threading;
     }
     else if (operationName == "Grooving") {
         toolType = IntuiCAM::Toolpath::Tool::Type::Grooving;
@@ -699,7 +705,32 @@ std::unique_ptr<IntuiCAM::Toolpath::Operation> IntuiCAM::GUI::ToolpathGeneration
     }
     
     // Create operation based on name
-    if (operationName == "Facing") {
+    if (operationName == "Threading") {
+        auto operation = std::make_unique<IntuiCAM::Toolpath::ThreadingOperation>(
+            operationName.toStdString(), tool);
+
+        // Set default parameters
+        IntuiCAM::Toolpath::ThreadingOperation::Parameters params;
+        operation->setParameters(params);
+        return operation;
+    }
+    else if (operationName == "Chamfering") {
+        auto operation = std::make_unique<IntuiCAM::Toolpath::FinishingOperation>(
+            operationName.toStdString(), tool);
+
+        IntuiCAM::Toolpath::FinishingOperation::Parameters params;
+        operation->setParameters(params);
+        return operation;
+    }
+    else if (operationName == "Contouring") {
+        auto operation = std::make_unique<IntuiCAM::Toolpath::RoughingOperation>(
+            operationName.toStdString(), tool);
+
+        IntuiCAM::Toolpath::RoughingOperation::Parameters params;
+        operation->setParameters(params);
+        return operation;
+    }
+    else if (operationName == "Facing") {
         auto operation = std::make_unique<IntuiCAM::Toolpath::FacingOperation>(
             operationName.toStdString(), tool);
         

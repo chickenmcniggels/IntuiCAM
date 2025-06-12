@@ -10,6 +10,7 @@
 #include <QFrame>
 #include <QMenu>
 #include <QAction>
+#include <QCheckBox>
 #include <QVector>
 #include <QMap>
 #include <QMessageBox>
@@ -110,6 +111,16 @@ public:
      */
     void setActiveToolpath(int index);
 
+    /**
+     * @brief Check if a toolpath is enabled
+     */
+    bool isToolpathEnabled(int index) const;
+
+    /**
+     * @brief Enable or disable a toolpath
+     */
+    void setToolpathEnabled(int index, bool enabled);
+
 public slots:
     /**
      * @brief Handle click on the add toolpath button
@@ -160,6 +171,11 @@ signals:
      * @param index The index of the toolpath to regenerate
      */
     void toolpathRegenerateRequested(int index);
+
+    /**
+     * @brief Emitted when a toolpath is enabled or disabled
+     */
+    void toolpathEnabledChanged(int index, bool enabled);
 
 private slots:
     /**
@@ -220,6 +236,7 @@ private:
     QVector<QFrame*> m_toolpathFrames;
     QVector<QString> m_toolpathTypes;
     QVector<QString> m_toolpathNames;
+    QVector<QCheckBox*> m_enabledChecks;
     int m_activeToolpathIndex;
 
     // Standard operation types

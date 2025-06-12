@@ -1339,6 +1339,14 @@ void MainWindow::handleStepFileSelected(const QString& filePath)
                 if (m_3dViewer) {
                     m_3dViewer->fitAll();
                 }
+
+                if (m_toolpathTimeline) {
+                    m_toolpathTimeline->clearToolpaths();
+                    QStringList ops = {"Contouring", "Threading", "Chamfering", "Parting"};
+                    for (const QString& op : ops) {
+                        m_toolpathTimeline->addToolpath(op, op, "Default Tool");
+                    }
+                }
             } else {
                 QString errorMsg = "Failed to process workpiece through workspace controller";
                 statusBar()->showMessage(errorMsg, 5000);
