@@ -308,7 +308,9 @@ void ChuckManager::setChuckVisible(bool visible)
 
     if (visible) {
         if (!m_context->IsDisplayed(m_chuckAIS)) {
-            m_context->Display(m_chuckAIS, Standard_False);
+            m_context->Display(m_chuckAIS, AIS_Shaded, 0, Standard_False);
+            // Keep chuck non-selectable when redisplayed
+            m_context->Deactivate(m_chuckAIS);
         }
     } else {
         m_context->Erase(m_chuckAIS, Standard_False);

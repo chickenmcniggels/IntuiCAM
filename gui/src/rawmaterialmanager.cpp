@@ -179,7 +179,9 @@ void RawMaterialManager::setRawMaterialVisible(bool visible)
 
     if (visible) {
         if (!m_context->IsDisplayed(m_rawMaterialAIS)) {
-            m_context->Display(m_rawMaterialAIS, Standard_False);
+            m_context->Display(m_rawMaterialAIS, AIS_Shaded, 0, Standard_False);
+            // Keep raw material non-selectable when redisplayed
+            makeRawMaterialNonSelectable();
         }
     } else {
         m_context->Erase(m_rawMaterialAIS, Standard_False);
