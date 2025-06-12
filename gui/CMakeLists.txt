@@ -25,7 +25,6 @@ set(GUI_SOURCES
 set(GUI_HEADERS
     include/mainwindow.h
     include/opengl3dwidget.h
-    include/isteploader.h
     include/steploader.h
     include/chuckmanager.h
     include/workpiecemanager.h

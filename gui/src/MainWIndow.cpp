@@ -556,7 +556,7 @@ void MainWindow::openStepFile()
     
     // Load the STEP file using workspace controller
     if (m_stepLoader && m_workspaceController && m_workspaceController->isInitialized()) {
-        TopoDS_Shape shape = m_stepLoader->loadStepFile(fileName);
+        TopoDS_Shape shape = m_stepLoader->loadStepFile(fileName.toStdString());
         
         if (m_stepLoader->isValid() && !shape.IsNull()) {
             // Clear previous workpieces (workspace controller handles this cleanly)
@@ -581,7 +581,8 @@ void MainWindow::openStepFile()
                 }
             }
         } else {
-            QString errorMsg = QString("Failed to load STEP file: %1").arg(m_stepLoader->getLastError());
+            QString errorMsg = QString("Failed to load STEP file: %1")
+                                     .arg(QString::fromStdString(m_stepLoader->getLastError()));
             statusBar()->showMessage(errorMsg, 5000);
             if (m_outputWindow) {
                 m_outputWindow->append(errorMsg);
@@ -1313,7 +1314,7 @@ void MainWindow::handleStepFileSelected(const QString& filePath)
     
     // Load the STEP file using workspace controller - same logic as original openStepFile()
     if (m_stepLoader && m_workspaceController && m_workspaceController->isInitialized()) {
-        TopoDS_Shape shape = m_stepLoader->loadStepFile(filePath);
+        TopoDS_Shape shape = m_stepLoader->loadStepFile(filePath.toStdString());
         
         if (m_stepLoader->isValid() && !shape.IsNull()) {
             // Clear previous workpieces (workspace controller handles this cleanly)
@@ -1340,7 +1341,8 @@ void MainWindow::handleStepFileSelected(const QString& filePath)
                 }
             }
         } else {
-            QString errorMsg = QString("Failed to load STEP file: %1").arg(m_stepLoader->getLastError());
+            QString errorMsg = QString("Failed to load STEP file: %1")
+                                     .arg(QString::fromStdString(m_stepLoader->getLastError()));
             statusBar()->showMessage(errorMsg, 5000);
             if (m_outputWindow) {
                 m_outputWindow->append(errorMsg);

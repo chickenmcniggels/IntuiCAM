@@ -1,5 +1,5 @@
 #include "chuckmanager.h"
-#include "isteploader.h"
+#include <IntuiCAM/Geometry/IStepLoader.h>
 
 #include <QDebug>
 #include <QFileInfo>
@@ -58,10 +58,11 @@ bool ChuckManager::loadChuck(const QString& chuckFilePath)
     }
 
     // Load the chuck STEP file
-    m_chuckShape = m_stepLoader->loadStepFile(chuckFilePath);
+    m_chuckShape = m_stepLoader->loadStepFile(chuckFilePath.toStdString());
     
     if (m_chuckShape.IsNull() || !m_stepLoader->isValid()) {
-        emit errorOccurred("Failed to load chuck STEP file: " + m_stepLoader->getLastError());
+        emit errorOccurred(QString("Failed to load chuck STEP file: %1")
+                          .arg(QString::fromStdString(m_stepLoader->getLastError())));
         return false;
     }
 
