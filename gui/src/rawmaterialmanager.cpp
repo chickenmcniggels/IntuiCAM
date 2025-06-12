@@ -344,7 +344,7 @@ double RawMaterialManager::calculateOptimalLengthWithTransform(const TopoDS_Shap
     try {
         // Apply transformation to the workpiece for calculation
         TopoDS_Shape transformedWorkpiece = workpiece;
-        if (!transform.Form() == gp_Identity) {
+        if (transform.Form() != gp_Identity) {
             BRepBuilderAPI_Transform transformer(workpiece, transform);
             transformedWorkpiece = transformer.Shape();
         }
@@ -516,7 +516,7 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpieceWithTransform(double 
         
         // Apply transformation to the workpiece for bounding box calculation
         TopoDS_Shape transformedWorkpiece = workpiece;
-        if (!transform.Form() == gp_Identity) {
+        if (transform.Form() != gp_Identity) {
             BRepBuilderAPI_Transform transformer(workpiece, transform);
             transformedWorkpiece = transformer.Shape();
         }
