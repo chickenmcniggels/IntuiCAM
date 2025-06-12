@@ -4,8 +4,6 @@
 
 # Basic usage examples
 add_subdirectory(basic_usage)
-add_subdirectory(python_scripting)
-add_subdirectory(freecad_integration)
 
 # Advanced examples
 add_subdirectory(custom_postprocessor)
