@@ -38,8 +38,6 @@ if(INTUICAM_BUILD_CLI)
     add_subdirectory(cli)
 endif()
 
-# Add examples directory
-add_subdirectory(examples)
 
 # Add tests if enabled
 if(INTUICAM_BUILD_TESTS)

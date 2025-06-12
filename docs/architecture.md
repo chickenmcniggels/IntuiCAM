@@ -61,12 +61,11 @@ IntuiCAM/                   # Root of the repo
 ├── tests/                  # Integration and end-to-end tests
 ├── cmake/                  # CMake modules and helper scripts
 ├── .github/                # GitHub Actions workflows and issue templates
-├── examples/               # Sample projects and usage demos
 ├── vcpkg.json              # Dependency specification
 └── CMakeLists.txt          # Top-level CMake configuration
 ```
 
-* **Mono-repo**: All code, docs, CI, and examples in one repository, with clear subfolders.
+* **Mono-repo**: All code, docs, and CI in one repository, with clear subfolders.
 * **CMake targets**: Multiple modular libraries (`intuicam-geometry`, `intuicam-toolpath`, etc.), GUI executable (`IntuiCAMGui`), CLI tool (`IntuiCAMCli`), and individual `Plugin` targets.
 
 ---
