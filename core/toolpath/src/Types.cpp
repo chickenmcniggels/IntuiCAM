@@ -138,12 +138,5 @@ Operation::Operation(Type type, const std::string& name, std::shared_ptr<Tool> t
     : type_(type), name_(name), tool_(tool) {
 }
 
-std::unique_ptr<Operation> Operation::createOperation(Type type, const std::string& name, 
-                                                     std::shared_ptr<Tool> tool) {
-    // This would create specific operation types
-    // For now, return nullptr as placeholder
-    return nullptr;
-}
-
 } // namespace Toolpath
 } // namespace IntuiCAM 
