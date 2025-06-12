@@ -129,6 +129,7 @@ private:
     // Chuck centerline alignment
     gp_Ax1 m_chuckCenterlineAxis;
     bool m_centerlineDetected;
+    bool m_isVisible { true };
     
     /**
      * @brief Set chuck material properties

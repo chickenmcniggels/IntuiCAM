@@ -14,6 +14,7 @@ public:
         double centerHoleDiameter = 3.0; // mm (0 for solid)
         double feedRate = 0.02;         // mm/rev
         double retractDistance = 2.0;   // mm
+        double partingWidth = 3.0;      // mm
     };
     
 private:
