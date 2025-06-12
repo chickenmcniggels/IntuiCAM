@@ -51,9 +51,6 @@ IntuiCAM/                   # Root of the repo
 ├── gui/                    # Qt-based frontend application
 │   ├── src/                # Widgets, viewports, controllers
 │   └── resources/          # UI files, icons, translations
-├── cli/                    # Command-line interface
-│   ├── src/
-│   └── tests/
 ├── plugins/                # (Optional) Built-in or downloaded extensions
 ├── docs/                   # Documentation (Markdown files)
 │   ├── architecture.md     # ← This file
@@ -66,7 +63,7 @@ IntuiCAM/                   # Root of the repo
 ```
 
 * **Mono-repo**: All code, docs, and CI in one repository, with clear subfolders.
-* **CMake targets**: Multiple modular libraries (`intuicam-geometry`, `intuicam-toolpath`, etc.), GUI executable (`IntuiCAMGui`), CLI tool (`IntuiCAMCli`), and individual `Plugin` targets.
+* **CMake targets**: Multiple modular libraries (`intuicam-geometry`, `intuicam-toolpath`, etc.), GUI executable (`IntuiCAMGui`), and individual `Plugin` targets.
 
 ---
 
@@ -223,13 +220,6 @@ The workspace management system exemplifies the application's modular architectu
   * Optional: usage-based billing hooks
 * **Design**: Decoupled; Core functionality must work offline.
 
-### 3.7 Command-Line Interface (`/cli`)
-
-* **Target**: `IntuiCAMCli`
-* **Responsibilities**: Headless toolpath generation, batch workflows, CI integration
-* **Design**: Based on Core API; lightweight argument parsing (e.g., CLI11)
-
----
 
 ## 4. Data Types and Interfaces
 
@@ -299,7 +289,6 @@ The workspace management system exemplifies the application's modular architectu
 
 * **Options**:
   * `INTUICAM_BUILD_GUI` - Build the Qt GUI application
-  * `INTUICAM_BUILD_CLI` - Build the command-line interface
   * `INTUICAM_BUILD_PYTHON` - Build Python bindings
   * `INTUICAM_BUILD_TESTS` - Build unit tests
 
