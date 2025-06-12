@@ -119,8 +119,6 @@ MainWindow::MainWindow(QWidget *parent)
     createCentralWidget();
     setupConnections();
     
-    // Create the view mode overlay button
-    createViewModeOverlayButton();
     
     // Update status
     statusBar()->showMessage(tr("Ready"));
@@ -689,8 +687,7 @@ void MainWindow::onTabChanged(int index)
         default: tabName = "Unknown"; break;
     }
     
-    // Update overlay button visibility and position based on current tab
-    positionViewModeOverlayButton();
+    // Buttons are part of the setup tab layout, no special handling needed
     
     statusBar()->showMessage(QString("Switched to %1 tab").arg(tabName), 2000);
     if (m_outputWindow) {
@@ -868,7 +865,18 @@ QWidget* MainWindow::createSetupTab()
     // 3D Viewport - Pure visualization component
     m_3dViewer = new OpenGL3DWidget();
     m_3dViewer->setMinimumSize(600, 400);
-    
+
+    // Create view mode and visibility controls to place above the viewer
+    createViewModeOverlayButton(rightWidget);
+    QHBoxLayout* viewerControlsLayout = new QHBoxLayout;
+    viewerControlsLayout->setContentsMargins(0, 0, 0, 0);
+    viewerControlsLayout->setSpacing(8);
+    viewerControlsLayout->addWidget(m_visibilityButton);
+    viewerControlsLayout->addWidget(m_viewModeOverlayButton);
+    viewerControlsLayout->addStretch();
+
+    rightLayout->addLayout(viewerControlsLayout);
+
     // Operation controls frame
     QFrame* operationFrame = new QFrame;
     operationFrame->setFrameStyle(QFrame::Box | QFrame::Raised);
@@ -1195,15 +1203,15 @@ QWidget* MainWindow::createMachineTab()
     return machineWidget;
 }
 
-void MainWindow::createViewModeOverlayButton()
+void MainWindow::createViewModeOverlayButton(QWidget *parent)
 {
-    // Create the overlay button as a direct child of the main window
-    m_viewModeOverlayButton = new QPushButton("Switch to Lathe View", this);
+    // Create the buttons as regular widgets instead of overlays
+    m_viewModeOverlayButton = new QPushButton("Switch to Lathe View", parent);
     m_viewModeOverlayButton->setMaximumWidth(150);
     m_viewModeOverlayButton->setMaximumHeight(30);
 
     // Create visibility tool button with menu
-    m_visibilityButton = new QToolButton(this);
+    m_visibilityButton = new QToolButton(parent);
     m_visibilityButton->setText("Visibility");
     m_visibilityButton->setPopupMode(QToolButton::InstantPopup);
     m_visibilityButton->setMaximumHeight(30);
@@ -1275,16 +1283,8 @@ void MainWindow::createViewModeOverlayButton()
     // Connect to view mode changes to update button text
     connect(m_3dViewer, &OpenGL3DWidget::viewModeChanged, this, &MainWindow::updateViewModeOverlayButton);
 
-    // Initially position the button
-    positionViewModeOverlayButton();
-
-    // Show the controls - they will always be visible on the setup tab
-    m_viewModeOverlayButton->show();
-    m_viewModeOverlayButton->raise();
-    m_visibilityButton->show();
-    m_visibilityButton->raise();
-
-    qDebug() << "View mode overlay button created in MainWindow";
+    // These buttons are now part of the regular layout
+    qDebug() << "View mode controls created in MainWindow";
 }
 
 void MainWindow::updateViewModeOverlayButton()
@@ -1301,66 +1301,7 @@ void MainWindow::updateViewModeOverlayButton()
         m_viewModeOverlayButton->setText("Switch to 3D View");
     }
     
-    // Ensure button stays positioned correctly and on top
-    positionViewModeOverlayButton();
-    m_viewModeOverlayButton->raise();
-    if (m_visibilityButton) m_visibilityButton->raise();
-}
-
-void MainWindow::positionViewModeOverlayButton()
-{
-    if (!m_viewModeOverlayButton || !m_3dViewer) {
-        return;
-    }
-    
-    // Only show the controls when we're on the Setup tab (where the 3D viewer is)
-    bool onSetupTab = (m_tabWidget && m_tabWidget->currentIndex() == 1);
-    if (!onSetupTab) {
-        m_viewModeOverlayButton->hide();
-        if (m_visibilityButton) m_visibilityButton->hide();
-        return;
-    }
-
-    m_viewModeOverlayButton->show();
-    if (m_visibilityButton) m_visibilityButton->show();
-
-    // Calculate position relative to the 3D viewer widget
-    QPoint viewerGlobalPos = m_3dViewer->mapToGlobal(QPoint(0, 0));
-    QPoint mainWindowPos = this->mapFromGlobal(viewerGlobalPos);
-
-    // Position controls in top-right corner of the 3D viewer with margin
-    const int margin = 15;
-    const int spacing = 10;
-    const int buttonWidth = m_viewModeOverlayButton->sizeHint().width();
-    const int buttonHeight = m_viewModeOverlayButton->sizeHint().height();
-
-    int x = mainWindowPos.x() + m_3dViewer->width() - buttonWidth - margin;
-    int y = mainWindowPos.y() + margin;
-
-    // Ensure the button stays within bounds
-    x = qMax(margin, qMin(x, width() - buttonWidth - margin));
-    y = qMax(margin, qMin(y, height() - buttonHeight - margin));
-
-    // Move the button
-    m_viewModeOverlayButton->move(x, y);
-    m_viewModeOverlayButton->raise();
-
-    // Position visibility button to the left of the view mode button
-    if (m_visibilityButton) {
-        int visWidth = m_visibilityButton->sizeHint().width();
-        int xVis = x - visWidth - spacing;
-        xVis = qMax(margin, xVis);
-        m_visibilityButton->move(xVis, y);
-        m_visibilityButton->raise();
-    }
-}
-
-void MainWindow::resizeEvent(QResizeEvent *event)
-{
-    QMainWindow::resizeEvent(event);
-    
-    // Reposition the overlay button when the window is resized
-    QTimer::singleShot(0, this, &MainWindow::positionViewModeOverlayButton);
+    // No further positioning needed when part of the layout
 }
 
 // New slot implementations for Setup Configuration Panel
