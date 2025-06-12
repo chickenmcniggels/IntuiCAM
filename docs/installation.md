@@ -63,10 +63,8 @@ vcpkg is the recommended way to manage dependencies on Windows as it ensures con
 
 4. **Build with vcpkg integration**:
    ```powershell
-   mkdir build
-   cd build
-   cmake .. -DCMAKE_TOOLCHAIN_FILE=[path\to\vcpkg]\scripts\buildsystems\vcpkg.cmake
-   cmake --build . --config Release
+   cmake --preset ninja-release
+   cmake --build --preset ninja-release
    ```
 
 ### 2.2 Manual Installation (Tested Configuration)
@@ -108,10 +106,8 @@ vcpkg is the recommended way to manage dependencies on Windows as it ensures con
    ```
 
 **Important Notes**:
-- The CMakeLists.txt is pre-configured for the standard installation paths
-- **All required runtime DLLs are automatically copied** to the output directory during build, including Qt6, OpenCASCADE 3rd party libraries (TBB, FreeImage, FFmpeg, OpenVR, Jemalloc, etc.), and VTK dependencies
-- **No PATH configuration is required** - the application is self-contained
-- If you install to different locations, you may need to modify the paths in the root CMakeLists.txt file
+- vcpkg installs all dependencies automatically and `windeployqt` runs during the build.
+- No manual copying of DLLs or PATH configuration is required.
 
 ---
 
@@ -152,9 +148,10 @@ vcpkg is the recommended way to manage dependencies on Windows as it ensures con
    ```bash
    git clone https://github.com/your-org/IntuiCAM.git
    cd IntuiCAM
-   mkdir build && cd build
-   cmake .. -DCMAKE_BUILD_TYPE=Release
-   make -j$(nproc)
+   git clone https://github.com/microsoft/vcpkg
+   ./vcpkg/bootstrap-vcpkg.sh
+   cmake --preset ninja-release
+   cmake --build --preset ninja-release
    ```
 
 ### 3.2 Fedora/RHEL
@@ -191,9 +188,10 @@ vcpkg is the recommended way to manage dependencies on Windows as it ensures con
    ```bash
    git clone https://github.com/your-org/IntuiCAM.git
    cd IntuiCAM
-   mkdir build && cd build
-   cmake .. -DCMAKE_BUILD_TYPE=Release
-   make -j$(sysctl -n hw.ncpu)
+   git clone https://github.com/microsoft/vcpkg
+   ./vcpkg/bootstrap-vcpkg.sh
+   cmake --preset ninja-release
+   cmake --build --preset ninja-release
    ```
 
 ---

@@ -16,7 +16,7 @@
       },
       "binaryDir": "${sourceDir}/build_vs",
       "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "$env{USERPROFILE}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
       }
     },
     {
@@ -41,7 +41,7 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build_ninja",
       "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "$env{USERPROFILE}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
       }
     },
     {
