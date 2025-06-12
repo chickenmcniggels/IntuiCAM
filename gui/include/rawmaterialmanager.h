@@ -115,6 +115,17 @@ public:
      */
     void makeRawMaterialNonSelectable();
 
+    /**
+     * @brief Set the facing allowance (extra material length in +Z direction)
+     * @param allowance Allowance in mm
+     */
+    void setFacingAllowance(double allowance);
+
+    /**
+     * @brief Get the currently configured facing allowance
+     */
+    double getFacingAllowance() const { return m_facingAllowance; }
+
 signals:
     /**
      * @brief Emitted when raw material is created and displayed
@@ -137,6 +148,9 @@ private:
     double m_rawMaterialTransparency;
     
     double m_currentDiameter;
+    
+    // Facing allowance (extra stock on +Z side), default 10mm
+    double m_facingAllowance { 10.0 };
     
     /**
      * @brief Create a cylinder shape for raw material

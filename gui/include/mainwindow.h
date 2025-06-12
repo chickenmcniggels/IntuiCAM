@@ -15,6 +15,7 @@
 #include <QApplication>
 #include <QTabWidget>
 #include <QPushButton>
+#include <QCheckBox>
 
 // OpenCASCADE includes
 #include <gp_Ax1.hxx>
@@ -133,6 +134,9 @@ private slots:
     void handleRemoveToolpathRequested(int index);
     void handleToolpathReordered(int fromIndex, int toIndex);
 
+    // Overlay control for chuck visibility
+    void handleShowChuckToggled(bool checked);
+
 private:
     void createMenus();
     void createStatusBar();
@@ -217,6 +221,8 @@ private:
     
     // Overlay UI elements
     QPushButton *m_viewModeOverlayButton;
+    QCheckBox *m_showChuckCheckBox;  // Overlay checkbox to show/hide chuck
+    QString m_defaultChuckFilePath;  // Default path to chuck STEP file
     
 private:
     void createViewModeOverlayButton();

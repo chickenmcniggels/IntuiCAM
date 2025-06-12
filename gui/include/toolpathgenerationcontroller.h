@@ -27,6 +27,8 @@
 class ToolpathManager;
 class ToolpathTimelineWidget;
 class WorkspaceController;  // Forward declaration for the WorkspaceController
+class WorkpieceManager;     // new forward declaration
+class RawMaterialManager;   // new forward declaration
 
 namespace IntuiCAM {
 namespace GUI {
@@ -139,6 +141,10 @@ public:
     void regenerateToolpath(const QString& operationName, const QString& operationType);
     void connectParameterDialog(OperationParameterDialog* dialog, const QString& operationName, 
                                const QString& operationType);
+    /**
+     * @brief Regenerate every currently generated toolpath using updated part position.
+     */
+    void regenerateAllToolpaths();
 
 public slots:
     void onGenerationRequested(const GenerationRequest& request);
@@ -216,6 +222,8 @@ private:
     ToolpathTimelineWidget* m_timelineWidget;
     QTextEdit* m_statusText;
     WorkspaceController* m_workspaceController;
+    WorkpieceManager* m_workpieceManager {nullptr};     // new member: access to workpiece orientation
+    RawMaterialManager*  m_rawMaterialManager {nullptr}; // new member: access to raw material orientation
     
     // State
     std::map<QString, std::unique_ptr<IntuiCAM::Toolpath::Toolpath>> m_toolpaths;

@@ -13,6 +13,8 @@ set(CORE_TOOLPATH_SOURCES
     "src/ThreadingOperation.cpp"
     "src/GroovingOperation.cpp"
     "src/placeholder.cpp"
+    "src/ToolpathPlanner.cpp"
+    "src/LatheProfile.cpp"
     "include/IntuiCAM/Toolpath/Types.h"
     "include/IntuiCAM/Toolpath/Operations.h"
     "include/IntuiCAM/Toolpath/FacingOperation.h"
@@ -21,6 +23,8 @@ set(CORE_TOOLPATH_SOURCES
     "include/IntuiCAM/Toolpath/PartingOperation.h"
     "include/IntuiCAM/Toolpath/ThreadingOperation.h"
     "include/IntuiCAM/Toolpath/GroovingOperation.h"
+    "include/IntuiCAM/Toolpath/LatheProfile.h"
+    "include/IntuiCAM/Toolpath/ToolpathPlanner.h"
 )
 
 add_library(${CORE_TOOLPATH_LIB_NAME} STATIC ${CORE_TOOLPATH_SOURCES})

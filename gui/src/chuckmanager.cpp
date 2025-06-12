@@ -79,6 +79,9 @@ bool ChuckManager::loadChuck(const QString& chuckFilePath)
     // Method 1: Deactivate all selection modes for the chuck to prevent selection
     m_context->Deactivate(m_chuckAIS);
     
+    // Refresh viewer to ensure chuck becomes visible immediately
+    m_context->UpdateCurrentViewer();
+    
     // Method 2: Clear any existing selection on the chuck
     m_context->SetSelected(m_chuckAIS, false);
     
@@ -105,6 +108,8 @@ void ChuckManager::clearChuck()
     if (!m_chuckAIS.IsNull()) {
         m_context->Remove(m_chuckAIS, false);
         m_chuckAIS.Nullify();
+        // Force viewer update to reflect removal
+        m_context->UpdateCurrentViewer();
     }
     
     m_chuckShape = TopoDS_Shape();
@@ -261,4 +266,35 @@ void ChuckManager::setChuckMaterial(Handle(AIS_Shape) chuckAIS)
     chuckMaterial.SetShininess(0.8);
     
     chuckAIS->SetMaterial(chuckMaterial);
+}
+
+void ChuckManager::redisplayChuck()
+{
+    if (m_context.IsNull() || m_chuckShape.IsNull()) {
+        qDebug() << "ChuckManager: Cannot redisplay chuck - context null or chuck not loaded";
+        return;
+    }
+    
+    try {
+        // Create new AIS shape for the chuck
+        m_chuckAIS = new AIS_Shape(m_chuckShape);
+        
+        // Set chuck material properties
+        setChuckMaterial(m_chuckAIS);
+        
+        // Display the chuck
+        m_context->Display(m_chuckAIS, AIS_Shaded, 0, false);
+        
+        // Make chuck non-selectable and disable hover highlighting
+        m_context->Deactivate(m_chuckAIS);
+        m_context->SetSelected(m_chuckAIS, false);
+        
+        // Ensure the viewer refreshes after redisplay
+        m_context->UpdateCurrentViewer();
+        
+        qDebug() << "ChuckManager: Chuck redisplayed successfully";
+    }
+    catch (const std::exception& e) {
+        qDebug() << "ChuckManager: Error redisplaying chuck:" << e.what();
+    }
 } 

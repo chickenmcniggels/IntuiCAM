@@ -55,6 +55,13 @@ struct BoundingBox {
     Point3D center() const;
 };
 
+struct Point2D {
+    double x; // radius (or X in profile plane)
+    double z; // axial position
+    Point2D() : x(0.0), z(0.0) {}
+    Point2D(double x_, double z_) : x(x_), z(z_) {}
+};
+
 // Base class for all geometric objects
 class GeometricEntity {
 public:

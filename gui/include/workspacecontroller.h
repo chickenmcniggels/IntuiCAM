@@ -88,8 +88,6 @@ public:
      */
     QVector<CylinderInfo> getDetectedCylinders() const;
 
-
-
     /**
      * @brief Check if chuck centerline has been detected
      * @return True if chuck has a valid centerline
@@ -182,6 +180,11 @@ public:
      * @return The current part shape
      */
     TopoDS_Shape getPartShape() const;
+
+    /**
+     * @brief Redisplay all scene objects (chuck, workpieces, raw material). Used after a global context clear.
+     */
+    void redisplayAll();
 
 signals:
     /**
@@ -289,6 +292,9 @@ private:
     // State
     bool m_initialized;
     TopoDS_Shape m_currentWorkpiece; // Store original workpiece for re-processing
+
+    // Remember last requested distance-to-chuck so that flips and reloads can reapply it
+    double m_lastDistanceToChuck { 0.0 };
     
     /**
      * @brief Set up signal connections between managers
@@ -314,8 +320,6 @@ private:
      * @return Transformation matrix to perform the alignment
      */
     gp_Trsf createAxisAlignmentTransformation(const gp_Ax1& sourceAxis);
-
-
 
     /**
      * @brief Recalculate raw material for current workpiece and settings

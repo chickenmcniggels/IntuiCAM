@@ -85,6 +85,11 @@ public:
      */
     bool isChuckNonSelectable() const;
 
+    /**
+     * @brief Redisplay the chuck (used after clearing the context)
+     */
+    void redisplayChuck();
+
 signals:
     /**
      * @brief Emitted when chuck is successfully loaded

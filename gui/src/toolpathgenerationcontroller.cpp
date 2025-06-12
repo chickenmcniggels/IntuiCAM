@@ -4,6 +4,11 @@
 #include "../include/toolpathtimelinewidget.h"
 #include "../include/operationparameterdialog.h"
 #include "../include/workspacecontroller.h"
+#include "../include/workpiecemanager.h"
+#include "../include/rawmaterialmanager.h"
+#include <gp_XYZ.hxx>
+#include <gp_Trsf.hxx>
+#include <TopoDS_Shape.hxx>
 
 #include <QDebug>
 #include <QProgressBar>
@@ -17,6 +22,7 @@
 #include <IntuiCAM/Toolpath/Operations.h>
 #include <IntuiCAM/Toolpath/Types.h>
 #include <IntuiCAM/Geometry/Types.h>
+#include <IntuiCAM/Toolpath/LatheProfile.h>
 
 // Forward declaration of SimplePart
 namespace IntuiCAM {
@@ -62,6 +68,9 @@ public:
 };
 }
 }
+
+// Forward declaration of conversion helper
+static IntuiCAM::Geometry::Matrix4x4 toMatrix4x4(const gp_Trsf& trsf);
 
 // Static configuration
 const QStringList IntuiCAM::GUI::ToolpathGenerationController::DEFAULT_OPERATION_ORDER = {
@@ -126,6 +135,13 @@ void IntuiCAM::GUI::ToolpathGenerationController::initialize(Handle(AIS_Interact
 void IntuiCAM::GUI::ToolpathGenerationController::setWorkspaceController(WorkspaceController* workspaceController)
 {
     m_workspaceController = workspaceController;
+    if (workspaceController) {
+        m_workpieceManager = workspaceController->getWorkpieceManager();
+        m_rawMaterialManager = workspaceController->getRawMaterialManager();
+    } else {
+        m_workpieceManager = nullptr;
+        m_rawMaterialManager = nullptr;
+    }
 }
 
 void IntuiCAM::GUI::ToolpathGenerationController::generateToolpaths(const GenerationRequest& request)
@@ -428,6 +444,18 @@ bool IntuiCAM::GUI::ToolpathGenerationController::generateOperationToolpaths()
             if (operationName == "Roughing") {
                 auto roughingOp = std::make_unique<IntuiCAM::Toolpath::RoughingOperation>(
                     operationName.toStdString(), tool);
+                
+                // Show lathe profile overlay for manual single roughing generation
+                if (m_toolpathManager && m_workspaceController) {
+                    if (m_workspaceController->hasPartShape()) {
+                        TopoDS_Shape partShape = m_workspaceController->getPartShape();
+                        IntuiCAM::Geometry::OCCTPart part(&partShape);
+                        auto profile = IntuiCAM::Toolpath::LatheProfile::extract(part, 150);
+                        if (!profile.empty()) {
+                            m_toolpathManager->displayLatheProfile(profile, "PartProfileOverlay");
+                        }
+                    }
+                }
                 
                 // Set roughing parameters
                 IntuiCAM::Toolpath::RoughingOperation::Parameters params;
@@ -746,6 +774,18 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
         auto roughingOp = std::make_unique<IntuiCAM::Toolpath::RoughingOperation>(
             operationName.toStdString(), tool);
         
+        // Show lathe profile overlay for manual single roughing generation
+        if (m_toolpathManager && m_workspaceController) {
+            if (m_workspaceController->hasPartShape()) {
+                TopoDS_Shape partShape = m_workspaceController->getPartShape();
+                IntuiCAM::Geometry::OCCTPart part(&partShape);
+                auto profile = IntuiCAM::Toolpath::LatheProfile::extract(part, 150);
+                if (!profile.empty()) {
+                    m_toolpathManager->displayLatheProfile(profile, "PartProfileOverlay");
+                }
+            }
+        }
+        
         IntuiCAM::Toolpath::RoughingOperation::Parameters params;
         params.startDiameter = 50.0;  // mm
         params.endDiameter = 20.0;    // mm
@@ -830,38 +870,35 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
         return;
     }
     
-    // Convert tool name to QString
-    QString toolName = QString::fromStdString(tool->getName());
-    
-    // Use the display function that includes transformation
-    displayGeneratedToolpath(operationName, toolName, std::move(toolpath));
-}
-
-void IntuiCAM::GUI::ToolpathGenerationController::displayGeneratedToolpath(
-    const QString& operationName,
-    const QString& toolName,
-    std::unique_ptr<IntuiCAM::Toolpath::Toolpath> toolpath)
-{
-    if (!m_toolpathManager) {
-        qDebug() << "Cannot display toolpath: Toolpath manager not initialized";
-        return;
+    // Apply current workpiece transformation so Z-orientation is respected
+    if (m_workpieceManager) {
+        gp_Trsf wpTrsf = m_workpieceManager->getCurrentTransformation();
+        IntuiCAM::Geometry::Matrix4x4 mat = toMatrix4x4(wpTrsf);
+        toolpath->applyTransform(mat);
     }
-    
-    // Display the toolpath
+    // (Raw material orientation could be applied similarly if required)
+
+    // If a toolpath with the same name already exists, remove it first (to avoid tile accumulation)
+    const bool existedBefore = (m_toolpaths.find(operationName) != m_toolpaths.end());
+    if (existedBefore) {
+        m_toolpathManager->removeToolpath(operationName);
+    }
+
     bool success = m_toolpathManager->displayToolpath(*toolpath, operationName);
-    
+
     if (success) {
         qDebug() << "Successfully displayed toolpath for operation:" << operationName;
-        
-        // Explicitly ensure the workpiece transformation is applied to all toolpaths
-        // This handles cases where the workpiece position might have changed
-        m_toolpathManager->applyWorkpieceTransformationToToolpaths();
-        
-        // Store the generated toolpath
+
+        // Align with current workpiece transform (ToolpathManager already does this for new display)
+
+        // Store / replace generated toolpath in map
         m_toolpaths[operationName] = std::move(toolpath);
-        
-        // Emit toolpath added signal
-        emit toolpathAdded(operationName, getOperationTypeString(operationName), toolName);
+
+        if (existedBefore) {
+            emit toolpathRegenerated(operationName, getOperationTypeString(operationName));
+        } else {
+            emit toolpathAdded(operationName, getOperationTypeString(operationName), QString::fromStdString(tool->getName()));
+        }
     } else {
         qDebug() << "Failed to display toolpath for operation:" << operationName;
     }
@@ -1307,14 +1344,93 @@ void IntuiCAM::GUI::ToolpathGenerationController::regenerateToolpath(
         return;
     }
     
+    // Apply current workpiece transformation so Z-orientation is respected
+    if (m_workpieceManager) {
+        gp_Trsf wpTrsf = m_workpieceManager->getCurrentTransformation();
+        IntuiCAM::Geometry::Matrix4x4 mat = toMatrix4x4(wpTrsf);
+        toolpath->applyTransform(mat);
+    }
+    // (Raw material orientation could be applied similarly if required)
+
     logMessage(QString("Toolpath generation successful: %1 points").arg(toolpath->getPointCount()));
     
     // Get the tool name and convert to QString
     QString toolName = QString::fromStdString(tool->getName());
     
-    // Display the generated toolpath
+    // Display the toolpath
     displayGeneratedToolpath(operationName, toolName, std::move(toolpath));
     
     // Emit signal for toolpath regeneration
     emit toolpathRegenerated(operationName, operationType);
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::regenerateAllToolpaths()
+{
+    if (m_generatedToolpaths.isEmpty()) {
+        return; // Nothing to do
+    }
+
+    for (auto it = m_generatedToolpaths.begin(); it != m_generatedToolpaths.end(); ++it) {
+        const QString& name = it.key();
+        QString type = getOperationTypeString(name);
+        regenerateToolpath(name, type);
+    }
+}
+
+// Implementation of private helper to display a generated toolpath and manage timeline bookkeeping
+void IntuiCAM::GUI::ToolpathGenerationController::displayGeneratedToolpath(
+    const QString& operationName,
+    const QString& toolName,
+    std::unique_ptr<IntuiCAM::Toolpath::Toolpath> toolpath)
+{
+    if (!m_toolpathManager || !toolpath) {
+        qWarning() << "displayGeneratedToolpath: invalid state (manager or toolpath is null)";
+        return;
+    }
+
+    // Check if a toolpath with that name already exists so we can replace it instead of adding duplicates
+    const bool existedBefore = (m_toolpaths.find(operationName) != m_toolpaths.end());
+    if (existedBefore) {
+        m_toolpathManager->removeToolpath(operationName);
+    }
+
+    // Visualize the path
+    bool success = m_toolpathManager->displayToolpath(*toolpath, operationName);
+    if (!success) {
+        qWarning() << "displayGeneratedToolpath: failed to display" << operationName;
+        return;
+    }
+
+    // Store (or replace) the path in local container
+    m_toolpaths[operationName] = std::move(toolpath);
+
+    // Emit the appropriate signal so UI timeline stays in sync
+    if (existedBefore) {
+        emit toolpathRegenerated(operationName, getOperationTypeString(operationName));
+    } else {
+        emit toolpathAdded(operationName, getOperationTypeString(operationName), toolName);
+    }
+}
+
+// === Helper: OCCT gp_Trsf -> Geometry::Matrix4x4 ===
+static IntuiCAM::Geometry::Matrix4x4 toMatrix4x4(const gp_Trsf& trsf)
+{
+    using IntuiCAM::Geometry::Matrix4x4;
+    Matrix4x4 mat = Matrix4x4::identity();
+
+    // Fill rotation + scaling
+    for (int r = 1; r <= 3; ++r) {
+        for (int c = 1; c <= 3; ++c) {
+            mat.data[(r - 1) * 4 + (c - 1)] = trsf.Value(r, c);
+        }
+    }
+
+    // Translation part (OCCT uses gp_XYZ)
+    gp_XYZ t = trsf.TranslationPart();
+    mat.data[3]  = t.X();
+    mat.data[7]  = t.Y();
+    mat.data[11] = t.Z();
+
+    // Last row already identity (0 0 0 1)
+    return mat;
 } 

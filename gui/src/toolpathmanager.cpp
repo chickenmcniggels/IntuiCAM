@@ -503,4 +503,71 @@ gp_Trsf ToolpathManager::getWorkpieceTransformation() const
     qDebug() << "  - Has axis alignment:" << (m_workpieceManager->hasAxisAlignmentTransformation() ? "Yes" : "No");
     
     return transform;
+}
+
+// === New method: displayLatheProfile =======================================
+bool ToolpathManager::displayLatheProfile(const std::vector<IntuiCAM::Geometry::Point2D>& profile,
+                                          const QString& name)
+{
+    if (m_context.IsNull()) {
+        emit errorOccurred("Cannot display profile: AIS context not initialized");
+        return false;
+    }
+
+    if (profile.size() < 2) {
+        emit errorOccurred("Profile contains insufficient points");
+        return false;
+    }
+
+    // Remove previous overlay with same name
+    if (m_displayedToolpaths.contains(name)) {
+        removeToolpath(name);
+    }
+
+    // Build wire from consecutive points (assume profile sorted by Z)
+    BRepBuilderAPI_MakeWire wireBuilder;
+    for (size_t i = 0; i < profile.size() - 1; ++i) {
+        const auto& p1 = profile[i];
+        const auto& p2 = profile[i + 1];
+        gp_Pnt gp1(p1.x, 0.0, p1.z);
+        gp_Pnt gp2(p2.x, 0.0, p2.z);
+        if (gp1.Distance(gp2) < 1e-6) continue;
+        BRepBuilderAPI_MakeEdge edge(gp1, gp2);
+        if (edge.IsDone()) {
+            wireBuilder.Add(edge.Edge());
+        }
+    }
+
+    if (!wireBuilder.IsDone()) {
+        emit errorOccurred("Failed to build profile wire");
+        return false;
+    }
+
+    TopoDS_Shape profileShape = wireBuilder.Wire();
+    m_originalToolpathShapes[name] = profileShape; // reuse maps for easy transform management
+
+    // Transform into world space according to workpiece
+    gp_Trsf trsf = getWorkpieceTransformation();
+    TopoDS_Shape worldShape = profileShape;
+    if (trsf.Form() != gp_Identity) {
+        BRepBuilderAPI_Transform transformer(profileShape, trsf, Standard_True);
+        if (transformer.IsDone()) {
+            worldShape = transformer.Shape();
+        }
+    }
+
+    Handle(AIS_Shape) profileAIS = new AIS_Shape(worldShape);
+
+    // Custom display properties: magenta, thin line
+    Quantity_Color color(1.0, 0.0, 1.0, Quantity_TOC_RGB);
+    Handle(Prs3d_LineAspect) aspect = new Prs3d_LineAspect(color, Aspect_TOL_SOLID, 1.0);
+    profileAIS->Attributes()->SetWireAspect(aspect);
+    profileAIS->SetDisplayMode(AIS_WireFrame);
+
+    m_context->Display(profileAIS, Standard_False);
+    m_displayedToolpaths[name] = profileAIS;
+    m_context->UpdateCurrentViewer();
+
+    emit toolpathDisplayed(name);
+    return true;
 } 

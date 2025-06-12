@@ -2,6 +2,8 @@
 
 #include <QDebug>
 #include <cmath>
+#include <limits>
+#include <algorithm>
 
 // OpenCASCADE includes
 #include <TopExp_Explorer.hxx>
@@ -429,6 +431,75 @@ gp_Trsf WorkpieceManager::getCurrentTransformation() const
     return transform;
 }
 
+// === Bounding-box helper implementations ===
+
+double WorkpieceManager::getLocalMinZ(const TopoDS_Shape& shape) const
+{
+    if (shape.IsNull()) {
+        return 0.0;
+    }
+
+    Bnd_Box bbox;
+    BRepBndLib::Add(shape, bbox);
+    if (bbox.IsVoid()) {
+        return 0.0;
+    }
+
+    double xmin, ymin, zmin, xmax, ymax, zmax;
+    bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+    return zmin;
+}
+
+/**
+ * The currentMinZ() method evaluates the minimum global Z coordinate of the loaded
+ * workpiece(s) **after** applying the currently active transformation stack
+ * (axis-alignment, flip and translation).  This is required so that we can move
+ * the part such that its minimum Z coincides with the requested distance-to-chuck
+ * irrespective of its previous position or orientation.
+ */
+double WorkpieceManager::currentMinZ() const
+{
+    if (m_workpieces.isEmpty()) {
+        return 0.0;
+    }
+
+    gp_Trsf transform = getCurrentTransformation();
+
+    double globalMinZ = std::numeric_limits<double>::max();
+
+    for (const Handle(AIS_Shape)& aisShape : m_workpieces) {
+        if (aisShape.IsNull()) {
+            continue;
+        }
+        const TopoDS_Shape& shp = aisShape->Shape();
+        Bnd_Box bbox;
+        BRepBndLib::Add(shp, bbox);
+        if (bbox.IsVoid()) {
+            continue;
+        }
+        double xmin, ymin, zmin, xmax, ymax, zmax;
+        bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+
+        gp_Pnt corners[8] = {
+            gp_Pnt(xmin, ymin, zmin), gp_Pnt(xmax, ymin, zmin),
+            gp_Pnt(xmin, ymax, zmin), gp_Pnt(xmax, ymax, zmin),
+            gp_Pnt(xmin, ymin, zmax), gp_Pnt(xmax, ymin, zmax),
+            gp_Pnt(xmin, ymax, zmax), gp_Pnt(xmax, ymax, zmax)
+        };
+
+        for (const gp_Pnt& corner : corners) {
+            gp_Pnt c = corner;
+            c.Transform(transform);
+            globalMinZ = std::min(globalMinZ, c.Z());
+        }
+    }
+
+    if (globalMinZ == std::numeric_limits<double>::max()) {
+        return 0.0;
+    }
+    return globalMinZ;
+}
+
 bool WorkpieceManager::positionWorkpieceAlongAxis(double distance)
 {
     if (m_context.IsNull() || m_workpieces.isEmpty()) {
@@ -437,13 +508,17 @@ bool WorkpieceManager::positionWorkpieceAlongAxis(double distance)
     }
 
     try {
-        // Update position offset
-        m_positionOffset = distance;
-        
-        // Get the complete current transformation (position + flip)
+        // Compute current minimum Z of the geometry (after current transform)
+        double currentMin = currentMinZ();
+        double delta = distance - currentMin; // positive if we need to move part further away from chuck
+
+        // Accumulate into the global position offset so that subsequent calls are relative-aware
+        m_positionOffset += delta;
+
+        // Build updated transformation stack with new position
         gp_Trsf newTransformation = getCurrentTransformation();
 
-        // Apply complete transformation to all workpieces
+        // Apply to all workpieces
         for (Handle(AIS_Shape) workpiece : m_workpieces) {
             if (!workpiece.IsNull()) {
                 workpiece->SetLocalTransformation(newTransformation);
@@ -452,12 +527,12 @@ bool WorkpieceManager::positionWorkpieceAlongAxis(double distance)
         }
 
         m_context->UpdateCurrentViewer();
-        
-        // Notify that workpiece transformation has changed
+
+        // Notify listeners
         emit workpieceTransformed();
-        
-        qDebug() << "WorkpieceManager: Workpiece positioned at offset" << distance << "mm"
-                 << (m_isFlipped ? " (flipped)" : " (normal)");
+
+        qDebug() << "WorkpieceManager: Re-positioned workpiece so that min-Z ==" << distance
+                 << "mm (Δ=" << delta << "mm, accumulated offset=" << m_positionOffset << "mm)";
         return true;
 
     } catch (const std::exception& e) {

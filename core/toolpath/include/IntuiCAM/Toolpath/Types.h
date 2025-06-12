@@ -113,6 +113,9 @@ public:
     // Optimization
     void optimizeToolpath();
     void removeRedundantMoves();
+    
+    // Apply a 4x4 transform to every movement (e.g., part positioning in world space)
+    void applyTransform(const Geometry::Matrix4x4& mat);
 };
 
 // Base class for machining operations

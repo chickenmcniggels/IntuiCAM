@@ -49,22 +49,35 @@ std::unique_ptr<Toolpath> RoughingOperation::generateToolpath(const Geometry::Pa
         params_.startDiameter = maxRadius * 2.0 + 5.0; // Add more clearance for safety
     }
     
+    // Effective allowance includes nose radius
+    const double effectiveAllowance = params_.stockAllowance + tool_->getGeometry().tipRadius;
+
     if (params_.endDiameter > minRadius * 2.0) {
-        params_.endDiameter = std::max(minRadius * 2.0 - params_.stockAllowance * 2.0, 1.0);
+        params_.endDiameter = std::max(minRadius * 2.0 - effectiveAllowance * 2.0, 1.0);
     }
     
     // Adjust Z ranges to cover the entire part with safe clearance
     params_.startZ = std::max(params_.startZ, minZ - 5.0);
     params_.endZ = std::min(params_.endZ, maxZ + 5.0);
     
-    // Get tool parameters
-    double feedRate = tool_->getCuttingParameters().feedRate;
-    double rapidFeedRate = tool_->getCuttingParameters().rapidFeedRate;
-    
-    // Calculate the number of radial roughing passes
+    // -----------------------------------------------------------------
+    // Tool data
+    // -----------------------------------------------------------------
+    const auto& toolGeom       = tool_->getGeometry();
+    const double tipRadius     = toolGeom.tipRadius;      // insert nose radius (mm)
+
+    const auto& cuttingParams  = tool_->getCuttingParameters();
+    double        feedRate     = cuttingParams.feedRate;
+    double        rapidFeedRate= cuttingParams.rapidFeedRate;
+
+    // -----------------------------------------------------------------
+    // Compute radial range & number of passes
+    // -----------------------------------------------------------------
     double radialDepth = params_.depthOfCut;
-    double radialRange = (params_.startDiameter - params_.endDiameter) / 2.0 - params_.stockAllowance;
-    int numPasses = std::ceil(radialRange / radialDepth);
+    double radialRange = (params_.startDiameter - params_.endDiameter) / 2.0 - effectiveAllowance;
+    if (radialRange < 0.0) radialRange = 0.0;
+
+    int numPasses = (radialDepth > 0.0) ? std::ceil(radialRange / radialDepth) : 0;
     
     // Adjust radial depth to get even passes
     if (numPasses > 0) {
@@ -83,7 +96,7 @@ std::unique_ptr<Toolpath> RoughingOperation::generateToolpath(const Geometry::Pa
         // Calculate target diameter for this pass
         double targetDiameter = std::max(
             params_.startDiameter - (pass + 1) * radialDepth * 2.0,
-            params_.endDiameter + params_.stockAllowance * 2.0
+            params_.endDiameter + effectiveAllowance * 2.0
         );
         
         double currentRadius = currentDiameter / 2.0;
@@ -108,7 +121,7 @@ std::unique_ptr<Toolpath> RoughingOperation::generateToolpath(const Geometry::Pa
             double z = params_.startZ + zIdx * zStep;
             
             // Get radius at this Z from profile
-            double profileRadiusAtZ = getProfileRadiusAtZ(profile, z) + params_.stockAllowance;
+            double profileRadiusAtZ = getProfileRadiusAtZ(profile, z) + effectiveAllowance;
             
             // Calculate cutting radius for this pass (constrained by current pass depth)
             double cuttingRadius = std::min(currentRadius, std::max(targetRadius, profileRadiusAtZ));

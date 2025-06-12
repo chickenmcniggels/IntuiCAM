@@ -98,6 +98,13 @@ public:
     QString getToolpathName(int index) const;
 
     /**
+     * @brief Check if a toolpath is currently visible/enabled
+     * @param index The index of the toolpath to check
+     * @return True if the toolpath is visible, false otherwise
+     */
+    bool isToolpathVisible(int index) const { return index >= 0 && index < m_toolpathFrames.size(); }
+
+    /**
      * @brief Set the current active toolpath
      * @param index The index of the toolpath to set as active
      */

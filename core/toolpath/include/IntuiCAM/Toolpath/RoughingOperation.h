@@ -1,6 +1,7 @@
 #pragma once
 
 #include <IntuiCAM/Toolpath/Types.h>
+#include <IntuiCAM/Geometry/Types.h>
 #include <vector>
 
 // OpenCASCADE headers
@@ -16,18 +17,6 @@
 #include <GeomAbs_CurveType.hxx>
 
 namespace IntuiCAM {
-namespace Geometry {
-    struct Point2D {
-        double x, z;
-        
-        Point2D() : x(0), z(0) {}
-        Point2D(double x_, double z_) : x(x_), z(z_) {}
-    };
-    
-    // Forward declare OCCTPart for dynamic_cast
-    class OCCTPart;
-}
-
 namespace Toolpath {
 
 // Roughing operation for material removal

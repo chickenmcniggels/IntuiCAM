@@ -179,6 +179,19 @@ public:
      */
     bool hasAxisAlignmentTransformation() const { return m_hasAxisAlignment; }
 
+    /**
+     * @brief Get the minimum Z value of the supplied shape in its local coordinate frame
+     * @param shape Input shape
+     * @return Minimum Z coordinate found in the shape (local coordinates)
+     */
+    double getLocalMinZ(const TopoDS_Shape& shape) const;
+
+    /**
+     * @brief Get the current global minimum Z of the loaded workpiece (after all active transforms)
+     * @return Minimum global Z coordinate across all workpieces. Returns 0.0 if no workpiece present.
+     */
+    double currentMinZ() const;
+
 signals:
     /**
      * @brief Emitted when a cylinder is detected in a workpiece

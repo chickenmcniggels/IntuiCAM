@@ -2,7 +2,7 @@
 
 ## Overview
 
-IntuiCAM's 3D viewer now supports two distinct viewing modes that can be seamlessly switched without loading a second viewer. This feature is particularly useful for CNC lathe operations where a traditional 2D XZ plane view is often preferred.
+IntuiCAM's 3D viewer supports two distinct viewing modes that can be seamlessly switched without loading a second viewer. This feature is particularly useful for CNC lathe operations where a traditional 2D XZ plane view is often preferred.
 
 ## Viewing Modes
 
@@ -14,27 +14,36 @@ IntuiCAM's 3D viewer now supports two distinct viewing modes that can be seamles
   - Right Click + Drag: Zoom in/out
   - Mouse Wheel: Zoom in/out
 - **Features**:
-  - Perspective projection
+  - Perspective projection for realistic 3D visualization
   - Coordinate trihedron display (bottom-left corner)
   - Full 3D navigation capabilities
-  - Camera state preservation when switching away and back
+  - Camera state preservation when switching views
 
-### Lathe XZ Mode
-- **Description**: Locked to XZ plane view following standard lathe coordinate system
-- **Coordinate System**:
-  - X-axis: Increases from top to bottom (vertical axis)
-  - Z-axis: Increases from right to left (horizontal axis)
-  - Y-axis: Depth (camera looks from negative Y toward origin)
+### XZ Plane (Lathe) Mode
+- **Description**: 2D orthographic view representing the standard lathe coordinate system
 - **Mouse Controls**:
-  - Left Click + Drag: Pan the view (rotation disabled)
-  - Middle Click + Drag: Pan the view
+  - Left Click + Drag: Pan the view
   - Right Click + Drag: Zoom in/out
   - Mouse Wheel: Zoom in/out
 - **Features**:
-  - Orthographic projection for technical drawing accuracy
-  - No rotation allowed (maintains XZ plane orientation)
-  - Coordinate trihedron hidden (not relevant for 2D view)
-  - Optimized for lathe operation visualization
+  - True orthographic projection for accurate dimensional representation
+  - Proper lathe coordinate system (X+ down, Z+ left)
+  - Reference grid with adjustable spacing (default 10mm)
+  - Highlighted X and Z axes (red for Z, green for X)
+  - Grid spacing indicators at regular intervals
+  - Enhanced trihedron oriented to match lathe conventions
+
+## Lathe Coordinate System
+
+The XZ plane view implements the standard lathe coordinate system:
+- Z-axis runs horizontally, with positive values increasing from right to left
+- X-axis runs vertically, with positive values increasing from top to bottom
+- The view is observed from the negative Y direction (looking toward the origin)
+
+This convention matches ISO standard G-code programming for lathes, where:
+- Z coordinates typically represent the distance from the chuck/spindle
+- X coordinates represent the diameter distance from the centerline
+- Tool movements follow the same coordinate system for intuitive programming
 
 ## Switching Between Modes
 
@@ -60,16 +69,40 @@ ViewMode currentMode = viewer->getViewMode();
 
 ## Implementation Details
 
+### Projection Type
+- 3D Mode: Uses Graphic3d_Camera::Projection_Perspective for realistic depth perception
+- XZ Mode: Uses Graphic3d_Camera::Projection_Orthographic for accurate dimensional representation
+
+### Grid Display
+The XZ view includes a reference grid that helps with:
+- Dimensional estimation
+- Alignment reference
+- Visual cues for scale and orientation
+
+The grid can be customized with different spacing values depending on the workpiece size.
+
+### State Preservation
+When switching between modes, the 3D camera state is preserved, allowing users to:
+1. Switch to XZ view for precise measurement and toolpath programming
+2. Return to the exact same 3D view without losing context
+
 ### Camera Management
 - **State Preservation**: When switching away from 3D mode, the camera state (position, orientation, scale) is automatically stored and restored when returning to 3D mode
 - **Smooth Transitions**: Camera changes are applied smoothly with proper view fitting
 - **Mode-Specific Settings**: Each mode has optimized camera settings for its intended use
 
 ### OpenCASCADE Integration
-- Uses OpenCASCADE's `V3d_View` projection settings
-- Leverages `Graphic3d_Camera::Projection_Perspective` for 3D mode
-- Uses `Graphic3d_Camera::Projection_Orthographic` for XZ mode
+- Uses OpenCASCADE's `V3d_View` camera settings
+- Explicitly sets `Graphic3d_Camera::Projection_Perspective` for 3D mode
+- Explicitly sets `Graphic3d_Camera::Projection_Orthographic` for XZ mode
 - Proper camera positioning and orientation for each mode
+
+### Lathe Grid System
+- 10mm grid spacing for precise measurement reference
+- Extends 200mm in each direction from origin
+- Highlighted axes (X in blue, Z in red) for clear orientation
+- Automatically displayed in lathe mode, hidden in 3D mode
+- Proper memory management with cleanup on widget destruction
 
 ### Event Handling
 - Mouse interaction behavior changes based on current mode
@@ -82,16 +115,19 @@ ViewMode currentMode = viewer->getViewMode();
 - Status bar messages indicate current mode
 - Output log provides detailed mode information and usage hints
 - Dynamic menu text updates based on current mode
+- Reference grid for precise positioning and measurement
 
 ### Usage Guidance
 When switching to Lathe XZ mode, users receive helpful information:
 - "View mode: Lathe XZ - X increases top to bottom, Z right to left"
 - "Use left click to pan, wheel to zoom. Rotation disabled in this mode."
+- "Grid with 10mm spacing shown for reference"
 
 ### Seamless Operation
 - No interruption to workflow when switching modes
 - All displayed objects remain visible and properly oriented
 - Consistent selection and interaction behavior
+- Proper projection mode automatically applied
 
 ## Technical Architecture
 
@@ -114,6 +150,10 @@ class OpenGL3DWidget {
     void store3DCameraState();
     void restore3DCameraState();
     
+    // Grid management
+    void createLatheGrid(double spacing = 10.0, double extent = 200.0);
+    void removeLatheGrid();
+    
 signals:
     void viewModeChanged(ViewMode mode);
 };
@@ -133,20 +173,22 @@ signals:
 ### Performance Considerations
 - Mode switching is lightweight (no geometry reloading)
 - Camera state storage has minimal memory overhead
-- Orthographic projection in XZ mode may improve performance for complex scenes
+- True orthographic projection in XZ mode improves precision for technical drawings
 
 ### Development Guidelines
 - Mode-specific behavior should be clearly documented
 - Mouse interaction changes should be intuitive
 - Camera state management should be robust and error-free
+- Grid display should maintain proper OpenCASCADE resource management
 
 ## Future Enhancements
 
 ### Potential Extensions
 1. **Additional View Modes**: YZ plane, custom oriented planes
 2. **Mode-Specific Tools**: Measurement tools optimized for each mode
-3. **Grid Overlays**: Technical drawing grids for XZ mode
+3. **Customizable Grid**: User-configurable grid spacing and color
 4. **Saved Views**: Named camera positions for quick access
+5. **Position Markers**: Origin and machine coordinate system indicators
 
 ### API Extensions
 ```cpp
@@ -154,6 +196,8 @@ signals:
 void setCustomViewPlane(const gp_Pln& plane);
 void saveNamedView(const QString& name);
 void restoreNamedView(const QString& name);
+void setGridSpacing(double spacing);
+void setGridVisible(bool visible);
 ```
 
-This documentation covers the comprehensive view mode system that provides both traditional 3D viewing and specialized lathe XZ plane visualization in a single, seamless interface. 
+This documentation covers the comprehensive view mode system that provides both traditional 3D viewing and specialized lathe XZ plane visualization in a single, seamless interface with precise orthographic projection and measurement grid. 

@@ -23,6 +23,7 @@
 
 // Core includes
 #include <IntuiCAM/Toolpath/Types.h>
+#include <IntuiCAM/Geometry/Types.h>
 
 // Forward declarations
 class WorkpieceManager;
@@ -133,6 +134,10 @@ public:
      * relative to the transformed workpiece
      */
     void applyWorkpieceTransformationToToolpaths();
+
+    // Display a 2-D lathe profile (radius,Z) as a wireframe overlay.
+    bool displayLatheProfile(const std::vector<IntuiCAM::Geometry::Point2D>& profile,
+                             const QString& name);
 
 signals:
     /**

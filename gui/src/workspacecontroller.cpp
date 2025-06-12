@@ -223,13 +223,16 @@ void WorkspaceController::executeWorkpieceWorkflow(const TopoDS_Shape& workpiece
         qDebug() << "WorkspaceController: Workpiece aligned with chuck centerline";
     }
     
-    // Step 5: Calculate optimal raw material size
+    // Step 5: Position workpiece at requested distance-to-chuck (snap min-Z)
+    m_workpieceManager->positionWorkpieceAlongAxis(m_lastDistanceToChuck);
+    
+    // Step 6: Calculate optimal raw material size
     double rawMaterialDiameter = m_rawMaterialManager->getNextStandardDiameter(detectedDiameter);
     
-    // Step 6: Create and display raw material that encompasses the workpiece
+    // Step 7: Create and display raw material that encompasses the workpiece
     m_rawMaterialManager->displayRawMaterialForWorkpiece(rawMaterialDiameter, workpiece, alignmentAxis);
     
-    // Step 7: Emit workflow completion signal
+    // Step 8: Emit workflow completion signal
     emit workpieceWorkflowCompleted(detectedDiameter, rawMaterialDiameter);
     
     qDebug() << "WorkspaceController: Workpiece workflow completed successfully"
@@ -405,6 +408,8 @@ bool WorkspaceController::updateDistanceToChuck(double distance)
         bool success = m_workpieceManager->positionWorkpieceAlongAxis(distance);
         
         if (success) {
+            // Store the latest distance for future automatic re-application (e.g., after flip)
+            m_lastDistanceToChuck = distance;
             qDebug() << "WorkspaceController: Workpiece positioned at" << distance << "mm from chuck";
             
             // If raw material is loaded, update it to match workpiece position
@@ -448,6 +453,9 @@ bool WorkspaceController::flipWorkpieceOrientation(bool flipped)
         bool flipSuccess = m_workpieceManager->flipWorkpieceOrientation(flipped);
         
         if (flipSuccess) {
+            // Re-snap workpiece to stored distance-to-chuck after flip
+            m_workpieceManager->positionWorkpieceAlongAxis(m_lastDistanceToChuck);
+            
             qDebug() << "WorkspaceController: Workpiece orientation" << (flipped ? "flipped" : "restored") << "successfully, now recalculating raw material";
             // Recalculate raw material to match the new workpiece orientation
             bool rawMaterialSuccess = recalculateRawMaterial();
@@ -764,6 +772,45 @@ TopoDS_Shape WorkspaceController::getPartShape() const
     
     // Otherwise return a null shape
     return TopoDS_Shape();
+}
+
+// ================================================================
+//  Redisplay helpers
+// ================================================================
+
+void WorkspaceController::redisplayAll()
+{
+    if (!m_initialized || m_context.IsNull()) {
+        return;
+    }
+
+    // Chuck
+    if (m_chuckManager && m_chuckManager->isChuckLoaded()) {
+        m_chuckManager->redisplayChuck();
+    }
+
+    // Workpieces
+    if (m_workpieceManager) {
+        QVector<Handle(AIS_Shape)> wp = m_workpieceManager->getWorkpieces();
+        gp_Trsf trsf = m_workpieceManager->getCurrentTransformation();
+        for (const Handle(AIS_Shape)& ais : wp) {
+            if (!ais.IsNull()) {
+                ais->SetLocalTransformation(trsf);
+                m_context->Display(ais, Standard_False);
+            }
+        }
+    }
+
+    // Raw material
+    if (m_rawMaterialManager && m_rawMaterialManager->isRawMaterialDisplayed()) {
+        Handle(AIS_Shape) rmAIS = m_rawMaterialManager->getCurrentRawMaterialAIS();
+        if (!rmAIS.IsNull()) {
+            m_context->Display(rmAIS, Standard_False);
+        }
+    }
+
+    // Force viewer redraw
+    m_context->UpdateCurrentViewer();
 }
 
  

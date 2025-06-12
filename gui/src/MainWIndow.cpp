@@ -12,6 +12,7 @@
 #include "toolmanager.h"
 #include "toolpathgenerationcontroller.h"
 #include "rawmaterialmanager.h"  // For RawMaterialManager signals
+#include "chuckmanager.h"
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -41,6 +42,7 @@
 #include <QFrame>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QCheckBox>
 
 // OpenCASCADE includes for gp_Ax1
 #include <gp_Ax1.hxx>
@@ -90,6 +92,8 @@ MainWindow::MainWindow(QWidget *parent)
     , m_preferencesAction(nullptr)
     , m_toggleViewModeAction(nullptr)
     , m_viewModeOverlayButton(nullptr)
+    , m_showChuckCheckBox(nullptr)
+    , m_defaultChuckFilePath("C:/Users/nikla/Downloads/three_jaw_chuck.step")
 {
     // Create business logic components
     m_workspaceController = new WorkspaceController(this);
@@ -379,6 +383,11 @@ void MainWindow::setupConnections()
         
         connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::errorOccurred,
                 this, &MainWindow::handleToolpathGenerationError);
+    }
+    
+    if (m_workspaceController && m_toolpathGenerationController) {
+        connect(m_workspaceController->getWorkpieceManager(), &WorkpieceManager::workpieceTransformed,
+                m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::regenerateAllToolpaths);
     }
 }
 
@@ -1178,6 +1187,11 @@ void MainWindow::createViewModeOverlayButton()
     m_viewModeOverlayButton->setMaximumWidth(150);
     m_viewModeOverlayButton->setMaximumHeight(30);
     
+    // Create the checkbox to toggle chuck visibility
+    m_showChuckCheckBox = new QCheckBox("Show Chuck", this);
+    m_showChuckCheckBox->setChecked(true);
+    m_showChuckCheckBox->setMaximumHeight(30);
+    
     // Style the button to be semi-transparent and visually appealing
     m_viewModeOverlayButton->setStyleSheet(
         "QPushButton {"
@@ -1200,8 +1214,29 @@ void MainWindow::createViewModeOverlayButton()
         "}"
     );
     
+    // Style the checkbox similarly (background only, keep default indicator)
+    m_showChuckCheckBox->setStyleSheet(
+        "QCheckBox {"
+        "  background-color: rgba(240, 240, 240, 220);"
+        "  border: 2px solid #666666;"
+        "  border-radius: 6px;"
+        "  padding: 4px 8px;"
+        "  font-size: 11px;"
+        "  font-weight: bold;"
+        "  color: #333333;"
+        "}"
+        "QCheckBox:hover {"
+        "  background-color: rgba(255, 255, 255, 240);"
+        "  border: 2px solid #444444;"
+        "  color: #222222;"
+        "}"
+    );
+    
     // Connect the button to the toggle function
     connect(m_viewModeOverlayButton, &QPushButton::clicked, this, &MainWindow::toggleViewMode);
+    
+    // Connect checkbox toggled signal
+    connect(m_showChuckCheckBox, &QCheckBox::toggled, this, &MainWindow::handleShowChuckToggled);
     
     // Connect to view mode changes to update button text
     connect(m_3dViewer, &OpenGL3DWidget::viewModeChanged, this, &MainWindow::updateViewModeOverlayButton);
@@ -1209,9 +1244,11 @@ void MainWindow::createViewModeOverlayButton()
     // Initially position the button
     positionViewModeOverlayButton();
     
-    // Show the button - it will always be visible now
+    // Show the controls - they will always be visible on the setup tab
     m_viewModeOverlayButton->show();
     m_viewModeOverlayButton->raise();
+    m_showChuckCheckBox->show();
+    m_showChuckCheckBox->raise();
     
     qDebug() << "View mode overlay button created in MainWindow";
 }
@@ -1241,33 +1278,50 @@ void MainWindow::positionViewModeOverlayButton()
         return;
     }
     
-    // Only show the button when we're on the Setup tab (where the 3D viewer is)
+    // Only show the controls when we're on the Setup tab (where the 3D viewer is)
     bool onSetupTab = (m_tabWidget && m_tabWidget->currentIndex() == 1);
     if (!onSetupTab) {
         m_viewModeOverlayButton->hide();
+        if (m_showChuckCheckBox) m_showChuckCheckBox->hide();
         return;
     }
-    
+
     m_viewModeOverlayButton->show();
-    
+    if (m_showChuckCheckBox) m_showChuckCheckBox->show();
+
     // Calculate position relative to the 3D viewer widget
     QPoint viewerGlobalPos = m_3dViewer->mapToGlobal(QPoint(0, 0));
     QPoint mainWindowPos = this->mapFromGlobal(viewerGlobalPos);
-    
-    // Position in top-right corner of the 3D viewer with margin
+
+    // Position controls in top-right corner of the 3D viewer with margin
     const int margin = 15;
+    const int spacing = 10;
     const int buttonWidth = m_viewModeOverlayButton->sizeHint().width();
     const int buttonHeight = m_viewModeOverlayButton->sizeHint().height();
-    
+
     int x = mainWindowPos.x() + m_3dViewer->width() - buttonWidth - margin;
     int y = mainWindowPos.y() + margin;
-    
-    // Ensure the button stays within the main window bounds
+
+    // Ensure the button stays within bounds
     x = qMax(margin, qMin(x, width() - buttonWidth - margin));
     y = qMax(margin, qMin(y, height() - buttonHeight - margin));
-    
+
+    // Move the button
     m_viewModeOverlayButton->move(x, y);
     m_viewModeOverlayButton->raise();
+
+    // Position checkbox to the left of the button
+    if (m_showChuckCheckBox) {
+        int checkWidth = m_showChuckCheckBox->sizeHint().width();
+        int checkHeight = m_showChuckCheckBox->sizeHint().height();
+
+        int xCheck = x - checkWidth - spacing;
+        int yCheck = y + (buttonHeight - checkHeight) / 2;
+
+        xCheck = qMax(margin, xCheck);
+        m_showChuckCheckBox->move(xCheck, yCheck);
+        m_showChuckCheckBox->raise();
+    }
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)
@@ -1339,7 +1393,24 @@ void MainWindow::handleStepFileSelected(const QString& filePath)
 
 void MainWindow::handleSetupConfigurationChanged()
 {
-    // Placeholder
+    if (!m_setupConfigPanel || !m_workspaceController) {
+        return;
+    }
+
+    // Update facing allowance parameter in raw material manager
+    double facingAllowance = m_setupConfigPanel->getFacingAllowance();
+    RawMaterialManager* rm = m_workspaceController->getRawMaterialManager();
+    if (rm) {
+        rm->setFacingAllowance(facingAllowance);
+    }
+
+    // Recalculate raw material length using current diameter to reflect new allowance
+    if (rm && rm->isRawMaterialDisplayed()) {
+        double currentDiam = rm->getCurrentDiameter();
+        if (currentDiam > 0.0) {
+            m_workspaceController->updateRawMaterialDiameter(currentDiam);
+        }
+    }
 }
 
 void MainWindow::handleMaterialTypeChanged(IntuiCAM::GUI::MaterialType material)
@@ -1962,5 +2033,37 @@ void MainWindow::setupUiConnections()
         
         connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::errorOccurred,
                 this, &MainWindow::handleToolpathGenerationError);
+    }
+}
+
+void MainWindow::handleShowChuckToggled(bool checked)
+{
+    if (!m_workspaceController) {
+        return;
+    }
+
+    ChuckManager* chuckMgr = m_workspaceController->getChuckManager();
+    if (!chuckMgr) {
+        return;
+    }
+
+    if (checked) {
+        // If chuck is already loaded, just redisplay it; otherwise, initialize
+        if (chuckMgr->isChuckLoaded()) {
+            chuckMgr->redisplayChuck();
+            statusBar()->showMessage(tr("Chuck displayed"), 2000);
+        } else {
+            bool success = m_workspaceController->initializeChuck(m_defaultChuckFilePath);
+            statusBar()->showMessage(success ? tr("Chuck loaded and displayed") : tr("Failed to load chuck"), 3000);
+        }
+    } else {
+        // Hide chuck from view
+        chuckMgr->clearChuck();
+        statusBar()->showMessage(tr("Chuck hidden"), 2000);
+    }
+
+    // Log action
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Chuck visibility toggled: %1").arg(checked ? "Visible" : "Hidden"));
     }
 }

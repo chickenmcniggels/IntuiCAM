@@ -18,6 +18,10 @@
 #include <StdSelect_BRepOwner.hxx>
 #include <SelectMgr_SortCriterion.hxx>
 #include <Prs3d_Drawer.hxx>
+#include <BRepBuilderAPI_MakeEdge.hxx>
+#include <BRep_Tool.hxx>
+#include <TopExp_Explorer.hxx>
+#include <TopoDS.hxx>
 
 #ifdef _WIN32
 #include <WNT_Window.hxx>
@@ -41,6 +45,7 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_stored3DScale(1.0)
     , m_has3DCameraState(false)
     , m_workspaceController(nullptr)
+    , m_gridVisible(false)
 {
     // Enable mouse tracking for proper interaction
     setMouseTracking(true);
@@ -97,7 +102,29 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
 
 OpenGL3DWidget::~OpenGL3DWidget()
 {
-    // OpenCASCADE handles cleanup automatically through smart pointers
+    // Clean up the continuous update timer
+    if (m_updateTimer) {
+        m_updateTimer->stop();
+        delete m_updateTimer;
+        m_updateTimer = nullptr;
+    }
+    
+    if (m_robustRefreshTimer) {
+        m_robustRefreshTimer->stop();
+        delete m_robustRefreshTimer;
+        m_robustRefreshTimer = nullptr;
+    }
+    
+    // Clean up lathe grid if present
+    removeLatheGrid();
+    
+    // Release OpenCASCADE resources
+    m_context.Nullify();
+    m_view.Nullify();
+    m_viewer.Nullify();
+    m_window.Nullify();
+    
+    qDebug() << "OpenGL3DWidget destroyed and resources released";
 }
 
 void OpenGL3DWidget::initializeGL()
@@ -849,6 +876,15 @@ void OpenGL3DWidget::setViewMode(ViewMode mode)
         m_currentViewMode = mode;
         applyCameraForViewMode();
         
+        // Show or hide grid based on view mode
+        if (mode == ViewMode::LatheXZ) {
+            // Create grid for lathe view
+            createLatheGrid();
+        } else {
+            // Remove grid when switching to 3D view
+            removeLatheGrid();
+        }
+        
         // Emit signal for UI updates
         emit viewModeChanged(mode);
         
@@ -896,21 +932,40 @@ void OpenGL3DWidget::setupCamera3D()
         return;
     }
     
-    // Restore previous 3D camera state if available
-    if (m_has3DCameraState) {
-        restore3DCameraState();
-    } else {
-        // Set up default 3D perspective view
-        m_view->SetAt(0.0, 0.0, 0.0);
-        m_view->SetEye(100.0, 100.0, 100.0);
-        m_view->SetUp(0.0, 0.0, 1.0);
-        // Set perspective view (default for 3D mode)
+    try {
+        // Remove any existing grid
+        if (m_gridVisible) {
+            removeLatheGrid();
+        }
         
-        // Ensure the view shows the coordinate trihedron
-        m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_GOLD, 0.08, V3d_ZBUFFER);
+        // Restore previous 3D camera state if available
+        if (m_has3DCameraState) {
+            restore3DCameraState();
+        } else {
+            // Set up default 3D perspective view
+            m_view->SetAt(0.0, 0.0, 0.0);
+            m_view->SetEye(100.0, 100.0, 100.0);
+            m_view->SetUp(0.0, 0.0, 1.0);
+            
+            // Explicitly set perspective projection for 3D mode
+            m_view->Camera()->SetProjectionType(Graphic3d_Camera::Projection_Perspective);
+            
+            // Ensure the view shows the coordinate trihedron
+            m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_GOLD, 0.08, V3d_ZBUFFER);
+            
+            // Update the current view mode
+            m_currentViewMode = ViewMode::Mode3D;
+        }
+        
+        // Fit all to ensure objects are visible
+        m_view->FitAll();
+        m_view->Redraw();
+        
+        qDebug() << "Set up 3D camera view with perspective projection";
     }
-    
-    qDebug() << "3D camera mode configured";
+    catch (const Standard_Failure& ex) {
+        qDebug() << "Error setting up 3D camera:" << ex.GetMessageString();
+    }
 }
 
 void OpenGL3DWidget::setupCameraXZ()
@@ -922,32 +977,47 @@ void OpenGL3DWidget::setupCameraXZ()
     // Set up XZ plane view for lathe operations
     // Standard lathe coordinate system: X increases top to bottom, Z increases right to left
     // This means we need to look from the Y-negative direction toward the origin
-    // and orient the view so X goes down and Z goes left
     
-    // Camera position: Look from negative Y toward origin (flips Z axis)
-    gp_Pnt eye(0.0, -200.0, 0.0);    // Camera position on negative Y axis
-    gp_Pnt at(0.0, 0.0, 0.0);       // Look at origin
-    gp_Dir up(-1.0, 0.0, 0.0);      // X axis points down (negative X direction as up vector)
-    
-    m_view->SetAt(at.X(), at.Y(), at.Z());
-    m_view->SetEye(eye.X(), eye.Y(), eye.Z());
-    m_view->SetUp(up.X(), up.Y(), up.Z());
-    
-    // For orthographic projection in XZ mode, we'll use view manipulation
-    // The view type is set during view creation, but we can achieve orthographic-like
-    // behavior by using appropriate camera positioning and scaling
-    
-    // Position camera very far away to approximate orthographic projection
-    gp_Pnt farEye(0.0, -10000.0, 0.0);  // Very far away on negative Y axis (matches flipped Z)
-    m_view->SetEye(farEye.X(), farEye.Y(), farEye.Z());
-    
-    // Hides the 3D trihedron as it's not relevant for 2D lathe view
-    // m_view->TriedronErase();
-    
-    // Fit all to ensure objects are visible in the new view
-    m_view->FitAll();
-    
-    qDebug() << "XZ lathe camera mode configured (X: top to bottom, Z: right to left)";
+    try {
+        // Store current camera state if not already stored
+        if (!m_has3DCameraState) {
+            store3DCameraState();
+        }
+        
+        // Camera position: Look from negative Y toward origin
+        gp_Pnt eye(0.0, -1000.0, 0.0);  // Camera position on negative Y axis
+        gp_Pnt at(0.0, 0.0, 0.0);       // Look at origin
+        gp_Dir up(-1.0, 0.0, 0.0);      // X axis points down (negative X direction as up vector)
+        
+        m_view->SetAt(at.X(), at.Y(), at.Z());
+        m_view->SetEye(eye.X(), eye.Y(), eye.Z());
+        m_view->SetUp(up.X(), up.Y(), up.Z());
+        
+        // Set orthographic projection for 2D view
+        m_view->Camera()->SetProjectionType(Graphic3d_Camera::Projection_Orthographic);
+        
+        // Adjust the view to show the entire grid
+        double extent = 250.0;  // Match or exceed grid extent
+        m_view->SetSize(extent * 1.2);  // Scale to leave some margin
+        
+        // Change trihedron display to match lathe coordinate system
+        m_view->TriedronErase();
+        m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_RED, 0.08, V3d_ZBUFFER);
+        
+        // Create the grid
+        createLatheGrid(10.0, 200.0);
+        
+        // Update the current view mode
+        m_currentViewMode = ViewMode::LatheXZ;
+        
+        // Refresh the view
+        m_view->Redraw();
+        
+        qDebug() << "Switched to XZ plane view (lathe coordinate system)";
+    }
+    catch (const Standard_Failure& ex) {
+        qDebug() << "Error setting up XZ camera:" << ex.GetMessageString();
+    }
 }
 
 void OpenGL3DWidget::store3DCameraState()
@@ -958,25 +1028,25 @@ void OpenGL3DWidget::store3DCameraState()
     
     try {
         // Store current camera parameters
-        Standard_Real eyeX, eyeY, eyeZ;
         Standard_Real atX, atY, atZ;
+        Standard_Real eyeX, eyeY, eyeZ;
         Standard_Real upX, upY, upZ;
         
-        m_view->Eye(eyeX, eyeY, eyeZ);
         m_view->At(atX, atY, atZ);
+        m_view->Eye(eyeX, eyeY, eyeZ);
         m_view->Up(upX, upY, upZ);
         
-        m_stored3DEye = gp_Pnt(eyeX, eyeY, eyeZ);
         m_stored3DAt = gp_Pnt(atX, atY, atZ);
+        m_stored3DEye = gp_Pnt(eyeX, eyeY, eyeZ);
         m_stored3DUp = gp_Dir(upX, upY, upZ);
         m_stored3DScale = m_view->Scale();
         
         m_has3DCameraState = true;
         
-        qDebug() << "3D camera state stored";
-        
-    } catch (const std::exception& e) {
-        qDebug() << "Error storing 3D camera state:" << e.what();
+        qDebug() << "Stored 3D camera state";
+    }
+    catch (const Standard_Failure& ex) {
+        qDebug() << "Error storing 3D camera state:" << ex.GetMessageString();
         m_has3DCameraState = false;
     }
 }
@@ -988,20 +1058,46 @@ void OpenGL3DWidget::restore3DCameraState()
     }
     
     try {
+        // Remove the grid if it's visible
+        if (m_gridVisible) {
+            removeLatheGrid();
+        }
+        
         // Restore stored camera parameters
         m_view->SetAt(m_stored3DAt.X(), m_stored3DAt.Y(), m_stored3DAt.Z());
         m_view->SetEye(m_stored3DEye.X(), m_stored3DEye.Y(), m_stored3DEye.Z());
         m_view->SetUp(m_stored3DUp.X(), m_stored3DUp.Y(), m_stored3DUp.Z());
         m_view->SetScale(m_stored3DScale);
         
-        // Restore perspective projection (default for 3D mode)
+        // Explicitly restore perspective projection for 3D mode
+        m_view->Camera()->SetProjectionType(Graphic3d_Camera::Projection_Perspective);
         
-        // Restore trihedron display
+        // Restore trihedron display with standard orientation
+        m_view->TriedronErase();
         m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_GOLD, 0.08, V3d_ZBUFFER);
         
-        qDebug() << "3D camera state restored";
+        // Update the current view mode
+        m_currentViewMode = ViewMode::Mode3D;
         
-    } catch (const std::exception& e) {
-        qDebug() << "Error restoring 3D camera state:" << e.what();
+        // Refresh the view
+        m_view->Redraw();
+        
+        qDebug() << "Restored 3D camera state";
     }
+    catch (const Standard_Failure& ex) {
+        qDebug() << "Error restoring 3D camera:" << ex.GetMessageString();
+    }
+}
+
+void OpenGL3DWidget::createLatheGrid(double /*spacing*/, double /*extent*/)
+{
+    // Grid creation disabled per latest requirements – keep existing scene objects intact.
+    m_gridVisible = false;
+    return;
+}
+
+void OpenGL3DWidget::removeLatheGrid()
+{
+    // Grid removal disabled because grid is not created anymore, prevents inadvertent RemoveAll().
+    return;
 } 

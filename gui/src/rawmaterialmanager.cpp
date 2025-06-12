@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <qmath.h>
 #include <limits>
+#include <algorithm>
 
 // OpenCASCADE includes
 #include <BRepPrimAPI_MakeCylinder.hxx>
@@ -31,6 +32,7 @@ RawMaterialManager::RawMaterialManager(QObject *parent)
     : QObject(parent)
     , m_rawMaterialTransparency(0.6)
     , m_currentDiameter(0.0)
+    , m_facingAllowance(10.0)
 {
 }
 
@@ -283,7 +285,7 @@ double RawMaterialManager::calculateOptimalLength(const TopoDS_Shape& workpiece,
         // 1. Always extends exactly 50mm in -Z direction (into chuck) from Z=0
         // 2. Includes extra stock to the right of the part for facing operations
         double chuckExtension = 50.0;     // Fixed 50mm extension into chuck
-        double facingAllowance = 10.0;    // Extra stock for facing operations (right side)
+        double facingAllowance = m_facingAllowance;    // Extra stock for facing operations (right side)
         
         // Chuck face is at Z=0, calculate total length needed
         double chuckFacePosition = 0.0;   // Chuck face at Z=0
@@ -364,7 +366,7 @@ double RawMaterialManager::calculateOptimalLengthWithTransform(const TopoDS_Shap
         // 1. Always extends exactly 50mm in -Z direction (into chuck) from Z=0
         // 2. Includes extra stock to the right of the part for facing operations
         double chuckExtension = 50.0;     // Fixed 50mm extension into chuck
-        double facingAllowance = 10.0;    // Extra stock for facing operations (right side)
+        double facingAllowance = m_facingAllowance;    // Extra stock for facing operations (right side)
         
         // Chuck face is at Z=0, calculate total length needed
         double chuckFacePosition = 0.0;   // Chuck face at Z=0
@@ -431,7 +433,7 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, dou
             // 1. Always extends exactly 50mm in -Z direction (into chuck) from Z=0
             // 2. Includes extra stock to the right of the part for facing operations
             double chuckExtension = 50.0;     // Fixed 50mm extension into chuck
-            double facingAllowance = 10.0;    // Extra stock for facing operations (right side)
+            double facingAllowance = m_facingAllowance;    // Extra stock for facing operations (right side)
             
             // Chuck face is at Z=0, raw material starts at Z=-50
             double chuckFacePosition = 0.0;   // Chuck face at Z=0
@@ -531,7 +533,7 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpieceWithTransform(double 
             // 1. Always extends exactly 50mm in -Z direction (into chuck) from Z=0
             // 2. Includes extra stock to the right of the part for facing operations
             double chuckExtension = 50.0;     // Fixed 50mm extension into chuck
-            double facingAllowance = 10.0;    // Extra stock for facing operations (right side)
+            double facingAllowance = m_facingAllowance;    // Extra stock for facing operations (right side)
             
             // Chuck face is at Z=0, raw material starts at Z=-50
             double chuckFacePosition = 0.0;   // Chuck face at Z=0
@@ -627,4 +629,10 @@ void RawMaterialManager::displayRawMaterialForWorkpieceWithTransform(double diam
     } else {
         emit errorOccurred("Failed to create raw material cylinder for transformed workpiece");
     }
+}
+
+void RawMaterialManager::setFacingAllowance(double allowance)
+{
+    m_facingAllowance = std::max(0.0, allowance);
+    qDebug() << "RawMaterialManager: Facing allowance set to" << m_facingAllowance << "mm";
 } 

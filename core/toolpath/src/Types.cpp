@@ -1,6 +1,7 @@
 #include <IntuiCAM/Toolpath/Types.h>
 #include <algorithm>
 #include <cmath>
+#include <IntuiCAM/Geometry/Types.h>
 
 namespace IntuiCAM {
 namespace Toolpath {
@@ -119,17 +120,27 @@ void Toolpath::removeRedundantMoves() {
     movements_ = std::move(optimized);
 }
 
+void Toolpath::applyTransform(const Geometry::Matrix4x4& mat) {
+    auto transformPoint = [&mat](Geometry::Point3D& p){
+        const double* m = mat.data;
+        double x = p.x, y = p.y, z = p.z;
+        p.x = m[0]*x + m[4]*y + m[8]*z  + m[12];
+        p.y = m[1]*x + m[5]*y + m[9]*z  + m[13];
+        p.z = m[2]*x + m[6]*y + m[10]*z + m[14];
+    };
+    for (auto& mv : movements_) {
+        transformPoint(mv.position);
+    }
+}
+
 // Operation implementation
 Operation::Operation(Type type, const std::string& name, std::shared_ptr<Tool> tool)
     : type_(type), name_(name), tool_(tool) {
 }
 
-std::unique_ptr<Operation> Operation::createOperation(Type type, const std::string& name, 
-                                                     std::shared_ptr<Tool> tool) {
-    // This would create specific operation types
-    // For now, return nullptr as placeholder
-    return nullptr;
-}
+// NOTE: The concrete factory implementation is provided in Operations.cpp to avoid
+// duplication and to keep type registrations centralised. The stub that previously
+// lived here has been removed.
 
 } // namespace Toolpath
 } // namespace IntuiCAM 
