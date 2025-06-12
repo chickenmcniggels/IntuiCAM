@@ -211,6 +211,44 @@ void ToolpathManager::setToolpathVisible(const QString& name, bool visible)
     }
 }
 
+void ToolpathManager::setAllToolpathsVisible(bool visible)
+{
+    if (m_context.IsNull()) {
+        return;
+    }
+
+    for (auto it = m_displayedToolpaths.begin(); it != m_displayedToolpaths.end(); ++it) {
+        Handle(AIS_Shape) toolpathAIS = it.value();
+        if (!toolpathAIS.IsNull()) {
+            if (visible) {
+                if (!m_context->IsDisplayed(toolpathAIS)) {
+                    m_context->Display(toolpathAIS, Standard_False);
+                }
+            } else {
+                m_context->Erase(toolpathAIS, Standard_False);
+            }
+        }
+    }
+
+    m_context->UpdateCurrentViewer();
+}
+
+bool ToolpathManager::areToolpathsVisible() const
+{
+    if (m_context.IsNull()) {
+        return false;
+    }
+
+    for (auto it = m_displayedToolpaths.constBegin(); it != m_displayedToolpaths.constEnd(); ++it) {
+        Handle(AIS_Shape) ais = it.value();
+        if (!ais.IsNull() && m_context->IsDisplayed(ais)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void ToolpathManager::setDisplaySettings(const ToolpathDisplaySettings& settings)
 {
     m_displaySettings = settings;

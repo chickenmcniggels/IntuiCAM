@@ -42,7 +42,7 @@
 #include <QFrame>
 #include <QFileInfo>
 #include <QMessageBox>
-#include <QCheckBox>
+#include <QToolButton>
 
 // OpenCASCADE includes for gp_Ax1
 #include <gp_Ax1.hxx>
@@ -92,7 +92,12 @@ MainWindow::MainWindow(QWidget *parent)
     , m_preferencesAction(nullptr)
     , m_toggleViewModeAction(nullptr)
     , m_viewModeOverlayButton(nullptr)
-    , m_showChuckCheckBox(nullptr)
+    , m_visibilityButton(nullptr)
+    , m_visibilityMenu(nullptr)
+    , m_showChuckAction(nullptr)
+    , m_showRawMaterialAction(nullptr)
+    , m_showToolpathsAction(nullptr)
+    , m_showPartAction(nullptr)
     , m_defaultChuckFilePath("C:/Users/nikla/Downloads/three_jaw_chuck.step")
 {
     // Create business logic components
@@ -1196,12 +1201,28 @@ void MainWindow::createViewModeOverlayButton()
     m_viewModeOverlayButton = new QPushButton("Switch to Lathe View", this);
     m_viewModeOverlayButton->setMaximumWidth(150);
     m_viewModeOverlayButton->setMaximumHeight(30);
-    
-    // Create the checkbox to toggle chuck visibility
-    m_showChuckCheckBox = new QCheckBox("Show Chuck", this);
-    m_showChuckCheckBox->setChecked(true);
-    m_showChuckCheckBox->setMaximumHeight(30);
-    
+
+    // Create visibility tool button with menu
+    m_visibilityButton = new QToolButton(this);
+    m_visibilityButton->setText("Visibility");
+    m_visibilityButton->setPopupMode(QToolButton::InstantPopup);
+    m_visibilityButton->setMaximumHeight(30);
+
+    m_visibilityMenu = new QMenu(m_visibilityButton);
+    m_showChuckAction = m_visibilityMenu->addAction("Show Chuck");
+    m_showChuckAction->setCheckable(true);
+    m_showChuckAction->setChecked(true);
+    m_showRawMaterialAction = m_visibilityMenu->addAction("Show Raw Material");
+    m_showRawMaterialAction->setCheckable(true);
+    m_showRawMaterialAction->setChecked(true);
+    m_showToolpathsAction = m_visibilityMenu->addAction("Show Toolpaths");
+    m_showToolpathsAction->setCheckable(true);
+    m_showToolpathsAction->setChecked(true);
+    m_showPartAction = m_visibilityMenu->addAction("Show Part");
+    m_showPartAction->setCheckable(true);
+    m_showPartAction->setChecked(true);
+    m_visibilityButton->setMenu(m_visibilityMenu);
+
     // Style the button to be semi-transparent and visually appealing
     m_viewModeOverlayButton->setStyleSheet(
         "QPushButton {"
@@ -1223,10 +1244,10 @@ void MainWindow::createViewModeOverlayButton()
         "  border: 2px solid #555555;"
         "}"
     );
-    
-    // Style the checkbox similarly (background only, keep default indicator)
-    m_showChuckCheckBox->setStyleSheet(
-        "QCheckBox {"
+
+    // Style the visibility button similarly
+    m_visibilityButton->setStyleSheet(
+        "QToolButton {"
         "  background-color: rgba(240, 240, 240, 220);"
         "  border: 2px solid #666666;"
         "  border-radius: 6px;"
@@ -1235,31 +1256,34 @@ void MainWindow::createViewModeOverlayButton()
         "  font-weight: bold;"
         "  color: #333333;"
         "}"
-        "QCheckBox:hover {"
+        "QToolButton:hover {"
         "  background-color: rgba(255, 255, 255, 240);"
         "  border: 2px solid #444444;"
         "  color: #222222;"
         "}"
     );
-    
+
     // Connect the button to the toggle function
     connect(m_viewModeOverlayButton, &QPushButton::clicked, this, &MainWindow::toggleViewMode);
-    
-    // Connect checkbox toggled signal
-    connect(m_showChuckCheckBox, &QCheckBox::toggled, this, &MainWindow::handleShowChuckToggled);
-    
+
+    // Connect visibility actions
+    connect(m_showChuckAction, &QAction::toggled, this, &MainWindow::handleShowChuckToggled);
+    connect(m_showRawMaterialAction, &QAction::toggled, this, &MainWindow::handleShowRawMaterialToggled);
+    connect(m_showToolpathsAction, &QAction::toggled, this, &MainWindow::handleShowToolpathsToggled);
+    connect(m_showPartAction, &QAction::toggled, this, &MainWindow::handleShowPartToggled);
+
     // Connect to view mode changes to update button text
     connect(m_3dViewer, &OpenGL3DWidget::viewModeChanged, this, &MainWindow::updateViewModeOverlayButton);
-    
+
     // Initially position the button
     positionViewModeOverlayButton();
-    
+
     // Show the controls - they will always be visible on the setup tab
     m_viewModeOverlayButton->show();
     m_viewModeOverlayButton->raise();
-    m_showChuckCheckBox->show();
-    m_showChuckCheckBox->raise();
-    
+    m_visibilityButton->show();
+    m_visibilityButton->raise();
+
     qDebug() << "View mode overlay button created in MainWindow";
 }
 
@@ -1280,6 +1304,7 @@ void MainWindow::updateViewModeOverlayButton()
     // Ensure button stays positioned correctly and on top
     positionViewModeOverlayButton();
     m_viewModeOverlayButton->raise();
+    if (m_visibilityButton) m_visibilityButton->raise();
 }
 
 void MainWindow::positionViewModeOverlayButton()
@@ -1292,12 +1317,12 @@ void MainWindow::positionViewModeOverlayButton()
     bool onSetupTab = (m_tabWidget && m_tabWidget->currentIndex() == 1);
     if (!onSetupTab) {
         m_viewModeOverlayButton->hide();
-        if (m_showChuckCheckBox) m_showChuckCheckBox->hide();
+        if (m_visibilityButton) m_visibilityButton->hide();
         return;
     }
 
     m_viewModeOverlayButton->show();
-    if (m_showChuckCheckBox) m_showChuckCheckBox->show();
+    if (m_visibilityButton) m_visibilityButton->show();
 
     // Calculate position relative to the 3D viewer widget
     QPoint viewerGlobalPos = m_3dViewer->mapToGlobal(QPoint(0, 0));
@@ -1320,17 +1345,13 @@ void MainWindow::positionViewModeOverlayButton()
     m_viewModeOverlayButton->move(x, y);
     m_viewModeOverlayButton->raise();
 
-    // Position checkbox to the left of the button
-    if (m_showChuckCheckBox) {
-        int checkWidth = m_showChuckCheckBox->sizeHint().width();
-        int checkHeight = m_showChuckCheckBox->sizeHint().height();
-
-        int xCheck = x - checkWidth - spacing;
-        int yCheck = y + (buttonHeight - checkHeight) / 2;
-
-        xCheck = qMax(margin, xCheck);
-        m_showChuckCheckBox->move(xCheck, yCheck);
-        m_showChuckCheckBox->raise();
+    // Position visibility button to the left of the view mode button
+    if (m_visibilityButton) {
+        int visWidth = m_visibilityButton->sizeHint().width();
+        int xVis = x - visWidth - spacing;
+        xVis = qMax(margin, xVis);
+        m_visibilityButton->move(xVis, y);
+        m_visibilityButton->raise();
     }
 }
 
@@ -2098,22 +2119,75 @@ void MainWindow::handleShowChuckToggled(bool checked)
     }
 
     if (checked) {
-        // If chuck is already loaded, just redisplay it; otherwise, initialize
         if (chuckMgr->isChuckLoaded()) {
-            chuckMgr->redisplayChuck();
+            chuckMgr->setChuckVisible(true);
             statusBar()->showMessage(tr("Chuck displayed"), 2000);
         } else {
             bool success = m_workspaceController->initializeChuck(m_defaultChuckFilePath);
             statusBar()->showMessage(success ? tr("Chuck loaded and displayed") : tr("Failed to load chuck"), 3000);
+            if (!success) {
+                m_showChuckAction->setChecked(false);
+            }
         }
     } else {
-        // Hide chuck from view
-        chuckMgr->clearChuck();
+        chuckMgr->setChuckVisible(false);
         statusBar()->showMessage(tr("Chuck hidden"), 2000);
     }
 
     // Log action
     if (m_outputWindow) {
         m_outputWindow->append(QString("Chuck visibility toggled: %1").arg(checked ? "Visible" : "Hidden"));
+    }
+}
+
+void MainWindow::handleShowRawMaterialToggled(bool checked)
+{
+    if (!m_workspaceController) {
+        return;
+    }
+
+    RawMaterialManager* rm = m_workspaceController->getRawMaterialManager();
+    if (!rm) {
+        return;
+    }
+
+    if (checked) {
+        rm->setRawMaterialVisible(true);
+        statusBar()->showMessage(tr("Raw material displayed"), 2000);
+    } else {
+        rm->setRawMaterialVisible(false);
+        statusBar()->showMessage(tr("Raw material hidden"), 2000);
+    }
+
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Raw material visibility toggled: %1").arg(checked ? "Visible" : "Hidden"));
+    }
+}
+
+void MainWindow::handleShowToolpathsToggled(bool checked)
+{
+    if (!m_toolpathManager) {
+        return;
+    }
+
+    m_toolpathManager->setAllToolpathsVisible(checked);
+    statusBar()->showMessage(checked ? tr("Toolpaths displayed") : tr("Toolpaths hidden"), 2000);
+
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Toolpath visibility toggled: %1").arg(checked ? "Visible" : "Hidden"));
+    }
+}
+
+void MainWindow::handleShowPartToggled(bool checked)
+{
+    if (!m_workpieceManager) {
+        return;
+    }
+
+    m_workpieceManager->setWorkpiecesVisible(checked);
+    statusBar()->showMessage(checked ? tr("Part displayed") : tr("Part hidden"), 2000);
+
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Part visibility toggled: %1").arg(checked ? "Visible" : "Hidden"));
     }
 }

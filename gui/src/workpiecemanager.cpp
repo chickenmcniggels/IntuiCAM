@@ -328,8 +328,44 @@ void WorkpieceManager::clearWorkpieces()
     // Reset axis alignment state
     m_hasAxisAlignment = false;
     m_axisAlignmentTransform = gp_Trsf(); // Reset to identity
-    
+
     qDebug() << "All workpieces cleared";
+}
+
+void WorkpieceManager::setWorkpiecesVisible(bool visible)
+{
+    if (m_context.IsNull()) {
+        return;
+    }
+
+    for (Handle(AIS_Shape) workpiece : m_workpieces) {
+        if (!workpiece.IsNull()) {
+            if (visible) {
+                if (!m_context->IsDisplayed(workpiece)) {
+                    m_context->Display(workpiece, Standard_False);
+                }
+            } else {
+                m_context->Erase(workpiece, Standard_False);
+            }
+        }
+    }
+
+    m_context->UpdateCurrentViewer();
+}
+
+bool WorkpieceManager::areWorkpiecesVisible() const
+{
+    if (m_context.IsNull()) {
+        return false;
+    }
+
+    for (Handle(AIS_Shape) workpiece : m_workpieces) {
+        if (!workpiece.IsNull() && m_context->IsDisplayed(workpiece)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void WorkpieceManager::setWorkpieceMaterial(Handle(AIS_Shape) workpieceAIS)

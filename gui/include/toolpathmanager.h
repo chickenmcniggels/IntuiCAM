@@ -114,6 +114,16 @@ public:
     void setToolpathVisible(const QString& name, bool visible);
 
     /**
+     * @brief Show or hide all toolpaths
+     */
+    void setAllToolpathsVisible(bool visible);
+
+    /**
+     * @brief Check if any toolpaths are currently visible
+     */
+    bool areToolpathsVisible() const;
+
+    /**
      * @brief Set display settings for toolpaths
      */
     void setDisplaySettings(const ToolpathDisplaySettings& settings);

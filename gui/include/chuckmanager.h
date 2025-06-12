@@ -91,6 +91,16 @@ public:
      */
     void redisplayChuck();
 
+    /**
+     * @brief Show or hide the chuck without deleting it
+     */
+    void setChuckVisible(bool visible);
+
+    /**
+     * @brief Check if chuck is currently visible
+     */
+    bool isChuckVisible() const;
+
 signals:
     /**
      * @brief Emitted when chuck is successfully loaded
