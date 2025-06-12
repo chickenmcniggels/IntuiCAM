@@ -12,7 +12,8 @@
 #include <gp_Pnt.hxx>
 #include <gp_Ax1.hxx>
 
-class IStepLoader;
+namespace IntuiCAM { namespace Geometry { class IStepLoader; } }
+using IStepLoader = IntuiCAM::Geometry::IStepLoader;
 
 /**
  * @brief Manages 3-jaw chuck display functionality

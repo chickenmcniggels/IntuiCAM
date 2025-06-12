@@ -26,7 +26,8 @@
 class ChuckManager;
 class WorkpieceManager;
 class RawMaterialManager;
-class IStepLoader;
+namespace IntuiCAM { namespace Geometry { class IStepLoader; } }
+using IStepLoader = IntuiCAM::Geometry::IStepLoader;
 
 // Include CylinderInfo structure
 struct CylinderInfo;
