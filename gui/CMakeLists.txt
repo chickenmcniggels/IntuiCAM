@@ -145,12 +145,79 @@ set_target_properties(${GUI_EXECUTABLE_NAME} PROPERTIES
 # (target_link_libraries above handles include dirs for compilation of gui sources against core public headers)
 # However, if gui/src itself needs to #include <IntuiCAM/CoreModule/Header.h>, this is handled by core modules exporting their include directories.
 
+# Copy required DLLs to output directory for runtime dependency resolution
 # Deploy Qt libraries on Windows
 if(WIN32)
-    find_program(WINDEPLOYQT_EXECUTABLE windeployqt)
-    if(WINDEPLOYQT_EXECUTABLE)
-        add_custom_command(TARGET ${GUI_EXECUTABLE_NAME} POST_BUILD
-            COMMAND ${WINDEPLOYQT_EXECUTABLE} "$<TARGET_FILE:${GUI_EXECUTABLE_NAME}>"
-            COMMENT "Deploying Qt runtime")
+    # Define essential DLLs that are commonly required by OpenCASCADE applications
+    # This approach is more selective than copying entire bin directories
+    set(REQUIRED_DLLS
+        # TBB (Threading Building Blocks) - Essential for parallel processing
+        "C:/OpenCASCADE/3rdparty-vc14-64/tbb-2021.13.0-x64/bin/tbb12.dll"
+        "C:/OpenCASCADE/3rdparty-vc14-64/tbb-2021.13.0-x64/bin/tbb12_debug.dll"
+        "C:/OpenCASCADE/3rdparty-vc14-64/tbb-2021.13.0-x64/bin/tbbmalloc.dll"
+        
+        # FreeImage - Image processing
+        "C:/OpenCASCADE/3rdparty-vc14-64/freeimage-3.18.0-x64/bin/FreeImage.dll"
+        
+        # FreeType - Font rendering
+        "C:/OpenCASCADE/3rdparty-vc14-64/freetype-2.13.3-x64/bin/freetype.dll"
+        
+        # TCL/TK - Scripting support
+        "C:/OpenCASCADE/3rdparty-vc14-64/tcltk-8.6.15-x64/bin/tcl86.dll"
+        "C:/OpenCASCADE/3rdparty-vc14-64/tcltk-8.6.15-x64/bin/tk86.dll"
+        "C:/OpenCASCADE/3rdparty-vc14-64/tcltk-8.6.15-x64/bin/zlib1.dll"
+        
+        # Jemalloc - Memory allocator (critical for OpenCASCADE)
+        "C:/OpenCASCADE/3rdparty-vc14-64/jemalloc-vc14-64/bin/jemalloc.dll"
+        
+        # OpenGL ES / EGL - Graphics support (ANGLE)
+        "C:/OpenCASCADE/3rdparty-vc14-64/angle-gles2-2.1.0-vc14-64/bin/libEGL.dll"
+        "C:/OpenCASCADE/3rdparty-vc14-64/angle-gles2-2.1.0-vc14-64/bin/libGLESv2.dll"
+        "C:/OpenCASCADE/3rdparty-vc14-64/angle-gles2-2.1.0-vc14-64/bin/d3dcompiler_47.dll"
+        
+        # OpenVR - Virtual Reality support (if needed)
+        "C:/OpenCASCADE/3rdparty-vc14-64/openvr-1.14.15-64/bin/win64/openvr_api.dll"
+        
+        # FFmpeg - Video/multimedia support
+        "C:/OpenCASCADE/3rdparty-vc14-64/ffmpeg-3.3.4-64/bin/avcodec-57.dll"
+        "C:/OpenCASCADE/3rdparty-vc14-64/ffmpeg-3.3.4-64/bin/avdevice-57.dll"
+        "C:/OpenCASCADE/3rdparty-vc14-64/ffmpeg-3.3.4-64/bin/avfilter-6.dll"
+        "C:/OpenCASCADE/3rdparty-vc14-64/ffmpeg-3.3.4-64/bin/avformat-57.dll"
+        "C:/OpenCASCADE/3rdparty-vc14-64/ffmpeg-3.3.4-64/bin/avutil-55.dll"
+        "C:/OpenCASCADE/3rdparty-vc14-64/ffmpeg-3.3.4-64/bin/swscale-4.dll"
+    )
+    
+    # Copy only essential DLLs that exist
+    foreach(DLL_FILE ${REQUIRED_DLLS})
+        if(EXISTS ${DLL_FILE})
+            add_custom_command(TARGET ${GUI_EXECUTABLE_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${DLL_FILE}"
+                "$<TARGET_FILE_DIR:${GUI_EXECUTABLE_NAME}>"
+                COMMENT "Copying essential DLL: ${DLL_FILE}"
+            )
+        else()
+            message(STATUS "Warning: DLL not found: ${DLL_FILE}")
+        endif()
+    endforeach()
+    
+    # Copy VTK DLLs (these are numerous, so we'll copy the essential ones)
+    set(VTK_BIN_PATH "C:/OpenCASCADE/3rdparty-vc14-64/vtk-9.4.1-x64/bin")
+    if(EXISTS ${VTK_BIN_PATH})
+        # Copy core VTK DLLs that OpenCASCADE typically needs
+        file(GLOB VTK_CORE_DLLS 
+            "${VTK_BIN_PATH}/vtkCommon*.dll"
+            "${VTK_BIN_PATH}/vtkRendering*.dll"
+            "${VTK_BIN_PATH}/vtkFiltering*.dll"
+            "${VTK_BIN_PATH}/vtkIO*.dll"
+        )
+        foreach(VTK_DLL ${VTK_CORE_DLLS})
+            add_custom_command(TARGET ${GUI_EXECUTABLE_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${VTK_DLL}"
+                "$<TARGET_FILE_DIR:${GUI_EXECUTABLE_NAME}>"
+                COMMENT "Copying VTK DLL: ${VTK_DLL}"
+            )
+        endforeach()
     endif()
 endif()
