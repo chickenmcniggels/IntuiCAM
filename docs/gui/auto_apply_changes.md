@@ -1,8 +1,8 @@
-# Auto-Apply Changes in Part Loading Panel
+# Auto-Apply Changes in the Setup Panel
 
 ## Overview
 
-The part loading panel now features automatic application of changes to the 3D viewer. When you modify any setting in the panel, the changes are immediately reflected in the 3D workspace without requiring manual application.
+The setup panel features automatic application of changes to the 3D viewer. When you modify any setting, the result is immediately reflected without requiring manual application.
 
 ## Features
 
@@ -42,7 +42,7 @@ bool applyPartLoadingSettings(double distance, double diameter, bool flipped, in
 
 ### Signal Flow
 
-1. **User changes setting** in part loading panel
+1. **User changes setting** in the setup panel
 2. **Panel emits signal** with new value
 3. **MainWindow handler** receives signal
 4. **WorkspaceController method** applies change

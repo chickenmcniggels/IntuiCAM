@@ -1,19 +1,12 @@
 # Details regarding the CAM-Core-Engine
 ## Turning Toolpath Generation
-**The following turning toolpaths are proposed:**
-* Outside roughing
-* Outside finishing
-* Inside roughing
-* Inside finishing
-* Drilling
-* Facing
-* Parting
-* Threading
-* Outside grooving
-* Inside grooving
-* Chamfering
-* (Trepaning - Grooving on the face of the part)
-* (Adaptive Roughing)
+**Default turning toolpaths**
+1. **Contouring** – combines facing, roughing and finishing passes.
+2. **Threading** – configurable pitch and face selection.
+3. **Chamfering** – configurable edge selection and size.
+4. **Parting** – defines how the part is cut off.
+
+Additional specialized operations such as grooving or drilling may be added in the future.
 
 All turning need to support cam-side cutter radius compensation. This can also be done on the machine-side therefore it must be toggleable.
 
