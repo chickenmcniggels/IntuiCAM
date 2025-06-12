@@ -109,6 +109,8 @@ private slots:
     void handleMaterialTypeChanged(IntuiCAM::GUI::MaterialType material);
     void handleRawMaterialDiameterChanged(double diameter);
     void handleManualAxisSelectionRequested();
+    void handleOperationToggled(const QString& operationName, bool enabled);
+    void handleOperationParametersRequested(const QString& operationName);
     void handleAutomaticToolpathGeneration();
     
     // 3D viewer handlers
