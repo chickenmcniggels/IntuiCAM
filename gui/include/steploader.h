@@ -3,25 +3,26 @@
 
 #include <QString>
 #include <TopoDS_Shape.hxx>
-#include "isteploader.h"
+#include <string>
+#include <IntuiCAM/Geometry/IStepLoader.h>
 
-class StepLoader : public IStepLoader
+class StepLoader : public IntuiCAM::Geometry::IStepLoader
 {
 public:
     StepLoader();
     ~StepLoader();
     
     // Load a STEP file and return the shape
-    TopoDS_Shape loadStepFile(const QString& filename) override;
+    TopoDS_Shape loadStepFile(const std::string& filename) override;
     
     // Get the last error message
-    QString getLastError() const override { return m_lastError; }
+    std::string getLastError() const override { return m_lastError; }
     
     // Check if the last operation was successful
     bool isValid() const override { return m_isValid; }
 
 private:
-    QString m_lastError;
+    std::string m_lastError;
     bool m_isValid;
 };
 

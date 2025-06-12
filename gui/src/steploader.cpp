@@ -27,30 +27,31 @@ StepLoader::~StepLoader()
 {
 }
 
-TopoDS_Shape StepLoader::loadStepFile(const QString& filename)
+TopoDS_Shape StepLoader::loadStepFile(const std::string& filename)
 {
     m_isValid = false;
-    m_lastError = "";
+    m_lastError.clear();
     
     TopoDS_Shape result;
     
     // Check if file exists
-    QFileInfo fileInfo(filename);
+    QString qFilename = QString::fromStdString(filename);
+    QFileInfo fileInfo(qFilename);
     if (!fileInfo.exists())
     {
-        m_lastError = "File does not exist: " + filename;
+        m_lastError = std::string("File does not exist: ") + filename;
         return result;
     }
     
     if (!fileInfo.isReadable())
     {
-        m_lastError = "File is not readable: " + filename;
+        m_lastError = std::string("File is not readable: ") + filename;
         return result;
     }
     
     try {
-        // Convert QString to standard string for OpenCASCADE
-        std::string stdFilename = filename.toStdString();
+        // Use the provided filename for OpenCASCADE
+        const std::string& stdFilename = filename;
         
         // Use the simpler STEPControl_Reader for basic STEP file loading
         STEPControl_Reader reader;
@@ -60,7 +61,7 @@ TopoDS_Shape StepLoader::loadStepFile(const QString& filename)
         
         if (stat != IFSelect_RetDone)
         {
-            m_lastError = "Failed to read STEP file: " + filename;
+            m_lastError = std::string("Failed to read STEP file: ") + filename;
             return result;
         }
         
@@ -68,7 +69,7 @@ TopoDS_Shape StepLoader::loadStepFile(const QString& filename)
         Standard_Integer nbr = reader.NbRootsForTransfer();
         if (nbr <= 0)
         {
-            m_lastError = "No shapes found in STEP file: " + filename;
+            m_lastError = std::string("No shapes found in STEP file: ") + filename;
             return result;
         }
         
@@ -86,7 +87,7 @@ TopoDS_Shape StepLoader::loadStepFile(const QString& filename)
         Standard_Integer nbs = reader.NbShapes();
         if (nbs <= 0)
         {
-            m_lastError = "No shapes could be transferred from STEP file: " + filename;
+            m_lastError = std::string("No shapes could be transferred from STEP file: ") + filename;
             return result;
         }
         
@@ -119,7 +120,7 @@ TopoDS_Shape StepLoader::loadStepFile(const QString& filename)
         if (!result.IsNull())
         {
             m_isValid = true;
-            qDebug() << "Successfully loaded STEP file:" << filename;
+            qDebug() << "Successfully loaded STEP file:" << QString::fromStdString(filename);
         }
         else
         {
@@ -127,11 +128,11 @@ TopoDS_Shape StepLoader::loadStepFile(const QString& filename)
         }
         
     } catch (const std::exception& e) {
-        m_lastError = QString("Exception while loading STEP file: %1").arg(e.what());
-        qDebug() << m_lastError;
+        m_lastError = std::string("Exception while loading STEP file: ") + e.what();
+        qDebug() << QString::fromStdString(m_lastError);
     } catch (...) {
         m_lastError = "Unknown exception while loading STEP file";
-        qDebug() << m_lastError;
+        qDebug() << QString::fromStdString(m_lastError);
     }
     
     return result;

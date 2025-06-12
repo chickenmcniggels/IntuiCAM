@@ -2,7 +2,7 @@
 #include "chuckmanager.h"
 #include "workpiecemanager.h"
 #include "rawmaterialmanager.h"
-#include "isteploader.h"
+#include <IntuiCAM/Geometry/IStepLoader.h>
 
 #include <QDebug>
 #include <cmath>
