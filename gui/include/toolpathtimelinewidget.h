@@ -4,7 +4,6 @@
 #include <QWidget>
 #include <QHBoxLayout>
 #include <QScrollArea>
-#include <QPushButton>
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QFrame>
@@ -122,10 +121,6 @@ public:
     void setToolpathEnabled(int index, bool enabled);
 
 public slots:
-    /**
-     * @brief Handle click on the add toolpath button
-     */
-    void onAddToolpathClicked();
     
     /**
      * @brief Handle parameter editing for a toolpath
@@ -215,10 +210,6 @@ private:
      */
     void updateToolpathFrameStyles();
 
-    /**
-     * @brief Create the add toolpath button and menu
-     */
-    void createAddToolpathButton();
 
     /**
      * @brief Event filter for handling events on child widgets
@@ -229,8 +220,6 @@ private:
     QScrollArea* m_scrollArea;
     QWidget* m_timelineContainer;
     QHBoxLayout* m_timelineLayout;
-    QPushButton* m_addToolpathButton;
-    QMenu* m_addToolpathMenu;
 
     // Toolpath data
     QVector<QFrame*> m_toolpathFrames;
