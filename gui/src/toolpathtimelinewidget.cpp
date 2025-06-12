@@ -441,7 +441,7 @@ bool ToolpathTimelineWidget::eventFilter(QObject* watched, QEvent* event)
                 onToolpathClicked(index);
                 return true;
             } else if (mouseEvent->button() == Qt::RightButton) {
-                onToolpathRightClicked(index, mouseEvent->globalPos());
+                onToolpathRightClicked(index, mouseEvent->globalPosition().toPoint());
                 return true;
             }
         }

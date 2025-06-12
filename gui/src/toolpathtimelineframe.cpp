@@ -84,7 +84,7 @@ void ToolpathTimelineFrame::mousePressEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton) {
         emit clicked(m_index);
     } else if (event->button() == Qt::RightButton) {
-        emit rightClicked(m_index, event->globalPos());
+        emit rightClicked(m_index, event->globalPosition().toPoint());
     }
     QFrame::mousePressEvent(event);
 } 
