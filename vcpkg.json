@@ -1,0 +1,22 @@
+{
+  "name": "intuicam",
+  "version-string": "1.0.0",
+  "dependencies": [
+    {
+      "name": "qt",
+      "version>=" : "6.2.0",
+      "default-features": false,
+      "features": ["widgets", "gui", "3d"]
+    },
+    {
+      "name": "opencascade",
+      "version>=" : "7.6.0"
+    },
+    "eigen3",
+    "pybind11",
+    {
+      "name": "gtest",
+      "host": true
+    }
+  ]
+}

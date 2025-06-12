@@ -16,14 +16,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - name: Configure CMake
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-      - name: Build
-        run: cmake --build build --config Release
-      - name: Run Tests
+      - name: Bootstrap vcpkg
         run: |
-          cd build
-          ctest --output-on-failure
+          git clone https://github.com/microsoft/vcpkg
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            .\\vcpkg\\bootstrap-vcpkg.bat
+          else
+            ./vcpkg/bootstrap-vcpkg.sh
+          fi
+        shell: bash
+      - name: Configure CMake
+        run: cmake --preset ninja-release
+      - name: Build
+        run: cmake --build --preset ninja-release
+      - name: Run Tests
+        run: cmake --build --preset ninja-release --target test
       - name: Run clang-format check
         run: |
           git diff --exit-code -- . ':(exclude)**/.github/**'
