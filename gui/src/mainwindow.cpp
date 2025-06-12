@@ -313,6 +313,10 @@ void MainWindow::setupConnections()
                 this, &MainWindow::handleManualAxisSelectionRequested);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::automaticToolpathGenerationRequested,
                 this, &MainWindow::handleAutomaticToolpathGeneration);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::operationToggled,
+                this, &MainWindow::handleOperationToggled);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::operationParametersRequested,
+                this, &MainWindow::handleOperationParametersRequested);
     }
     
     // Connect simulate button
@@ -1391,8 +1395,20 @@ void MainWindow::handleManualAxisSelectionRequested()
     }
 }
 
+void MainWindow::handleOperationToggled(const QString& operationName, bool enabled)
+{
+    // Placeholder
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Operation %1 %2").arg(operationName).arg(enabled ? "enabled" : "disabled"));
+    }
 }
 
+void MainWindow::handleOperationParametersRequested(const QString& operationName)
+{
+    // Placeholder
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Parameters requested for operation: %1").arg(operationName));
+    }
 }
 
 void MainWindow::handleAutomaticToolpathGeneration()

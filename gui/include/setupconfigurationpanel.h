@@ -72,6 +72,14 @@ public:
     double getRawDiameter() const;
     double getDistanceToChuck() const;
     bool isOrientationFlipped() const;
+    double getFacingAllowance() const;
+    double getRoughingAllowance() const;
+    double getFinishingAllowance() const;
+    double getPartingWidth() const;
+    SurfaceFinish getSurfaceFinish() const;
+    double getTolerance() const;
+    bool isOperationEnabled(const QString& operationName) const;
+    OperationConfig getOperationConfig(const QString& operationName) const;
 
     // Setters
     void setStepFilePath(const QString& path);
@@ -80,6 +88,13 @@ public:
     void setDistanceToChuck(double distance);
     void setOrientationFlipped(bool flipped);
     void updateRawMaterialLength(double length);
+    void setFacingAllowance(double allowance);
+    void setRoughingAllowance(double allowance);
+    void setFinishingAllowance(double allowance);
+    void setPartingWidth(double width);
+    void setSurfaceFinish(SurfaceFinish finish);
+    void setTolerance(double tolerance);
+    void setOperationEnabled(const QString& operationName, bool enabled);
     void updateAxisInfo(const QString& info);
 
     // Material and Tool Management
@@ -104,6 +119,8 @@ signals:
     void distanceToChuckChanged(double distance);
     void orientationFlipped(bool flipped);
     void manualAxisSelectionRequested();
+    void operationToggled(const QString& operationName, bool enabled);
+    void operationParametersRequested(const QString& operationName);
     void automaticToolpathGenerationRequested();
     void materialSelectionChanged(const QString& materialName);
     void toolRecommendationsUpdated(const QStringList& toolIds);
@@ -112,24 +129,25 @@ public slots:
     void onBrowseStepFile();
     void onConfigurationChanged();
     void onManualAxisSelectionClicked();
+    void onOperationToggled();
+    void onOperationParametersClicked();
     void onGenerateToolpaths();
     void onMaterialChanged();
     void onToolSelectionRequested();
 
 private:
     void setupUI();
-    void setupPartSection();
-    void setupOperationTabs();
+    void setupPartTab();
+    void setupMachiningTab();
     void setupConnections();
     void applyTabStyling();
+    void updateOperationControls();
 
-    // Main layout and tab widgets
+    // Main layout and tabs
     QVBoxLayout* m_mainLayout;
-    QTabWidget* m_operationTabs;
-    QWidget* m_contouringTab;
-    QWidget* m_threadingTab;
-    QWidget* m_chamferingTab;
-    QWidget* m_partingTab;
+    QTabWidget* m_tabWidget;
+    QWidget* m_partTab;
+    QWidget* m_machiningTab;
 
     // Part Tab Components (Part Setup + Material Settings)
     QGroupBox* m_partSetupGroup;
@@ -156,6 +174,42 @@ private:
     QLabel* m_rawDiameterLabel;
     QDoubleSpinBox* m_rawDiameterSpin;
     QLabel* m_rawLengthLabel; // Now just a label showing auto-calculated length
+
+    // Machining Tab Components (Machining Parameters + Operations + Quality)
+    QGroupBox* m_machiningParamsGroup;
+    QVBoxLayout* m_machiningParamsLayout;
+    QHBoxLayout* m_facingAllowanceLayout;
+    QLabel* m_facingAllowanceLabel;
+    QDoubleSpinBox* m_facingAllowanceSpin;
+    QHBoxLayout* m_roughingAllowanceLayout;
+    QLabel* m_roughingAllowanceLabel;
+    QDoubleSpinBox* m_roughingAllowanceSpin;
+    QHBoxLayout* m_finishingAllowanceLayout;
+    QLabel* m_finishingAllowanceLabel;
+    QDoubleSpinBox* m_finishingAllowanceSpin;
+    QHBoxLayout* m_partingWidthLayout;
+    QLabel* m_partingWidthLabel;
+    QDoubleSpinBox* m_partingWidthSpin;
+
+    QGroupBox* m_operationsGroup;
+    QVBoxLayout* m_operationsLayout;
+    QCheckBox* m_facingEnabledCheck;
+    QPushButton* m_facingParamsButton;
+    QCheckBox* m_roughingEnabledCheck;
+    QPushButton* m_roughingParamsButton;
+    QCheckBox* m_finishingEnabledCheck;
+    QPushButton* m_finishingParamsButton;
+    QCheckBox* m_partingEnabledCheck;
+    QPushButton* m_partingParamsButton;
+
+    QGroupBox* m_qualityGroup;
+    QVBoxLayout* m_qualityLayout;
+    QHBoxLayout* m_surfaceFinishLayout;
+    QLabel* m_surfaceFinishLabel;
+    QComboBox* m_surfaceFinishCombo;
+    QHBoxLayout* m_toleranceLayout;
+    QLabel* m_toleranceLabel;
+    QDoubleSpinBox* m_toleranceSpin;
 
     // Generation Controls
     QFrame* m_generationFrame;
