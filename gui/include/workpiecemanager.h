@@ -96,6 +96,11 @@ public:
     void clearWorkpieces();
 
     /**
+     * @brief Show or hide all workpieces without deleting them
+     */
+    void setWorkpiecesVisible(bool visible);
+
+    /**
      * @brief Get all current workpieces
      */
     QVector<Handle(AIS_Shape)> getWorkpieces() const { return m_workpieces; }
@@ -105,6 +110,11 @@ public:
      * @return True if at least one workpiece is loaded
      */
     bool hasWorkpiece() const { return !m_workpieces.isEmpty(); }
+
+    /**
+     * @brief Check if workpieces are currently visible
+     */
+    bool areWorkpiecesVisible() const;
 
     /**
      * @brief Get the shape of the current workpiece

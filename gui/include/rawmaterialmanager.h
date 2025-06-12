@@ -98,6 +98,11 @@ public:
     bool isRawMaterialDisplayed() const { return !m_rawMaterialAIS.IsNull(); }
 
     /**
+     * @brief Check if raw material is currently visible
+     */
+    bool isRawMaterialVisible() const;
+
+    /**
      * @brief Get the current raw material diameter
      * @return Current diameter in mm, or 0.0 if no raw material is displayed
      */
@@ -114,6 +119,11 @@ public:
      * Deactivates all selection modes for the raw material while keeping it visible
      */
     void makeRawMaterialNonSelectable();
+
+    /**
+     * @brief Show or hide the raw material without deleting it
+     */
+    void setRawMaterialVisible(bool visible);
 
     /**
      * @brief Set the facing allowance (extra material length in +Z direction)
