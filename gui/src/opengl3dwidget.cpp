@@ -58,7 +58,8 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     setAttribute(Qt::WA_OpaquePaintEvent);
     setAttribute(Qt::WA_NoSystemBackground);
     setAttribute(Qt::WA_PaintOnScreen, false);  // Important for proper rendering
-    setAttribute(Qt::WA_NativeWindow, true);    // Helps with focus management
+    // Do NOT use WA_NativeWindow. It caused the viewer to turn black when menus
+    // or other widgets gained focus.
     
     // Setup simplified update timer - reduced complexity to minimize flickering
     m_updateTimer->setSingleShot(false);

@@ -232,15 +232,11 @@ private:
     QAction *m_showToolpathsAction;
     QAction *m_showPartAction;
     QString m_defaultChuckFilePath;  // Default path to chuck STEP file
-    
-private:
-    void createViewModeOverlayButton();
-    void updateViewModeOverlayButton();
-    void positionViewModeOverlayButton();
-    void initializeWorkspace();
 
-protected:
-    void resizeEvent(QResizeEvent *event) override;
+private:
+    void createViewModeOverlayButton(QWidget *parent);
+    void updateViewModeOverlayButton();
+    void initializeWorkspace();
 };
 
 #endif // MAINWINDOW_H
