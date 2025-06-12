@@ -202,14 +202,6 @@ private:
     QCheckBox* m_partingEnabledCheck;
     QPushButton* m_partingParamsButton;
 
-    // Newly added standard operations
-    QCheckBox* m_facingEnabledCheck;
-    QPushButton* m_facingParamsButton;
-    QCheckBox* m_roughingEnabledCheck;
-    QPushButton* m_roughingParamsButton;
-    QCheckBox* m_finishingEnabledCheck;
-    QPushButton* m_finishingParamsButton;
-
     QGroupBox* m_qualityGroup;
     QVBoxLayout* m_qualityLayout;
     QHBoxLayout* m_surfaceFinishLayout;
