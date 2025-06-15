@@ -577,15 +577,23 @@ void MainWindow::openStepFile()
             
             // Add workpiece through workspace controller (handles full workflow)
             bool success = m_workspaceController->addWorkpiece(shape);
-            
+
             if (success) {
                 statusBar()->showMessage(tr("STEP file loaded and processed successfully"), 3000);
                 if (m_outputWindow) {
                     m_outputWindow->append("STEP file loaded as workpiece and processed by workspace controller.");
                 }
-                
+
                 // Fit view to show all content
                 m_3dViewer->fitAll();
+
+                // Apply part and material setup parameters immediately
+                if (m_setupConfigPanel) {
+                    double dist = m_setupConfigPanel->getDistanceToChuck();
+                    double rawDia = m_setupConfigPanel->getRawDiameter();
+                    bool flip = m_setupConfigPanel->isOrientationFlipped();
+                    m_workspaceController->applyPartLoadingSettings(dist, rawDia, flip);
+                }
             } else {
                 QString errorMsg = "Failed to process workpiece through workspace controller";
                 statusBar()->showMessage(errorMsg, 5000);
@@ -1310,6 +1318,14 @@ void MainWindow::handleStepFileSelected(const QString& filePath)
                     for (const QString& op : ops) {
                         m_toolpathTimeline->addToolpath(op, op, "Default Tool");
                     }
+                }
+
+                // Immediately apply part and material setup parameters
+                if (m_setupConfigPanel) {
+                    double dist = m_setupConfigPanel->getDistanceToChuck();
+                    double rawDia = m_setupConfigPanel->getRawDiameter();
+                    bool flip = m_setupConfigPanel->isOrientationFlipped();
+                    m_workspaceController->applyPartLoadingSettings(dist, rawDia, flip);
                 }
             } else {
                 QString errorMsg = "Failed to process workpiece through workspace controller";
