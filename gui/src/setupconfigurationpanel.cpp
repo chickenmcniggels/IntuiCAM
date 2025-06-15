@@ -520,16 +520,32 @@ void SetupConfigurationPanel::setupConnections()
     connect(m_surfaceFinishCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupConfigurationPanel::onConfigurationChanged);
     connect(m_toleranceSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &SetupConfigurationPanel::onConfigurationChanged);
 
-    // Operation controls
-    connect(m_contouringEnabledCheck, &QCheckBox::toggled, this, &SetupConfigurationPanel::onOperationToggled);
-    connect(m_threadingEnabledCheck, &QCheckBox::toggled, this, &SetupConfigurationPanel::onOperationToggled);
-    connect(m_chamferingEnabledCheck, &QCheckBox::toggled, this, &SetupConfigurationPanel::onOperationToggled);
-    connect(m_partingEnabledCheck, &QCheckBox::toggled, this, &SetupConfigurationPanel::onOperationToggled);
+    // Operation controls - only connect if widgets exist
+    if (m_contouringEnabledCheck) {
+        connect(m_contouringEnabledCheck, &QCheckBox::toggled, this, &SetupConfigurationPanel::onOperationToggled);
+    }
+    if (m_threadingEnabledCheck) {
+        connect(m_threadingEnabledCheck, &QCheckBox::toggled, this, &SetupConfigurationPanel::onOperationToggled);
+    }
+    if (m_chamferingEnabledCheck) {
+        connect(m_chamferingEnabledCheck, &QCheckBox::toggled, this, &SetupConfigurationPanel::onOperationToggled);
+    }
+    if (m_partingEnabledCheck) {
+        connect(m_partingEnabledCheck, &QCheckBox::toggled, this, &SetupConfigurationPanel::onOperationToggled);
+    }
 
-    connect(m_contouringParamsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onOperationParametersClicked);
-    connect(m_threadingParamsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onOperationParametersClicked);
-    connect(m_chamferingParamsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onOperationParametersClicked);
-    connect(m_partingParamsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onOperationParametersClicked);
+    if (m_contouringParamsButton) {
+        connect(m_contouringParamsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onOperationParametersClicked);
+    }
+    if (m_threadingParamsButton) {
+        connect(m_threadingParamsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onOperationParametersClicked);
+    }
+    if (m_chamferingParamsButton) {
+        connect(m_chamferingParamsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onOperationParametersClicked);
+    }
+    if (m_partingParamsButton) {
+        connect(m_partingParamsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onOperationParametersClicked);
+    }
 }
 
 void SetupConfigurationPanel::applyTabStyling()
@@ -644,10 +660,10 @@ double SetupConfigurationPanel::getTolerance() const
 
 bool SetupConfigurationPanel::isOperationEnabled(const QString& operationName) const
 {
-    if (operationName == "Contouring") return m_contouringEnabledCheck->isChecked();
-    if (operationName == "Threading") return m_threadingEnabledCheck->isChecked();
-    if (operationName == "Chamfering") return m_chamferingEnabledCheck->isChecked();
-    if (operationName == "Parting") return m_partingEnabledCheck->isChecked();
+    if (operationName == "Contouring") return m_contouringEnabledCheck ? m_contouringEnabledCheck->isChecked() : false;
+    if (operationName == "Threading") return m_threadingEnabledCheck ? m_threadingEnabledCheck->isChecked() : false;
+    if (operationName == "Chamfering") return m_chamferingEnabledCheck ? m_chamferingEnabledCheck->isChecked() : false;
+    if (operationName == "Parting") return m_partingEnabledCheck ? m_partingEnabledCheck->isChecked() : false;
     return false;
 }
 
