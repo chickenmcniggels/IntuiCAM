@@ -70,9 +70,6 @@ SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     , m_partingTab(nullptr)
     , m_materialManager(nullptr)
     , m_toolManager(nullptr)
-    , m_toolSelectionGroup(nullptr)
-    , m_toolLayout(nullptr)
-    , m_recommendedToolsList(nullptr)
     , m_materialPropertiesLabel(nullptr)
     , m_contouringEnabledCheck(nullptr)
     , m_contouringParamsButton(nullptr)
@@ -271,73 +268,6 @@ void SetupConfigurationPanel::setupPartTab()
 
     partTabLayout->addWidget(m_materialGroup);
 
-    // Tool Selection Group
-    m_toolSelectionGroup = new QGroupBox("Recommended Tools");
-    m_toolLayout = new QVBoxLayout(m_toolSelectionGroup);
-    m_toolLayout->setSpacing(8);
-
-    m_recommendedToolsLabel = new QLabel("Tools recommended for selected operations:");
-    m_recommendedToolsLabel->setStyleSheet("font-weight: bold; color: #333;");
-    m_toolLayout->addWidget(m_recommendedToolsLabel);
-
-    m_recommendedToolsList = new QListWidget();
-    m_recommendedToolsList->setMaximumHeight(120);
-    m_recommendedToolsList->setAlternatingRowColors(true);
-    m_recommendedToolsList->setStyleSheet(
-        "QListWidget {"
-        "  border: 1px solid #ddd;"
-        "  border-radius: 4px;"
-        "  background: white;"
-        "}"
-        "QListWidget::item {"
-        "  padding: 4px 8px;"
-        "  border-bottom: 1px solid #eee;"
-        "}"
-        "QListWidget::item:selected {"
-        "  background: #2196F3;"
-        "  color: white;"
-        "}"
-    );
-    m_toolLayout->addWidget(m_recommendedToolsList);
-
-    QHBoxLayout* toolButtonsLayout = new QHBoxLayout();
-    m_toolDetailsButton = new QPushButton("Tool Details");
-    m_toolDetailsButton->setMaximumHeight(28);
-    m_customizeToolsButton = new QPushButton("Customize Tools");
-    m_customizeToolsButton->setMaximumHeight(28);
-    
-    m_toolDetailsButton->setStyleSheet(
-        "QPushButton {"
-        "  background-color: #2196F3;"
-        "  color: white;"
-        "  border: none;"
-        "  border-radius: 4px;"
-        "  font-size: 11px;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: #1976D2;"
-        "}"
-    );
-    
-    m_customizeToolsButton->setStyleSheet(
-        "QPushButton {"
-        "  background-color: #FF9800;"
-        "  color: white;"
-        "  border: none;"
-        "  border-radius: 4px;"
-        "  font-size: 11px;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: #F57C00;"
-        "}"
-    );
-    
-    toolButtonsLayout->addWidget(m_toolDetailsButton);
-    toolButtonsLayout->addWidget(m_customizeToolsButton);
-    toolButtonsLayout->addStretch();
-    m_toolLayout->addLayout(toolButtonsLayout);
-
-    partTabLayout->addWidget(m_toolSelectionGroup);
     partTabLayout->addStretch();
 }
 
@@ -468,6 +398,14 @@ void SetupConfigurationPanel::setupMachiningTab()
     m_qualityLayout->addLayout(m_toleranceLayout);
 
     contourLayout->addWidget(m_qualityGroup);
+
+    QGroupBox* contourToolsGroup = new QGroupBox("Recommended Tools");
+    QVBoxLayout* contourToolsLayout = new QVBoxLayout(contourToolsGroup);
+    QListWidget* contourToolsList = new QListWidget();
+    contourToolsLayout->addWidget(contourToolsList);
+    contourLayout->addWidget(contourToolsGroup);
+    m_operationToolLists.insert("contouring", contourToolsList);
+
     contourLayout->addStretch();
 
     // --- Threading Tab ---
@@ -485,6 +423,14 @@ void SetupConfigurationPanel::setupMachiningTab()
     QLabel* threadingInfo = new QLabel("Select faces to thread in the 3D view.");
     threadingInfo->setWordWrap(true);
     threadingLayout->addWidget(threadingInfo);
+
+    QGroupBox* threadingToolsGroup = new QGroupBox("Recommended Tools");
+    QVBoxLayout* threadingToolsLayout = new QVBoxLayout(threadingToolsGroup);
+    QListWidget* threadingToolsList = new QListWidget();
+    threadingToolsLayout->addWidget(threadingToolsList);
+    threadingLayout->addWidget(threadingToolsGroup);
+    m_operationToolLists.insert("threading", threadingToolsList);
+
     threadingLayout->addStretch();
 
     // --- Chamfering Tab ---
@@ -502,6 +448,14 @@ void SetupConfigurationPanel::setupMachiningTab()
     QLabel* chamferInfo = new QLabel("Select edges to chamfer in the 3D view.");
     chamferInfo->setWordWrap(true);
     chamferLayout->addWidget(chamferInfo);
+
+    QGroupBox* chamferToolsGroup = new QGroupBox("Recommended Tools");
+    QVBoxLayout* chamferToolsLayout = new QVBoxLayout(chamferToolsGroup);
+    QListWidget* chamferToolsList = new QListWidget();
+    chamferToolsLayout->addWidget(chamferToolsList);
+    chamferLayout->addWidget(chamferToolsGroup);
+    m_operationToolLists.insert("chamfering", chamferToolsList);
+
     chamferLayout->addStretch();
 
     // --- Parting Tab ---
@@ -528,6 +482,14 @@ void SetupConfigurationPanel::setupMachiningTab()
     m_partingWidthLayout->addWidget(m_partingWidthSpin);
     m_partingWidthLayout->addStretch();
     partLayout->addLayout(m_partingWidthLayout);
+
+    QGroupBox* partingToolsGroup = new QGroupBox("Recommended Tools");
+    QVBoxLayout* partingToolsLayout = new QVBoxLayout(partingToolsGroup);
+    QListWidget* partingToolsList = new QListWidget();
+    partingToolsLayout->addWidget(partingToolsList);
+    partLayout->addWidget(partingToolsGroup);
+    m_operationToolLists.insert("parting", partingToolsList);
+
     partLayout->addStretch();
 }
 
@@ -541,12 +503,6 @@ void SetupConfigurationPanel::setupConnections()
     // Material and tool management connections
     if (m_materialDetailsButton) {
         connect(m_materialDetailsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onToolSelectionRequested);
-    }
-    if (m_toolDetailsButton) {
-        connect(m_toolDetailsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onToolSelectionRequested);
-    }
-    if (m_customizeToolsButton) {
-        connect(m_customizeToolsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onToolSelectionRequested);
     }
     connect(m_rawDiameterSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &SetupConfigurationPanel::onConfigurationChanged);
     
@@ -915,9 +871,10 @@ QString SetupConfigurationPanel::getSelectedMaterialName() const
 QStringList SetupConfigurationPanel::getRecommendedTools() const
 {
     QStringList toolIds;
-    if (m_recommendedToolsList) {
-        for (int i = 0; i < m_recommendedToolsList->count(); ++i) {
-            QListWidgetItem* item = m_recommendedToolsList->item(i);
+    for (auto list : m_operationToolLists) {
+        if (!list) continue;
+        for (int i = 0; i < list->count(); ++i) {
+            QListWidgetItem* item = list->item(i);
             if (item && item->data(Qt::UserRole).isValid()) {
                 toolIds.append(item->data(Qt::UserRole).toString());
             }
@@ -964,11 +921,13 @@ void SetupConfigurationPanel::updateMaterialProperties()
 
 void SetupConfigurationPanel::updateToolRecommendations()
 {
-    if (!m_toolManager || !m_recommendedToolsList) {
+    if (!m_toolManager) {
         return;
     }
-    
-    m_recommendedToolsList->clear();
+
+    for (auto list : m_operationToolLists) {
+        if (list) list->clear();
+    }
     
     QString materialName = getSelectedMaterialName();
     if (materialName.isEmpty()) {
@@ -1019,8 +978,11 @@ void SetupConfigurationPanel::updateToolRecommendations()
                 item->setData(Qt::UserRole, QVariant(rec.toolId));
                 item->setToolTip(QString("Tool: %1\nOperation: %2\nSuitability: %3\nReason: %4")
                     .arg(tool.name).arg(operation).arg(rec.suitabilityScore, 0, 'f', 2).arg(rec.reason));
-                
-                m_recommendedToolsList->addItem(item);
+
+                QListWidget* targetList = m_operationToolLists.value(operation);
+                if (targetList) {
+                    targetList->addItem(item);
+                }
                 count++;
             }
         }
