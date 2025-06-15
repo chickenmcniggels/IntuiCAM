@@ -10,7 +10,6 @@ set(CMAKE_AUTORCC ON)
 
 # --- Options to control build targets ---
 option(INTUICAM_BUILD_GUI "Build the IntuiCAM Qt GUI application" ON)
-option(INTUICAM_BUILD_CLI "Build the IntuiCAM command-line interface" ON)
 option(INTUICAM_BUILD_PYTHON "Build Python bindings for Core libraries" OFF)
 option(INTUICAM_BUILD_TESTS "Build unit and integration tests" ON)
 
@@ -84,13 +83,6 @@ if(INTUICAM_BUILD_GUI)
     add_subdirectory(gui)
 endif()
 
-if(INTUICAM_BUILD_CLI)
-    add_subdirectory(cli)
-endif()
-
-# Add examples directory
-add_subdirectory(examples)
-
 # Add tests if enabled
 if(INTUICAM_BUILD_TESTS)
     enable_testing()
@@ -109,13 +101,13 @@ endif()
 if(INTUICAM_BUILD_GUI)
     # Include CPack for creating installers
     include(InstallRequiredSystemLibraries)
-    
+
     # Set package information
     set(CPACK_PACKAGE_NAME "IntuiCAM")
     set(CPACK_PACKAGE_VENDOR "IntuiCAM Development Team")
     set(CPACK_PACKAGE_VERSION "1.0.0")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Advanced CAM Software for Precision Manufacturing")
-    
+
     # Windows-specific packaging
     if(WIN32)
         set(CPACK_GENERATOR "NSIS;ZIP")
@@ -123,19 +115,12 @@ if(INTUICAM_BUILD_GUI)
         set(CPACK_NSIS_HELP_LINK "https://github.com/your-repo/IntuiCAM")
         set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/your-repo/IntuiCAM")
         set(CPACK_NSIS_CONTACT "support@intuicam.com")
-        
+
         # Install the GUI executable
         install(TARGETS IntuiCAMGui 
             RUNTIME DESTINATION bin
             COMPONENT Applications)
-            
-        # Install the CLI executable
-        if(INTUICAM_BUILD_CLI)
-            install(TARGETS IntuiCAMCli 
-                RUNTIME DESTINATION bin
-                COMPONENT Applications)
-        endif()
     endif()
-    
+
     include(CPack)
 endif()

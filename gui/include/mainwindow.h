@@ -231,10 +231,10 @@ private:
     QAction *m_showRawMaterialAction;
     QAction *m_showToolpathsAction;
     QAction *m_showPartAction;
-    QString m_defaultChuckFilePath;  // Default path to chuck STEP file
+    QString m_defaultChuckFilePath;
 
 private:
-    void createViewModeOverlayButton(QWidget *parent);
+    void createViewModeOverlayButton(QWidget* parent);
     void updateViewModeOverlayButton();
     void initializeWorkspace();
 };

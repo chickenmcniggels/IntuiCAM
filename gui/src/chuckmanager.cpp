@@ -22,6 +22,7 @@ ChuckManager::ChuckManager(QObject *parent)
     : QObject(parent)
     , m_stepLoader(nullptr)
     , m_centerlineDetected(false)
+    , m_isVisible(false)
 {
     // Initialize default chuck centerline axis (Z-axis through origin)
     m_chuckCenterlineAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
@@ -264,7 +265,7 @@ void ChuckManager::setChuckMaterial(Handle(AIS_Shape) chuckAIS)
     chuckMaterial.SetAmbientColor(Quantity_Color(0.3, 0.3, 0.3, Quantity_TOC_RGB));
     chuckMaterial.SetDiffuseColor(Quantity_Color(0.7, 0.7, 0.7, Quantity_TOC_RGB));
     chuckMaterial.SetSpecularColor(Quantity_Color(0.9, 0.9, 0.9, Quantity_TOC_RGB));
-    chuckMaterial.SetShininess(0.8);
+    chuckMaterial.SetShininess(0.8f);
     
     chuckAIS->SetMaterial(chuckMaterial);
 }
@@ -308,18 +309,20 @@ void ChuckManager::setChuckVisible(bool visible)
 
     if (visible) {
         if (!m_context->IsDisplayed(m_chuckAIS)) {
-            m_context->Display(m_chuckAIS, AIS_Shaded, 0, Standard_False);
-            // Keep chuck non-selectable when redisplayed
+            m_context->Display(m_chuckAIS, AIS_Shaded, 0, false);
             m_context->Deactivate(m_chuckAIS);
         }
     } else {
-        m_context->Erase(m_chuckAIS, Standard_False);
+        if (m_context->IsDisplayed(m_chuckAIS)) {
+            m_context->Erase(m_chuckAIS, false);
+        }
     }
 
+    m_isVisible = visible;
     m_context->UpdateCurrentViewer();
 }
 
 bool ChuckManager::isChuckVisible() const
 {
-    return !m_context.IsNull() && !m_chuckAIS.IsNull() && m_context->IsDisplayed(m_chuckAIS);
+    return m_isVisible;
 }

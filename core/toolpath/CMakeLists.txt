@@ -12,7 +12,6 @@ set(CORE_TOOLPATH_SOURCES
     "src/PartingOperation.cpp"
     "src/ThreadingOperation.cpp"
     "src/GroovingOperation.cpp"
-    "src/placeholder.cpp"
     "src/ToolpathPlanner.cpp"
     "src/LatheProfile.cpp"
     "include/IntuiCAM/Toolpath/Types.h"

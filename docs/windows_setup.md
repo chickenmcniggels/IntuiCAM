@@ -83,8 +83,6 @@ This guide provides detailed instructions for setting up IntuiCAM on Windows, in
 
 4. **Test Build**:
    ```powershell
-   # Test CLI
-   .\Release\IntuiCAMCli.exe --help
    
    # Launch GUI
    .\Release\IntuiCAMGui.exe
@@ -93,7 +91,6 @@ This guide provides detailed instructions for setting up IntuiCAM on Windows, in
 ### Build Output
 
 Successful build produces:
-- `build\Release\IntuiCAMCli.exe` - Command-line interface
 - `build\Release\IntuiCAMGui.exe` - Qt GUI application (with auto-deployed DLLs)
 - `build\core\*\Release\*.lib` - Static core libraries
 
@@ -241,7 +238,6 @@ If you encounter build errors:
 
 **Visual Studio 2022**:
 1. Open `IntuiCAM.sln` from the build directory
-2. Set startup project to `IntuiCAMGui` or `IntuiCAMCli`
 3. Build configuration: Release or Debug
 
 **Qt Creator** (Optional):
@@ -258,15 +254,12 @@ cmake --build . --config Debug
 ```
 
 **Debug executables**:
-- `build\Debug\IntuiCAMCli.exe`
 - `build\Debug\IntuiCAMGui.exe`
 
 ### Testing
 
 Currently no automated tests are configured. Manual testing:
 ```powershell
-# Test CLI functionality
-.\Release\IntuiCAMCli.exe --help
 
 # Test GUI launch
 .\Release\IntuiCAMGui.exe

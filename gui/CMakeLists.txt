@@ -146,6 +146,7 @@ set_target_properties(${GUI_EXECUTABLE_NAME} PROPERTIES
 # However, if gui/src itself needs to #include <IntuiCAM/CoreModule/Header.h>, this is handled by core modules exporting their include directories.
 
 # Copy required DLLs to output directory for runtime dependency resolution
+# Deploy Qt libraries on Windows
 if(WIN32)
     # Define essential DLLs that are commonly required by OpenCASCADE applications
     # This approach is more selective than copying entire bin directories

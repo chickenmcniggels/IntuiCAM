@@ -131,7 +131,6 @@ public slots:
     void onManualAxisSelectionClicked();
     void onOperationToggled();
     void onOperationParametersClicked();
-    void onGenerateToolpaths();
     void onMaterialChanged();
     void onToolSelectionRequested();
 
@@ -211,10 +210,6 @@ private:
     QLabel* m_toleranceLabel;
     QDoubleSpinBox* m_toleranceSpin;
 
-    // Generation Controls
-    QFrame* m_generationFrame;
-    QVBoxLayout* m_generationLayout;
-    QPushButton* m_generateButton;
 
     // Material and Tool Management Integration
     MaterialManager* m_materialManager;
