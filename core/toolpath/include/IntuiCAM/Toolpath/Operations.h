@@ -151,5 +151,47 @@ public:
     bool validate() const override;
 };
 
+// Chamfering operation for edge breaks
+class ChamferingOperation : public Operation {
+public:
+    struct Parameters {
+        double chamferSize = 0.5; // mm
+    };
+
+private:
+    Parameters params_;
+
+public:
+    ChamferingOperation(const std::string& name, std::shared_ptr<Tool> tool);
+
+    void setParameters(const Parameters& params) { params_ = params; }
+    const Parameters& getParameters() const { return params_; }
+
+    std::unique_ptr<Toolpath> generateToolpath(const Geometry::Part& part) override;
+    bool validate() const override;
+};
+
+// Contouring operation that combines facing, roughing and finishing
+class ContouringOperation : public Operation {
+public:
+    struct Parameters {
+        FacingOperation::Parameters facing;
+        RoughingOperation::Parameters roughing;
+        FinishingOperation::Parameters finishing;
+    };
+
+private:
+    Parameters params_;
+
+public:
+    ContouringOperation(const std::string& name, std::shared_ptr<Tool> tool);
+
+    void setParameters(const Parameters& params) { params_ = params; }
+    const Parameters& getParameters() const { return params_; }
+
+    std::unique_ptr<Toolpath> generateToolpath(const Geometry::Part& part) override;
+    bool validate() const override;
+};
+
 } // namespace Toolpath
-} // namespace IntuiCAM 
+} // namespace IntuiCAM

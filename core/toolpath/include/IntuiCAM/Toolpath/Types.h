@@ -22,7 +22,9 @@ public:
         Facing,
         Parting,
         Threading,
-        Grooving
+        Grooving,
+        Chamfering,
+        Contouring
     };
     
     struct CuttingParameters {
@@ -94,9 +96,10 @@ public:
     void addMovement(const Movement& movement);
     void addRapidMove(const Geometry::Point3D& position);
     void addLinearMove(const Geometry::Point3D& position, double feedRate);
-    void addCircularMove(const Geometry::Point3D& position, const Geometry::Point3D& center, 
+    void addCircularMove(const Geometry::Point3D& position, const Geometry::Point3D& center,
                         bool clockwise, double feedRate);
     void addDwell(double seconds);
+    void appendToolpath(const Toolpath& other);
     
     // Getters
     const std::vector<Movement>& getMovements() const { return movements_; }
@@ -122,7 +125,9 @@ public:
         Finishing,
         Parting,
         Threading,
-        Grooving
+        Grooving,
+        Chamfering,
+        Contouring
     };
     
 protected:

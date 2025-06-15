@@ -227,9 +227,57 @@ std::unique_ptr<Toolpath> GroovingOperation::generateToolpath(const Geometry::Pa
 }
 
 bool GroovingOperation::validate() const {
-    return params_.grooveDiameter > 0.0 && 
-           params_.grooveDepth > 0.0 && 
+    return params_.grooveDiameter > 0.0 &&
+           params_.grooveDepth > 0.0 &&
            params_.feedRate > 0.0;
+}
+
+// ChamferingOperation implementation
+ChamferingOperation::ChamferingOperation(const std::string& name, std::shared_ptr<Tool> tool)
+    : Operation(Operation::Type::Chamfering, name, tool) {}
+
+std::unique_ptr<Toolpath> ChamferingOperation::generateToolpath(const Geometry::Part& /*part*/) {
+    auto toolpath = std::make_unique<Toolpath>(name_, tool_);
+
+    // Placeholder chamfering path - move to origin and dwell
+    toolpath->addRapidMove(Geometry::Point3D(0, 0, 0));
+    toolpath->addDwell(0.1);
+
+    return toolpath;
+}
+
+bool ChamferingOperation::validate() const {
+    return params_.chamferSize > 0.0;
+}
+
+// ContouringOperation implementation
+ContouringOperation::ContouringOperation(const std::string& name, std::shared_ptr<Tool> tool)
+    : Operation(Operation::Type::Contouring, name, tool) {}
+
+std::unique_ptr<Toolpath> ContouringOperation::generateToolpath(const Geometry::Part& part) {
+    auto toolpath = std::make_unique<Toolpath>(name_, tool_);
+
+    // Use existing operations sequentially
+    FacingOperation face("facing", tool_);
+    face.setParameters(params_.facing);
+    auto facePath = face.generateToolpath(part);
+    toolpath->appendToolpath(*facePath);
+
+    RoughingOperation rough("roughing", tool_);
+    rough.setParameters(params_.roughing);
+    auto roughPath = rough.generateToolpath(part);
+    toolpath->appendToolpath(*roughPath);
+
+    FinishingOperation finish("finishing", tool_);
+    finish.setParameters(params_.finishing);
+    auto finishPath = finish.generateToolpath(part);
+    toolpath->appendToolpath(*finishPath);
+
+    return toolpath;
+}
+
+bool ContouringOperation::validate() const {
+    return true;
 }
 
 } // namespace Toolpath

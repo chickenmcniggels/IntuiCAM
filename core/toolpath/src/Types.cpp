@@ -1,4 +1,5 @@
 #include <IntuiCAM/Toolpath/Types.h>
+#include <IntuiCAM/Toolpath/Operations.h>
 #include <algorithm>
 #include <cmath>
 
@@ -41,6 +42,12 @@ void Toolpath::addDwell(double seconds) {
     Movement move(MovementType::Dwell, Geometry::Point3D(0, 0, 0));
     move.comment = "Dwell " + std::to_string(seconds) + " seconds";
     movements_.push_back(move);
+}
+
+void Toolpath::appendToolpath(const Toolpath& other) {
+    for (const auto& m : other.getMovements()) {
+        movements_.push_back(m);
+    }
 }
 
 double Toolpath::estimateMachiningTime() const {
@@ -124,11 +131,28 @@ Operation::Operation(Type type, const std::string& name, std::shared_ptr<Tool> t
     : type_(type), name_(name), tool_(tool) {
 }
 
-std::unique_ptr<Operation> Operation::createOperation(Type type, const std::string& name, 
+std::unique_ptr<Operation> Operation::createOperation(Type type, const std::string& name,
                                                      std::shared_ptr<Tool> tool) {
-    // This would create specific operation types
-    // For now, return nullptr as placeholder
-    return nullptr;
+    switch (type) {
+        case Operation::Type::Facing:
+            return std::make_unique<FacingOperation>(name, tool);
+        case Operation::Type::Roughing:
+            return std::make_unique<RoughingOperation>(name, tool);
+        case Operation::Type::Finishing:
+            return std::make_unique<FinishingOperation>(name, tool);
+        case Operation::Type::Parting:
+            return std::make_unique<PartingOperation>(name, tool);
+        case Operation::Type::Threading:
+            return std::make_unique<ThreadingOperation>(name, tool);
+        case Operation::Type::Grooving:
+            return std::make_unique<GroovingOperation>(name, tool);
+        case Operation::Type::Chamfering:
+            return std::make_unique<ChamferingOperation>(name, tool);
+        case Operation::Type::Contouring:
+            return std::make_unique<ContouringOperation>(name, tool);
+        default:
+            return nullptr;
+    }
 }
 
 } // namespace Toolpath
