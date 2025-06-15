@@ -62,9 +62,12 @@ const QStringList OPERATION_ORDER = {
 SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     : QWidget(parent)
     , m_mainLayout(nullptr)
-    , m_tabWidget(nullptr)
     , m_partTab(nullptr)
-    , m_machiningTab(nullptr)
+    , m_operationsTabWidget(nullptr)
+    , m_contouringTab(nullptr)
+    , m_threadingTab(nullptr)
+    , m_chamferingTab(nullptr)
+    , m_partingTab(nullptr)
     , m_materialManager(nullptr)
     , m_toolManager(nullptr)
     , m_toolSelectionGroup(nullptr)
@@ -88,25 +91,34 @@ void SetupConfigurationPanel::setupUI()
     m_mainLayout->setSpacing(8);
     m_mainLayout->setContentsMargins(8, 8, 8, 8);
 
-    // Create tab widget
-    m_tabWidget = new QTabWidget();
-    m_tabWidget->setTabPosition(QTabWidget::North);
-    m_tabWidget->setDocumentMode(true);
-    
-    // Create tab widgets
+    // Create top part setup section
     m_partTab = new QWidget();
-    m_machiningTab = new QWidget();
-    
-    // Setup individual tabs
     setupPartTab();
+    m_mainLayout->addWidget(m_partTab);
+
+    // Create operations tab widget
+    m_operationsTabWidget = new QTabWidget();
+    m_operationsTabWidget->setTabPosition(QTabWidget::North);
+    m_operationsTabWidget->setDocumentMode(true);
+
+    // Create operation tabs
+    m_contouringTab = new QWidget();
+    m_threadingTab = new QWidget();
+    m_chamferingTab = new QWidget();
+    m_partingTab = new QWidget();
+
+    // Setup individual operation tabs
     setupMachiningTab();
-    
+
     // Add tabs to widget
-    m_tabWidget->addTab(m_partTab, "Part Setup");
-    m_tabWidget->addTab(m_machiningTab, "Machining");
-    
-    // Add tab widget to main layout
-    m_mainLayout->addWidget(m_tabWidget);
+    m_operationsTabWidget->addTab(m_contouringTab, "Contouring");
+    m_operationsTabWidget->addTab(m_threadingTab, "Threading");
+    m_operationsTabWidget->addTab(m_chamferingTab, "Chamfering");
+    m_operationsTabWidget->addTab(m_partingTab, "Parting");
+
+    // Add operations tab widget to main layout
+    m_mainLayout->addWidget(m_operationsTabWidget);
+
     
 }
 
@@ -323,11 +335,20 @@ void SetupConfigurationPanel::setupPartTab()
 
 void SetupConfigurationPanel::setupMachiningTab()
 {
-    QVBoxLayout* machiningTabLayout = new QVBoxLayout(m_machiningTab);
-    machiningTabLayout->setContentsMargins(12, 12, 12, 12);
-    machiningTabLayout->setSpacing(16);
+    // --- Contouring Tab ---
+    QVBoxLayout* contourLayout = new QVBoxLayout(m_contouringTab);
+    contourLayout->setContentsMargins(12, 12, 12, 12);
+    contourLayout->setSpacing(16);
 
-    // Machining Parameters Group
+    QHBoxLayout* contourEnableLayout = new QHBoxLayout();
+    m_contouringEnabledCheck = new QCheckBox("Enable Contouring");
+    m_contouringParamsButton = new QPushButton("Parameters...");
+    m_contouringParamsButton->setEnabled(false);
+    contourEnableLayout->addWidget(m_contouringEnabledCheck);
+    contourEnableLayout->addStretch();
+    contourEnableLayout->addWidget(m_contouringParamsButton);
+    contourLayout->addLayout(contourEnableLayout);
+
     m_machiningParamsGroup = new QGroupBox("Machining Parameters");
     m_machiningParamsLayout = new QVBoxLayout(m_machiningParamsGroup);
     m_machiningParamsLayout->setSpacing(8);
@@ -392,37 +413,7 @@ void SetupConfigurationPanel::setupMachiningTab()
     m_partingWidthLayout->addStretch();
     m_machiningParamsLayout->addLayout(m_partingWidthLayout);
 
-    machiningTabLayout->addWidget(m_machiningParamsGroup);
-
-    // Operations Control Group
-    m_operationsGroup = new QGroupBox("Operations Control");
-    m_operationsLayout = new QVBoxLayout(m_operationsGroup);
-    m_operationsLayout->setSpacing(12);
-
-    // Create operation controls
-    QStringList operations = {"Contouring", "Threading", "Chamfering", "Parting"};
-    QList<QCheckBox**> checkBoxes = {&m_contouringEnabledCheck, &m_threadingEnabledCheck,
-                                     &m_chamferingEnabledCheck, &m_partingEnabledCheck};
-    QList<QPushButton**> paramButtons = {&m_contouringParamsButton, &m_threadingParamsButton,
-                                        &m_chamferingParamsButton, &m_partingParamsButton};
-
-    for (int i = 0; i < operations.size(); ++i) {
-        QHBoxLayout* opLayout = new QHBoxLayout();
-        *checkBoxes[i] = new QCheckBox(operations[i]);
-        (*checkBoxes[i])->setObjectName(operations[i] + "EnabledCheck");
-        
-        *paramButtons[i] = new QPushButton("Parameters...");
-        (*paramButtons[i])->setObjectName(operations[i] + "ParamsButton");
-        (*paramButtons[i])->setEnabled(false); // Disabled until checkbox is checked
-        
-        opLayout->addWidget(*checkBoxes[i]);
-        opLayout->addStretch();
-        opLayout->addWidget(*paramButtons[i]);
-        
-        m_operationsLayout->addLayout(opLayout);
-    }
-
-    machiningTabLayout->addWidget(m_operationsGroup);
+    contourLayout->addWidget(m_machiningParamsGroup);
 
     // Quality Group
     m_qualityGroup = new QGroupBox("Quality Settings");
@@ -468,8 +459,68 @@ void SetupConfigurationPanel::setupMachiningTab()
     m_toleranceLayout->addStretch();
     m_qualityLayout->addLayout(m_toleranceLayout);
 
-    machiningTabLayout->addWidget(m_qualityGroup);
-    machiningTabLayout->addStretch();
+    contourLayout->addWidget(m_qualityGroup);
+    contourLayout->addStretch();
+
+    // --- Threading Tab ---
+    QVBoxLayout* threadingLayout = new QVBoxLayout(m_threadingTab);
+    threadingLayout->setContentsMargins(12, 12, 12, 12);
+    threadingLayout->setSpacing(16);
+    QHBoxLayout* threadEnableLayout = new QHBoxLayout();
+    m_threadingEnabledCheck = new QCheckBox("Enable Threading");
+    m_threadingParamsButton = new QPushButton("Parameters...");
+    m_threadingParamsButton->setEnabled(false);
+    threadEnableLayout->addWidget(m_threadingEnabledCheck);
+    threadEnableLayout->addStretch();
+    threadEnableLayout->addWidget(m_threadingParamsButton);
+    threadingLayout->addLayout(threadEnableLayout);
+    QLabel* threadingInfo = new QLabel("Select faces to thread in the 3D view.");
+    threadingInfo->setWordWrap(true);
+    threadingLayout->addWidget(threadingInfo);
+    threadingLayout->addStretch();
+
+    // --- Chamfering Tab ---
+    QVBoxLayout* chamferLayout = new QVBoxLayout(m_chamferingTab);
+    chamferLayout->setContentsMargins(12, 12, 12, 12);
+    chamferLayout->setSpacing(16);
+    QHBoxLayout* chamferEnableLayout = new QHBoxLayout();
+    m_chamferingEnabledCheck = new QCheckBox("Enable Chamfering");
+    m_chamferingParamsButton = new QPushButton("Parameters...");
+    m_chamferingParamsButton->setEnabled(false);
+    chamferEnableLayout->addWidget(m_chamferingEnabledCheck);
+    chamferEnableLayout->addStretch();
+    chamferEnableLayout->addWidget(m_chamferingParamsButton);
+    chamferLayout->addLayout(chamferEnableLayout);
+    QLabel* chamferInfo = new QLabel("Select edges to chamfer in the 3D view.");
+    chamferInfo->setWordWrap(true);
+    chamferLayout->addWidget(chamferInfo);
+    chamferLayout->addStretch();
+
+    // --- Parting Tab ---
+    QVBoxLayout* partLayout = new QVBoxLayout(m_partingTab);
+    partLayout->setContentsMargins(12, 12, 12, 12);
+    partLayout->setSpacing(16);
+    QHBoxLayout* partEnableLayout = new QHBoxLayout();
+    m_partingEnabledCheck = new QCheckBox("Enable Parting");
+    m_partingParamsButton = new QPushButton("Parameters...");
+    m_partingParamsButton->setEnabled(false);
+    partEnableLayout->addWidget(m_partingEnabledCheck);
+    partEnableLayout->addStretch();
+    partEnableLayout->addWidget(m_partingParamsButton);
+    partLayout->addLayout(partEnableLayout);
+    m_partingWidthLayout = new QHBoxLayout();
+    m_partingWidthLabel = new QLabel("Parting Width:");
+    m_partingWidthLabel->setMinimumWidth(140);
+    m_partingWidthSpin = new QDoubleSpinBox();
+    m_partingWidthSpin->setRange(1.0, 5.0);
+    m_partingWidthSpin->setValue(3.0);
+    m_partingWidthSpin->setSuffix(" mm");
+    m_partingWidthSpin->setDecimals(1);
+    m_partingWidthLayout->addWidget(m_partingWidthLabel);
+    m_partingWidthLayout->addWidget(m_partingWidthSpin);
+    m_partingWidthLayout->addStretch();
+    partLayout->addLayout(m_partingWidthLayout);
+    partLayout->addStretch();
 }
 
 void SetupConfigurationPanel::setupConnections()
@@ -529,7 +580,7 @@ void SetupConfigurationPanel::setupConnections()
 void SetupConfigurationPanel::applyTabStyling()
 {
     // Apply modern styling to tab widget
-    m_tabWidget->setStyleSheet(R"(
+    m_operationsTabWidget->setStyleSheet(R"(
         QTabWidget::pane {
             border: 1px solid #c0c0c0;
             background-color: #f0f0f0;
@@ -576,7 +627,6 @@ void SetupConfigurationPanel::applyTabStyling()
     m_partSetupGroup->setStyleSheet(groupBoxStyle.arg("#2196F3", "33, 150, 243"));
     m_materialGroup->setStyleSheet(groupBoxStyle.arg("#4CAF50", "76, 175, 80"));
     m_machiningParamsGroup->setStyleSheet(groupBoxStyle.arg("#f44336", "244, 67, 54"));
-    m_operationsGroup->setStyleSheet(groupBoxStyle.arg("#9C27B0", "156, 39, 176"));
     m_qualityGroup->setStyleSheet(groupBoxStyle.arg("#607D8B", "96, 125, 139"));
 }
 

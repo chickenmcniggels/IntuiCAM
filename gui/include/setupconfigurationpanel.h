@@ -137,16 +137,19 @@ public slots:
 private:
     void setupUI();
     void setupPartTab();
-    void setupMachiningTab();
+    void setupMachiningTab(); // now sets up operation-specific tabs
     void setupConnections();
     void applyTabStyling();
     void updateOperationControls();
 
     // Main layout and tabs
     QVBoxLayout* m_mainLayout;
-    QTabWidget* m_tabWidget;
     QWidget* m_partTab;
-    QWidget* m_machiningTab;
+    QTabWidget* m_operationsTabWidget;
+    QWidget* m_contouringTab;
+    QWidget* m_threadingTab;
+    QWidget* m_chamferingTab;
+    QWidget* m_partingTab;
 
     // Part Tab Components (Part Setup + Material Settings)
     QGroupBox* m_partSetupGroup;
@@ -190,14 +193,9 @@ private:
     QLabel* m_partingWidthLabel;
     QDoubleSpinBox* m_partingWidthSpin;
 
+    // Legacy placeholders to preserve binary compatibility
     QGroupBox* m_operationsGroup;
     QVBoxLayout* m_operationsLayout;
-    QCheckBox* m_facingEnabledCheck;
-    QPushButton* m_facingParamsButton;
-    QCheckBox* m_roughingEnabledCheck;
-    QPushButton* m_roughingParamsButton;
-    QCheckBox* m_finishingEnabledCheck;
-    QPushButton* m_finishingParamsButton;
     QCheckBox* m_contouringEnabledCheck;
     QPushButton* m_contouringParamsButton;
     QCheckBox* m_threadingEnabledCheck;
