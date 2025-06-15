@@ -488,7 +488,7 @@ bool IntuiCAM::GUI::ToolpathGenerationController::generateOperationToolpaths()
                 auto partingOp = std::make_unique<IntuiCAM::Toolpath::PartingOperation>(
                     operationName.toStdString(), tool);
                 IntuiCAM::Toolpath::PartingOperation::Parameters params;
-                params.partingWidth = m_currentRequest.partingWidth;
+                params.partingDiameter = m_currentRequest.partingWidth;
                 partingOp->setParameters(params);
                 operation = std::move(partingOp);
             }
