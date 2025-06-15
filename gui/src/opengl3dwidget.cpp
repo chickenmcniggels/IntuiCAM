@@ -618,11 +618,11 @@ void OpenGL3DWidget::focusInEvent(QFocusEvent *event)
     if (!m_view.IsNull() && m_isInitialized)
     {
         ensureViewerReady();
-        
-        // Additional immediate redraw for critical focus scenarios
-        QTimer::singleShot(1, this, [this]() {
-            forceRedraw();
-        });
+
+        // Trigger a direct redraw rather than relying on a timer
+        forceRedraw();
+        // Schedule an additional update to guarantee a fresh frame
+        update();
     }
 }
 
@@ -636,13 +636,12 @@ void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
     {
         // Mark for refresh when focus returns
         m_needsRefresh = true;
-        
-        // Use a very short timer to ensure context is still valid
-        QTimer::singleShot(1, this, [this]() {
-            if (!m_view.IsNull() && isVisible()) {
-                forceRedraw();
-            }
-        });
+
+        // Force an immediate redraw and schedule one more update
+        if (isVisible()) {
+            forceRedraw();
+            update();
+        }
     }
 }
 
