@@ -32,33 +32,35 @@ void ToolpathTimelineWidgetTest::cleanupTestCase()
 
 void ToolpathTimelineWidgetTest::testAddRemoveUpdateClear()
 {
-    QCOMPARE(m_widget->getToolpathCount(), 0);
+    // Widget now creates standard operations on construction
+    QCOMPARE(m_widget->getToolpathCount(), 4);
 
-    int idx = m_widget->addToolpath("Facing_001", "Facing", "Tool1");
-    QCOMPARE(idx, 0);
-    QCOMPARE(m_widget->getToolpathCount(), 1);
-    QCOMPARE(m_widget->getToolpathName(idx), QString("Facing_001"));
+    int idx = m_widget->addToolpath("Extra_001", "Contouring", "Tool1");
+    QCOMPARE(idx, 4);
+    QCOMPARE(m_widget->getToolpathCount(), 5);
+    QCOMPARE(m_widget->getToolpathName(idx), QString("Extra_001"));
 
     // Update name and verify
-    m_widget->updateToolpath(idx, "Facing_002", "Facing", "Tool1");
-    QCOMPARE(m_widget->getToolpathName(idx), QString("Facing_002"));
+    m_widget->updateToolpath(idx, "Extra_002", "Contouring", "Tool1");
+    QCOMPARE(m_widget->getToolpathName(idx), QString("Extra_002"));
 
     // Remove and verify count
     m_widget->removeToolpath(idx);
-    QCOMPARE(m_widget->getToolpathCount(), 0);
+    QCOMPARE(m_widget->getToolpathCount(), 4);
 
     // Clear check
-    m_widget->addToolpath("Roughing_001", "Roughing", "Tool2");
-    m_widget->addToolpath("Finish_001", "Finishing", "Tool3");
-    QCOMPARE(m_widget->getToolpathCount(), 2);
+    m_widget->addToolpath("Threading_001", "Threading", "Tool2");
+    m_widget->addToolpath("Chamfering_001", "Chamfering", "Tool3");
+    QCOMPARE(m_widget->getToolpathCount(), 6);
     m_widget->clearToolpaths();
+    // Clearing resets to zero custom toolpaths but keeps defaults
     QCOMPARE(m_widget->getToolpathCount(), 0);
 }
 
 void ToolpathTimelineWidgetTest::testActiveToolpathSignal()
 {
-    m_widget->addToolpath("Facing_001", "Facing", "Tool1");
-    m_widget->addToolpath("Roughing_001", "Roughing", "Tool2");
+    m_widget->addToolpath("Contouring_001", "Contouring", "Tool1");
+    m_widget->addToolpath("Threading_001", "Threading", "Tool2");
 
     QSignalSpy spy(m_widget, &ToolpathTimelineWidget::toolpathSelected);
 
@@ -78,7 +80,7 @@ void ToolpathTimelineWidgetTest::testAddToolpathSignalEmission()
     
     // The test environment can't easily simulate a menu click.
     // Instead, we invoke the slot that the menu action would trigger.
-    QAction action("Facing", m_widget);
+    QAction action("Contouring", m_widget);
     QMetaObject::invokeMethod(m_widget, "onOperationTypeSelected", Qt::DirectConnection,
                               Q_ARG(QAction*, &action));
 
@@ -87,7 +89,7 @@ void ToolpathTimelineWidgetTest::testAddToolpathSignalEmission()
     QVERIFY(spy.isValid());
     QCOMPARE(spy.count(), 1);
     QList<QVariant> arguments = spy.takeFirst();
-    QCOMPARE(arguments.at(0).toString(), "Facing");
+    QCOMPARE(arguments.at(0).toString(), "Contouring");
 }
 
 QTEST_MAIN(ToolpathTimelineWidgetTest)

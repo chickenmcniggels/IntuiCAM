@@ -131,7 +131,6 @@ public slots:
     void onManualAxisSelectionClicked();
     void onOperationToggled();
     void onOperationParametersClicked();
-    void onGenerateToolpaths();
     void onMaterialChanged();
     void onToolSelectionRequested();
 
@@ -193,12 +192,12 @@ private:
 
     QGroupBox* m_operationsGroup;
     QVBoxLayout* m_operationsLayout;
-    QCheckBox* m_facingEnabledCheck;
-    QPushButton* m_facingParamsButton;
-    QCheckBox* m_roughingEnabledCheck;
-    QPushButton* m_roughingParamsButton;
-    QCheckBox* m_finishingEnabledCheck;
-    QPushButton* m_finishingParamsButton;
+    QCheckBox* m_contouringEnabledCheck;
+    QPushButton* m_contouringParamsButton;
+    QCheckBox* m_threadingEnabledCheck;
+    QPushButton* m_threadingParamsButton;
+    QCheckBox* m_chamferingEnabledCheck;
+    QPushButton* m_chamferingParamsButton;
     QCheckBox* m_partingEnabledCheck;
     QPushButton* m_partingParamsButton;
 
@@ -211,10 +210,6 @@ private:
     QLabel* m_toleranceLabel;
     QDoubleSpinBox* m_toleranceSpin;
 
-    // Generation Controls
-    QFrame* m_generationFrame;
-    QVBoxLayout* m_generationLayout;
-    QPushButton* m_generateButton;
 
     // Material and Tool Management Integration
     MaterialManager* m_materialManager;
