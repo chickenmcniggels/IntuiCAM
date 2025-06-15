@@ -64,6 +64,13 @@ ToolpathTimelineWidget::ToolpathTimelineWidget(QWidget *parent)
         "  border: 2px solid #2060A0;"
         "  background-color: #D0E0F8;"
         "}"
+        "QFrame.toolpath-frame-disabled {"
+        "  border: 1px solid #A0A0A0;"
+        "  background-color: #F5F5F5;"
+        "}"
+        "QFrame.toolpath-frame-disabled QLabel {"
+        "  color: #A0A0A0;"
+        "}"
         "QLabel.operation-name {"
         "  font-weight: bold;"
         "  color: #303030;"
@@ -219,6 +226,7 @@ void ToolpathTimelineWidget::setToolpathEnabled(int index, bool enabled)
     if (index < 0 || index >= m_enabledChecks.size())
         return;
     m_enabledChecks.at(index)->setChecked(enabled);
+    updateToolpathFrameStyles();
 }
 
 
@@ -322,6 +330,8 @@ QFrame* ToolpathTimelineWidget::createToolpathFrame(const QString& operationName
     connect(enableCheck, &QCheckBox::toggled, this, [this, frame](bool checked) {
         int idx = frame->property("index").toInt();
         emit toolpathEnabledChanged(idx, checked);
+        Q_UNUSED(checked);
+        updateToolpathFrameStyles();
     });
     
     // Icon label
@@ -400,13 +410,16 @@ void ToolpathTimelineWidget::updateToolpathFrameStyles()
 {
     for (int i = 0; i < m_toolpathFrames.size(); ++i) {
         QFrame* frame = m_toolpathFrames.at(i);
-        
-        if (i == m_activeToolpathIndex) {
-            frame->setProperty("class", "toolpath-frame toolpath-frame-active");
-        } else {
-            frame->setProperty("class", "toolpath-frame");
+
+        QString cls = "toolpath-frame";
+        if (!m_enabledChecks.at(i)->isChecked()) {
+            cls += " toolpath-frame-disabled";
         }
-        
+        if (i == m_activeToolpathIndex) {
+            cls += " toolpath-frame-active";
+        }
+        frame->setProperty("class", cls.trimmed());
+
         // Force style update
         frame->style()->unpolish(frame);
         frame->style()->polish(frame);
