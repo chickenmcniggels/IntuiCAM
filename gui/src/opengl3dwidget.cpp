@@ -52,8 +52,12 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
     
-    // Set update behavior to reduce flickering - use partial updates for better performance
-    setUpdateBehavior(QOpenGLWidget::PartialUpdate);
+    // Use the default full update behavior. Partial updates caused brief
+    // black flashes when the widget regained focus or another widget was
+    // interacted with. Following working OCCT viewer examples like
+    // gkv311/occt-samples-qopenglwidget, we stick with NoPartialUpdate to
+    // ensure consistent rendering.
+    setUpdateBehavior(QOpenGLWidget::NoPartialUpdate);
     
     // Ensure the widget gets proper resize events
     setAttribute(Qt::WA_OpaquePaintEvent);
