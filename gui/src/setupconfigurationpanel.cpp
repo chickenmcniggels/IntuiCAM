@@ -21,6 +21,8 @@
 #include <QProgressBar>
 #include <QListWidget>
 #include <QListWidgetItem>
+#include <QScrollArea>
+#include <QSignalBlocker>
 
 namespace IntuiCAM {
 namespace GUI {
@@ -106,20 +108,44 @@ void SetupConfigurationPanel::setupUI()
     m_operationsTabWidget->setTabPosition(QTabWidget::North);
     m_operationsTabWidget->setDocumentMode(true);
 
-    // Create operation tabs
+    // Create operation tabs (content widgets)
     m_contouringTab = new QWidget();
     m_threadingTab = new QWidget();
     m_chamferingTab = new QWidget();
     m_partingTab = new QWidget();
 
+    // Wrap each tab in a scroll area to allow scrolling when content exceeds
+    // the available space. The scroll areas themselves are local to this
+    // method, but the inner tab widgets are stored in member variables for
+    // later access.
+    QScrollArea* contourScroll = new QScrollArea();
+    contourScroll->setWidgetResizable(true);
+    contourScroll->setFrameShape(QFrame::NoFrame);
+    contourScroll->setWidget(m_contouringTab);
+
+    QScrollArea* threadingScroll = new QScrollArea();
+    threadingScroll->setWidgetResizable(true);
+    threadingScroll->setFrameShape(QFrame::NoFrame);
+    threadingScroll->setWidget(m_threadingTab);
+
+    QScrollArea* chamferScroll = new QScrollArea();
+    chamferScroll->setWidgetResizable(true);
+    chamferScroll->setFrameShape(QFrame::NoFrame);
+    chamferScroll->setWidget(m_chamferingTab);
+
+    QScrollArea* partingScroll = new QScrollArea();
+    partingScroll->setWidgetResizable(true);
+    partingScroll->setFrameShape(QFrame::NoFrame);
+    partingScroll->setWidget(m_partingTab);
+
     // Setup individual operation tabs
     setupMachiningTab();
 
-    // Add tabs to widget
-    m_operationsTabWidget->addTab(m_contouringTab, "Contouring");
-    m_operationsTabWidget->addTab(m_threadingTab, "Threading");
-    m_operationsTabWidget->addTab(m_chamferingTab, "Chamfering");
-    m_operationsTabWidget->addTab(m_partingTab, "Parting");
+    // Add tabs to widget using the scroll areas created above
+    m_operationsTabWidget->addTab(contourScroll, "Contouring");
+    m_operationsTabWidget->addTab(threadingScroll, "Threading");
+    m_operationsTabWidget->addTab(chamferScroll, "Chamfering");
+    m_operationsTabWidget->addTab(partingScroll, "Parting");
 
     // Add operations tab widget to main layout
     m_mainLayout->addWidget(m_operationsTabWidget);
@@ -748,10 +774,21 @@ void SetupConfigurationPanel::setTolerance(double tolerance)
 
 void SetupConfigurationPanel::setOperationEnabled(const QString& operationName, bool enabled)
 {
-    if (operationName == "Contouring") m_contouringEnabledCheck->setChecked(enabled);
-    else if (operationName == "Threading") m_threadingEnabledCheck->setChecked(enabled);
-    else if (operationName == "Chamfering") m_chamferingEnabledCheck->setChecked(enabled);
-    else if (operationName == "Parting") m_partingEnabledCheck->setChecked(enabled);
+    if (operationName == "Contouring" && m_contouringEnabledCheck) {
+        QSignalBlocker blocker(m_contouringEnabledCheck);
+        m_contouringEnabledCheck->setChecked(enabled);
+    } else if (operationName == "Threading" && m_threadingEnabledCheck) {
+        QSignalBlocker blocker(m_threadingEnabledCheck);
+        m_threadingEnabledCheck->setChecked(enabled);
+    } else if (operationName == "Chamfering" && m_chamferingEnabledCheck) {
+        QSignalBlocker blocker(m_chamferingEnabledCheck);
+        m_chamferingEnabledCheck->setChecked(enabled);
+    } else if (operationName == "Parting" && m_partingEnabledCheck) {
+        QSignalBlocker blocker(m_partingEnabledCheck);
+        m_partingEnabledCheck->setChecked(enabled);
+    }
+
+    updateOperationControls();
 }
 
 void SetupConfigurationPanel::updateAxisInfo(const QString& info)
@@ -797,10 +834,16 @@ void SetupConfigurationPanel::onOperationToggled()
 {
     QCheckBox* checkBox = qobject_cast<QCheckBox*>(sender());
     if (checkBox) {
-        QString operationName = checkBox->text();
+        QString operationName;
+        if (checkBox == m_contouringEnabledCheck) operationName = "Contouring";
+        else if (checkBox == m_threadingEnabledCheck) operationName = "Threading";
+        else if (checkBox == m_chamferingEnabledCheck) operationName = "Chamfering";
+        else if (checkBox == m_partingEnabledCheck) operationName = "Parting";
+
         bool enabled = checkBox->isChecked();
         emit operationToggled(operationName, enabled);
         emit configurationChanged();
+        updateOperationControls();
         if (enabled) {
             emit automaticToolpathGenerationRequested();
         }
