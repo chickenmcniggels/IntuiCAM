@@ -29,6 +29,7 @@
 #include <Graphic3d_Group.hxx>
 #include <Graphic3d_ArrayOfSegments.hxx>
 #include <Graphic3d_Structure.hxx>
+#include <Graphic3d_Camera.hxx>
 #include <AIS_Line.hxx>
 #include <Geom_Line.hxx>
 #include <TColgp_Array1OfPnt.hxx>
@@ -246,11 +247,13 @@ private:
 
     /**
      * @brief Store current 3D camera state before switching to lathe mode
+     *        (includes projection type)
      */
     void store3DCameraState();
 
     /**
      * @brief Restore 3D camera state when switching back from lathe mode
+     *        (restores projection type as well)
      */
     void restore3DCameraState();
 
@@ -308,6 +311,7 @@ private:
     gp_Pnt m_stored3DAt;
     gp_Dir m_stored3DUp;
     double m_stored3DScale;
+    Graphic3d_Camera::Projection m_stored3DProjection;
     bool m_has3DCameraState;
 
     // Workspace controller

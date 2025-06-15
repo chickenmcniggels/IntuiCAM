@@ -87,7 +87,7 @@ When switching between modes, the 3D camera state is preserved, allowing users t
 2. Return to the exact same 3D view without losing context
 
 ### Camera Management
-- **State Preservation**: When switching away from 3D mode, the camera state (position, orientation, scale) is automatically stored and restored when returning to 3D mode
+ - **State Preservation**: When switching away from 3D mode, the camera state (position, orientation, scale, projection type) is automatically stored and restored when returning to 3D mode
 - **Smooth Transitions**: Camera changes are applied smoothly with proper view fitting
 - **Mode-Specific Settings**: Each mode has optimized camera settings for its intended use
 
