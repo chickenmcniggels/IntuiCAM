@@ -134,6 +134,7 @@ private slots:
     void handleAddToolpathRequested(const QString& operationType);
     void handleRemoveToolpathRequested(int index);
     void handleToolpathReordered(int fromIndex, int toIndex);
+    void handleToolpathEnabledChanged(int index, bool enabled);
 
     // Overlay control for chuck visibility
     void handleShowChuckToggled(bool checked);

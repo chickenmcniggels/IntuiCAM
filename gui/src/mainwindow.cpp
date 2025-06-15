@@ -333,6 +333,17 @@ void MainWindow::setupConnections()
         // Connect to toolpath selected signal (not handled by controller)
         connect(m_toolpathTimeline, &ToolpathTimelineWidget::toolpathSelected,
                 this, &MainWindow::handleToolpathSelected);
+
+        connect(m_toolpathTimeline, &ToolpathTimelineWidget::toolpathEnabledChanged,
+                this, &MainWindow::handleToolpathEnabledChanged);
+
+        // Sync initial enabled state between the configuration panel and
+        // the timeline widgets
+        for (int i = 0; i < m_toolpathTimeline->getToolpathCount(); ++i) {
+            QString type = m_toolpathTimeline->getToolpathType(i);
+            bool enabled = m_setupConfigPanel->isOperationEnabled(type);
+            m_toolpathTimeline->setToolpathEnabled(i, enabled);
+        }
         
         // REMOVED: Connect to parameters requested signal
         // This signal is already handled by ToolpathGenerationController
@@ -1397,9 +1408,20 @@ void MainWindow::handleManualAxisSelectionRequested()
 
 void MainWindow::handleOperationToggled(const QString& operationName, bool enabled)
 {
-    // Placeholder
     if (m_outputWindow) {
-        m_outputWindow->append(QString("Operation %1 %2").arg(operationName).arg(enabled ? "enabled" : "disabled"));
+        m_outputWindow->append(QString("Operation %1 %2").arg(operationName)
+                               .arg(enabled ? "enabled" : "disabled"));
+    }
+
+    if (m_toolpathTimeline) {
+        int idx = -1;
+        if (operationName == "Contouring") idx = 0;
+        else if (operationName == "Threading") idx = 1;
+        else if (operationName == "Chamfering") idx = 2;
+        else if (operationName == "Parting") idx = 3;
+
+        if (idx >= 0)
+            m_toolpathTimeline->setToolpathEnabled(idx, enabled);
     }
 }
 
@@ -1949,6 +1971,27 @@ void MainWindow::handleToolpathReordered(int fromIndex, int toIndex)
     // For now, just log the request - in a real implementation we would
     // need to move the actual toolpath data and update the timeline
     statusBar()->showMessage(tr("Reordering toolpaths is not yet implemented"), 2000);
+}
+
+void MainWindow::handleToolpathEnabledChanged(int index, bool enabled)
+{
+    if (!m_setupConfigPanel || !m_toolpathTimeline)
+        return;
+
+    QString opType = m_toolpathTimeline->getToolpathType(index);
+    if (opType.isEmpty()) {
+        switch (index) {
+        case 0: opType = "Contouring"; break;
+        case 1: opType = "Threading"; break;
+        case 2: opType = "Chamfering"; break;
+        case 3: opType = "Parting"; break;
+        default: break;
+        }
+    }
+
+    if (!opType.isEmpty()) {
+        m_setupConfigPanel->setOperationEnabled(opType, enabled);
+    }
 }
 
 // Add this method to log messages to the output window
