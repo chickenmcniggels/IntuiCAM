@@ -43,6 +43,7 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_hoverHighlightEnabled(true)
     , m_currentViewMode(ViewMode::Mode3D)
     , m_stored3DScale(1.0)
+    , m_stored3DProjection(Graphic3d_Camera::Projection_Perspective)
     , m_has3DCameraState(false)
     , m_workspaceController(nullptr)
     , m_gridVisible(false)
@@ -1036,11 +1037,12 @@ void OpenGL3DWidget::store3DCameraState()
         m_view->At(atX, atY, atZ);
         m_view->Eye(eyeX, eyeY, eyeZ);
         m_view->Up(upX, upY, upZ);
-        
+
         m_stored3DAt = gp_Pnt(atX, atY, atZ);
         m_stored3DEye = gp_Pnt(eyeX, eyeY, eyeZ);
         m_stored3DUp = gp_Dir(upX, upY, upZ);
         m_stored3DScale = m_view->Scale();
+        m_stored3DProjection = m_view->Camera()->ProjectionType();
         
         m_has3DCameraState = true;
         
@@ -1070,8 +1072,8 @@ void OpenGL3DWidget::restore3DCameraState()
         m_view->SetUp(m_stored3DUp.X(), m_stored3DUp.Y(), m_stored3DUp.Z());
         m_view->SetScale(m_stored3DScale);
         
-        // Explicitly restore perspective projection for 3D mode
-        m_view->Camera()->SetProjectionType(Graphic3d_Camera::Projection_Perspective);
+        // Restore stored projection type for 3D mode
+        m_view->Camera()->SetProjectionType(m_stored3DProjection);
         
         // Restore trihedron display with standard orientation
         m_view->TriedronErase();
