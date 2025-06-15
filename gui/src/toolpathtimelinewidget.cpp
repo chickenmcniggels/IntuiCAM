@@ -144,7 +144,9 @@ void ToolpathTimelineWidget::clearToolpaths()
         delete frame;
     }
 
-    qDeleteAll(m_enabledChecks);
+    // Clear checkbox list. The actual QCheckBox objects are deleted together
+    // with their parent frames above, so we must not delete them again here to
+    // avoid a double free crash when reloading parts.
     m_enabledChecks.clear();
     
     m_toolpathFrames.clear();
