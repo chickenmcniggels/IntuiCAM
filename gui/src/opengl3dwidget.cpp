@@ -564,12 +564,17 @@ void OpenGL3DWidget::setSelectionMode(bool enabled)
             AIS_ListOfInteractive allObjects;
             m_context->DisplayedObjects(allObjects);
             
-            // Get raw material AIS object if workspace controller is available
+            // Get raw material and chuck AIS objects if workspace controller is available
             Handle(AIS_Shape) rawMaterialAIS;
+            Handle(AIS_Shape) chuckAIS;
             if (m_workspaceController) {
                 RawMaterialManager* rawMaterialManager = m_workspaceController->getRawMaterialManager();
                 if (rawMaterialManager) {
                     rawMaterialAIS = rawMaterialManager->getCurrentRawMaterialAIS();
+                }
+                ChuckManager* chuckManager = m_workspaceController->getChuckManager();
+                if (chuckManager) {
+                    chuckAIS = chuckManager->getChuckAIS();
                 }
             }
             
@@ -580,6 +585,12 @@ void OpenGL3DWidget::setSelectionMode(bool enabled)
                     // Skip raw material - it should remain non-selectable
                     if (!rawMaterialAIS.IsNull() && aShape == rawMaterialAIS) {
                         qDebug() << "Skipping selection activation for raw material";
+                        continue;
+                    }
+
+                    // Skip chuck - it should remain non-selectable
+                    if (!chuckAIS.IsNull() && aShape == chuckAIS) {
+                        qDebug() << "Skipping selection activation for chuck";
                         continue;
                     }
                     

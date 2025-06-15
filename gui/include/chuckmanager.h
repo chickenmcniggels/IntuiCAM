@@ -101,6 +101,12 @@ public:
      */
     bool isChuckVisible() const;
 
+    /**
+     * @brief Get the current chuck AIS object
+     * @return Current chuck AIS object, or null if not loaded
+     */
+    Handle(AIS_Shape) getChuckAIS() const { return m_chuckAIS; }
+
 signals:
     /**
      * @brief Emitted when chuck is successfully loaded

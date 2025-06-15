@@ -1604,7 +1604,21 @@ void MainWindow::handleCylinderAxisSelected(int index, const CylinderInfo& cylin
 
 void MainWindow::handleManualAxisSelected(double diameter, const gp_Ax1& axis)
 {
-    // Placeholder
+    if (!m_workspaceController || !m_setupConfigPanel) {
+        return;
+    }
+
+    // Reapply part setup parameters so that manual axis selection behaves the
+    // same as initial part loading
+    double dist = m_setupConfigPanel->getDistanceToChuck();
+    double rawDia = m_setupConfigPanel->getRawDiameter();
+    bool flip = m_setupConfigPanel->isOrientationFlipped();
+
+    m_workspaceController->applyPartLoadingSettings(dist, rawDia, flip);
+
+    if (m_outputWindow) {
+        m_outputWindow->append("Manual axis selected - reapplied part setup parameters");
+    }
 }
 
 void MainWindow::handleRawMaterialCreated(double diameter, double length)
