@@ -77,6 +77,8 @@ SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     , m_threadingParamsButton(nullptr)
     , m_chamferingEnabledCheck(nullptr)
     , m_chamferingParamsButton(nullptr)
+    , m_partingEnabledCheck(nullptr)
+    , m_partingParamsButton(nullptr)
 {
     setupUI();
     setupConnections();
