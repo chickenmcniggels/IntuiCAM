@@ -71,6 +71,12 @@ SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     , m_toolLayout(nullptr)
     , m_recommendedToolsList(nullptr)
     , m_materialPropertiesLabel(nullptr)
+    , m_contouringEnabledCheck(nullptr)
+    , m_contouringParamsButton(nullptr)
+    , m_threadingEnabledCheck(nullptr)
+    , m_threadingParamsButton(nullptr)
+    , m_chamferingEnabledCheck(nullptr)
+    , m_chamferingParamsButton(nullptr)
 {
     setupUI();
     setupConnections();
