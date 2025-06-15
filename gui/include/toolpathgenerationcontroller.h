@@ -21,6 +21,7 @@
 #include <IntuiCAM/Toolpath/PartingOperation.h>
 
 // Include GUI operation parameter dialog
+#include "operationparameterdialog.h"
 
 // Forward declarations
 class ToolpathManager;
@@ -250,7 +251,7 @@ private:
         std::unique_ptr<IntuiCAM::Toolpath::Toolpath> toolpath);
         
     // Helper method to determine parameter dialog type
-    OperationParameterDialog::OperationType getOperationParameterDialogType(const QString& operationType) const;
+    IntuiCAM::GUI::OperationParameterDialog::OperationType getOperationParameterDialogType(const QString& operationType) const;
 };
 
 } // namespace GUI

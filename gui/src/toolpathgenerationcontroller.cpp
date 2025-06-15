@@ -5,6 +5,7 @@
 #include "../include/workspacecontroller.h"
 #include "../include/workpiecemanager.h"
 #include "../include/rawmaterialmanager.h"
+#include "../include/operationparameterdialog.h"
 #include <gp_XYZ.hxx>
 #include <gp_Trsf.hxx>
 #include <TopoDS_Shape.hxx>
