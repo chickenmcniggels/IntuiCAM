@@ -16,6 +16,7 @@
 #include <QTextEdit>
 #include <QFrame>
 #include <QTabWidget>
+#include <QMap>
 
 // Forward declarations
 class QListWidget;
@@ -218,12 +219,7 @@ private:
     // Material and Tool Management Integration
     MaterialManager* m_materialManager;
     ToolManager* m_toolManager;
-    QGroupBox* m_toolSelectionGroup;
-    QVBoxLayout* m_toolLayout;
-    QLabel* m_recommendedToolsLabel;
-    QListWidget* m_recommendedToolsList;
-    QPushButton* m_toolDetailsButton;
-    QPushButton* m_customizeToolsButton;
+    QMap<QString, QListWidget*> m_operationToolLists;
 
     // Enhanced material display
     QLabel* m_materialPropertiesLabel;
