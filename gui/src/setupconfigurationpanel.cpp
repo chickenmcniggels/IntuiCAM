@@ -844,9 +844,13 @@ void SetupConfigurationPanel::onOperationToggled()
         emit operationToggled(operationName, enabled);
         emit configurationChanged();
         updateOperationControls();
-        if (enabled) {
-            emit automaticToolpathGenerationRequested();
-        }
+        // Triggering automatic generation here caused crashes when the
+        // ToolpathGenerationController was not fully initialized.  Until the
+        // generation pipeline is more robust we simply avoid starting it
+        // automatically when toggling an operation from the setup tab.
+        // if (enabled) {
+        //     emit automaticToolpathGenerationRequested();
+        // }
     }
 }
 
