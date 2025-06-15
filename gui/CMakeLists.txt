@@ -15,7 +15,6 @@ set(GUI_SOURCES
     src/partloadingpanel.cpp
     src/setupconfigurationpanel.cpp
     src/toolpathgenerationcontroller.cpp
-    src/operationparameterdialog.cpp
     src/materialmanager.cpp
     src/toolmanager.cpp
     src/toolpathtimelinewidget.cpp
@@ -33,7 +32,6 @@ set(GUI_HEADERS
     include/partloadingpanel.h
     include/setupconfigurationpanel.h
     include/toolpathgenerationcontroller.h
-    include/operationparameterdialog.h
     include/materialmanager.h
     include/toolmanager.h
     include/toolpathtimelinewidget.h

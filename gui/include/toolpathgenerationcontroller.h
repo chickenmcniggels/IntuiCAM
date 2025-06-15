@@ -21,7 +21,6 @@
 #include <IntuiCAM/Toolpath/PartingOperation.h>
 
 // Include GUI operation parameter dialog
-#include "operationparameterdialog.h"
 
 // Forward declarations
 class ToolpathManager;
@@ -139,8 +138,6 @@ public:
     // New methods for operation parameter updates
     void updateOperationParameters(const QString& operationName, const QString& operationType, void* params);
     void regenerateToolpath(const QString& operationName, const QString& operationType);
-    void connectParameterDialog(OperationParameterDialog* dialog, const QString& operationName, 
-                               const QString& operationType);
     /**
      * @brief Regenerate every currently generated toolpath using updated part position.
      */
@@ -148,7 +145,6 @@ public:
 
 public slots:
     void onGenerationRequested(const GenerationRequest& request);
-    void onOperationParametersChanged(const QString& operationName, const QString& operationType);
 
 signals:
     void generationStarted();

@@ -60,7 +60,6 @@ qt_add_executable(gui_toolpath_generation_tests
     ${CMAKE_SOURCE_DIR}/gui/src/toolpathmanager.cpp
     ${CMAKE_SOURCE_DIR}/gui/src/toolpathtimelinewidget.cpp
     ${CMAKE_SOURCE_DIR}/gui/src/toolpathtimelineframe.cpp
-    ${CMAKE_SOURCE_DIR}/gui/src/operationparameterdialog.cpp
     ${CMAKE_SOURCE_DIR}/gui/src/workpiecemanager.cpp
     ${CMAKE_SOURCE_DIR}/gui/src/rawmaterialmanager.cpp
     ${CMAKE_SOURCE_DIR}/gui/src/chuckmanager.cpp
@@ -68,7 +67,6 @@ qt_add_executable(gui_toolpath_generation_tests
     ${CMAKE_SOURCE_DIR}/gui/include/toolpathgenerationcontroller.h
     ${CMAKE_SOURCE_DIR}/gui/include/toolpathtimelinewidget.h
     ${CMAKE_SOURCE_DIR}/gui/include/toolpathtimelineframe.h
-    ${CMAKE_SOURCE_DIR}/gui/include/operationparameterdialog.h
     ${CMAKE_SOURCE_DIR}/gui/include/workpiecemanager.h
     ${CMAKE_SOURCE_DIR}/gui/include/rawmaterialmanager.h
     ${CMAKE_SOURCE_DIR}/gui/include/chuckmanager.h
@@ -107,7 +105,6 @@ qt_add_executable(gui_toolpath_addition_tests
     ${CMAKE_SOURCE_DIR}/gui/src/toolpathmanager.cpp
     ${CMAKE_SOURCE_DIR}/gui/src/toolpathtimelinewidget.cpp
     ${CMAKE_SOURCE_DIR}/gui/src/toolpathtimelineframe.cpp
-    ${CMAKE_SOURCE_DIR}/gui/src/operationparameterdialog.cpp
     ${CMAKE_SOURCE_DIR}/gui/src/workpiecemanager.cpp
     ${CMAKE_SOURCE_DIR}/gui/src/rawmaterialmanager.cpp
     ${CMAKE_SOURCE_DIR}/gui/src/chuckmanager.cpp
@@ -115,7 +112,6 @@ qt_add_executable(gui_toolpath_addition_tests
     ${CMAKE_SOURCE_DIR}/gui/include/toolpathgenerationcontroller.h
     ${CMAKE_SOURCE_DIR}/gui/include/toolpathtimelinewidget.h
     ${CMAKE_SOURCE_DIR}/gui/include/toolpathtimelineframe.h
-    ${CMAKE_SOURCE_DIR}/gui/include/operationparameterdialog.h
     ${CMAKE_SOURCE_DIR}/gui/include/workpiecemanager.h
     ${CMAKE_SOURCE_DIR}/gui/include/rawmaterialmanager.h
     ${CMAKE_SOURCE_DIR}/gui/include/chuckmanager.h

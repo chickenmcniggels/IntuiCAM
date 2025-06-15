@@ -14,7 +14,7 @@ The standard steps are:
 3. **Chamfering** – user selects edges and chamfer size.
 4. **Parting** – defines part‑off strategy.
 
-Users may adjust parameters or disable steps directly from the timeline tabs.
+Selecting a step highlights its tab in the setup panel where all parameters can be edited directly. The separate parameter dialog has been removed.
 
 ### Automatic Generation
 Toolpaths are created as soon as a STEP file is loaded. The timeline always starts with Contouring followed by Threading, Chamfering and Parting. Users simply review the steps and disable or modify them as needed.

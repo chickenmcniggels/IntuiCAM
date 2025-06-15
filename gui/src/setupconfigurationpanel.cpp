@@ -74,13 +74,13 @@ SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     , m_toolManager(nullptr)
     , m_materialPropertiesLabel(nullptr)
     , m_contouringEnabledCheck(nullptr)
-    , m_contouringParamsButton(nullptr)
+    , m_contouringParamsButton(nullptr) /*deprecated*/
     , m_threadingEnabledCheck(nullptr)
-    , m_threadingParamsButton(nullptr)
+    , m_threadingParamsButton(nullptr) /*deprecated*/
     , m_chamferingEnabledCheck(nullptr)
-    , m_chamferingParamsButton(nullptr)
+    , m_chamferingParamsButton(nullptr) /*deprecated*/
     , m_partingEnabledCheck(nullptr)
-    , m_partingParamsButton(nullptr)
+    , m_partingParamsButton(nullptr) /*deprecated*/
 {
     setupUI();
     setupConnections();
@@ -306,11 +306,8 @@ void SetupConfigurationPanel::setupMachiningTab()
 
     QHBoxLayout* contourEnableLayout = new QHBoxLayout();
     m_contouringEnabledCheck = new QCheckBox("Enable Contouring");
-    m_contouringParamsButton = new QPushButton("Parameters...");
-    m_contouringParamsButton->setEnabled(false);
     contourEnableLayout->addWidget(m_contouringEnabledCheck);
     contourEnableLayout->addStretch();
-    contourEnableLayout->addWidget(m_contouringParamsButton);
     contourLayout->addLayout(contourEnableLayout);
 
     m_machiningParamsGroup = new QGroupBox("Machining Parameters");
@@ -440,15 +437,25 @@ void SetupConfigurationPanel::setupMachiningTab()
     threadingLayout->setSpacing(16);
     QHBoxLayout* threadEnableLayout = new QHBoxLayout();
     m_threadingEnabledCheck = new QCheckBox("Enable Threading");
-    m_threadingParamsButton = new QPushButton("Parameters...");
-    m_threadingParamsButton->setEnabled(false);
     threadEnableLayout->addWidget(m_threadingEnabledCheck);
     threadEnableLayout->addStretch();
-    threadEnableLayout->addWidget(m_threadingParamsButton);
     threadingLayout->addLayout(threadEnableLayout);
     QLabel* threadingInfo = new QLabel("Select faces to thread in the 3D view.");
     threadingInfo->setWordWrap(true);
     threadingLayout->addWidget(threadingInfo);
+
+    QHBoxLayout* pitchLayout = new QHBoxLayout();
+    QLabel* pitchLabel = new QLabel("Thread Pitch:");
+    pitchLabel->setMinimumWidth(140);
+    m_threadPitchSpin = new QDoubleSpinBox();
+    m_threadPitchSpin->setRange(0.1, 10.0);
+    m_threadPitchSpin->setValue(1.0);
+    m_threadPitchSpin->setDecimals(2);
+    m_threadPitchSpin->setSuffix(" mm");
+    pitchLayout->addWidget(pitchLabel);
+    pitchLayout->addWidget(m_threadPitchSpin);
+    pitchLayout->addStretch();
+    threadingLayout->addLayout(pitchLayout);
 
     QGroupBox* threadingToolsGroup = new QGroupBox("Recommended Tools");
     QVBoxLayout* threadingToolsLayout = new QVBoxLayout(threadingToolsGroup);
@@ -465,15 +472,25 @@ void SetupConfigurationPanel::setupMachiningTab()
     chamferLayout->setSpacing(16);
     QHBoxLayout* chamferEnableLayout = new QHBoxLayout();
     m_chamferingEnabledCheck = new QCheckBox("Enable Chamfering");
-    m_chamferingParamsButton = new QPushButton("Parameters...");
-    m_chamferingParamsButton->setEnabled(false);
     chamferEnableLayout->addWidget(m_chamferingEnabledCheck);
     chamferEnableLayout->addStretch();
-    chamferEnableLayout->addWidget(m_chamferingParamsButton);
     chamferLayout->addLayout(chamferEnableLayout);
     QLabel* chamferInfo = new QLabel("Select edges to chamfer in the 3D view.");
     chamferInfo->setWordWrap(true);
     chamferLayout->addWidget(chamferInfo);
+
+    QHBoxLayout* chamferSizeLayout = new QHBoxLayout();
+    QLabel* chamferSizeLabel = new QLabel("Chamfer Size:");
+    chamferSizeLabel->setMinimumWidth(140);
+    m_chamferSizeSpin = new QDoubleSpinBox();
+    m_chamferSizeSpin->setRange(0.1, 5.0);
+    m_chamferSizeSpin->setValue(0.5);
+    m_chamferSizeSpin->setDecimals(2);
+    m_chamferSizeSpin->setSuffix(" mm");
+    chamferSizeLayout->addWidget(chamferSizeLabel);
+    chamferSizeLayout->addWidget(m_chamferSizeSpin);
+    chamferSizeLayout->addStretch();
+    chamferLayout->addLayout(chamferSizeLayout);
 
     QGroupBox* chamferToolsGroup = new QGroupBox("Recommended Tools");
     QVBoxLayout* chamferToolsLayout = new QVBoxLayout(chamferToolsGroup);
@@ -490,11 +507,8 @@ void SetupConfigurationPanel::setupMachiningTab()
     partLayout->setSpacing(16);
     QHBoxLayout* partEnableLayout = new QHBoxLayout();
     m_partingEnabledCheck = new QCheckBox("Enable Parting");
-    m_partingParamsButton = new QPushButton("Parameters...");
-    m_partingParamsButton->setEnabled(false);
     partEnableLayout->addWidget(m_partingEnabledCheck);
     partEnableLayout->addStretch();
-    partEnableLayout->addWidget(m_partingParamsButton);
     partLayout->addLayout(partEnableLayout);
     m_partingWidthLayout = new QHBoxLayout();
     m_partingWidthLabel = new QLabel("Parting Width:");
@@ -551,6 +565,8 @@ void SetupConfigurationPanel::setupConnections()
     connect(m_roughingAllowanceSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &SetupConfigurationPanel::onConfigurationChanged);
     connect(m_finishingAllowanceSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &SetupConfigurationPanel::onConfigurationChanged);
     connect(m_partingWidthSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &SetupConfigurationPanel::onConfigurationChanged);
+    connect(m_threadPitchSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &SetupConfigurationPanel::onConfigurationChanged);
+    connect(m_chamferSizeSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &SetupConfigurationPanel::onConfigurationChanged);
     
     connect(m_surfaceFinishCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupConfigurationPanel::onConfigurationChanged);
     connect(m_toleranceSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &SetupConfigurationPanel::onConfigurationChanged);
@@ -569,18 +585,6 @@ void SetupConfigurationPanel::setupConnections()
         connect(m_partingEnabledCheck, &QCheckBox::toggled, this, &SetupConfigurationPanel::onOperationToggled);
     }
 
-    if (m_contouringParamsButton) {
-        connect(m_contouringParamsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onOperationParametersClicked);
-    }
-    if (m_threadingParamsButton) {
-        connect(m_threadingParamsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onOperationParametersClicked);
-    }
-    if (m_chamferingParamsButton) {
-        connect(m_chamferingParamsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onOperationParametersClicked);
-    }
-    if (m_partingParamsButton) {
-        connect(m_partingParamsButton, &QPushButton::clicked, this, &SetupConfigurationPanel::onOperationParametersClicked);
-    }
 }
 
 void SetupConfigurationPanel::applyTabStyling()
@@ -850,21 +854,6 @@ void SetupConfigurationPanel::onOperationToggled()
     }
 }
 
-void SetupConfigurationPanel::onOperationParametersClicked()
-{
-    QPushButton* button = qobject_cast<QPushButton*>(sender());
-    if (button) {
-        QString operationName;
-        if (button == m_contouringParamsButton) operationName = "Contouring";
-        else if (button == m_threadingParamsButton) operationName = "Threading";
-        else if (button == m_chamferingParamsButton) operationName = "Chamfering";
-        else if (button == m_partingParamsButton) operationName = "Parting";
-        
-        if (!operationName.isEmpty()) {
-            emit operationParametersRequested(operationName);
-        }
-    }
-}
 
 
 void SetupConfigurationPanel::setMaterialManager(MaterialManager* materialManager)
@@ -1052,11 +1041,22 @@ void SetupConfigurationPanel::onToolSelectionRequested()
 
 void SetupConfigurationPanel::updateOperationControls()
 {
-    // Enable/disable parameter buttons based on operation checkboxes
-    m_contouringParamsButton->setEnabled(m_contouringEnabledCheck->isChecked());
-    m_threadingParamsButton->setEnabled(m_threadingEnabledCheck->isChecked());
-    m_chamferingParamsButton->setEnabled(m_chamferingEnabledCheck->isChecked());
-    m_partingParamsButton->setEnabled(m_partingEnabledCheck->isChecked());
+    // Placeholder for any additional per-operation controls
+}
+
+void SetupConfigurationPanel::focusOperationTab(const QString& operationName)
+{
+    int index = 0;
+    if (operationName.compare("Contouring", Qt::CaseInsensitive) == 0)
+        index = 0;
+    else if (operationName.compare("Threading", Qt::CaseInsensitive) == 0)
+        index = 1;
+    else if (operationName.compare("Chamfering", Qt::CaseInsensitive) == 0)
+        index = 2;
+    else if (operationName.compare("Parting", Qt::CaseInsensitive) == 0)
+        index = 3;
+    if (m_operationsTabWidget)
+        m_operationsTabWidget->setCurrentIndex(index);
 }
 
 // Utility method implementations

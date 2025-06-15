@@ -24,7 +24,6 @@
 #include <TopoDS_Shape.hxx>
 
 // Project includes
-#include "operationparameterdialog.h"
 
 // Forward declarations for our custom classes
 class OpenGL3DWidget;
@@ -110,7 +109,6 @@ private slots:
     void handleRawMaterialDiameterChanged(double diameter);
     void handleManualAxisSelectionRequested();
     void handleOperationToggled(const QString& operationName, bool enabled);
-    void handleOperationParametersRequested(const QString& operationName);
     void handleAutomaticToolpathGeneration();
     
     // 3D viewer handlers
