@@ -121,8 +121,10 @@ void ToolpathTimelineWidget::removeToolpath(int index)
     m_toolpathFrames.remove(index);
     m_toolpathTypes.remove(index);
     m_toolpathNames.remove(index);
-    QCheckBox* chk = m_enabledChecks.takeAt(index);
-    delete chk;
+    // Remove the enable checkbox from our list. It will be deleted together
+    // with its parent frame, so avoid deleting it manually to prevent
+    // double free crashes.
+    m_enabledChecks.takeAt(index);
     delete frame;
     
     // Update active toolpath index if needed
