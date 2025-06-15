@@ -86,7 +86,7 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, dou
 **Solution**: Implemented robust focus and event handling:
 - Enhanced `updateView()` method with explicit context management
 - Added continuous update timer support
-- Proper focus event handling (`focusInEvent`, `focusOutEvent`)
+- Proper focus event handling (`focusInEvent`, `focusOutEvent`) with immediate redraw
 - Show/hide event management to ensure proper rendering lifecycle
 
 ```cpp
@@ -213,7 +213,7 @@ void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
 
 ### Issue: Black Screen on Focus Loss
 **Status**: ✅ Fixed in v1.1
-**Solution**: Enhanced focus event handling and continuous update support
+**Solution**: Enhanced focus event handling with immediate redraws and continuous update support
 
 ### Issue: Raw Material Not Encompassing Part
 **Status**: ✅ Fixed in v1.2
