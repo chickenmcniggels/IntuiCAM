@@ -216,18 +216,27 @@ void WorkspaceController::executeWorkpieceWorkflow(const TopoDS_Shape& workpiece
         return;
     }
     
-    // Step 4: Align workpiece with chuck centerline if chuck is loaded
-    gp_Ax1 alignmentAxis = mainAxis;
+    // Step 4: Automatically align the detected axis with the Z-axis
+    gp_Trsf axisTransform = createAxisAlignmentTransformation(mainAxis);
+    m_workpieceManager->setAxisAlignmentTransformation(axisTransform);
+
+    // Update internal axis to reflect the new orientation (now Z-axis)
+    gp_Ax1 alignedAxis(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
+    m_workpieceManager->setCustomAxis(alignedAxis, detectedDiameter);
+
+    // Align raw material axis with chuck centerline if available
+    gp_Ax1 alignmentAxis = alignedAxis;
     if (m_chuckManager->hasValidCenterline()) {
-        alignmentAxis = alignWorkpieceWithChuckCenterline(mainAxis);
+        alignmentAxis = alignWorkpieceWithChuckCenterline(alignedAxis);
         qDebug() << "WorkspaceController: Workpiece aligned with chuck centerline";
     }
     
     // Step 5: Position workpiece at requested distance-to-chuck (snap min-Z)
     m_workpieceManager->positionWorkpieceAlongAxis(m_lastDistanceToChuck);
     
-    // Step 6: Calculate optimal raw material size
-    double rawMaterialDiameter = m_rawMaterialManager->getNextStandardDiameter(detectedDiameter);
+    // Step 6: Calculate optimal raw material size with small margin
+    double marginDiameter = detectedDiameter + 2.0; // add small cleanup allowance
+    double rawMaterialDiameter = m_rawMaterialManager->getNextStandardDiameter(marginDiameter);
     
     // Step 7: Create and display raw material that encompasses the workpiece
     m_rawMaterialManager->displayRawMaterialForWorkpiece(rawMaterialDiameter, workpiece, alignmentAxis);
