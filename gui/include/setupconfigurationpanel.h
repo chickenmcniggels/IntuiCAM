@@ -105,6 +105,7 @@ public:
     QStringList getRecommendedTools() const;
     void updateMaterialProperties();
     void updateToolRecommendations();
+    void focusOperationTab(const QString& operationName);
 
     // Utility methods
     static QString materialTypeToString(MaterialType type);
@@ -121,7 +122,6 @@ signals:
     void orientationFlipped(bool flipped);
     void manualAxisSelectionRequested();
     void operationToggled(const QString& operationName, bool enabled);
-    void operationParametersRequested(const QString& operationName);
     void automaticToolpathGenerationRequested();
     void materialSelectionChanged(const QString& materialName);
     void toolRecommendationsUpdated(const QStringList& toolIds);
@@ -131,7 +131,6 @@ public slots:
     void onConfigurationChanged();
     void onManualAxisSelectionClicked();
     void onOperationToggled();
-    void onOperationParametersClicked();
     void onMaterialChanged();
     void onToolSelectionRequested();
 
@@ -198,13 +197,11 @@ private:
     QGroupBox* m_operationsGroup;
     QVBoxLayout* m_operationsLayout;
     QCheckBox* m_contouringEnabledCheck;
-    QPushButton* m_contouringParamsButton;
     QCheckBox* m_threadingEnabledCheck;
-    QPushButton* m_threadingParamsButton;
+    QDoubleSpinBox* m_threadPitchSpin;
     QCheckBox* m_chamferingEnabledCheck;
-    QPushButton* m_chamferingParamsButton;
+    QDoubleSpinBox* m_chamferSizeSpin;
     QCheckBox* m_partingEnabledCheck;
-    QPushButton* m_partingParamsButton;
 
     QGroupBox* m_qualityGroup;
     QVBoxLayout* m_qualityLayout;

@@ -7,7 +7,6 @@
 #include "toolpathtimelinewidget.h"
 #include "partloadingpanel.h"
 #include "setupconfigurationpanel.h"
-#include "operationparameterdialog.h"
 #include "materialmanager.h"
 #include "toolmanager.h"
 #include "toolpathgenerationcontroller.h"
@@ -315,8 +314,6 @@ void MainWindow::setupConnections()
                 this, &MainWindow::handleAutomaticToolpathGeneration);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::operationToggled,
                 this, &MainWindow::handleOperationToggled);
-        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::operationParametersRequested,
-                this, &MainWindow::handleOperationParametersRequested);
     }
     
     // Connect simulate button
@@ -345,10 +342,9 @@ void MainWindow::setupConnections()
             m_toolpathTimeline->setToolpathEnabled(i, enabled);
         }
         
-        // REMOVED: Connect to parameters requested signal
-        // This signal is already handled by ToolpathGenerationController
-        // connect(m_toolpathTimeline, &ToolpathTimelineWidget::toolpathParametersRequested,
-        //        this, &MainWindow::handleToolpathParametersRequested);
+        // Focus the appropriate operation tab when parameters are requested
+        connect(m_toolpathTimeline, &ToolpathTimelineWidget::toolpathParametersRequested,
+                this, &MainWindow::handleToolpathParametersRequested);
         
         // REMOVED: Connect to add toolpath requested signal
         // This signal is already handled by ToolpathGenerationController
@@ -1441,13 +1437,6 @@ void MainWindow::handleOperationToggled(const QString& operationName, bool enabl
     }
 }
 
-void MainWindow::handleOperationParametersRequested(const QString& operationName)
-{
-    // Placeholder
-    if (m_outputWindow) {
-        m_outputWindow->append(QString("Parameters requested for operation: %1").arg(operationName));
-    }
-}
 
 void MainWindow::handleAutomaticToolpathGeneration()
 {
@@ -1807,134 +1796,19 @@ void MainWindow::handleToolpathSelected(int index)
     }
     
     // Here you would typically highlight the selected toolpath in the 3D viewer
-    // This depends on how toolpaths are stored and visualized in your application
     statusBar()->showMessage(tr("Selected toolpath %1").arg(index + 1), 2000);
+
+    if (m_toolpathTimeline && m_setupConfigPanel && index >= 0) {
+        QString opType = m_toolpathTimeline->getToolpathType(index);
+        m_setupConfigPanel->focusOperationTab(opType);
+    }
 }
 
 void MainWindow::handleToolpathParametersRequested(int index, const QString& operationType)
 {
-    // NOTE: This method is no longer directly connected to the toolpathTimeline's toolpathParametersRequested signal
-    // as it was causing duplicate parameter windows to be opened. The signal is now exclusively handled by
-    // ToolpathGenerationController. This method is kept for potential future use or manual invocation.
-    
-    // Convert operation type string to enum
-    IntuiCAM::GUI::OperationParameterDialog::OperationType type;
-    
-    if (operationType == "Facing") {
-        type = IntuiCAM::GUI::OperationParameterDialog::OperationType::Facing;
-    } else if (operationType == "Roughing") {
-        type = IntuiCAM::GUI::OperationParameterDialog::OperationType::Roughing;
-    } else if (operationType == "Finishing") {
-        type = IntuiCAM::GUI::OperationParameterDialog::OperationType::Finishing;
-    } else if (operationType == "Parting") {
-        type = IntuiCAM::GUI::OperationParameterDialog::OperationType::Parting;
-    } else {
-        // Default to roughing if type is unknown
-        type = IntuiCAM::GUI::OperationParameterDialog::OperationType::Roughing;
-    }
-    
-    // Create and configure the dialog
-    IntuiCAM::GUI::OperationParameterDialog dialog(type, this);
-    
-    // Set dialog title based on operation type
-    dialog.setWindowTitle(tr("Edit %1 Parameters").arg(operationType));
-    
-    // If we have a workpiece controller, get part diameter to pre-populate fields
-    if (m_workspaceController && m_workspaceController->getWorkpieceManager()) {
-        double diameter = m_workspaceController->getWorkpieceManager()->getDetectedDiameter();
-        
-        // Use raw material diameter as fallback
-        double length = 100.0; // Default length
-        if (m_workspaceController->getRawMaterialManager() && 
-            m_workspaceController->getRawMaterialManager()->isRawMaterialDisplayed()) {
-            // We don't have a direct method to get length, but we have diameter
-            double rawDiameter = m_workspaceController->getRawMaterialManager()->getCurrentDiameter();
-            // Use 3x diameter as a reasonable default length
-            length = rawDiameter * 3.0;
-        }
-        
-        dialog.setPartDiameter(diameter);
-        dialog.setPartLength(length);
-    }
-    
-    // Show the dialog
-    if (dialog.exec() == QDialog::Accepted) {
-        // Handle parameter changes based on operation type
-        switch (type) {
-            case IntuiCAM::GUI::OperationParameterDialog::OperationType::Facing:
-                // Process facing parameters
-                {
-                    auto params = dialog.getFacingParameters();
-                    // Update toolpath with new parameters
-                    // Example: m_workspaceController->updateToolpathParameters(index, params);
-                    
-                    // For now just log to output window
-                    if (m_outputWindow) {
-                        m_outputWindow->append(QString("Updated facing parameters for toolpath %1")
-                                              .arg(index + 1));
-                        m_outputWindow->append(QString("  Stepover: %1 mm").arg(params.stepover));
-                        m_outputWindow->append(QString("  Feed Rate: %1 mm/min").arg(params.feedRate));
-                        m_outputWindow->append(QString("  Stock Allowance: %1 mm").arg(params.stockAllowance));
-                    }
-                }
-                break;
-                
-            case IntuiCAM::GUI::OperationParameterDialog::OperationType::Roughing:
-                // Process roughing parameters
-                {
-                    auto params = dialog.getRoughingParameters();
-                    
-                    if (m_outputWindow) {
-                        m_outputWindow->append(QString("Updated roughing parameters for toolpath %1")
-                                              .arg(index + 1));
-                        m_outputWindow->append(QString("  Depth of Cut: %1 mm").arg(params.depthOfCut));
-                        m_outputWindow->append(QString("  Stock Allowance: %1 mm").arg(params.stockAllowance));
-                        m_outputWindow->append(QString("  Adaptive Clearing: %1").arg(params.adaptiveClearing ? "Yes" : "No"));
-                    }
-                }
-                break;
-                
-            case IntuiCAM::GUI::OperationParameterDialog::OperationType::Finishing:
-                // Process finishing parameters
-                {
-                    auto params = dialog.getFinishingParameters();
-                    
-                    if (m_outputWindow) {
-                        m_outputWindow->append(QString("Updated finishing parameters for toolpath %1")
-                                              .arg(index + 1));
-                        m_outputWindow->append(QString("  Surface Finish: %1 μm Ra").arg(params.targetSurfaceFinish));
-                        m_outputWindow->append(QString("  Radial Stepover: %1 mm").arg(params.radialStepover));
-                        m_outputWindow->append(QString("  Spring Passes: %1").arg(params.multipleSpringPasses ? QString::number(params.springPassCount) : "None"));
-                    }
-                }
-                break;
-                
-            case IntuiCAM::GUI::OperationParameterDialog::OperationType::Parting:
-                // Process parting parameters
-                {
-                    auto params = dialog.getPartingParameters();
-                    
-                    if (m_outputWindow) {
-                        m_outputWindow->append(QString("Updated parting parameters for toolpath %1")
-                                              .arg(index + 1));
-                        m_outputWindow->append(QString("  Feed Rate: %1 mm/min").arg(params.feedRate));
-                        m_outputWindow->append(QString("  Pecking Cycle: %1").arg(params.usePeckingCycle ? "Yes" : "No"));
-                        m_outputWindow->append(QString("  Safety Margin: %1 mm").arg(params.safetyMargin));
-                    }
-                }
-                break;
-        }
-        
-        // Update the toolpath visualization if needed
-        // This would typically involve regenerating the toolpath with new parameters
-        
-        // Update the timeline entry with potentially modified operation name
-        QString toolName = "Default Tool"; // In a real implementation, get this from the tool manager
-        m_toolpathTimeline->updateToolpath(index, 
-                                          tr("%1 #%2").arg(operationType).arg(index + 1),
-                                          operationType, 
-                                          toolName);
-    }
+    Q_UNUSED(index);
+    if (m_setupConfigPanel)
+        m_setupConfigPanel->focusOperationTab(operationType);
 }
 
 void MainWindow::handleAddToolpathRequested(const QString& operationType)

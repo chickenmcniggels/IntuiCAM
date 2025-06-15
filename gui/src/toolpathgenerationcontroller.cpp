@@ -2,7 +2,6 @@
 #include "setupconfigurationpanel.h"
 #include "../include/toolpathmanager.h"
 #include "../include/toolpathtimelinewidget.h"
-#include "../include/operationparameterdialog.h"
 #include "../include/workspacecontroller.h"
 #include "../include/workpiecemanager.h"
 #include "../include/rawmaterialmanager.h"
@@ -992,74 +991,6 @@ void IntuiCAM::GUI::ToolpathGenerationController::updateOperationParameters(
     }
 }
 
-void IntuiCAM::GUI::ToolpathGenerationController::connectParameterDialog(
-    OperationParameterDialog* dialog, 
-    const QString& operationName, 
-    const QString& operationType)
-{
-    if (!dialog) return;
-    
-    // Connect parameter changed signal to regenerate toolpath
-    connect(dialog, &IntuiCAM::GUI::OperationParameterDialog::parametersChanged,
-            this, [this, operationName, operationType]() {
-                onOperationParametersChanged(operationName, operationType);
-            });
-    
-    // Set initial parameters based on operation type
-    if (operationType == "Roughing") {
-        IntuiCAM::GUI::OperationParameterDialog::RoughingParameters dialogParams;
-        
-        // Convert core parameters to dialog parameters
-        if (m_roughingParams.contains(operationName)) {
-            const auto& coreParams = m_roughingParams[operationName];
-            dialogParams.depthOfCut = coreParams.depthOfCut;
-            dialogParams.stockAllowance = coreParams.stockAllowance;
-            dialogParams.feedRate = 150.0; // mm/min (converted from mm/rev)
-            dialogParams.spindleSpeed = 1000.0; // RPM
-            dialogParams.stepover = 75.0; // % of tool diameter
-        }
-        
-        dialog->setRoughingParameters(dialogParams);
-    }
-    // Other operation types would be implemented similarly
-}
-
-void IntuiCAM::GUI::ToolpathGenerationController::onOperationParametersChanged(
-    const QString& operationName, 
-    const QString& operationType)
-{
-    // Update the core parameters based on dialog parameters
-    if (operationType == "Roughing") {
-        auto dialogParams = static_cast<IntuiCAM::GUI::OperationParameterDialog*>(sender())->getRoughingParameters();
-        
-        // Convert dialog parameters to core parameters
-        IntuiCAM::Toolpath::RoughingOperation::Parameters coreParams;
-        if (m_roughingParams.contains(operationName)) {
-            coreParams = m_roughingParams[operationName];
-        }
-        
-        coreParams.depthOfCut = dialogParams.depthOfCut;
-        coreParams.stockAllowance = dialogParams.stockAllowance;
-        
-        // Store updated parameters
-        m_roughingParams[operationName] = coreParams;
-        
-        // Update the tool's cutting parameters
-        if (m_operationTools.contains(operationName)) {
-            IntuiCAM::Toolpath::Tool::CuttingParameters toolParams;
-            toolParams.feedRate = dialogParams.feedRate / dialogParams.spindleSpeed; // Convert to mm/rev
-            toolParams.spindleSpeed = dialogParams.spindleSpeed;
-            toolParams.depthOfCut = dialogParams.depthOfCut;
-            toolParams.stepover = dialogParams.stepover / 100.0; // Convert from percentage
-            
-            m_operationTools[operationName]->setCuttingParameters(toolParams);
-        }
-        
-        // Regenerate the toolpath with updated parameters
-        regenerateToolpath(operationName, operationType);
-    }
-    // Other operation types would be implemented similarly
-}
 
 void IntuiCAM::GUI::ToolpathGenerationController::connectTimelineWidget(ToolpathTimelineWidget* timelineWidget)
 {
@@ -1136,25 +1067,7 @@ void IntuiCAM::GUI::ToolpathGenerationController::connectTimelineWidget(Toolpath
                 emit toolpathRemoved(name);
             });
     
-    // Connect toolpath parameter editing signal
-    connect(timelineWidget, &ToolpathTimelineWidget::toolpathParametersRequested,
-            this, [this, timelineWidget](int index, const QString& operationType) {
-                QString name = timelineWidget->getToolpathName(index);
-                
-                // Create and show the parameter dialog
-                auto dialog = new IntuiCAM::GUI::OperationParameterDialog(
-                    getOperationParameterDialogType(operationType), 
-                    QApplication::activeWindow());
-                
-                // Connect the dialog to the controller
-                connectParameterDialog(dialog, name, operationType);
-                
-                // Show the dialog
-                dialog->exec();
-                
-                // Dialog will be deleted when closed (Qt::WA_DeleteOnClose is set)
-                dialog->setAttribute(Qt::WA_DeleteOnClose);
-            });
+    // Toolpath parameter editing now handled by MainWindow/Setup panel
     
 
     // Connect toolpath regeneration signal

@@ -23,4 +23,6 @@ The left side of the setup tab has been simplified:
 - The **upper half** now contains the part setup controls. Here you upload the STEP file, set the orientation and choose the material type and starting diameter.
 - The **lower half** contains a new tab view with one tab for each machining step (Contouring, Threading, Chamfering, Parting). Each tab lets you choose tools and adjust parameters relevant to that step.
 
+All operation parameters are edited directly in these tabs. The previous parameter dialog window has been removed. Clicking an entry in the timeline automatically focuses the corresponding tab so you can tweak its settings.
+
 These settings are dedicated to lathe turning and are independent for every step.  The timeline at the bottom always shows the steps in the same order, but you can deactivate any of them.
