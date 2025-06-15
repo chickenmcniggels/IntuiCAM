@@ -198,6 +198,12 @@ private:
     QPushButton* m_roughingParamsButton;
     QCheckBox* m_finishingEnabledCheck;
     QPushButton* m_finishingParamsButton;
+    QCheckBox* m_contouringEnabledCheck;
+    QPushButton* m_contouringParamsButton;
+    QCheckBox* m_threadingEnabledCheck;
+    QPushButton* m_threadingParamsButton;
+    QCheckBox* m_chamferingEnabledCheck;
+    QPushButton* m_chamferingParamsButton;
     QCheckBox* m_partingEnabledCheck;
     QPushButton* m_partingParamsButton;
 
