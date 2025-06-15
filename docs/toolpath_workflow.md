@@ -13,6 +13,8 @@ When a STEP file is loaded, the application automatically creates a set of machi
 
 All steps are generated for every uploaded part. You can enable or disable each step individually in the timeline.
 
+The old **Add (+)** and **Generate Toolpaths Automatically** buttons have been removed. Toolpaths are created as soon as you enable an operation in the setup panel.
+
 ## Revised Setup Tab Layout
 
 The left side of the setup tab has been simplified:
