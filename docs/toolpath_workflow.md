@@ -26,3 +26,9 @@ The left side of the setup tab has been simplified:
 All operation parameters are edited directly in these tabs. The previous parameter dialog window has been removed. Clicking an entry in the timeline automatically focuses the corresponding tab so you can tweak its settings.
 
 These settings are dedicated to lathe turning and are independent for every step.  The timeline at the bottom always shows the steps in the same order, but you can deactivate any of them.
+
+### Simple vs Advanced Mode
+
+The setup panel now offers a checkbox labeled **Advanced Mode**. When disabled, only the most important parameters are shown for each operation. For example, Contouring displays just the facing allowance, number of finishing passes and the final surface finish. Threading and Chamfering list the selected faces in tables where you can add or remove entries and adjust individual parameters.
+
+Enabling **Advanced Mode** reveals additional controls such as calculated cutting depth, feed rate and spindle speed. These values are pre‑filled from the material database but can be fine‑tuned manually.
