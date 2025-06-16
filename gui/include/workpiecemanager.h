@@ -275,6 +275,13 @@ private:
      * @brief Generate description for a detected cylinder
      */
     QString generateCylinderDescription(const CylinderInfo& info, int index);
+
+    /**
+     * @brief Find the largest circular edge diameter on a workpiece
+     * @param workpiece The shape to analyze
+     * @return Largest detected circular edge diameter in mm, or 0.0 if none found
+     */
+    double getLargestCircularEdgeDiameter(const TopoDS_Shape& workpiece) const;
 };
 
-#endif // WORKPIECEMANAGER_H 
+#endif // WORKPIECEMANAGER_H

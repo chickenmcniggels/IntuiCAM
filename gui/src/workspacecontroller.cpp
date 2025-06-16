@@ -234,8 +234,10 @@ void WorkspaceController::executeWorkpieceWorkflow(const TopoDS_Shape& workpiece
     // Step 5: Position workpiece at requested distance-to-chuck (snap min-Z)
     m_workpieceManager->positionWorkpieceAlongAxis(m_lastDistanceToChuck);
     
-    // Step 6: Calculate optimal raw material size with small margin
-    double marginDiameter = detectedDiameter + 2.0; // add small cleanup allowance
+    // Step 6: Determine raw material diameter based on largest circular edge
+    double edgeDiameter = m_workpieceManager->getLargestCircularEdgeDiameter(workpiece);
+    double marginDiameter = edgeDiameter > 0.0 ? edgeDiameter + 4.0
+                                               : detectedDiameter + 2.0;
     double rawMaterialDiameter = m_rawMaterialManager->getNextStandardDiameter(marginDiameter);
     
     // Step 7: Create and display raw material that encompasses the workpiece
