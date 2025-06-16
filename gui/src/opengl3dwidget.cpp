@@ -6,6 +6,7 @@
 #include <QApplication>
 #include <QDebug>
 #include <QTimer>
+#include <QSet>
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
 
@@ -568,10 +569,11 @@ void OpenGL3DWidget::setSelectionMode(bool enabled)
             // Activate selection for all displayed shapes except raw material
             AIS_ListOfInteractive allObjects;
             m_context->DisplayedObjects(allObjects);
-            
-            // Get raw material and chuck AIS objects if workspace controller is available
+
+            // Get raw material, chuck and workpiece objects
             Handle(AIS_Shape) rawMaterialAIS;
             Handle(AIS_Shape) chuckAIS;
+            QSet<Handle(AIS_Shape)> workpieceSet;
             if (m_workspaceController) {
                 RawMaterialManager* rawMaterialManager = m_workspaceController->getRawMaterialManager();
                 if (rawMaterialManager) {
@@ -581,8 +583,15 @@ void OpenGL3DWidget::setSelectionMode(bool enabled)
                 if (chuckManager) {
                     chuckAIS = chuckManager->getChuckAIS();
                 }
+                WorkpieceManager* wpMgr = m_workspaceController->getWorkpieceManager();
+                if (wpMgr) {
+                    QVector<Handle(AIS_Shape)> wp = wpMgr->getWorkpieces();
+                    for (const Handle(AIS_Shape)& s : wp) {
+                        workpieceSet.insert(s);
+                    }
+                }
             }
-            
+
             for (AIS_ListOfInteractive::Iterator anIter(allObjects); anIter.More(); anIter.Next()) {
                 Handle(AIS_InteractiveObject) anObj = anIter.Value();
                 Handle(AIS_Shape) aShape = Handle(AIS_Shape)::DownCast(anObj);
@@ -599,12 +608,11 @@ void OpenGL3DWidget::setSelectionMode(bool enabled)
                         continue;
                     }
                     
-                    // Activate selection for whole shape (mode 0)
-                    m_context->Activate(aShape, 0, Standard_False);
-                    // Also activate face selection (mode 4) for cylindrical faces
-                    m_context->Activate(aShape, 4, Standard_False);
-                    // And edge selection (mode 2) for cylindrical edges
-                    m_context->Activate(aShape, 2, Standard_False);
+                    if (workpieceSet.contains(aShape)) {
+                        // Activate selection for part shapes only
+                        m_context->Activate(aShape, 0, Standard_False);
+                        m_context->Activate(aShape, 4, Standard_False);
+                    }
                 }
             }
             

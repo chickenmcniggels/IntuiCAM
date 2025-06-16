@@ -48,6 +48,8 @@
 #include <AIS_Shape.hxx>
 #include <Prs3d_Drawer.hxx>
 #include <BRepAdaptor_Surface.hxx>
+#include <BRepBuilderAPI_Transform.hxx>
+#include <TopExp_Explorer.hxx>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -317,6 +319,10 @@ void MainWindow::setupConnections()
                 this, &MainWindow::handleThreadFaceSelectionRequested);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::threadFaceSelected,
                 this, &MainWindow::handleThreadFaceSelected);
+        if (m_workspaceController) {
+            connect(m_workspaceController->getWorkpieceManager(), &WorkpieceManager::workpieceTransformed,
+                    this, &MainWindow::handleWorkpieceTransformed);
+        }
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::automaticToolpathGenerationRequested,
                 this, &MainWindow::handleAutomaticToolpathGeneration);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::operationToggled,
@@ -1427,18 +1433,27 @@ void MainWindow::handleManualAxisSelectionRequested()
 
 void MainWindow::handleThreadFaceSelectionRequested()
 {
+    if (!m_3dViewer || !m_workspaceController) {
     if (!m_3dViewer) {
         return;
     }
     m_selectingThreadFace = true;
     m_3dViewer->setSelectionMode(true);
     statusBar()->showMessage(tr("Select a cylindrical face for threading"), 5000);
+    highlightThreadCandidateFaces();
     if (m_outputWindow)
         m_outputWindow->append("Thread face selection mode enabled");
 }
 
 void MainWindow::handleThreadFaceSelected(const TopoDS_Shape& face)
 {
+    clearThreadCandidateHighlights();
+    if (!m_3dViewer || !m_workspaceController) {
+        return;
+    }
+
+    m_currentThreadFaceLocal = face;
+    updateHighlightedThreadFace();
     if (m_3dViewer) {
         Handle(AIS_Shape) ais = new AIS_Shape(face);
         m_3dViewer->getContext()->Display(ais, AIS_Shaded, 0, false);
@@ -1767,12 +1782,30 @@ void MainWindow::handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& cl
         if (m_selectingThreadFace) {
             m_3dViewer->setSelectionMode(false);
             m_selectingThreadFace = false;
-
             if (shape.ShapeType() == TopAbs_FACE) {
                 TopoDS_Face face = TopoDS::Face(shape);
                 BRepAdaptor_Surface surf(face);
                 if (surf.GetType() == GeomAbs_Cylinder) {
                     if (m_setupConfigPanel) {
+                        // Store local coordinates of the face
+                        gp_Trsf currentTrsf = m_workspaceController->getWorkpieceManager()->getCurrentTransformation();
+                        BRepBuilderAPI_Transform inv(currentTrsf.Inverted());
+                        TopoDS_Shape localFace = face.Moved(inv);
+                        m_setupConfigPanel->addSelectedThreadFace(localFace);
+                        handleThreadFaceSelected(localFace);
+                    }
+                    m_selectingThreadFace = false;
+                    m_3dViewer->setSelectionMode(false);
+                    return;
+                } else {
+                    statusBar()->showMessage(tr("Selected face is not cylindrical"), 3000);
+                    return; // remain in selection mode
+                }
+            }
+
+            // Clicked on something that's not a face -> cancel
+            m_selectingThreadFace = false;
+            m_3dViewer->setSelectionMode(false);
                         m_setupConfigPanel->addSelectedThreadFace(face);
                         handleThreadFaceSelected(face);
                     }
@@ -2100,4 +2133,75 @@ void MainWindow::handleShowPartToggled(bool checked)
     if (m_outputWindow) {
         m_outputWindow->append(QString("Part visibility toggled: %1").arg(checked ? "Visible" : "Hidden"));
     }
+}
+
+void MainWindow::highlightThreadCandidateFaces()
+{
+    clearThreadCandidateHighlights();
+    if (!m_workspaceController || !m_3dViewer)
+        return;
+
+    Handle(AIS_InteractiveContext) ctx = m_3dViewer->getContext();
+    TopoDS_Shape part = m_workspaceController->getPartShape();
+    gp_Trsf trsf = m_workspaceController->getWorkpieceManager()->getCurrentTransformation();
+
+    for (TopExp_Explorer exp(part, TopAbs_FACE); exp.More(); exp.Next()) {
+        TopoDS_Face f = TopoDS::Face(exp.Current());
+        BRepAdaptor_Surface surf(f);
+        if (surf.GetType() == GeomAbs_Cylinder) {
+            TopoDS_Shape global = f.Moved(trsf);
+            Handle(AIS_Shape) ais = new AIS_Shape(global);
+            ctx->Display(ais, AIS_Shaded, 0, false);
+            Handle(Prs3d_Drawer) dr = new Prs3d_Drawer();
+            dr->SetColor(Quantity_NOC_LIGHTBLUE);
+            dr->SetTransparency(Standard_ShortReal(0.6));
+            ctx->HilightWithColor(ais, dr, Standard_False);
+            ctx->Deactivate(ais);
+            m_candidateThreadFaces.append(ais);
+        }
+    }
+    m_3dViewer->updateView();
+}
+
+void MainWindow::clearThreadCandidateHighlights()
+{
+    if (!m_3dViewer)
+        return;
+    Handle(AIS_InteractiveContext) ctx = m_3dViewer->getContext();
+    for (const Handle(AIS_Shape)& ais : m_candidateThreadFaces) {
+        if (!ais.IsNull()) {
+            ctx->Unhilight(ais, Standard_False);
+            ctx->Remove(ais, Standard_False);
+        }
+    }
+    m_candidateThreadFaces.clear();
+    m_3dViewer->updateView();
+}
+
+void MainWindow::updateHighlightedThreadFace()
+{
+    if (!m_3dViewer || m_currentThreadFaceLocal.IsNull() || !m_workspaceController)
+        return;
+
+    Handle(AIS_InteractiveContext) ctx = m_3dViewer->getContext();
+    if (!m_currentThreadFaceAIS.IsNull()) {
+        ctx->Remove(m_currentThreadFaceAIS, Standard_False);
+    }
+    gp_Trsf trsf = m_workspaceController->getWorkpieceManager()->getCurrentTransformation();
+    TopoDS_Shape global = m_currentThreadFaceLocal.Moved(trsf);
+    m_currentThreadFaceAIS = new AIS_Shape(global);
+    ctx->Display(m_currentThreadFaceAIS, AIS_Shaded, 0, false);
+    Handle(Prs3d_Drawer) dr = new Prs3d_Drawer();
+    dr->SetColor(Quantity_NOC_GREEN);
+    dr->SetTransparency(Standard_ShortReal(0.3));
+    ctx->HilightWithColor(m_currentThreadFaceAIS, dr, Standard_False);
+    m_3dViewer->updateView();
+}
+
+void MainWindow::handleWorkpieceTransformed()
+{
+    if (m_selectingThreadFace) {
+        highlightThreadCandidateFaces();
+    }
+    updateHighlightedThreadFace();
 }
