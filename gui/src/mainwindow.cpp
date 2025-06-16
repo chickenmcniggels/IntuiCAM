@@ -106,7 +106,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_workspaceController = new WorkspaceController(this);
     m_stepLoader = new StepLoader();
     m_toolpathManager = new ToolpathManager(this);
-    m_workpieceManager = new WorkpieceManager(this);
+    m_workpieceManager = nullptr;  // will be obtained from WorkspaceController
     
     // Create material and tool managers
     m_materialManager = new IntuiCAM::GUI::MaterialManager(this);
@@ -265,8 +265,7 @@ void MainWindow::createCentralWidget()
     // Start on Setup tab (index 1) since that's where the action is
     m_tabWidget->setCurrentIndex(1);
     
-    // Setup all connections after UI components are created
-    setupUiConnections();
+    // Connections will be configured once the workspace is initialized
 }
 
 void MainWindow::createStatusBar()
@@ -428,6 +427,12 @@ void MainWindow::setupWorkspaceConnections()
             if (m_outputWindow) {
                 m_outputWindow->append("Workspace controller initialized successfully");
             }
+
+            // Use the controller's workpiece manager for further interactions
+            m_workpieceManager = m_workspaceController->getWorkpieceManager();
+
+            // Set up UI connections that depend on a valid workpiece manager
+            setupUiConnections();
             
             // Initialize the toolpath generation controller with the same context
             if (m_toolpathGenerationController) {
