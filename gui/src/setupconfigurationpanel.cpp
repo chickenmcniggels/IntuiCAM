@@ -332,18 +332,6 @@ void SetupConfigurationPanel::setupMachiningTab() {
   m_finishingAllowanceLayout->addStretch();
   m_machiningParamsLayout->addLayout(m_finishingAllowanceLayout);
 
-  // Number of finishing passes
-  QHBoxLayout *finishPassLayout = new QHBoxLayout();
-  QLabel *finishPassLabel = new QLabel("Finishing Passes:");
-  finishPassLabel->setMinimumWidth(140);
-  m_finishingPassesSpin = new QSpinBox();
-  m_finishingPassesSpin->setRange(1, 10);
-  m_finishingPassesSpin->setValue(1);
-  finishPassLayout->addWidget(finishPassLabel);
-  finishPassLayout->addWidget(m_finishingPassesSpin);
-  finishPassLayout->addStretch();
-  m_machiningParamsLayout->addLayout(finishPassLayout);
-
   // Flood coolant simple toggle
   QHBoxLayout *coolLayout = new QHBoxLayout();
   m_contourFloodCheck = new QCheckBox("Flood Coolant");
@@ -351,21 +339,6 @@ void SetupConfigurationPanel::setupMachiningTab() {
   coolLayout->addWidget(m_contourFloodCheck);
   coolLayout->addStretch();
   m_machiningParamsLayout->addLayout(coolLayout);
-
-  // Parting width
-  m_partingWidthLayout = new QHBoxLayout();
-  m_partingWidthLabel = new QLabel("Parting Width:");
-  m_partingWidthLabel->setMinimumWidth(140);
-  m_partingWidthSpin = new QDoubleSpinBox();
-  m_partingWidthSpin->setRange(1.0, 5.0);
-  m_partingWidthSpin->setValue(3.0);
-  m_partingWidthSpin->setSuffix(" mm");
-  m_partingWidthSpin->setDecimals(1);
-
-  m_partingWidthLayout->addWidget(m_partingWidthLabel);
-  m_partingWidthLayout->addWidget(m_partingWidthSpin);
-  m_partingWidthLayout->addStretch();
-  m_machiningParamsLayout->addLayout(m_partingWidthLayout);
 
   contourLayout->addWidget(m_machiningParamsGroup);
 
