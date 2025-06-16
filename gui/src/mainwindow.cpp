@@ -1446,7 +1446,7 @@ void MainWindow::handleThreadFaceSelected(const TopoDS_Shape& face)
         drawer->SetColor(Quantity_NOC_GREEN);
         drawer->SetTransparency(Standard_ShortReal(0.3));
         m_3dViewer->getContext()->HilightWithColor(ais, drawer, Standard_False);
-        m_3dViewer->updateView();
+        m_3dViewer->update();
     }
 }
 
