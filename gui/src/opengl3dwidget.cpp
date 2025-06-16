@@ -1,6 +1,7 @@
 #include "opengl3dwidget.h"
 #include "workspacecontroller.h"
 #include "rawmaterialmanager.h"
+#include "chuckmanager.h"
 
 #include <QApplication>
 #include <QDebug>
