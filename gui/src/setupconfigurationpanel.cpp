@@ -447,18 +447,6 @@ void SetupConfigurationPanel::setupMachiningTab() {
   threadingInfo->setWordWrap(true);
   threadingLayout->addWidget(threadingInfo);
 
-  QHBoxLayout *pitchLayout = new QHBoxLayout();
-  QLabel *pitchLabel = new QLabel("Thread Pitch:");
-  pitchLabel->setMinimumWidth(140);
-  m_threadPitchSpin = new QDoubleSpinBox();
-  m_threadPitchSpin->setRange(0.1, 10.0);
-  m_threadPitchSpin->setValue(1.0);
-  m_threadPitchSpin->setDecimals(2);
-  m_threadPitchSpin->setSuffix(" mm");
-  pitchLayout->addWidget(pitchLabel);
-  pitchLayout->addWidget(m_threadPitchSpin);
-  pitchLayout->addStretch();
-  threadingLayout->addLayout(pitchLayout);
 
   QHBoxLayout *threadCoolLayout = new QHBoxLayout();
   m_threadFloodCheck = new QCheckBox("Flood Coolant");
@@ -468,7 +456,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   threadingLayout->addLayout(threadCoolLayout);
 
   m_threadFacesTable = new QTableWidget(0, 3);
-  QStringList threadHeaders{"Face", "Preset", "Pitch"};
+  QStringList threadHeaders{"Preset", "Pitch", "Depth"};
   m_threadFacesTable->setHorizontalHeaderLabels(threadHeaders);
   m_threadFacesTable->horizontalHeader()->setStretchLastSection(true);
   threadingLayout->addWidget(m_threadFacesTable);
@@ -677,9 +665,6 @@ void SetupConfigurationPanel::setupConnections() {
   connect(m_partingWidthSpin,
           QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
           &SetupConfigurationPanel::onConfigurationChanged);
-  connect(m_threadPitchSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
   connect(m_chamferSizeSpin,
           QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
           &SetupConfigurationPanel::onConfigurationChanged);
@@ -704,6 +689,8 @@ void SetupConfigurationPanel::setupConnections() {
             &SetupConfigurationPanel::onRemoveThreadFace);
     connect(m_threadFacesTable, &QTableWidget::itemSelectionChanged, this,
             &SetupConfigurationPanel::onThreadFaceRowSelected);
+    connect(m_threadFacesTable, &QTableWidget::cellChanged, this,
+            &SetupConfigurationPanel::onThreadFaceCellChanged);
   }
   if (m_chamferingEnabledCheck) {
     connect(m_chamferingEnabledCheck, &QCheckBox::toggled, this,
@@ -1263,17 +1250,7 @@ void SetupConfigurationPanel::focusOperationTab(const QString &operationName) {
 }
 
 void SetupConfigurationPanel::onAddThreadFace() {
-  int row = m_threadFacesTable->rowCount();
-  m_threadFacesTable->insertRow(row);
-  m_threadFacesTable->setItem(row, 0, new QTableWidgetItem(tr("Face %1").arg(row + 1)));
-  m_threadFacesTable->setItem(row, 1, new QTableWidgetItem("Default"));
-  m_threadFacesTable->setItem(row, 2, new QTableWidgetItem(QString::number(m_threadPitchSpin->value(), 'f', 2)));
-
-  ThreadFaceConfig cfg;
-  cfg.faceId = QString::number(row);
-  cfg.preset = "Default";
-  cfg.pitch = m_threadPitchSpin->value();
-  m_threadFaces.append(cfg);
+  emit requestThreadFaceSelection();
 }
 
 void SetupConfigurationPanel::onRemoveThreadFace() {
@@ -1284,6 +1261,47 @@ void SetupConfigurationPanel::onRemoveThreadFace() {
   m_threadFacesTable->removeRow(row);
   if (row >= 0 && row < m_threadFaces.size())
     m_threadFaces.remove(row);
+}
+
+void SetupConfigurationPanel::addSelectedThreadFace(const TopoDS_Shape &face) {
+  int row = m_threadFacesTable->rowCount();
+  m_threadFacesTable->insertRow(row);
+
+  QComboBox *presetCombo = new QComboBox();
+  presetCombo->addItems({"None", "M6x1", "M8x1.25", "M10x1.5"});
+  m_threadFacesTable->setCellWidget(row, 0, presetCombo);
+
+  auto *pitchItem = new QTableWidgetItem(QString::number(1.0, 'f', 2));
+  m_threadFacesTable->setItem(row, 1, pitchItem);
+
+  auto *depthItem = new QTableWidgetItem(QString::number(5.0, 'f', 2));
+  m_threadFacesTable->setItem(row, 2, depthItem);
+
+  ThreadFaceConfig cfg;
+  cfg.face = face;
+  cfg.preset = "None";
+  cfg.pitch = 1.0;
+  cfg.depth = 5.0;
+  m_threadFaces.append(cfg);
+
+  connect(presetCombo, &QComboBox::currentTextChanged, this,
+          [this, row, pitchItem](const QString &text) {
+            if (m_updatingThreadTable)
+              return;
+            m_updatingThreadTable = true;
+            if (text == "M6x1") {
+              pitchItem->setText(QString::number(1.0, 'f', 2));
+              m_threadFaces[row].pitch = 1.0;
+            } else if (text == "M8x1.25") {
+              pitchItem->setText(QString::number(1.25, 'f', 2));
+              m_threadFaces[row].pitch = 1.25;
+            } else if (text == "M10x1.5") {
+              pitchItem->setText(QString::number(1.5, 'f', 2));
+              m_threadFaces[row].pitch = 1.5;
+            }
+            m_threadFaces[row].preset = text;
+            m_updatingThreadTable = false;
+          });
 }
 
 void SetupConfigurationPanel::onAddChamferFace() {
@@ -1318,7 +1336,31 @@ void SetupConfigurationPanel::onThreadFaceRowSelected() {
     return;
   int row = ranges.first().topRow();
   if (row >= 0 && row < m_threadFaces.size())
-    emit threadFaceSelected(m_threadFaces[row].faceId);
+    emit threadFaceSelected(m_threadFaces[row].face);
+}
+
+void SetupConfigurationPanel::onThreadFaceCellChanged(int row, int column) {
+  if (m_updatingThreadTable)
+    return;
+  if (row < 0 || row >= m_threadFaces.size())
+    return;
+
+  if (column == 1) {
+    m_updatingThreadTable = true;
+    QWidget *w = m_threadFacesTable->cellWidget(row, 0);
+    if (auto combo = qobject_cast<QComboBox *>(w)) {
+      combo->setCurrentIndex(0); // None
+    }
+    bool ok = false;
+    double val = m_threadFacesTable->item(row, column)->text().toDouble(&ok);
+    if (ok) m_threadFaces[row].pitch = val;
+    m_threadFaces[row].preset = "None";
+    m_updatingThreadTable = false;
+  } else if (column == 2) {
+    bool ok = false;
+    double val = m_threadFacesTable->item(row, column)->text().toDouble(&ok);
+    if (ok) m_threadFaces[row].depth = val;
+  }
 }
 
 void SetupConfigurationPanel::onChamferFaceRowSelected() {
