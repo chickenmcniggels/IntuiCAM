@@ -115,7 +115,7 @@ private slots:
     void handleThreadFaceSelected(const TopoDS_Shape& face);
     void handleWorkpieceTransformed();
     void handleOperationToggled(const QString& operationName, bool enabled);
-    void handleAutomaticToolpathGeneration();
+    void handleGenerateToolpaths();
     
     // 3D viewer handlers
     void handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& clickPoint);
@@ -175,6 +175,7 @@ private:
     IntuiCAM::GUI::SetupConfigurationPanel *m_setupConfigPanel;
     OpenGL3DWidget *m_3dViewer;
     ToolpathTimelineWidget *m_toolpathTimeline;
+    QPushButton *m_generateButton;
     QPushButton *m_simulateButton;
     
     // Legacy components (for gradual migration)
