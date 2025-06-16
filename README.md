@@ -3,30 +3,31 @@
 [![Build Status](https://img.shields.io/github/actions/workflow/status/your-org/IntuiCAM/ci.yml?branch=main)](https://github.com/your-org/IntuiCAM/actions)  
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
-**IntuiCAM** will be an open-source CAM application initially focused on CNC turning. It will provide an intuitive desktop GUI for generating reliable toolpaths—and a standalone **C++ Core library** for CAM processing, complete with Python bindings to enable seamless integration in other workflows and applications.
+**IntuiCAM** is an open-source CAM project in **active development**. The goal is to deliver an intuitive, cross-platform solution for CNC turning. A modular **C++ core library** drives the toolpath algorithms while a Qt-based GUI guides you from STEP import to G-code export. Python bindings allow integration and automation.
+> **Project Status:** Pre-release / development in progress. Expect missing features and rapid changes.
 
 ---
+## Project Goals
+- Provide a modern, free CAM solution focused on CNC turning
+- Offer an intuitive workflow from CAD import to optimized G-code
+- Remain extensible via plugins and Python scripting
+- Explore future automation with AI-assisted features
+
 
 ## Key Features
 
-- **Modular C++ Core**  
-  A standalone library (`libIntuiCAMCore`) implements all core CAM algorithms (facing, roughing, finishing, parting) in high-performance C++.  
-
-- **Python Bindings**  
-  Expose core functionality via Python (using pybind11) for scripting, automation, or embedding in other projects (e.g. FreeCAD, Slicer tools).
-
-- **Cross-Platform GUI (Qt)**  
-  A native desktop interface (Windows, macOS, Linux) guides you step-by-step from STEP import to G-code export.
-
-- **STEP Import & B-Rep Accuracy**  
-  Leverage OpenCASCADE to load exact CAD geometry, define spindle axis interactively, and configure stock and chucks.
-
-- **G-Code Generation & Post-Processing**  
-  Produce ISO-compliant G-code for common CNC controls. Flexible post-processor layer accommodates custom machine dialects.
-
-- **Extensible & Plugin-Friendly**  
-  Core and GUI are cleanly separated. Contributors can add new operations, tools or backends without touching unrelated code.
-
+- **Modular C++ Core**
+  High-performance library implementing lathe toolpath algorithms (facing, roughing, finishing, parting).
+- **Python Bindings**
+  Access core CAM functionality from Python for scripting or integration in other tools (pybind11).
+- **Cross-Platform GUI (Qt)**
+  Desktop interface for Windows, macOS and Linux that guides you from model import to G-code output.
+- **STEP Import & B-Rep Accuracy**
+  Uses OpenCASCADE to load precise CAD geometry and configure spindle axis, stock and chuck.
+- **G-Code Generation & Post-Processing**
+  Generates ISO-compliant programs with a flexible post-processing layer for custom machine dialects.
+- **Extensible & Plugin-Friendly**
+  Clean separation of core and GUI allows new operations or backends to be added with minimal changes.
 ---
 
 ## Getting Started
