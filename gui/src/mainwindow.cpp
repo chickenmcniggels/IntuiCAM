@@ -874,7 +874,7 @@ QWidget* MainWindow::createSetupTab()
     operationLayout->setSpacing(12);
     
     // Simulate button (now integrated with other controls)
-    m_simulateButton = new QPushButton("▶ Simulate Toolpaths");
+    m_simulateButton = new QPushButton("▶ Generate + Simulate Toolpaths");
     m_simulateButton->setMinimumHeight(35);
     m_simulateButton->setStyleSheet(
         "QPushButton {"
@@ -1434,6 +1434,7 @@ void MainWindow::handleManualAxisSelectionRequested()
 void MainWindow::handleThreadFaceSelectionRequested()
 {
     if (!m_3dViewer || !m_workspaceController) {
+    if (!m_3dViewer) {
         return;
     }
     m_selectingThreadFace = true;
@@ -1453,6 +1454,15 @@ void MainWindow::handleThreadFaceSelected(const TopoDS_Shape& face)
 
     m_currentThreadFaceLocal = face;
     updateHighlightedThreadFace();
+    if (m_3dViewer) {
+        Handle(AIS_Shape) ais = new AIS_Shape(face);
+        m_3dViewer->getContext()->Display(ais, AIS_Shaded, 0, false);
+        Handle(Prs3d_Drawer) drawer = new Prs3d_Drawer();
+        drawer->SetColor(Quantity_NOC_GREEN);
+        drawer->SetTransparency(Standard_ShortReal(0.3));
+        m_3dViewer->getContext()->HilightWithColor(ais, drawer, Standard_False);
+        m_3dViewer->update();
+    }
 }
 
 void MainWindow::handleOperationToggled(const QString& operationName, bool enabled)
@@ -1770,6 +1780,8 @@ void MainWindow::handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& cl
     // Only process selection if the 3D viewer is in selection mode
     if (m_3dViewer && m_3dViewer->isSelectionModeActive()) {
         if (m_selectingThreadFace) {
+            m_3dViewer->setSelectionMode(false);
+            m_selectingThreadFace = false;
             if (shape.ShapeType() == TopAbs_FACE) {
                 TopoDS_Face face = TopoDS::Face(shape);
                 BRepAdaptor_Surface surf(face);
@@ -1794,7 +1806,14 @@ void MainWindow::handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& cl
             // Clicked on something that's not a face -> cancel
             m_selectingThreadFace = false;
             m_3dViewer->setSelectionMode(false);
-            clearThreadCandidateHighlights();
+                        m_setupConfigPanel->addSelectedThreadFace(face);
+                        handleThreadFaceSelected(face);
+                    }
+                    return;
+                }
+            }
+
+            statusBar()->showMessage(tr("Invalid selection for thread face"), 3000);
             return;
         }
         if (!m_workspaceController) {
