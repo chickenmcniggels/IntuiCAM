@@ -1623,7 +1623,17 @@ void MainWindow::handleManualAxisSelected(double diameter, const gp_Ax1& axis)
 
 void MainWindow::handleRawMaterialCreated(double diameter, double length)
 {
-    // Placeholder
+    if (m_setupConfigPanel) {
+        m_setupConfigPanel->updateRawMaterialLength(length);
+    }
+
+    statusBar()->showMessage(tr("Raw material length: %1 mm").arg(length), 2000);
+
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Raw material created - diameter: %1 mm, length: %2 mm")
+                                   .arg(diameter)
+                                   .arg(length));
+    }
 }
 
 // Part loading panel handlers

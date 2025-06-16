@@ -259,8 +259,8 @@ void SetupConfigurationPanel::setupPartTab() {
   m_rawDiameterLayout->addStretch();
   m_materialLayout->addLayout(m_rawDiameterLayout);
 
-  // Raw material length (auto-calculated, display only)
-  m_rawLengthLabel = new QLabel("Raw Length: Auto-calculated");
+  // Raw material length display
+  m_rawLengthLabel = new QLabel("Raw material length required: 0.0 mm");
   m_rawLengthLabel->setStyleSheet("color: #666; font-size: 11px;");
   m_materialLayout->addWidget(m_rawLengthLabel);
 
@@ -813,7 +813,7 @@ void SetupConfigurationPanel::setOrientationFlipped(bool flipped) {
 
 void SetupConfigurationPanel::updateRawMaterialLength(double length) {
   m_rawLengthLabel->setText(
-      QString("Raw Length: %1 mm (auto-calculated)").arg(length, 0, 'f', 1));
+      QString("Raw material length required: %1 mm").arg(length, 0, 'f', 1));
 }
 
 void SetupConfigurationPanel::setFacingAllowance(double allowance) {
