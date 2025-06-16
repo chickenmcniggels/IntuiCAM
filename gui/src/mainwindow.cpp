@@ -323,12 +323,13 @@ void MainWindow::setupConnections()
                     this, &MainWindow::handleWorkpieceTransformed);
         }
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::automaticToolpathGenerationRequested,
-                this, &MainWindow::handleAutomaticToolpathGeneration);
+                this, &MainWindow::handleGenerateToolpaths);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::operationToggled,
                 this, &MainWindow::handleOperationToggled);
     }
     
-    // Connect simulate button
+    // Connect generate and simulate buttons
+    connect(m_generateButton, &QPushButton::clicked, this, &MainWindow::handleGenerateToolpaths);
     connect(m_simulateButton, &QPushButton::clicked, this, &MainWindow::simulateToolpaths);
     
     // Connect toolpath timeline with toolpath generation controller
@@ -878,8 +879,29 @@ QWidget* MainWindow::createSetupTab()
     QHBoxLayout* operationLayout = new QHBoxLayout(operationFrame);
     operationLayout->setSpacing(12);
     
-    // Simulate button (now integrated with other controls)
-    m_simulateButton = new QPushButton("▶ Generate + Simulate Toolpaths");
+    // Generate button
+    m_generateButton = new QPushButton("⚙ Generate Toolpaths");
+    m_generateButton->setMinimumHeight(35);
+    m_generateButton->setStyleSheet(
+        "QPushButton {"
+        "  background-color: #6c757d;"
+        "  color: white;"
+        "  border: none;"
+        "  border-radius: 6px;"
+        "  font-weight: bold;"
+        "  font-size: 13px;"
+        "  padding: 8px 16px;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: #5a6268;"
+        "}"
+        "QPushButton:pressed {"
+        "  background-color: #545b62;"
+        "}"
+    );
+
+    // Simulate button
+    m_simulateButton = new QPushButton("▶ Simulate Toolpaths");
     m_simulateButton->setMinimumHeight(35);
     m_simulateButton->setStyleSheet(
         "QPushButton {"
@@ -929,6 +951,7 @@ QWidget* MainWindow::createSetupTab()
     
     operationLayout->addWidget(statusIndicator);
     operationLayout->addStretch();
+    operationLayout->addWidget(m_generateButton);
     operationLayout->addWidget(m_simulateButton);
     operationLayout->addWidget(exportButton);
     
@@ -964,7 +987,8 @@ QWidget* MainWindow::createSetupTab()
     m_propertiesPanel = new QTextEdit;
     m_propertiesPanel->hide();
     
-    // Connect existing simulate button
+    // Connect generation and simulation buttons
+    connect(m_generateButton, &QPushButton::clicked, this, &MainWindow::handleGenerateToolpaths);
     connect(m_simulateButton, &QPushButton::clicked, this, &MainWindow::simulateToolpaths);
     
     // Connect export button
@@ -1481,7 +1505,7 @@ void MainWindow::handleOperationToggled(const QString& operationName, bool enabl
 }
 
 
-void MainWindow::handleAutomaticToolpathGeneration()
+void MainWindow::handleGenerateToolpaths()
 {
     if (!m_toolpathGenerationController) {
         if (m_outputWindow) {
@@ -1496,19 +1520,16 @@ void MainWindow::handleAutomaticToolpathGeneration()
         m_toolpathGenerationController->connectStatusText(m_outputWindow);
     }
     
-    // Get required parameters from workspace components
-    double rawDiameter = 0.0;
-    double distanceToChuck = 0.0;
-    bool orientationFlipped = false;
-    
-    // Get raw material diameter if available
-    if (m_workspaceController && m_workspaceController->getRawMaterialManager()) {
-        rawDiameter = m_workspaceController->getRawMaterialManager()->getCurrentDiameter();
-    }
-    
-    // Get part shape if available
+    // Gather parameters from setup panel
+    double rawDiameter = m_setupConfigPanel ? m_setupConfigPanel->getRawDiameter() : 0.0;
+    double distanceToChuck = m_setupConfigPanel ? m_setupConfigPanel->getDistanceToChuck() : 0.0;
+    bool orientationFlipped = m_setupConfigPanel ? m_setupConfigPanel->isOrientationFlipped() : false;
+    QString stepFilePath = m_setupConfigPanel ? m_setupConfigPanel->getStepFilePath() : QString();
+
     TopoDS_Shape partShape;
-    QString stepFilePath;
+    if (m_workspaceController && m_workspaceController->hasPartShape()) {
+        partShape = m_workspaceController->getPartShape();
+    }
     
     // Check if we have a valid raw material diameter
     if (rawDiameter <= 0.0) {
@@ -1526,17 +1547,24 @@ void MainWindow::handleAutomaticToolpathGeneration()
     request.partShape = partShape;
     request.stepFilePath = stepFilePath;
     
-    // Set enabled operations (for demo, enable roughing)
-    request.enabledOperations = QStringList() << "Roughing";
-    
-    // Set operation allowances
-    request.facingAllowance = 0.5;
-    request.roughingAllowance = 0.5;
-    request.finishingAllowance = 0.2;
-    request.partingWidth = 3.0;
-    
-    // Set quality parameters
-    request.tolerance = 0.01;
+    // Enabled operations
+    QStringList ops{"Contouring", "Threading", "Chamfering", "Parting"};
+    for (const QString& op : ops) {
+        if (m_setupConfigPanel && m_setupConfigPanel->isOperationEnabled(op)) {
+            request.enabledOperations.append(op);
+        }
+    }
+
+    // Operation allowances
+    if (m_setupConfigPanel) {
+        request.facingAllowance = m_setupConfigPanel->getFacingAllowance();
+        request.roughingAllowance = m_setupConfigPanel->getRoughingAllowance();
+        request.finishingAllowance = m_setupConfigPanel->getFinishingAllowance();
+        request.partingWidth = m_setupConfigPanel->getPartingWidth();
+        request.tolerance = m_setupConfigPanel->getTolerance();
+        request.materialType = m_setupConfigPanel->getMaterialType();
+        request.surfaceFinish = m_setupConfigPanel->getSurfaceFinish();
+    }
     
     // Generate the toolpaths
     m_toolpathGenerationController->generateToolpaths(request);

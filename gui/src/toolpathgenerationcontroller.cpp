@@ -457,14 +457,14 @@ bool IntuiCAM::GUI::ToolpathGenerationController::generateOperationToolpaths()
                     }
                 }
                 
-                // Set roughing parameters
+                // Set roughing parameters using request values
                 IntuiCAM::Toolpath::RoughingOperation::Parameters params;
                 params.startDiameter = m_currentRequest.rawDiameter;
-                params.endDiameter = m_currentRequest.rawDiameter * 0.6; // 60% of raw diameter as a simplification
+                params.endDiameter = m_currentRequest.rawDiameter - 2.0 * m_currentRequest.finishingAllowance;
                 params.startZ = 0.0;
-                params.endZ = -50.0; // Arbitrary length for demo
-                params.depthOfCut = 1.0;
-                params.stockAllowance = m_currentRequest.roughingAllowance;
+                params.endZ = -50.0; // placeholder
+                params.depthOfCut = m_currentRequest.roughingAllowance > 0.0 ? m_currentRequest.roughingAllowance : 1.0;
+                params.stockAllowance = m_currentRequest.finishingAllowance;
                 
                 roughingOp->setParameters(params);
                 operation = std::move(roughingOp);
@@ -481,6 +481,7 @@ bool IntuiCAM::GUI::ToolpathGenerationController::generateOperationToolpaths()
                 auto chamferOp = std::make_unique<IntuiCAM::Toolpath::FinishingOperation>(
                     operationName.toStdString(), tool);
                 IntuiCAM::Toolpath::FinishingOperation::Parameters params;
+                params.targetDiameter = m_currentRequest.rawDiameter - 2.0 * m_currentRequest.finishingAllowance;
                 chamferOp->setParameters(params);
                 operation = std::move(chamferOp);
             }
@@ -488,7 +489,8 @@ bool IntuiCAM::GUI::ToolpathGenerationController::generateOperationToolpaths()
                 auto partingOp = std::make_unique<IntuiCAM::Toolpath::PartingOperation>(
                     operationName.toStdString(), tool);
                 IntuiCAM::Toolpath::PartingOperation::Parameters params;
-                params.partingDiameter = m_currentRequest.partingWidth;
+                params.partingDiameter = m_currentRequest.rawDiameter;
+                params.retractDistance = m_currentRequest.partingWidth;
                 partingOp->setParameters(params);
                 operation = std::move(partingOp);
             }
