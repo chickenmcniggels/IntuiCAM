@@ -443,17 +443,16 @@ void SetupConfigurationPanel::setupMachiningTab() {
   threadEnableLayout->addWidget(m_threadingEnabledCheck);
   threadEnableLayout->addStretch();
   threadingLayout->addLayout(threadEnableLayout);
-  QLabel *threadingInfo = new QLabel("Select faces to thread in the 3D view.");
-  threadingInfo->setWordWrap(true);
-  threadingLayout->addWidget(threadingInfo);
-
-
   QHBoxLayout *threadCoolLayout = new QHBoxLayout();
   m_threadFloodCheck = new QCheckBox("Flood Coolant");
   m_threadFloodCheck->setChecked(true);
   threadCoolLayout->addWidget(m_threadFloodCheck);
   threadCoolLayout->addStretch();
   threadingLayout->addLayout(threadCoolLayout);
+
+  QLabel *threadingInfo = new QLabel("Select faces to thread in the 3D view.");
+  threadingInfo->setWordWrap(true);
+  threadingLayout->addWidget(threadingInfo);
 
   m_threadFacesTable = new QTableWidget(0, 3);
   QStringList threadHeaders{"Preset", "Pitch", "Depth"};
