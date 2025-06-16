@@ -43,8 +43,11 @@
 #include <QMessageBox>
 #include <QToolButton>
 
-// OpenCASCADE includes for gp_Ax1
+// OpenCASCADE includes for geometry handling
 #include <gp_Ax1.hxx>
+#include <AIS_Shape.hxx>
+#include <Prs3d_Drawer.hxx>
+#include <BRepAdaptor_Surface.hxx>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -310,6 +313,10 @@ void MainWindow::setupConnections()
                 this, &MainWindow::handlePartLoadingOrientationFlipped);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::manualAxisSelectionRequested,
                 this, &MainWindow::handleManualAxisSelectionRequested);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::requestThreadFaceSelection,
+                this, &MainWindow::handleThreadFaceSelectionRequested);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::threadFaceSelected,
+                this, &MainWindow::handleThreadFaceSelected);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::automaticToolpathGenerationRequested,
                 this, &MainWindow::handleAutomaticToolpathGeneration);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::operationToggled,
@@ -1418,6 +1425,31 @@ void MainWindow::handleManualAxisSelectionRequested()
     }
 }
 
+void MainWindow::handleThreadFaceSelectionRequested()
+{
+    if (!m_3dViewer) {
+        return;
+    }
+    m_selectingThreadFace = true;
+    m_3dViewer->setSelectionMode(true);
+    statusBar()->showMessage(tr("Select a cylindrical face for threading"), 5000);
+    if (m_outputWindow)
+        m_outputWindow->append("Thread face selection mode enabled");
+}
+
+void MainWindow::handleThreadFaceSelected(const TopoDS_Shape& face)
+{
+    if (m_3dViewer) {
+        Handle(AIS_Shape) ais = new AIS_Shape(face);
+        m_3dViewer->getContext()->Display(ais, AIS_Shaded, 0, false);
+        Handle(Prs3d_Drawer) drawer = new Prs3d_Drawer();
+        drawer->SetColor(Quantity_NOC_GREEN);
+        drawer->SetTransparency(Standard_ShortReal(0.3));
+        m_3dViewer->getContext()->HilightWithColor(ais, drawer, Standard_False);
+        m_3dViewer->updateView();
+    }
+}
+
 void MainWindow::handleOperationToggled(const QString& operationName, bool enabled)
 {
     if (m_outputWindow) {
@@ -1732,6 +1764,25 @@ void MainWindow::handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& cl
 {
     // Only process selection if the 3D viewer is in selection mode
     if (m_3dViewer && m_3dViewer->isSelectionModeActive()) {
+        if (m_selectingThreadFace) {
+            m_3dViewer->setSelectionMode(false);
+            m_selectingThreadFace = false;
+
+            if (shape.ShapeType() == TopAbs_FACE) {
+                TopoDS_Face face = TopoDS::Face(shape);
+                BRepAdaptor_Surface surf(face);
+                if (surf.GetType() == GeomAbs_Cylinder) {
+                    if (m_setupConfigPanel) {
+                        m_setupConfigPanel->addSelectedThreadFace(face);
+                        handleThreadFaceSelected(face);
+                    }
+                    return;
+                }
+            }
+
+            statusBar()->showMessage(tr("Invalid selection for thread face"), 3000);
+            return;
+        }
         if (!m_workspaceController) {
             statusBar()->showMessage(tr("Error: Workspace controller not initialized"), 3000);
             m_3dViewer->setSelectionMode(false); // Disable selection mode
