@@ -227,9 +227,6 @@ private:
   // Advanced mode toggle
   QCheckBox *m_advancedModeCheck;
 
-  // Simplified parameters
-  QSpinBox *m_finishingPassesSpin;
-
   // Threading face table
   QTableWidget *m_threadFacesTable;
   QPushButton *m_addThreadFaceButton;
