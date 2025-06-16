@@ -64,7 +64,7 @@ SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     , m_partingTab(nullptr)
     , m_materialManager(nullptr)
     , m_toolManager(nullptr)
-    , m_materialPropertiesLabel(nullptr)
+    
     , m_contouringEnabledCheck(nullptr)
     , m_threadingEnabledCheck(nullptr)
     , m_chamferingEnabledCheck(nullptr)
@@ -264,14 +264,7 @@ void SetupConfigurationPanel::setupPartTab() {
   m_rawLengthLabel->setStyleSheet("color: #666; font-size: 11px;");
   m_materialLayout->addWidget(m_rawLengthLabel);
 
-  // Material properties display
-  m_materialPropertiesLabel =
-      new QLabel("Material properties will be shown here");
-  m_materialPropertiesLabel->setStyleSheet(
-      "color: #666; font-size: 11px; padding: 8px; background: #f5f5f5; "
-      "border-radius: 4px;");
-  m_materialPropertiesLabel->setWordWrap(true);
-  m_materialLayout->addWidget(m_materialPropertiesLabel);
+
 
   partTabLayout->addWidget(m_materialGroup);
 
@@ -980,25 +973,20 @@ QStringList SetupConfigurationPanel::getRecommendedTools() const {
 }
 
 void SetupConfigurationPanel::updateMaterialProperties() {
-  if (!m_materialManager || !m_materialPropertiesLabel) {
+  if (!m_materialManager) {
     return;
   }
 
   QString materialName = getSelectedMaterialName();
   if (materialName.isEmpty()) {
-    m_materialPropertiesLabel->setText("No material selected");
     return;
   }
 
   MaterialProperties props =
       m_materialManager->getMaterialProperties(materialName);
   if (props.name.isEmpty()) {
-    m_materialPropertiesLabel->setText("Material properties not available");
     return;
   }
-
-  // Clear the material properties text - no longer displaying detailed properties
-  m_materialPropertiesLabel->setText("");
 
   // Update tool recommendations when material changes
   updateToolRecommendations();

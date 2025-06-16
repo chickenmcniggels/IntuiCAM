@@ -242,8 +242,7 @@ private:
   ToolManager *m_toolManager;
   QMap<QString, QListWidget *> m_operationToolLists;
 
-  // Enhanced material display
-  QLabel *m_materialPropertiesLabel;
+
 };
 
 } // namespace GUI
