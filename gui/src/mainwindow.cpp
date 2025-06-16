@@ -2157,6 +2157,8 @@ void MainWindow::highlightThreadCandidateFaces()
         if (surf.GetType() == GeomAbs_Cylinder) {
             TopoDS_Shape global = f.Moved(trsf);
             Handle(AIS_Shape) ais = new AIS_Shape(global);
+            // Keep shape invisible but selectable
+            ais->SetTransparency(1.0);
             ctx->Display(ais, AIS_Shaded, 0, false);
             Handle(Prs3d_Drawer) dr = new Prs3d_Drawer();
             dr->SetColor(Quantity_NOC_LIGHTBLUE);
