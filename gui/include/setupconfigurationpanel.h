@@ -198,7 +198,7 @@ private:
   QHBoxLayout *m_rawDiameterLayout;
   QLabel *m_rawDiameterLabel;
   QDoubleSpinBox *m_rawDiameterSpin;
-  QLabel *m_rawLengthLabel; // Now just a label showing auto-calculated length
+  QLabel *m_rawLengthLabel; // Displays current raw material length
 
   // Machining Tab Components (Machining Parameters + Operations + Quality)
   QGroupBox *m_machiningParamsGroup;
