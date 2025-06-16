@@ -20,6 +20,10 @@
 #include <GeomAbs_SurfaceType.hxx>
 #include <Bnd_Box.hxx>
 #include <BRepBndLib.hxx>
+#include <TopoDS_Edge.hxx>
+#include <BRepAdaptor_Curve.hxx>
+#include <GeomAbs_CurveType.hxx>
+#include <gp_Circ.hxx>
 
 WorkpieceManager::WorkpieceManager(QObject *parent)
     : QObject(parent)
@@ -626,4 +630,32 @@ TopoDS_Shape WorkpieceManager::getWorkpieceShape() const
     
     // Return null shape if no workpiece or invalid shape
     return TopoDS_Shape();
-} 
+}
+
+double WorkpieceManager::getLargestCircularEdgeDiameter(const TopoDS_Shape& workpiece) const
+{
+    if (workpiece.IsNull()) {
+        return 0.0;
+    }
+
+    double maxDiameter = 0.0;
+
+    try {
+        for (TopExp_Explorer exp(workpiece, TopAbs_EDGE); exp.More(); exp.Next()) {
+            TopoDS_Edge edge = TopoDS::Edge(exp.Current());
+            BRepAdaptor_Curve curve(edge);
+
+            if (curve.GetType() == GeomAbs_Circle) {
+                gp_Circ circ = curve.Circle();
+                double diameter = circ.Radius() * 2.0;
+                if (diameter > maxDiameter) {
+                    maxDiameter = diameter;
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+        qDebug() << "WorkpieceManager: Error detecting circular edges:" << e.what();
+    }
+
+    return maxDiameter;
+}
