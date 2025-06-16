@@ -77,6 +77,9 @@ SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     setupUI();
     setupConnections();
     applyTabStyling();
+
+    // Ensure widgets respect the initial Advanced Mode state
+    updateAdvancedMode();
 }
 
 SetupConfigurationPanel::~SetupConfigurationPanel() {
