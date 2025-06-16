@@ -79,7 +79,6 @@ The main window now includes:
 - **Properties Panel**: Context-sensitive properties display
 - **Output Log**: Application messages and operation feedback
 - **Menu System**: File, Edit, View, Tools, and Help menus with shortcuts
-- **About Dialog**: Application information and dependency versions
 
 #### Chuck Management Features
 
