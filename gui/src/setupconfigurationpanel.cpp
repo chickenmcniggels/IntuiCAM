@@ -1260,6 +1260,7 @@ void SetupConfigurationPanel::onRemoveThreadFace() {
   m_threadFacesTable->removeRow(row);
   if (row >= 0 && row < m_threadFaces.size())
     m_threadFaces.remove(row);
+  onThreadFaceRowSelected();
 }
 
 void SetupConfigurationPanel::addSelectedThreadFace(const TopoDS_Shape &face) {
@@ -1331,8 +1332,10 @@ void SetupConfigurationPanel::onRemoveChamferFace() {
 
 void SetupConfigurationPanel::onThreadFaceRowSelected() {
   QList<QTableWidgetSelectionRange> ranges = m_threadFacesTable->selectedRanges();
-  if (ranges.isEmpty())
+  if (ranges.isEmpty()) {
+    emit threadFaceDeselected();
     return;
+  }
   int row = ranges.first().topRow();
   if (row >= 0 && row < m_threadFaces.size())
     emit threadFaceSelected(m_threadFaces[row].face);

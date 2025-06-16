@@ -318,6 +318,8 @@ void MainWindow::setupConnections()
                 this, &MainWindow::handleThreadFaceSelectionRequested);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::threadFaceSelected,
                 this, &MainWindow::handleThreadFaceSelected);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::threadFaceDeselected,
+                this, &MainWindow::clearHighlightedThreadFace);
         if (m_workspaceController) {
             connect(m_workspaceController->getWorkpieceManager(), &WorkpieceManager::workpieceTransformed,
                     this, &MainWindow::handleWorkpieceTransformed);
@@ -2232,6 +2234,18 @@ void MainWindow::updateHighlightedThreadFace()
     dr->SetColor(Quantity_NOC_GREEN);
     dr->SetTransparency(Standard_ShortReal(0.3));
     ctx->HilightWithColor(m_currentThreadFaceAIS, dr, Standard_False);
+    m_3dViewer->update();
+}
+
+void MainWindow::clearHighlightedThreadFace()
+{
+    if (!m_3dViewer || m_currentThreadFaceAIS.IsNull())
+        return;
+
+    Handle(AIS_InteractiveContext) ctx = m_3dViewer->getContext();
+    ctx->Remove(m_currentThreadFaceAIS, Standard_False);
+    m_currentThreadFaceAIS.Nullify();
+    m_currentThreadFaceLocal.Nullify();
     m_3dViewer->update();
 }
 
