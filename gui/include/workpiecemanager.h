@@ -236,6 +236,7 @@ signals:
 private:
     Handle(AIS_InteractiveContext) m_context;
     QVector<Handle(AIS_Shape)> m_workpieces;
+    bool m_visible{true};
     
     // Analysis results
     gp_Ax1 m_mainCylinderAxis;

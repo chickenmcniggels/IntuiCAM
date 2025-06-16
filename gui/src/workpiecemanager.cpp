@@ -67,8 +67,10 @@ bool WorkpieceManager::addWorkpiece(const TopoDS_Shape& workpiece)
     // Set workpiece material properties
     setWorkpieceMaterial(workpieceAIS);
     
-    // Display the workpiece
-    m_context->Display(workpieceAIS, AIS_Shaded, 0, false);
+    // Display the workpiece only if currently visible
+    if (m_visible) {
+        m_context->Display(workpieceAIS, AIS_Shaded, 0, false);
+    }
     
     // Store the workpiece
     m_workpieces.append(workpieceAIS);
@@ -334,6 +336,8 @@ void WorkpieceManager::clearWorkpieces()
     m_axisAlignmentTransform = gp_Trsf(); // Reset to identity
 
     qDebug() << "All workpieces cleared";
+
+    m_context->UpdateCurrentViewer();
 }
 
 void WorkpieceManager::setWorkpiecesVisible(bool visible)
@@ -342,11 +346,15 @@ void WorkpieceManager::setWorkpiecesVisible(bool visible)
         return;
     }
 
+    m_visible = visible;
+
     for (Handle(AIS_Shape) workpiece : m_workpieces) {
         if (!workpiece.IsNull()) {
             if (visible) {
                 if (!m_context->IsDisplayed(workpiece)) {
                     m_context->Display(workpiece, AIS_Shaded, 0, Standard_False);
+                } else {
+                    m_context->Redisplay(workpiece, Standard_False);
                 }
             } else {
                 m_context->Erase(workpiece, Standard_False);
@@ -407,7 +415,13 @@ bool WorkpieceManager::flipWorkpieceOrientation(bool flipped)
         for (Handle(AIS_Shape) workpiece : m_workpieces) {
             if (!workpiece.IsNull()) {
                 workpiece->SetLocalTransformation(newTransformation);
-                m_context->Redisplay(workpiece, false);
+                if (m_visible) {
+                    if (!m_context->IsDisplayed(workpiece)) {
+                        m_context->Display(workpiece, AIS_Shaded, 0, Standard_False);
+                    } else {
+                        m_context->Redisplay(workpiece, false);
+                    }
+                }
             }
         }
         
@@ -562,7 +576,13 @@ bool WorkpieceManager::positionWorkpieceAlongAxis(double distance)
         for (Handle(AIS_Shape) workpiece : m_workpieces) {
             if (!workpiece.IsNull()) {
                 workpiece->SetLocalTransformation(newTransformation);
-                m_context->Redisplay(workpiece, false);
+                if (m_visible) {
+                    if (!m_context->IsDisplayed(workpiece)) {
+                        m_context->Display(workpiece, AIS_Shaded, 0, Standard_False);
+                    } else {
+                        m_context->Redisplay(workpiece, false);
+                    }
+                }
             }
         }
 
@@ -600,7 +620,13 @@ bool WorkpieceManager::setAxisAlignmentTransformation(const gp_Trsf& transform)
         for (Handle(AIS_Shape) workpiece : m_workpieces) {
             if (!workpiece.IsNull()) {
                 workpiece->SetLocalTransformation(completeTransform);
-                m_context->Redisplay(workpiece, false);
+                if (m_visible) {
+                    if (!m_context->IsDisplayed(workpiece)) {
+                        m_context->Display(workpiece, AIS_Shaded, 0, Standard_False);
+                    } else {
+                        m_context->Redisplay(workpiece, false);
+                    }
+                }
             }
         }
         
