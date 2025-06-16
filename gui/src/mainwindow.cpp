@@ -1627,7 +1627,20 @@ void MainWindow::handleChuckInitialized()
 
 void MainWindow::handleWorkpieceWorkflowCompleted(double diameter, double rawMaterialDiameter)
 {
-    // Placeholder
+  if (m_setupConfigPanel) {
+    m_setupConfigPanel->setRawDiameter(rawMaterialDiameter);
+  }
+
+  statusBar()->showMessage(tr("Detected raw material diameter: %1 mm")
+                               .arg(rawMaterialDiameter, 0, 'f', 1),
+                           3000);
+
+  if (m_outputWindow) {
+    m_outputWindow->append(QString("Workpiece workflow completed - detected "
+                                   "diameter: %1 mm, raw material: %2 mm")
+                               .arg(diameter, 0, 'f', 1)
+                               .arg(rawMaterialDiameter, 0, 'f', 1));
+  }
 }
 
 void MainWindow::handleChuckCenterlineDetected(const gp_Ax1& axis)
