@@ -666,6 +666,14 @@ double WorkpieceManager::getLargestCircularEdgeDiameter(const TopoDS_Shape& work
 
     double maxDiameter = 0.0;
 
+    // Calculate a reasonable upper bound for diameters based on the workpiece size
+    Bnd_Box bbox;
+    BRepBndLib::Add(workpiece, bbox);
+    double xmin, ymin, zmin, xmax, ymax, zmax;
+    bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+    double maxDim = std::max({xmax - xmin, ymax - ymin, zmax - zmin});
+    double maxAllowedDiameter = maxDim * 1.5; // skip arcs far larger than the part
+
     try {
         for (TopExp_Explorer exp(workpiece, TopAbs_EDGE); exp.More(); exp.Next()) {
             TopoDS_Edge edge = TopoDS::Edge(exp.Current());
@@ -674,6 +682,12 @@ double WorkpieceManager::getLargestCircularEdgeDiameter(const TopoDS_Shape& work
             if (curve.GetType() == GeomAbs_Circle) {
                 gp_Circ circ = curve.Circle();
                 double diameter = circ.Radius() * 2.0;
+
+                // Ignore circles that are unreasonably large (often used to approximate lines)
+                if (diameter > maxAllowedDiameter) {
+                    continue;
+                }
+
                 if (diameter > maxDiameter) {
                     maxDiameter = diameter;
                 }
