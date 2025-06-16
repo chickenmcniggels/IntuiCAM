@@ -17,6 +17,7 @@
 #include <QTableWidget>
 #include <QTextEdit>
 #include <QVector>
+#include <TopoDS_Shape.hxx>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -62,9 +63,10 @@ struct OperationConfig {
 };
 
 struct ThreadFaceConfig {
-  QString faceId;
+  TopoDS_Shape face;
   QString preset;
   double pitch = 1.0;
+  double depth = 5.0;
 };
 
 struct ChamferFaceConfig {
@@ -139,7 +141,8 @@ signals:
   void automaticToolpathGenerationRequested();
   void materialSelectionChanged(const QString &materialName);
   void toolRecommendationsUpdated(const QStringList &toolIds);
-  void threadFaceSelected(const QString &faceId);
+  void requestThreadFaceSelection();
+  void threadFaceSelected(const TopoDS_Shape &face);
   void chamferFaceSelected(const QString &faceId);
 
 public slots:
@@ -150,10 +153,12 @@ public slots:
   void onMaterialChanged();
   void onToolSelectionRequested();
   void onAddThreadFace();
+  void addSelectedThreadFace(const TopoDS_Shape &face);
   void onRemoveThreadFace();
   void onAddChamferFace();
   void onRemoveChamferFace();
   void onThreadFaceRowSelected();
+  void onThreadFaceCellChanged(int row, int column);
   void onChamferFaceRowSelected();
 
 private:
@@ -265,6 +270,8 @@ private:
   // Stored face/edge configurations
   QVector<ThreadFaceConfig> m_threadFaces;
   QVector<ChamferFaceConfig> m_chamferFaces;
+
+  bool m_updatingThreadTable = false;
   
   // Parting advanced group
   QGroupBox *m_partingAdvancedGroup;
@@ -279,7 +286,6 @@ private:
   QVBoxLayout *m_operationsLayout;
   QCheckBox *m_contouringEnabledCheck;
   QCheckBox *m_threadingEnabledCheck;
-  QDoubleSpinBox *m_threadPitchSpin;
   QCheckBox *m_chamferingEnabledCheck;
   QDoubleSpinBox *m_chamferSizeSpin;
   QCheckBox *m_partingEnabledCheck;

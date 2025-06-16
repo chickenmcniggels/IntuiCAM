@@ -22,6 +22,9 @@
 #include <gp_Ax1.hxx>
 #include <gp_Pnt.hxx>
 #include <TopoDS_Shape.hxx>
+#include <AIS_Shape.hxx>
+#include <Prs3d_Drawer.hxx>
+#include <BRepAdaptor_Surface.hxx>
 
 // Project includes
 
@@ -108,6 +111,9 @@ private slots:
     void handleMaterialTypeChanged(IntuiCAM::GUI::MaterialType material);
     void handleRawMaterialDiameterChanged(double diameter);
     void handleManualAxisSelectionRequested();
+    void handleThreadFaceSelectionRequested();
+    void handleThreadFaceSelected(const TopoDS_Shape& face);
+    void handleWorkpieceTransformed();
     void handleOperationToggled(const QString& operationName, bool enabled);
     void handleAutomaticToolpathGeneration();
     
@@ -201,6 +207,8 @@ private:
     // Material and Tool Management
     IntuiCAM::GUI::MaterialManager *m_materialManager;
     IntuiCAM::GUI::ToolManager *m_toolManager;
+
+    bool m_selectingThreadFace = false;
     
     // Toolpath Generation Controller
     IntuiCAM::GUI::ToolpathGenerationController *m_toolpathGenerationController;
@@ -236,6 +244,15 @@ private:
     void createViewModeOverlayButton(QWidget* parent);
     void updateViewModeOverlayButton();
     void initializeWorkspace();
+
+    void highlightThreadCandidateFaces();
+    void clearThreadCandidateHighlights();
+    void updateHighlightedThreadFace();
+
+    QVector<Handle(AIS_Shape)> m_candidateThreadFaces;
+    Handle(AIS_Shape) m_currentThreadFaceAIS;
+    TopoDS_Shape m_currentThreadFaceLocal;
+    int m_currentThreadRow = -1;
 };
 
 #endif // MAINWINDOW_H
