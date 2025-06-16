@@ -143,6 +143,7 @@ signals:
   void toolRecommendationsUpdated(const QStringList &toolIds);
   void requestThreadFaceSelection();
   void threadFaceSelected(const TopoDS_Shape &face);
+  void threadFaceDeselected();
   void chamferFaceSelected(const QString &faceId);
 
 public slots:

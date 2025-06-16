@@ -248,6 +248,7 @@ private:
     void highlightThreadCandidateFaces();
     void clearThreadCandidateHighlights();
     void updateHighlightedThreadFace();
+    void clearHighlightedThreadFace();
 
     QVector<Handle(AIS_Shape)> m_candidateThreadFaces;
     Handle(AIS_Shape) m_currentThreadFaceAIS;
