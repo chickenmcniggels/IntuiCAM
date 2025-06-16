@@ -204,7 +204,6 @@ public:
 
     /**
      * @brief Find the largest circular edge diameter on a workpiece
-     *        (ignores extremely large arcs often used to approximate lines)
      * @param workpiece The shape to analyze
      * @return Largest detected circular edge diameter in mm, or 0.0 if none found
      */
