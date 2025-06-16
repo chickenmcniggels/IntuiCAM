@@ -273,22 +273,6 @@ void SetupConfigurationPanel::setupPartTab() {
   m_materialPropertiesLabel->setWordWrap(true);
   m_materialLayout->addWidget(m_materialPropertiesLabel);
 
-  // Material details button
-  m_materialDetailsButton =
-      new QPushButton("Material Details & Cutting Parameters");
-  m_materialDetailsButton->setMaximumHeight(28);
-  m_materialDetailsButton->setStyleSheet("QPushButton {"
-                                         "  background-color: #4CAF50;"
-                                         "  color: white;"
-                                         "  border: none;"
-                                         "  border-radius: 4px;"
-                                         "  font-size: 11px;"
-                                         "}"
-                                         "QPushButton:hover {"
-                                         "  background-color: #45a049;"
-                                         "}");
-  m_materialLayout->addWidget(m_materialDetailsButton);
-
   partTabLayout->addWidget(m_materialGroup);
 
   partTabLayout->addStretch();
@@ -616,10 +600,6 @@ void SetupConfigurationPanel::setupConnections() {
           &SetupConfigurationPanel::onMaterialChanged);
 
   // Material and tool management connections
-  if (m_materialDetailsButton) {
-    connect(m_materialDetailsButton, &QPushButton::clicked, this,
-            &SetupConfigurationPanel::onToolSelectionRequested);
-  }
   connect(m_rawDiameterSpin,
           QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
           &SetupConfigurationPanel::onConfigurationChanged);
@@ -1017,16 +997,8 @@ void SetupConfigurationPanel::updateMaterialProperties() {
     return;
   }
 
-  QString propertiesText = QString("Density: %1 kg/m³\n"
-                                   "Machinability: %2/10\n"
-                                   "Recommended Speed: %3 m/min\n"
-                                   "Recommended Feed: %4 mm/rev")
-                               .arg(props.density, 0, 'f', 0)
-                               .arg(props.machinabilityRating * 10, 0, 'f', 1)
-                               .arg(props.recommendedSurfaceSpeed, 0, 'f', 0)
-                               .arg(props.recommendedFeedRate, 0, 'f', 2);
-
-  m_materialPropertiesLabel->setText(propertiesText);
+  // Clear the material properties text - no longer displaying detailed properties
+  m_materialPropertiesLabel->setText("");
 
   // Update tool recommendations when material changes
   updateToolRecommendations();

@@ -244,7 +244,6 @@ private:
 
   // Enhanced material display
   QLabel *m_materialPropertiesLabel;
-  QPushButton *m_materialDetailsButton;
 };
 
 } // namespace GUI
