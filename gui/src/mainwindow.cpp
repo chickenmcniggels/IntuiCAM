@@ -1459,15 +1459,6 @@ void MainWindow::handleThreadFaceSelected(const TopoDS_Shape& face)
 
     m_currentThreadFaceLocal = face;
     updateHighlightedThreadFace();
-    if (m_3dViewer) {
-        Handle(AIS_Shape) ais = new AIS_Shape(face);
-        m_3dViewer->getContext()->Display(ais, AIS_Shaded, 0, false);
-        Handle(Prs3d_Drawer) drawer = new Prs3d_Drawer();
-        drawer->SetColor(Quantity_NOC_GREEN);
-        drawer->SetTransparency(Standard_ShortReal(0.3));
-        m_3dViewer->getContext()->HilightWithColor(ais, drawer, Standard_False);
-        m_3dViewer->update();
-    }
 }
 
 void MainWindow::handleOperationToggled(const QString& operationName, bool enabled)
@@ -1790,13 +1781,11 @@ void MainWindow::handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& cl
                 BRepAdaptor_Surface surf(face);
                 if (surf.GetType() == GeomAbs_Cylinder) {
                     if (m_setupConfigPanel) {
-                        // Store local coordinates of the face (unused for now)
-                        gp_Trsf currentTrsf = m_workspaceController->getWorkpieceManager()->getCurrentTransformation();
-                        BRepBuilderAPI_Transform transformBuilder(currentTrsf.Inverted());
-                        TopoDS_Shape localFace = transformBuilder.Shape().Moved(TopLoc_Location(currentTrsf.Inverted()));
-                        Q_UNUSED(localFace);
-                        m_setupConfigPanel->addSelectedThreadFace(face);
-                        handleThreadFaceSelected(face);
+                        // Convert the selected face to local coordinates
+                        gp_Trsf invTrsf = m_workspaceController->getWorkpieceManager()->getCurrentTransformation().Inverted();
+                        TopoDS_Shape localFace = BRepBuilderAPI_Transform(face, invTrsf).Shape();
+                        m_setupConfigPanel->addSelectedThreadFace(localFace);
+                        handleThreadFaceSelected(localFace);
                     }
                 } else {
                     statusBar()->showMessage(tr("Selected face is not cylindrical"), 3000);
