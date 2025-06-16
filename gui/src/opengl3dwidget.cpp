@@ -105,7 +105,7 @@ void OpenGL3DWidget::mousePressEvent(QMouseEvent* event)
     if (m_selectionMode && event->button() == Qt::LeftButton && !m_context.IsNull()) {
         m_context->MoveTo(event->pos().x(), event->pos().y(), m_view, Standard_True);
         if (m_context->HasDetected()) {
-            m_context->Select(Standard_True);
+            m_context->SelectDetected(AIS_SelectionScheme_Replace);
             for (m_context->InitSelected(); m_context->MoreSelected(); m_context->NextSelected()) {
                 Handle(AIS_Shape) ais = Handle(AIS_Shape)::DownCast(m_context->SelectedInteractive());
                 if (!ais.IsNull()) {
@@ -125,7 +125,7 @@ void OpenGL3DWidget::mouseMoveEvent(QMouseEvent* event)
 
     if (!m_selectionMode && (event->buttons() & Qt::LeftButton) && m_lastButton == Qt::LeftButton) {
         m_view->Rotate(event->pos().x(), event->pos().y(), m_lastPos.x(), m_lastPos.y());
-    } else if (event->buttons() & Qt::MidButton ||
+    } else if (event->buttons() & Qt::MiddleButton ||
                ((event->buttons() & Qt::LeftButton) && (event->modifiers() & Qt::ShiftModifier))) {
         m_view->Pan(event->pos().x() - m_lastPos.x(), m_lastPos.y() - event->pos().y());
     }
