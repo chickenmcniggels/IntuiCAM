@@ -861,7 +861,7 @@ QWidget* MainWindow::createSetupTab()
     operationLayout->setSpacing(12);
     
     // Simulate button (now integrated with other controls)
-    m_simulateButton = new QPushButton("▶ Simulate Toolpaths");
+    m_simulateButton = new QPushButton("▶ Generate + Simulate Toolpaths");
     m_simulateButton->setMinimumHeight(35);
     m_simulateButton->setStyleSheet(
         "QPushButton {"
