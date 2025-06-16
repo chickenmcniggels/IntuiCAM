@@ -2,6 +2,7 @@
 #include "workspacecontroller.h"
 #include "rawmaterialmanager.h"
 #include "chuckmanager.h"
+#include "workpiecemanager.h"
 
 #include <QApplication>
 #include <QDebug>

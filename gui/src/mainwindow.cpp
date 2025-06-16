@@ -1434,9 +1434,9 @@ void MainWindow::handleManualAxisSelectionRequested()
 void MainWindow::handleThreadFaceSelectionRequested()
 {
     if (!m_3dViewer || !m_workspaceController) {
-    if (!m_3dViewer) {
         return;
     }
+    
     m_selectingThreadFace = true;
     m_3dViewer->setSelectionMode(true);
     statusBar()->showMessage(tr("Select a cylindrical face for threading"), 5000);
@@ -1789,13 +1789,11 @@ void MainWindow::handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& cl
                     if (m_setupConfigPanel) {
                         // Store local coordinates of the face
                         gp_Trsf currentTrsf = m_workspaceController->getWorkpieceManager()->getCurrentTransformation();
-                        BRepBuilderAPI_Transform inv(currentTrsf.Inverted());
-                        TopoDS_Shape localFace = face.Moved(inv);
-                        m_setupConfigPanel->addSelectedThreadFace(localFace);
-                        handleThreadFaceSelected(localFace);
+                        BRepBuilderAPI_Transform transformBuilder(currentTrsf.Inverted());
+                        TopoDS_Shape localFace = transformBuilder.Shape().Moved(TopLoc_Location(currentTrsf.Inverted()));
+                        m_setupConfigPanel->addSelectedThreadFace(face);
+                        handleThreadFaceSelected(face);
                     }
-                    m_selectingThreadFace = false;
-                    m_3dViewer->setSelectionMode(false);
                     return;
                 } else {
                     statusBar()->showMessage(tr("Selected face is not cylindrical"), 3000);
@@ -1804,18 +1802,10 @@ void MainWindow::handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& cl
             }
 
             // Clicked on something that's not a face -> cancel
-            m_selectingThreadFace = false;
-            m_3dViewer->setSelectionMode(false);
-                        m_setupConfigPanel->addSelectedThreadFace(face);
-                        handleThreadFaceSelected(face);
-                    }
-                    return;
-                }
-            }
-
             statusBar()->showMessage(tr("Invalid selection for thread face"), 3000);
             return;
         }
+        
         if (!m_workspaceController) {
             statusBar()->showMessage(tr("Error: Workspace controller not initialized"), 3000);
             m_3dViewer->setSelectionMode(false); // Disable selection mode
@@ -2160,7 +2150,7 @@ void MainWindow::highlightThreadCandidateFaces()
             m_candidateThreadFaces.append(ais);
         }
     }
-    m_3dViewer->updateView();
+    m_3dViewer->update();
 }
 
 void MainWindow::clearThreadCandidateHighlights()
@@ -2175,7 +2165,7 @@ void MainWindow::clearThreadCandidateHighlights()
         }
     }
     m_candidateThreadFaces.clear();
-    m_3dViewer->updateView();
+    m_3dViewer->update();
 }
 
 void MainWindow::updateHighlightedThreadFace()
@@ -2195,7 +2185,7 @@ void MainWindow::updateHighlightedThreadFace()
     dr->SetColor(Quantity_NOC_GREEN);
     dr->SetTransparency(Standard_ShortReal(0.3));
     ctx->HilightWithColor(m_currentThreadFaceAIS, dr, Standard_False);
-    m_3dViewer->updateView();
+    m_3dViewer->update();
 }
 
 void MainWindow::handleWorkpieceTransformed()
