@@ -16,6 +16,7 @@
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTextEdit>
+#include <QVector>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -58,6 +59,19 @@ struct OperationConfig {
   QString name;
   QString description;
   QStringList parameters;
+};
+
+struct ThreadFaceConfig {
+  QString faceId;
+  QString preset;
+  double pitch = 1.0;
+};
+
+struct ChamferFaceConfig {
+  QString faceId;
+  bool symmetric = true;
+  double valueA = 0.5;
+  double valueB = 0.5;
 };
 
 class SetupConfigurationPanel : public QWidget {
@@ -125,6 +139,8 @@ signals:
   void automaticToolpathGenerationRequested();
   void materialSelectionChanged(const QString &materialName);
   void toolRecommendationsUpdated(const QStringList &toolIds);
+  void threadFaceSelected(const QString &faceId);
+  void chamferFaceSelected(const QString &faceId);
 
 public slots:
   void onBrowseStepFile();
@@ -133,6 +149,12 @@ public slots:
   void onOperationToggled();
   void onMaterialChanged();
   void onToolSelectionRequested();
+  void onAddThreadFace();
+  void onRemoveThreadFace();
+  void onAddChamferFace();
+  void onRemoveChamferFace();
+  void onThreadFaceRowSelected();
+  void onChamferFaceRowSelected();
 
 private:
   void setupUI();
@@ -217,6 +239,10 @@ private:
   QPushButton *m_removeChamferFaceButton;
   QDoubleSpinBox *m_extraChamferStockSpin;
   QDoubleSpinBox *m_chamferDiameterLeaveSpin;
+
+  // Stored face/edge configurations
+  QVector<ThreadFaceConfig> m_threadFaces;
+  QVector<ChamferFaceConfig> m_chamferFaces;
 
   // Legacy placeholders to preserve binary compatibility
   QGroupBox *m_operationsGroup;

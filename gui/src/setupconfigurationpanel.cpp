@@ -655,10 +655,22 @@ void SetupConfigurationPanel::setupConnections() {
   if (m_threadingEnabledCheck) {
     connect(m_threadingEnabledCheck, &QCheckBox::toggled, this,
             &SetupConfigurationPanel::onOperationToggled);
+    connect(m_addThreadFaceButton, &QPushButton::clicked, this,
+            &SetupConfigurationPanel::onAddThreadFace);
+    connect(m_removeThreadFaceButton, &QPushButton::clicked, this,
+            &SetupConfigurationPanel::onRemoveThreadFace);
+    connect(m_threadFacesTable, &QTableWidget::itemSelectionChanged, this,
+            &SetupConfigurationPanel::onThreadFaceRowSelected);
   }
   if (m_chamferingEnabledCheck) {
     connect(m_chamferingEnabledCheck, &QCheckBox::toggled, this,
             &SetupConfigurationPanel::onOperationToggled);
+    connect(m_addChamferFaceButton, &QPushButton::clicked, this,
+            &SetupConfigurationPanel::onAddChamferFace);
+    connect(m_removeChamferFaceButton, &QPushButton::clicked, this,
+            &SetupConfigurationPanel::onRemoveChamferFace);
+    connect(m_chamferFacesTable, &QTableWidget::itemSelectionChanged, this,
+            &SetupConfigurationPanel::onChamferFaceRowSelected);
   }
   if (m_partingEnabledCheck) {
     connect(m_partingEnabledCheck, &QCheckBox::toggled, this,
@@ -1187,6 +1199,74 @@ void SetupConfigurationPanel::focusOperationTab(const QString &operationName) {
     index = 3;
   if (m_operationsTabWidget)
     m_operationsTabWidget->setCurrentIndex(index);
+}
+
+void SetupConfigurationPanel::onAddThreadFace() {
+  int row = m_threadFacesTable->rowCount();
+  m_threadFacesTable->insertRow(row);
+  m_threadFacesTable->setItem(row, 0, new QTableWidgetItem(tr("Face %1").arg(row + 1)));
+  m_threadFacesTable->setItem(row, 1, new QTableWidgetItem("Default"));
+  m_threadFacesTable->setItem(row, 2, new QTableWidgetItem(QString::number(m_threadPitchSpin->value(), 'f', 2)));
+
+  ThreadFaceConfig cfg;
+  cfg.faceId = QString::number(row);
+  cfg.preset = "Default";
+  cfg.pitch = m_threadPitchSpin->value();
+  m_threadFaces.append(cfg);
+}
+
+void SetupConfigurationPanel::onRemoveThreadFace() {
+  QList<QTableWidgetSelectionRange> ranges = m_threadFacesTable->selectedRanges();
+  if (ranges.isEmpty())
+    return;
+  int row = ranges.first().topRow();
+  m_threadFacesTable->removeRow(row);
+  if (row >= 0 && row < m_threadFaces.size())
+    m_threadFaces.remove(row);
+}
+
+void SetupConfigurationPanel::onAddChamferFace() {
+  int row = m_chamferFacesTable->rowCount();
+  m_chamferFacesTable->insertRow(row);
+  m_chamferFacesTable->setItem(row, 0, new QTableWidgetItem(tr("Face %1").arg(row + 1)));
+  m_chamferFacesTable->setItem(row, 1, new QTableWidgetItem("Yes"));
+  m_chamferFacesTable->setItem(row, 2, new QTableWidgetItem(QString::number(m_chamferSizeSpin->value(), 'f', 2)));
+  m_chamferFacesTable->setItem(row, 3, new QTableWidgetItem(QString::number(m_chamferSizeSpin->value(), 'f', 2)));
+
+  ChamferFaceConfig cfg;
+  cfg.faceId = QString::number(row);
+  cfg.symmetric = true;
+  cfg.valueA = m_chamferSizeSpin->value();
+  cfg.valueB = m_chamferSizeSpin->value();
+  m_chamferFaces.append(cfg);
+}
+
+void SetupConfigurationPanel::onRemoveChamferFace() {
+  QList<QTableWidgetSelectionRange> ranges = m_chamferFacesTable->selectedRanges();
+  if (ranges.isEmpty())
+    return;
+  int row = ranges.first().topRow();
+  m_chamferFacesTable->removeRow(row);
+  if (row >= 0 && row < m_chamferFaces.size())
+    m_chamferFaces.remove(row);
+}
+
+void SetupConfigurationPanel::onThreadFaceRowSelected() {
+  QList<QTableWidgetSelectionRange> ranges = m_threadFacesTable->selectedRanges();
+  if (ranges.isEmpty())
+    return;
+  int row = ranges.first().topRow();
+  if (row >= 0 && row < m_threadFaces.size())
+    emit threadFaceSelected(m_threadFaces[row].faceId);
+}
+
+void SetupConfigurationPanel::onChamferFaceRowSelected() {
+  QList<QTableWidgetSelectionRange> ranges = m_chamferFacesTable->selectedRanges();
+  if (ranges.isEmpty())
+    return;
+  int row = ranges.first().topRow();
+  if (row >= 0 && row < m_chamferFaces.size())
+    emit chamferFaceSelected(m_chamferFaces[row].faceId);
 }
 
 // Utility method implementations
