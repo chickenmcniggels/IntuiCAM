@@ -1785,29 +1785,30 @@ void MainWindow::handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& cl
     // Only process selection if the 3D viewer is in selection mode
     if (m_3dViewer && m_3dViewer->isSelectionModeActive()) {
         if (m_selectingThreadFace) {
-            m_3dViewer->setSelectionMode(false);
-            m_selectingThreadFace = false;
-            if (shape.ShapeType() == TopAbs_FACE) {
+            if (!shape.IsNull() && shape.ShapeType() == TopAbs_FACE) {
                 TopoDS_Face face = TopoDS::Face(shape);
                 BRepAdaptor_Surface surf(face);
                 if (surf.GetType() == GeomAbs_Cylinder) {
                     if (m_setupConfigPanel) {
-                        // Store local coordinates of the face
+                        // Store local coordinates of the face (unused for now)
                         gp_Trsf currentTrsf = m_workspaceController->getWorkpieceManager()->getCurrentTransformation();
                         BRepBuilderAPI_Transform transformBuilder(currentTrsf.Inverted());
                         TopoDS_Shape localFace = transformBuilder.Shape().Moved(TopLoc_Location(currentTrsf.Inverted()));
+                        Q_UNUSED(localFace);
                         m_setupConfigPanel->addSelectedThreadFace(face);
                         handleThreadFaceSelected(face);
                     }
-                    return;
                 } else {
                     statusBar()->showMessage(tr("Selected face is not cylindrical"), 3000);
-                    return; // remain in selection mode
+                    clearThreadCandidateHighlights();
                 }
+            } else {
+                statusBar()->showMessage(tr("Invalid selection for thread face"), 3000);
+                clearThreadCandidateHighlights();
             }
 
-            // Clicked on something that's not a face -> cancel
-            statusBar()->showMessage(tr("Invalid selection for thread face"), 3000);
+            m_3dViewer->setSelectionMode(false);
+            m_selectingThreadFace = false;
             return;
         }
         
@@ -2137,6 +2138,16 @@ void MainWindow::highlightThreadCandidateFaces()
         return;
 
     Handle(AIS_InteractiveContext) ctx = m_3dViewer->getContext();
+
+    // Deactivate base workpiece shapes so only cylindrical faces are selectable
+    QVector<Handle(AIS_Shape)> workpieces =
+            m_workspaceController->getWorkpieceManager()->getWorkpieces();
+    for (const Handle(AIS_Shape)& wp : workpieces) {
+        if (!wp.IsNull()) {
+            ctx->Deactivate(wp);
+        }
+    }
+
     TopoDS_Shape part = m_workspaceController->getPartShape();
     gp_Trsf trsf = m_workspaceController->getWorkpieceManager()->getCurrentTransformation();
 
@@ -2151,7 +2162,8 @@ void MainWindow::highlightThreadCandidateFaces()
             dr->SetColor(Quantity_NOC_LIGHTBLUE);
             dr->SetTransparency(Standard_ShortReal(0.6));
             ctx->HilightWithColor(ais, dr, Standard_False);
-            ctx->Deactivate(ais);
+            ctx->Activate(ais, 0, Standard_False);
+            ctx->Activate(ais, 4, Standard_False);
             m_candidateThreadFaces.append(ais);
         }
     }
@@ -2167,6 +2179,17 @@ void MainWindow::clearThreadCandidateHighlights()
         if (!ais.IsNull()) {
             ctx->Unhilight(ais, Standard_False);
             ctx->Remove(ais, Standard_False);
+        }
+    }
+    // Reactivate normal workpiece selection
+    if (m_workspaceController) {
+        QVector<Handle(AIS_Shape)> workpieces =
+                m_workspaceController->getWorkpieceManager()->getWorkpieces();
+        for (const Handle(AIS_Shape)& wp : workpieces) {
+            if (!wp.IsNull()) {
+                ctx->Activate(wp, 0, Standard_False);
+                ctx->Activate(wp, 4, Standard_False);
+            }
         }
     }
     m_candidateThreadFaces.clear();

@@ -434,6 +434,7 @@ void OpenGL3DWidget::mousePressEvent(QMouseEvent *event)
                     updateView();
                 } else {
                     qDebug() << "No object detected at mouse position";
+                    emit shapeSelected(TopoDS_Shape(), gp_Pnt());
                 }
             }
             return; // Don't process as normal interaction
