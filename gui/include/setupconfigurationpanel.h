@@ -217,10 +217,34 @@ private:
   QDoubleSpinBox *m_partingWidthSpin;
 
   // Advanced cutting parameter widgets
+  // Contouring advanced groups
   QGroupBox *m_contourAdvancedGroup;
+  QGroupBox *m_contourFacingGroup;
+  QGroupBox *m_contourRoughGroup;
+  QGroupBox *m_contourFinishGroup;
+  QDoubleSpinBox *m_contourFacingDepthSpin;
+  QDoubleSpinBox *m_contourFacingFeedSpin;
+  QDoubleSpinBox *m_contourFacingSpeedSpin;
+  QCheckBox *m_contourFacingCssCheck;
+  QDoubleSpinBox *m_contourRoughDepthSpin;
+  QDoubleSpinBox *m_contourRoughFeedSpin;
+  QDoubleSpinBox *m_contourRoughSpeedSpin;
+  QCheckBox *m_contourRoughCssCheck;
+  QDoubleSpinBox *m_contourFinishDepthSpin;
+  QDoubleSpinBox *m_contourFinishFeedSpin;
+  QDoubleSpinBox *m_contourFinishSpeedSpin;
+  QCheckBox *m_contourFinishCssCheck;
+
+  // Legacy flat advanced members kept for compatibility
   QDoubleSpinBox *m_contourDepthSpin;
   QDoubleSpinBox *m_contourFeedSpin;
   QDoubleSpinBox *m_contourSpeedSpin;
+
+  // Flood coolant (simple mode)
+  QCheckBox *m_contourFloodCheck;
+  QCheckBox *m_chamferFloodCheck;
+  QCheckBox *m_partFloodCheck;
+  QCheckBox *m_threadFloodCheck;
 
   // Advanced mode toggle
   QCheckBox *m_advancedModeCheck;
@@ -240,9 +264,18 @@ private:
   QDoubleSpinBox *m_extraChamferStockSpin;
   QDoubleSpinBox *m_chamferDiameterLeaveSpin;
 
+
   // Stored face/edge configurations
   QVector<ThreadFaceConfig> m_threadFaces;
   QVector<ChamferFaceConfig> m_chamferFaces;
+  
+  // Parting advanced group
+  QGroupBox *m_partingAdvancedGroup;
+  QDoubleSpinBox *m_partingDepthSpin;
+  QDoubleSpinBox *m_partingFeedSpin;
+  QDoubleSpinBox *m_partingSpeedSpin;
+  QCheckBox *m_partingCssCheck;
+  QComboBox *m_partingRetractCombo;
 
   // Legacy placeholders to preserve binary compatibility
   QGroupBox *m_operationsGroup;
@@ -268,8 +301,7 @@ private:
   ToolManager *m_toolManager;
   QMap<QString, QListWidget *> m_operationToolLists;
 
-  // Enhanced material display
-  QLabel *m_materialPropertiesLabel;
+
 };
 
 } // namespace GUI

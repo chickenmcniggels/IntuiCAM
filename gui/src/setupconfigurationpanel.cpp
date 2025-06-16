@@ -64,7 +64,7 @@ SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     , m_partingTab(nullptr)
     , m_materialManager(nullptr)
     , m_toolManager(nullptr)
-    , m_materialPropertiesLabel(nullptr)
+    
     , m_contouringEnabledCheck(nullptr)
     , m_threadingEnabledCheck(nullptr)
     , m_chamferingEnabledCheck(nullptr)
@@ -264,14 +264,7 @@ void SetupConfigurationPanel::setupPartTab() {
   m_rawLengthLabel->setStyleSheet("color: #666; font-size: 11px;");
   m_materialLayout->addWidget(m_rawLengthLabel);
 
-  // Material properties display
-  m_materialPropertiesLabel =
-      new QLabel("Material properties will be shown here");
-  m_materialPropertiesLabel->setStyleSheet(
-      "color: #666; font-size: 11px; padding: 8px; background: #f5f5f5; "
-      "border-radius: 4px;");
-  m_materialPropertiesLabel->setWordWrap(true);
-  m_materialLayout->addWidget(m_materialPropertiesLabel);
+
 
   partTabLayout->addWidget(m_materialGroup);
 
@@ -351,6 +344,14 @@ void SetupConfigurationPanel::setupMachiningTab() {
   finishPassLayout->addStretch();
   m_machiningParamsLayout->addLayout(finishPassLayout);
 
+  // Flood coolant simple toggle
+  QHBoxLayout *coolLayout = new QHBoxLayout();
+  m_contourFloodCheck = new QCheckBox("Flood Coolant");
+  m_contourFloodCheck->setChecked(true);
+  coolLayout->addWidget(m_contourFloodCheck);
+  coolLayout->addStretch();
+  m_machiningParamsLayout->addLayout(coolLayout);
+
   // Parting width
   m_partingWidthLayout = new QHBoxLayout();
   m_partingWidthLabel = new QLabel("Parting Width:");
@@ -418,19 +419,44 @@ void SetupConfigurationPanel::setupMachiningTab() {
 
   // Advanced cutting parameters
   m_contourAdvancedGroup = new QGroupBox("Advanced Cutting");
-  QFormLayout *contourAdvLayout = new QFormLayout(m_contourAdvancedGroup);
-  m_contourDepthSpin = new QDoubleSpinBox();
-  m_contourDepthSpin->setRange(0.01, 10.0);
-  m_contourDepthSpin->setSuffix(" mm");
-  m_contourFeedSpin = new QDoubleSpinBox();
-  m_contourFeedSpin->setRange(0.1, 1000.0);
-  m_contourFeedSpin->setSuffix(" mm/rev");
-  m_contourSpeedSpin = new QDoubleSpinBox();
-  m_contourSpeedSpin->setRange(10.0, 10000.0);
-  m_contourSpeedSpin->setSuffix(" RPM");
-  contourAdvLayout->addRow("Depth of Cut:", m_contourDepthSpin);
-  contourAdvLayout->addRow("Feed Rate:", m_contourFeedSpin);
-  contourAdvLayout->addRow("Spindle Speed:", m_contourSpeedSpin);
+  QVBoxLayout *contourAdvLayout = new QVBoxLayout(m_contourAdvancedGroup);
+
+  auto createSection = [this](const QString &title, QGroupBox **group,
+                              QDoubleSpinBox **depth, QDoubleSpinBox **feed,
+                              QDoubleSpinBox **speed, QCheckBox **css) {
+    *group = new QGroupBox(title);
+    QFormLayout *form = new QFormLayout(*group);
+    *depth = new QDoubleSpinBox();
+    (*depth)->setRange(0.01, 10.0);
+    (*depth)->setSuffix(" mm");
+    *feed = new QDoubleSpinBox();
+    (*feed)->setRange(0.1, 1000.0);
+    (*feed)->setSuffix(" mm/rev");
+    *speed = new QDoubleSpinBox();
+    (*speed)->setRange(10.0, 10000.0);
+    (*speed)->setSuffix(" RPM");
+    *css = new QCheckBox("Constant Surface Speed");
+    (*css)->setChecked(true);
+    form->addRow("Cut Depth:", *depth);
+    form->addRow("Feed Rate:", *feed);
+    form->addRow("Spindle Speed:", *speed);
+    form->addRow(QString(), *css);
+    return form;
+  };
+
+  createSection("Facing", &m_contourFacingGroup, &m_contourFacingDepthSpin,
+                &m_contourFacingFeedSpin, &m_contourFacingSpeedSpin,
+                &m_contourFacingCssCheck);
+  createSection("Roughing", &m_contourRoughGroup, &m_contourRoughDepthSpin,
+                &m_contourRoughFeedSpin, &m_contourRoughSpeedSpin,
+                &m_contourRoughCssCheck);
+  createSection("Finishing", &m_contourFinishGroup, &m_contourFinishDepthSpin,
+                &m_contourFinishFeedSpin, &m_contourFinishSpeedSpin,
+                &m_contourFinishCssCheck);
+
+  contourAdvLayout->addWidget(m_contourFacingGroup);
+  contourAdvLayout->addWidget(m_contourRoughGroup);
+  contourAdvLayout->addWidget(m_contourFinishGroup);
   contourLayout->addWidget(m_contourAdvancedGroup);
 
   contourLayout->addStretch();
@@ -460,6 +486,13 @@ void SetupConfigurationPanel::setupMachiningTab() {
   pitchLayout->addWidget(m_threadPitchSpin);
   pitchLayout->addStretch();
   threadingLayout->addLayout(pitchLayout);
+
+  QHBoxLayout *threadCoolLayout = new QHBoxLayout();
+  m_threadFloodCheck = new QCheckBox("Flood Coolant");
+  m_threadFloodCheck->setChecked(true);
+  threadCoolLayout->addWidget(m_threadFloodCheck);
+  threadCoolLayout->addStretch();
+  threadingLayout->addLayout(threadCoolLayout);
 
   m_threadFacesTable = new QTableWidget(0, 3);
   QStringList threadHeaders{"Face", "Preset", "Pitch"};
@@ -510,8 +543,15 @@ void SetupConfigurationPanel::setupMachiningTab() {
   chamferSizeLayout->addStretch();
   chamferLayout->addLayout(chamferSizeLayout);
 
+  QHBoxLayout *chamferCoolLayout = new QHBoxLayout();
+  m_chamferFloodCheck = new QCheckBox("Flood Coolant");
+  m_chamferFloodCheck->setChecked(true);
+  chamferCoolLayout->addWidget(m_chamferFloodCheck);
+  chamferCoolLayout->addStretch();
+  chamferLayout->addLayout(chamferCoolLayout);
+
   m_chamferFacesTable = new QTableWidget(0, 4);
-  QStringList chamferHeaders{"Face", "Symmetric", "Value A", "Value B"};
+  QStringList chamferHeaders{"Face", "Chamfer Type", "Value A", "Value B/Angle"};
   m_chamferFacesTable->setHorizontalHeaderLabels(chamferHeaders);
   m_chamferFacesTable->horizontalHeader()->setStretchLastSection(true);
   chamferLayout->addWidget(m_chamferFacesTable);
@@ -579,12 +619,42 @@ void SetupConfigurationPanel::setupMachiningTab() {
   m_partingWidthLayout->addStretch();
   partLayout->addLayout(m_partingWidthLayout);
 
+  QHBoxLayout *partCoolLayout = new QHBoxLayout();
+  m_partFloodCheck = new QCheckBox("Flood Coolant");
+  m_partFloodCheck->setChecked(true);
+  partCoolLayout->addWidget(m_partFloodCheck);
+  partCoolLayout->addStretch();
+  partLayout->addLayout(partCoolLayout);
+
   QGroupBox *partingToolsGroup = new QGroupBox("Recommended Tools");
   QVBoxLayout *partingToolsLayout = new QVBoxLayout(partingToolsGroup);
   QListWidget *partingToolsList = new QListWidget();
   partingToolsLayout->addWidget(partingToolsList);
   partLayout->addWidget(partingToolsGroup);
   m_operationToolLists.insert("parting", partingToolsList);
+
+  // Parting advanced parameters
+  m_partingAdvancedGroup = new QGroupBox("Advanced Cutting");
+  QFormLayout *partAdvLayout = new QFormLayout(m_partingAdvancedGroup);
+  m_partingDepthSpin = new QDoubleSpinBox();
+  m_partingDepthSpin->setRange(0.01, 5.0);
+  m_partingDepthSpin->setSuffix(" mm");
+  m_partingFeedSpin = new QDoubleSpinBox();
+  m_partingFeedSpin->setRange(0.1, 500.0);
+  m_partingFeedSpin->setSuffix(" mm/rev");
+  m_partingSpeedSpin = new QDoubleSpinBox();
+  m_partingSpeedSpin->setRange(10.0, 10000.0);
+  m_partingSpeedSpin->setSuffix(" RPM");
+  m_partingCssCheck = new QCheckBox("Constant Surface Speed");
+  m_partingCssCheck->setChecked(true);
+  m_partingRetractCombo = new QComboBox();
+  m_partingRetractCombo->addItems({"Direct", "Diagonal", "Custom"});
+  partAdvLayout->addRow("Cut Depth:", m_partingDepthSpin);
+  partAdvLayout->addRow("Feed Rate:", m_partingFeedSpin);
+  partAdvLayout->addRow("Spindle Speed:", m_partingSpeedSpin);
+  partAdvLayout->addRow("Retract Mode:", m_partingRetractCombo);
+  partAdvLayout->addRow(QString(), m_partingCssCheck);
+  partLayout->addWidget(m_partingAdvancedGroup);
 
   partLayout->addStretch();
 }
@@ -992,25 +1062,20 @@ QStringList SetupConfigurationPanel::getRecommendedTools() const {
 }
 
 void SetupConfigurationPanel::updateMaterialProperties() {
-  if (!m_materialManager || !m_materialPropertiesLabel) {
+  if (!m_materialManager) {
     return;
   }
 
   QString materialName = getSelectedMaterialName();
   if (materialName.isEmpty()) {
-    m_materialPropertiesLabel->setText("No material selected");
     return;
   }
 
   MaterialProperties props =
       m_materialManager->getMaterialProperties(materialName);
   if (props.name.isEmpty()) {
-    m_materialPropertiesLabel->setText("Material properties not available");
     return;
   }
-
-  // Clear the material properties text - no longer displaying detailed properties
-  m_materialPropertiesLabel->setText("");
 
   // Update tool recommendations when material changes
   updateToolRecommendations();
@@ -1146,12 +1211,23 @@ void SetupConfigurationPanel::updateAdvancedMode() {
     m_partingWidthLabel->setVisible(adv);
   if (m_partingWidthSpin)
     m_partingWidthSpin->setVisible(adv);
+  if (m_partingAdvancedGroup)
+    m_partingAdvancedGroup->setVisible(adv);
   if (m_toleranceLabel)
     m_toleranceLabel->setVisible(adv);
   if (m_toleranceSpin)
     m_toleranceSpin->setVisible(adv);
   if (m_contourAdvancedGroup)
     m_contourAdvancedGroup->setVisible(adv);
+
+  if (m_contourFloodCheck)
+    m_contourFloodCheck->setVisible(!adv);
+  if (m_threadFloodCheck)
+    m_threadFloodCheck->setVisible(!adv);
+  if (m_chamferFloodCheck)
+    m_chamferFloodCheck->setVisible(!adv);
+  if (m_partFloodCheck)
+    m_partFloodCheck->setVisible(!adv);
 
   if (adv && m_materialManager) {
     QString materialName = getSelectedMaterialName();
@@ -1178,12 +1254,24 @@ void SetupConfigurationPanel::updateAdvancedMode() {
     }
     CuttingParameters cp = m_materialManager->calculateCuttingParameters(
         materialName, 10.0, "facing", finishVal);
-    if (m_contourDepthSpin)
-      m_contourDepthSpin->setValue(cp.depthOfCut);
-    if (m_contourFeedSpin)
-      m_contourFeedSpin->setValue(cp.feedRate);
-    if (m_contourSpeedSpin)
-      m_contourSpeedSpin->setValue(cp.spindleSpeed);
+    if (m_contourFacingDepthSpin)
+      m_contourFacingDepthSpin->setValue(cp.depthOfCut);
+    if (m_contourFacingFeedSpin)
+      m_contourFacingFeedSpin->setValue(cp.feedRate);
+    if (m_contourFacingSpeedSpin)
+      m_contourFacingSpeedSpin->setValue(cp.spindleSpeed);
+    if (m_contourRoughDepthSpin)
+      m_contourRoughDepthSpin->setValue(cp.depthOfCut);
+    if (m_contourRoughFeedSpin)
+      m_contourRoughFeedSpin->setValue(cp.feedRate);
+    if (m_contourRoughSpeedSpin)
+      m_contourRoughSpeedSpin->setValue(cp.spindleSpeed);
+    if (m_contourFinishDepthSpin)
+      m_contourFinishDepthSpin->setValue(cp.depthOfCut);
+    if (m_contourFinishFeedSpin)
+      m_contourFinishFeedSpin->setValue(cp.feedRate);
+    if (m_contourFinishSpeedSpin)
+      m_contourFinishSpeedSpin->setValue(cp.spindleSpeed);
   }
 }
 
