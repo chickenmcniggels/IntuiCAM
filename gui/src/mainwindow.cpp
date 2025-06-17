@@ -314,6 +314,8 @@ void MainWindow::setupConnections()
                 this, &MainWindow::handlePartLoadingOrientationFlipped);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::manualAxisSelectionRequested,
                 this, &MainWindow::handleManualAxisSelectionRequested);
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::autoRawDiameterRequested,
+                this, &MainWindow::handleAutoRawDiameterRequested);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::requestThreadFaceSelection,
                 this, &MainWindow::handleThreadFaceSelectionRequested);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::threadFaceSelected,
@@ -1459,6 +1461,26 @@ void MainWindow::handleManualAxisSelectionRequested()
     
     if (m_outputWindow) {
         m_outputWindow->append("Axis selection mode enabled. Please select a cylindrical surface or circular edge in the 3D view.");
+    }
+}
+
+void MainWindow::handleAutoRawDiameterRequested()
+{
+    if (!m_workspaceController || !m_workspaceController->isInitialized()) {
+        return;
+    }
+
+    double diameter = m_workspaceController->getAutoRawMaterialDiameter();
+    if (diameter <= 0.0) {
+        statusBar()->showMessage(tr("Failed to determine raw material diameter"), 3000);
+        return;
+    }
+
+    m_setupConfigPanel->setRawDiameter(diameter);
+    m_workspaceController->updateRawMaterialDiameter(diameter);
+    statusBar()->showMessage(tr("Auto raw diameter set to %1 mm").arg(diameter, 0, 'f', 1), 3000);
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Auto raw diameter calculated: %1 mm").arg(diameter, 0, 'f', 1));
     }
 }
 

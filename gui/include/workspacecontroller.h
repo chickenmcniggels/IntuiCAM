@@ -152,6 +152,12 @@ public:
     bool applyPartLoadingSettings(double distance, double diameter, bool flipped);
 
     /**
+     * @brief Calculate recommended raw material diameter from the current part
+     * @return Suggested raw material diameter in mm, or 0.0 if unavailable
+     */
+    double getAutoRawMaterialDiameter() const;
+
+    /**
      * @brief Process manually selected shape from 3D view and extract cylindrical axis
      * @param selectedShape The shape selected in the 3D view
      * @param clickPoint The 3D point where selection occurred

@@ -134,6 +134,7 @@ signals:
   void stepFileSelected(const QString &filePath);
   void materialTypeChanged(MaterialType type);
   void rawMaterialDiameterChanged(double diameter);
+  void autoRawDiameterRequested();
   void distanceToChuckChanged(double distance);
   void orientationFlipped(bool flipped);
   void manualAxisSelectionRequested();
@@ -150,6 +151,7 @@ public slots:
   void onBrowseStepFile();
   void onConfigurationChanged();
   void onManualAxisSelectionClicked();
+  void onAutoRawDiameterClicked();
   void onOperationToggled();
   void onMaterialChanged();
   void onToolSelectionRequested();
@@ -204,6 +206,7 @@ private:
   QHBoxLayout *m_rawDiameterLayout;
   QLabel *m_rawDiameterLabel;
   QDoubleSpinBox *m_rawDiameterSpin;
+  QPushButton *m_autoRawDiameterButton;
   QLabel *m_rawLengthLabel; // Displays current raw material length
 
   // Machining Tab Components (Machining Parameters + Operations + Quality)

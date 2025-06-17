@@ -111,6 +111,7 @@ private slots:
     void handleMaterialTypeChanged(IntuiCAM::GUI::MaterialType material);
     void handleRawMaterialDiameterChanged(double diameter);
     void handleManualAxisSelectionRequested();
+    void handleAutoRawDiameterRequested();
     void handleThreadFaceSelectionRequested();
     void handleThreadFaceSelected(const TopoDS_Shape& face);
     void handleWorkpieceTransformed();

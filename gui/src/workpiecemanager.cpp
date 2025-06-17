@@ -24,6 +24,8 @@
 #include <BRepAdaptor_Curve.hxx>
 #include <GeomAbs_CurveType.hxx>
 #include <gp_Circ.hxx>
+#include <BRep_Tool.hxx>
+#include <TopExp.hxx>
 
 WorkpieceManager::WorkpieceManager(QObject *parent)
     : QObject(parent)
@@ -669,13 +671,23 @@ double WorkpieceManager::getLargestCircularEdgeDiameter(const TopoDS_Shape& work
     try {
         for (TopExp_Explorer exp(workpiece, TopAbs_EDGE); exp.More(); exp.Next()) {
             TopoDS_Edge edge = TopoDS::Edge(exp.Current());
+            if (BRep_Tool::Degenerated(edge)) {
+                continue;
+            }
+
             BRepAdaptor_Curve curve(edge);
 
             if (curve.GetType() == GeomAbs_Circle) {
-                gp_Circ circ = curve.Circle();
-                double diameter = circ.Radius() * 2.0;
-                if (diameter > maxDiameter) {
-                    maxDiameter = diameter;
+                TopoDS_Vertex v1, v2;
+                TopExp::Vertices(edge, v1, v2);
+                gp_Pnt p1 = BRep_Tool::Pnt(v1);
+                gp_Pnt p2 = BRep_Tool::Pnt(v2);
+                if (p1.Distance(p2) < 1e-6) {
+                    gp_Circ circ = curve.Circle();
+                    double diameter = circ.Radius() * 2.0;
+                    if (diameter > maxDiameter) {
+                        maxDiameter = diameter;
+                    }
                 }
             }
         }
