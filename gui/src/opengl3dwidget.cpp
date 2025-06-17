@@ -358,8 +358,8 @@ void OpenGL3DWidget::fitAll()
 
 void OpenGL3DWidget::mousePressEvent(QMouseEvent *event)
 {
-    m_lastPos = event->pos();
-    m_lastButton = event->button();
+    m_lastMousePos = event->pos();
+    m_dragButton = event->button();
 
     if (m_selectionMode && event->button() == Qt::LeftButton && !m_context.IsNull()) {
         m_context->MoveTo(event->pos().x(), event->pos().y(), m_view, Standard_True);
@@ -377,8 +377,6 @@ void OpenGL3DWidget::mousePressEvent(QMouseEvent *event)
     }
     
     m_isDragging = true;
-    m_lastMousePos = event->pos();
-    m_dragButton = event->button();
 }
 
 void OpenGL3DWidget::mouseMoveEvent(QMouseEvent *event)
@@ -386,14 +384,14 @@ void OpenGL3DWidget::mouseMoveEvent(QMouseEvent *event)
     if (m_view.IsNull())
         return;
 
-    if (!m_selectionMode && (event->buttons() & Qt::LeftButton) && m_lastButton == Qt::LeftButton) {
-        m_view->Rotate(event->pos().x(), event->pos().y(), m_lastPos.x(), m_lastPos.y());
-    } else if (event->buttons() & Qt::MidButton ||
+    if (!m_selectionMode && (event->buttons() & Qt::LeftButton) && m_dragButton == Qt::LeftButton) {
+        m_view->Rotate(event->pos().x(), event->pos().y(), m_lastMousePos.x(), m_lastMousePos.y());
+    } else if (event->buttons() & Qt::MiddleButton ||
                ((event->buttons() & Qt::LeftButton) && (event->modifiers() & Qt::ShiftModifier))) {
-        m_view->Pan(event->pos().x() - m_lastPos.x(), m_lastPos.y() - event->pos().y());
+        m_view->Pan(event->pos().x() - m_lastMousePos.x(), m_lastMousePos.y() - event->pos().y());
     }
 
-    m_lastPos = event->pos();
+    m_lastMousePos = event->pos();
     update();
 }
 
