@@ -83,27 +83,17 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, dou
 #### Black Screen Fix
 **Problem**: The 3D viewer would go black when the widget lost focus or wasn't actively interacted with.
 
-**Solution**: Implemented robust focus and event handling:
-- Enhanced `updateView()` method with explicit context management
-- Added continuous update timer support
-- Proper focus event handling (`focusInEvent`, `focusOutEvent`) with immediate redraw
-- Show/hide event management to ensure proper rendering lifecycle
+**Solution**: Initial versions added extensive focus and window event handling.
+These callbacks have proven unnecessary with modern Qt and actually introduced
+lag. The viewer now relies on the default event flow with a lightweight
+`updateView()` implementation and an optional continuous update timer.
 
 ```cpp
 void OpenGL3DWidget::updateView()
 {
-    if (!m_view.IsNull() && !m_window.IsNull())
+    if (!m_view.IsNull())
     {
-        // Ensure the OpenGL context is current before updating
-        makeCurrent();
-        
-        // Force redraw even if widget doesn't have focus
         m_view->Redraw();
-        
-        // Make sure the rendering is complete
-        if (context()) {
-            context()->swapBuffers(context()->surface());
-        }
     }
 }
 ```
@@ -198,16 +188,10 @@ Mouse interactions are translated to OCCT view operations:
 
 ### Focus Management
 
-The widget maintains rendering even when losing focus:
-
-```cpp
-void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
-{
-    QOpenGLWidget::focusOutEvent(event);
-    // Force an update even when losing focus to prevent black screen
-    update();
-}
-```
+Earlier versions overrode several focus and window events to avoid a black
+viewer. The implementation has since been simplified—the default
+`QOpenGLWidget` handlers are reliable and avoiding the extra event processing
+prevents flickering during window activation changes.
 
 ## Known Issues and Solutions
 
