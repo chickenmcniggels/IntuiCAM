@@ -234,11 +234,9 @@ void WorkspaceController::executeWorkpieceWorkflow(const TopoDS_Shape& workpiece
     // Step 5: Position workpiece at requested distance-to-chuck (snap min-Z)
     m_workpieceManager->positionWorkpieceAlongAxis(m_lastDistanceToChuck);
     
-    // Step 6: Determine raw material diameter based on largest circular edge
+    // Step 6: Determine raw material diameter from full circular features
     double edgeDiameter = m_workpieceManager->getLargestCircularEdgeDiameter(workpiece);
-    double marginDiameter = edgeDiameter > 0.0 ? edgeDiameter + 4.0
-                                               : detectedDiameter + 2.0;
-    double rawMaterialDiameter = m_rawMaterialManager->getNextStandardDiameter(marginDiameter);
+    double rawMaterialDiameter = (edgeDiameter > 0.0 ? edgeDiameter : detectedDiameter) + 4.0;
     
     // Step 7: Create and display raw material that encompasses the workpiece
     m_rawMaterialManager->displayRawMaterialForWorkpiece(rawMaterialDiameter, workpiece, alignmentAxis);
@@ -766,6 +764,24 @@ bool WorkspaceController::recalculateRawMaterial(double diameter)
         emit errorOccurred("WorkspaceController", errorMsg);
         return false;
     }
+}
+
+double WorkspaceController::getAutoRawMaterialDiameter() const
+{
+    if (!m_initialized || m_currentWorkpiece.IsNull()) {
+        return 0.0;
+    }
+
+    double largestCircle = m_workpieceManager->getLargestCircularEdgeDiameter(m_currentWorkpiece);
+    if (largestCircle <= 0.0) {
+        largestCircle = m_workpieceManager->getDetectedDiameter();
+    }
+
+    if (largestCircle <= 0.0) {
+        return 0.0;
+    }
+
+    return largestCircle + 4.0;
 }
 
 bool WorkspaceController::hasPartShape() const

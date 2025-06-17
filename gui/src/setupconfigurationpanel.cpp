@@ -253,9 +253,12 @@ void SetupConfigurationPanel::setupPartTab() {
   m_rawDiameterSpin->setValue(50.0);
   m_rawDiameterSpin->setSuffix(" mm");
   m_rawDiameterSpin->setDecimals(1);
+  m_autoRawDiameterButton = new QPushButton("Auto");
+  m_autoRawDiameterButton->setMaximumWidth(60);
 
   m_rawDiameterLayout->addWidget(m_rawDiameterLabel);
   m_rawDiameterLayout->addWidget(m_rawDiameterSpin);
+  m_rawDiameterLayout->addWidget(m_autoRawDiameterButton);
   m_rawDiameterLayout->addStretch();
   m_materialLayout->addLayout(m_rawDiameterLayout);
 
@@ -633,6 +636,8 @@ void SetupConfigurationPanel::setupConnections() {
   connect(m_rawDiameterSpin,
           QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
           &SetupConfigurationPanel::onConfigurationChanged);
+  connect(m_autoRawDiameterButton, &QPushButton::clicked, this,
+          &SetupConfigurationPanel::onAutoRawDiameterClicked);
 
   // Part positioning connections
   connect(m_distanceSlider, &QSlider::valueChanged, this, [this](int value) {
@@ -921,6 +926,10 @@ void SetupConfigurationPanel::onManualAxisSelectionClicked() {
   emit manualAxisSelectionRequested();
   m_axisInfoLabel->setText("Selection mode enabled - click on a cylindrical "
                            "surface or circular edge in the 3D view");
+}
+
+void SetupConfigurationPanel::onAutoRawDiameterClicked() {
+  emit autoRawDiameterRequested();
 }
 
 void SetupConfigurationPanel::onConfigurationChanged() {
