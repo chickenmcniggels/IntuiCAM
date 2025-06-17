@@ -192,16 +192,8 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
     
-    // Comprehensive event handling to prevent black screen
-    void focusInEvent(QFocusEvent *event) override;
-    void focusOutEvent(QFocusEvent *event) override;
-    void showEvent(QShowEvent *event) override;
-    void hideEvent(QHideEvent *event) override;
-    void changeEvent(QEvent *event) override;
-    void paintEvent(QPaintEvent *event) override;
-    void enterEvent(QEnterEvent *event) override;
-    void leaveEvent(QEvent *event) override;
-    bool event(QEvent *event) override;
+    // Basic QOpenGLWidget lifecycle events are sufficient. Extra overrides
+    // were removed for a leaner and more stable implementation.
 
 private:
     /**
@@ -214,20 +206,7 @@ private:
      */
     void updateView();
     
-    /**
-     * @brief Force a robust redraw of the viewer
-     */
-    void forceRedraw();
-    
-    /**
-     * @brief Ensure the viewer context is valid and ready
-     */
-    void ensureViewerReady();
-    
-    /**
-     * @brief Handle window activation changes
-     */
-    void handleActivationChange(bool active);
+    // Legacy refresh utilities removed for simplicity
 
     /**
      * @brief Apply the camera settings for the current view mode
@@ -283,11 +262,9 @@ private:
     // Update management
     bool m_continuousUpdate;
     QTimer* m_updateTimer;
-    QTimer* m_robustRefreshTimer;  // For preventing persistent black screens
     
     // State tracking
     bool m_isInitialized;
-    bool m_needsRefresh;
 
     // Selection mode
     bool m_selectionMode;
