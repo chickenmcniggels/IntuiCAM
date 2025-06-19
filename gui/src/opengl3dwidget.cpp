@@ -62,9 +62,12 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
     
-    // CRITICAL: Use NoPartialUpdate to prevent black screen flashing
-    // This is essential for stable OpenCASCADE integration
-    setUpdateBehavior(QOpenGLWidget::NoPartialUpdate);
+    // Preserve the previous frame so the view does not clear when the widget
+    // temporarily loses focus. This follows the Qt documentation which states
+    // that in non-preserved mode the buffers are invalidated after each frame
+    // and the view must be fully redrawn. Using PartialUpdate avoids a black
+    // screen when other widgets gain focus.
+    setUpdateBehavior(QOpenGLWidget::PartialUpdate);
     
     // Proper OpenGL context attributes for stable rendering
     QSurfaceFormat format;
@@ -458,16 +461,12 @@ void OpenGL3DWidget::focusInEvent(QFocusEvent *event)
 {
     QOpenGLWidget::focusInEvent(event);
     
-    // ESSENTIAL: Ensure proper context when gaining focus
+    // Schedule an update so paintGL() is invoked. According to the Qt
+    // documentation, update() should be used when a repaint is required from
+    // places outside of paintGL(). This prevents the viewer from going black
+    // when focus changes.
     if (m_isInitialized && !m_view.IsNull()) {
-        makeCurrent();
-        // Force a redraw to prevent black screen
-        QTimer::singleShot(1, this, [this]() {
-            if (m_isInitialized && !m_view.IsNull()) {
-                makeCurrent();
-                m_view->Redraw();
-            }
-        });
+        update();
     }
 }
 
@@ -481,15 +480,10 @@ void OpenGL3DWidget::showEvent(QShowEvent *event)
 {
     QOpenGLWidget::showEvent(event);
     
-    // ESSENTIAL: Ensure proper initialization when widget becomes visible
+    // Request a repaint when the widget becomes visible. update() will trigger
+    // paintGL() where the actual rendering occurs.
     if (m_isInitialized && !m_view.IsNull()) {
-        QTimer::singleShot(1, this, [this]() {
-            if (m_isInitialized && !m_view.IsNull()) {
-                makeCurrent();
-                m_view->MustBeResized();
-                m_view->Redraw();
-            }
-        });
+        update();
     }
 }
 
