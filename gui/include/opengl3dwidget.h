@@ -9,6 +9,9 @@
 #include <QEvent>
 #include <QEnterEvent>
 #include <QPaintEvent>
+#include <QFocusEvent>
+#include <QShowEvent>
+#include <QHideEvent>
 
 // Standard includes
 #include <vector>
@@ -192,9 +195,14 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
     
-    // Basic QOpenGLWidget lifecycle events are sufficient. Extra overrides were
-    // removed for a leaner and more stable implementation and to avoid black
-    // screens when the widget loses focus.
+    // Focus handling for black screen prevention
+    void focusInEvent(QFocusEvent *event) override;
+    void focusOutEvent(QFocusEvent *event) override;
+    void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
+    
+    // Basic QOpenGLWidget lifecycle events are sufficient. Extra overrides
+    // were removed for a leaner and more stable implementation.
 
 private:
     /**
