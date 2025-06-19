@@ -40,8 +40,10 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_isDragging(false)
     , m_isDragStarted(false)
     , m_dragButton(Qt::NoButton)
+    , m_isMousePressed(false)
     , m_continuousUpdate(false)
     , m_updateTimer(new QTimer(this))
+    , m_redrawThrottleTimer(nullptr)
     , m_isInitialized(false)
     , m_selectionMode(false)
     , m_autoFitEnabled(true)
@@ -50,6 +52,9 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_stored3DScale(1.0)
     , m_stored3DProjection(Graphic3d_Camera::Projection_Perspective)
     , m_has3DCameraState(false)
+    , m_lockedXZEye(0.0, -1000.0, 0.0)
+    , m_lockedXZAt(0.0, 0.0, 0.0)
+    , m_lockedXZUp(-1.0, 0.0, 0.0)
     , m_workspaceController(nullptr)
     , m_gridVisible(false)
 {
@@ -115,6 +120,12 @@ OpenGL3DWidget::~OpenGL3DWidget()
         m_updateTimer = nullptr;
     }
     
+    if (m_redrawThrottleTimer) {
+        m_redrawThrottleTimer->stop();
+        delete m_redrawThrottleTimer;
+        m_redrawThrottleTimer = nullptr;
+    }
+    
     // Clean up lathe grid if present
     removeLatheGrid();
     
@@ -144,6 +155,14 @@ void OpenGL3DWidget::paintGL()
     // ESSENTIAL: Always ensure context is current before rendering
     // This prevents black screen when other widgets take focus
     makeCurrent(); // makeCurrent() returns void, so we can't check its return value
+    
+    // Additional validation to prevent black screen
+    if (!m_isInitialized || m_view.IsNull() || m_context.IsNull()) {
+        // Clear to background color if not properly initialized
+        glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        return;
+    }
     
     updateView();
     
@@ -176,8 +195,14 @@ void OpenGL3DWidget::resizeGL(int width, int height)
             
         } catch (const std::exception& e) {
             qDebug() << "Error during resize:" << e.what();
+            // Fallback: clear screen to prevent artifacts
+            glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         } catch (...) {
             qDebug() << "Unknown error during resize";
+            // Fallback: clear screen to prevent artifacts
+            glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         }
     }
 }
@@ -426,6 +451,52 @@ void OpenGL3DWidget::wheelEvent(QWheelEvent *event)
         m_view->Zoom(event->position().x(), event->position().y(), aX, aY);
         updateView();
     }
+}
+
+// CRITICAL: Focus event handling to prevent black screen
+void OpenGL3DWidget::focusInEvent(QFocusEvent *event)
+{
+    QOpenGLWidget::focusInEvent(event);
+    
+    // ESSENTIAL: Ensure proper context when gaining focus
+    if (m_isInitialized && !m_view.IsNull()) {
+        makeCurrent();
+        // Force a redraw to prevent black screen
+        QTimer::singleShot(1, this, [this]() {
+            if (m_isInitialized && !m_view.IsNull()) {
+                makeCurrent();
+                m_view->Redraw();
+            }
+        });
+    }
+}
+
+void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
+{
+    QOpenGLWidget::focusOutEvent(event);
+    // Don't call doneCurrent() here as it can cause black screen
+}
+
+void OpenGL3DWidget::showEvent(QShowEvent *event)
+{
+    QOpenGLWidget::showEvent(event);
+    
+    // ESSENTIAL: Ensure proper initialization when widget becomes visible
+    if (m_isInitialized && !m_view.IsNull()) {
+        QTimer::singleShot(1, this, [this]() {
+            if (m_isInitialized && !m_view.IsNull()) {
+                makeCurrent();
+                m_view->MustBeResized();
+                m_view->Redraw();
+            }
+        });
+    }
+}
+
+void OpenGL3DWidget::hideEvent(QHideEvent *event)
+{
+    QOpenGLWidget::hideEvent(event);
+    // Don't do anything special here to avoid context issues
 }
 
 void OpenGL3DWidget::setContinuousUpdate(bool enabled)
@@ -807,4 +878,64 @@ void OpenGL3DWidget::removeLatheGrid()
 {
     // Grid removal disabled because grid is not created anymore, prevents inadvertent RemoveAll().
     return;
+}
+
+void OpenGL3DWidget::throttledRedraw()
+{
+    if (!m_redrawThrottleTimer->isActive()) {
+        m_redrawThrottleTimer->start();
+    }
+}
+
+void OpenGL3DWidget::displayShape(const TopoDS_Shape& shape)
+{
+    if (m_context.IsNull() || shape.IsNull()) {
+        return;
+    }
+    
+    try {
+        // Create AIS shape for display
+        Handle(AIS_Shape) aisShape = new AIS_Shape(shape);
+        
+        // Display the shape
+        m_context->Display(aisShape, Standard_False);
+        
+        // Auto-fit if enabled
+        if (m_autoFitEnabled) {
+            fitAll();
+        } else {
+            updateView();
+        }
+        
+        qDebug() << "Shape displayed successfully";
+        
+    } catch (const std::exception& e) {
+        qDebug() << "Error displaying shape:" << e.what();
+    }
+}
+
+void OpenGL3DWidget::clearAll()
+{
+    if (!m_context.IsNull()) {
+        try {
+            m_context->RemoveAll(Standard_False);
+            updateView();
+            qDebug() << "All objects cleared from display";
+        } catch (const std::exception& e) {
+            qDebug() << "Error clearing display:" << e.what();
+        }
+    }
+}
+
+void OpenGL3DWidget::fitAll()
+{
+    if (!m_view.IsNull()) {
+        try {
+            m_view->FitAll();
+            updateView();
+            qDebug() << "View fitted to all objects";
+        } catch (const std::exception& e) {
+            qDebug() << "Error fitting view:" << e.what();
+        }
+    }
 } 

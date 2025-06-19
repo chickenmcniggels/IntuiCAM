@@ -2,12 +2,33 @@
 #include <QDebug>
 #include <QStandardPaths>
 #include <QDir>
+#include <QSurfaceFormat>
+#include <QOpenGLContext>
 #include <iostream>
 #include "mainwindow.h"
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    
+    // CRITICAL: Set global OpenGL surface format BEFORE creating OpenGL widgets
+    // This prevents many black screen issues with QOpenGLWidget
+    QSurfaceFormat format;
+    format.setDepthBufferSize(24);
+    format.setStencilBufferSize(8);
+    format.setSamples(4); // Anti-aliasing
+    format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
+    format.setRenderableType(QSurfaceFormat::OpenGL);
+    format.setProfile(QSurfaceFormat::CompatibilityProfile);
+    format.setVersion(3, 3); // Minimum OpenGL 3.3 for OpenCASCADE
+    
+    // ESSENTIAL: Set as default format for all QOpenGLWidget instances
+    QSurfaceFormat::setDefaultFormat(format);
+    
+    // Optional: Force OpenGL backend on Qt6 (prevents DirectX issues on Windows)
+    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    qputenv("QSG_RHI_BACKEND", "opengl");
+    #endif
     
     // Set application properties
     app.setApplicationName("IntuiCAM");

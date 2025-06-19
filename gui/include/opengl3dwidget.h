@@ -195,6 +195,12 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
     
+    // Focus handling for black screen prevention
+    void focusInEvent(QFocusEvent *event) override;
+    void focusOutEvent(QFocusEvent *event) override;
+    void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
+    
     // Basic QOpenGLWidget lifecycle events are sufficient. Extra overrides
     // were removed for a leaner and more stable implementation.
 
@@ -245,6 +251,11 @@ private:
      * @brief Remove the lathe grid from display
      */
     void removeLatheGrid();
+    
+    /**
+     * @brief Throttled redraw to prevent excessive render calls
+     */
+    void throttledRedraw();
 
     // OpenCASCADE handles
     Handle(V3d_Viewer) m_viewer;
@@ -257,10 +268,12 @@ private:
     bool m_isDragStarted;
     QPoint m_lastMousePos;
     Qt::MouseButton m_dragButton;
+    bool m_isMousePressed;
     
     // Update management
     bool m_continuousUpdate;
     QTimer* m_updateTimer;
+    QTimer* m_redrawThrottleTimer;
     
     // State tracking
     bool m_isInitialized;
@@ -289,6 +302,11 @@ private:
     double m_stored3DScale;
     Graphic3d_Camera::Projection m_stored3DProjection;
     bool m_has3DCameraState;
+    
+    // XZ view locking parameters
+    gp_Pnt m_lockedXZEye;
+    gp_Pnt m_lockedXZAt;
+    gp_Dir m_lockedXZUp;
 
     // Workspace controller
     class WorkspaceController* m_workspaceController;
