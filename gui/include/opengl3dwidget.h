@@ -236,17 +236,6 @@ private:
      */
     void restore3DCameraState();
 
-    /**
-     * @brief Create and display a grid for the lathe XZ view
-     * @param spacing Spacing between grid lines in mm
-     * @param extent Maximum distance from origin for grid lines
-     */
-    void createLatheGrid(double spacing = 10.0, double extent = 200.0);
-
-    /**
-     * @brief Remove the lathe grid from display
-     */
-    void removeLatheGrid();
 
     // OpenCASCADE handles
     Handle(V3d_Viewer) m_viewer;
@@ -294,12 +283,7 @@ private:
     // Workspace controller
     class WorkspaceController* m_workspaceController;
 
-    // Lathe grid display elements
-    bool m_gridVisible;
-    Standard_Real m_gridSpacing;
-    Standard_Real m_gridExtent;
-    
-    // Grid objects are managed by the AIS context, no need to store references
+    // Grid objects have been removed
 };
 
 #endif // OPENGL3DWIDGET_H 
