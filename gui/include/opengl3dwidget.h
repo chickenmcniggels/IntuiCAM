@@ -195,7 +195,7 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
     
-    // Focus handling - use update() on focus changes to avoid black screens
+    // Focus handling - call update() on focus changes to avoid black screens
     void focusInEvent(QFocusEvent *event) override;
     void focusOutEvent(QFocusEvent *event) override;
     void showEvent(QShowEvent *event) override;

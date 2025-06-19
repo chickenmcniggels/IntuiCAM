@@ -473,6 +473,13 @@ void OpenGL3DWidget::focusInEvent(QFocusEvent *event)
 void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
 {
     QOpenGLWidget::focusOutEvent(event);
+    // Schedule a repaint when focus is lost to ensure the framebuffer remains
+    // valid. Qt's documentation recommends calling update() when a repaint is
+    // needed outside of paintGL(). This avoids the viewer turning black when
+    // interacting with other widgets.
+    if (m_isInitialized && !m_view.IsNull()) {
+        update();
+    }
     // Don't call doneCurrent() here as it can cause black screen
 }
 
