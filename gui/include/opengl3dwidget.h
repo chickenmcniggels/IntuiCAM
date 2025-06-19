@@ -13,6 +13,9 @@
 #include <QShowEvent>
 #include <QHideEvent>
 
+// Standard includes
+#include <vector>
+
 // OpenCASCADE includes
 #include <V3d_View.hxx>
 #include <V3d_Viewer.hxx>
@@ -202,49 +205,49 @@ private:
     void initializeViewer();
     
     /**
-     * @brief Update the 3D view
+     * @brief Update the 3D view rendering
      */
     void updateView();
     
-    // Legacy refresh utilities removed for simplicity
-
     /**
-     * @brief Apply the camera settings for the current view mode
+     * @brief Apply camera settings based on current view mode
      */
     void applyCameraForViewMode();
-
+    
     /**
-     * @brief Set up camera for 3D mode with standard perspective view
+     * @brief Set up 3D perspective camera
      */
     void setupCamera3D();
-
+    
     /**
-     * @brief Set up camera for XZ plane mode (lathe coordinate system)
-     * X increases from top to bottom, Z increases from left to right
+     * @brief Set up XZ plane orthographic camera for lathe view
      */
     void setupCameraXZ();
-
+    
     /**
-     * @brief Store current 3D camera state before switching to lathe mode
-     *        (includes projection type)
+     * @brief Store current 3D camera state for restoration
      */
     void store3DCameraState();
-
+    
     /**
-     * @brief Restore 3D camera state when switching back from lathe mode
-     *        (restores projection type as well)
+     * @brief Restore previously stored 3D camera state
      */
     void restore3DCameraState();
-
+    
     /**
-     * @brief Create and display a grid for the lathe XZ view
-     * @param spacing Spacing between grid lines in mm
-     * @param extent Maximum distance from origin for grid lines
+     * @brief Enforce XZ plane view constraints after zoom/interaction
+     */
+    void enforceLathePlaneView();
+    
+    /**
+     * @brief Create grid for lathe coordinate system
+     * @param spacing Grid line spacing
+     * @param extent Grid extent in both directions
      */
     void createLatheGrid(double spacing = 10.0, double extent = 200.0);
-
+    
     /**
-     * @brief Remove the lathe grid from display
+     * @brief Remove lathe grid from display
      */
     void removeLatheGrid();
 
@@ -256,6 +259,7 @@ private:
     
     // Mouse interaction state
     bool m_isDragging;
+    bool m_isDragStarted;
     QPoint m_lastMousePos;
     Qt::MouseButton m_dragButton;
     
@@ -300,6 +304,26 @@ private:
     Standard_Real m_gridExtent;
     
     // Grid objects are managed by the AIS context, no need to store references
+    
+    // Improved mouse control and rendering stability
+    double m_mouseSensitivity;          ///< Mouse sensitivity multiplier
+    bool m_isMousePressed;              ///< Track mouse press state
+    qint64 m_lastRedrawTime;            ///< Last redraw timestamp for throttling
+    QTimer* m_redrawThrottleTimer;      ///< Timer for throttled redraws to prevent flicker
+
+    // XZ plane locking parameters (for strict lathe view enforcement)
+    gp_Pnt m_lockedXZEye;     ///< Locked camera eye position for XZ plane
+    gp_Pnt m_lockedXZAt;      ///< Locked camera target for XZ plane
+    gp_Dir m_lockedXZUp;      ///< Locked camera up vector for XZ plane
+    
+    // Grid management for lathe mode
+    std::vector<Handle(AIS_Line)> m_gridLines; ///< Grid lines for lathe XZ view
+    
+private slots:
+    /**
+     * @brief Throttled redraw to prevent excessive updates and flickering
+     */
+    void throttledRedraw();
 };
 
 #endif // OPENGL3DWIDGET_H 

@@ -10,6 +10,8 @@
 #include <QSet>
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
+#include <QDateTime>
+#include <QSurfaceFormat>
 
 // Additional OpenCASCADE includes
 #include <Aspect_Handle.hxx>
@@ -18,6 +20,7 @@
 #include <V3d_AmbientLight.hxx>
 #include <Quantity_Color.hxx>
 #include <AIS_DisplayMode.hxx>
+#include <AIS_SelectionScheme.hxx>
 #include <StdSelect_BRepOwner.hxx>
 #include <SelectMgr_SortCriterion.hxx>
 #include <Prs3d_Drawer.hxx>
@@ -35,6 +38,7 @@
 OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     : QOpenGLWidget(parent)
     , m_isDragging(false)
+    , m_isDragStarted(false)
     , m_dragButton(Qt::NoButton)
     , m_continuousUpdate(false)
     , m_updateTimer(new QTimer(this))
@@ -48,92 +52,144 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_has3DCameraState(false)
     , m_workspaceController(nullptr)
     , m_gridVisible(false)
+    , m_mouseSensitivity(1.0)
+    , m_isMousePressed(false)
+    , m_lastRedrawTime(0)
+    , m_lockedXZEye(0.0, -1000.0, 0.0)
+    , m_lockedXZAt(0.0, 0.0, 0.0)
+    , m_lockedXZUp(-1.0, 0.0, 0.0)
 {
     // Enable mouse tracking for proper interaction
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
     
-    // Use the default full update behavior. Partial updates caused brief
-    // black flashes when the widget regained focus or another widget was
-    // interacted with. Following working OCCT viewer examples like
-    // gkv311/occt-samples-qopenglwidget, we stick with NoPartialUpdate to
-    // ensure consistent rendering.
+    // CRITICAL: Use NoPartialUpdate to prevent black screen flashing
+    // This is essential for stable OpenCASCADE integration
     setUpdateBehavior(QOpenGLWidget::NoPartialUpdate);
     
-    // Ensure the widget gets proper resize events
-    setAttribute(Qt::WA_OpaquePaintEvent);
-    setAttribute(Qt::WA_NoSystemBackground);
-    setAttribute(Qt::WA_PaintOnScreen, false);  // Important for proper rendering
-    // Do NOT use WA_NativeWindow. It caused the viewer to turn black when menus
-    // or other widgets gained focus.
+    // Proper OpenGL context attributes for stable rendering
+    QSurfaceFormat format;
+    format.setDepthBufferSize(24);
+    format.setStencilBufferSize(8);
+    format.setSamples(4); // Anti-aliasing
+    format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
+    format.setRenderableType(QSurfaceFormat::OpenGL);
+    format.setProfile(QSurfaceFormat::CompatibilityProfile);
+    format.setVersion(3, 3); // Minimum OpenGL 3.3
+    setFormat(format);
     
-    // Optional timer for continuous updates (e.g. animations)
+    // Widget attributes for stable rendering - ESSENTIAL for preventing black screen
+    setAttribute(Qt::WA_OpaquePaintEvent, true);
+    setAttribute(Qt::WA_NoSystemBackground, true);
+    setAttribute(Qt::WA_PaintOnScreen, false);
+    setAttribute(Qt::WA_AlwaysStackOnTop, false);
+    setAttribute(Qt::WA_NativeWindow, false); // Prevents some focus-related black screen issues
+    setAttribute(Qt::WA_DontCreateNativeAncestors, true); // Improves widget stability
+    
+    // Setup redraw throttling timer to prevent excessive redraws
+    m_redrawThrottleTimer = new QTimer(this);
+    m_redrawThrottleTimer->setSingleShot(true);
+    m_redrawThrottleTimer->setInterval(16); // ~60 FPS max
+    connect(m_redrawThrottleTimer, &QTimer::timeout, this, [this]() {
+        if (!m_view.IsNull() && !m_window.IsNull() && m_isInitialized) {
+            // CRITICAL: Ensure context is current before redraw
+            makeCurrent();
+            m_view->Redraw();
+            // Don't call doneCurrent() here as it can cause black screens
+        }
+    });
+    
+    // Optional timer for continuous updates (animations)
     m_updateTimer->setSingleShot(false);
     m_updateTimer->setInterval(16); // ~60 FPS
-    connect(m_updateTimer, &QTimer::timeout, this, QOverload<>::of(&QOpenGLWidget::update));
+    connect(m_updateTimer, &QTimer::timeout, this, [this]() {
+        throttledRedraw();
+    });
     
-    qDebug() << "OpenGL3DWidget created as pure visualization component with simplified rendering";
+    qDebug() << "OpenGL3DWidget created with improved stability and performance";
 }
 
 OpenGL3DWidget::~OpenGL3DWidget()
 {
+    // CRITICAL: Make current before cleanup to prevent crashes
+    makeCurrent();
+    
+    // Stop and cleanup timers
     if (m_updateTimer) {
         m_updateTimer->stop();
         delete m_updateTimer;
         m_updateTimer = nullptr;
     }
     
+    if (m_redrawThrottleTimer) {
+        m_redrawThrottleTimer->stop();
+        delete m_redrawThrottleTimer;
+        m_redrawThrottleTimer = nullptr;
+    }
+    
     // Clean up lathe grid if present
     removeLatheGrid();
     
-    // Release OpenCASCADE resources
+    // Release OpenCASCADE resources in proper order
+    if (!m_context.IsNull()) {
+        m_context->RemoveAll(Standard_False);
+    }
     m_context.Nullify();
     m_view.Nullify();
     m_viewer.Nullify();
     m_window.Nullify();
+    
+    doneCurrent();
     
     qDebug() << "OpenGL3DWidget destroyed and resources released";
 }
 
 void OpenGL3DWidget::initializeGL()
 {
+    // ESSENTIAL: Ensure context is current
+    makeCurrent();
     initializeViewer();
 }
 
 void OpenGL3DWidget::paintGL()
 {
+    // ESSENTIAL: Always ensure context is current before rendering
+    // This prevents black screen when other widgets take focus
+    makeCurrent(); // makeCurrent() returns void, so we can't check its return value
+    
     updateView();
+    
+    // DON'T call doneCurrent() here - it can cause black screens
+    // Qt will handle context switching automatically
 }
 
 void OpenGL3DWidget::resizeGL(int width, int height)
 {
     if (!m_view.IsNull() && !m_window.IsNull() && m_isInitialized)
     {
-        // Ensure we have a valid context and proper size
+        // Validate dimensions
         if (width <= 0 || height <= 0) {
+            qDebug() << "Invalid resize dimensions:" << width << "x" << height;
             return;
         }
         
-        makeCurrent();
-        
         try {
-            // Tell OpenCASCADE that the view must be resized
-            m_view->MustBeResized();
+            // CRITICAL: Ensure current OpenGL context - prevents black screen during resize
+            makeCurrent(); // makeCurrent() returns void
             
-            // Update the window size immediately
+            // Tell OpenCASCADE about the resize
+            m_view->MustBeResized();
             m_window->DoResize();
             
-            // Force immediate redraw with proper viewport
-            m_view->Redraw();
+            // Update viewport and redraw immediately (resize needs immediate update)
+            updateView();
             
-            // Ensure immediate flush
-            if (context()) {
-                context()->functions()->glFlush();
-            }
+            qDebug() << "OpenGL3DWidget successfully resized to:" << width << "x" << height;
             
-            qDebug() << "OpenGL3DWidget resized to:" << width << "x" << height;
+        } catch (const std::exception& e) {
+            qDebug() << "Error during resize:" << e.what();
         } catch (...) {
-            qDebug() << "Error during resize";
+            qDebug() << "Unknown error during resize";
         }
     }
 }
@@ -166,6 +222,9 @@ void OpenGL3DWidget::resizeEvent(QResizeEvent *event)
 void OpenGL3DWidget::initializeViewer()
 {
     try {
+        // CRITICAL: Ensure context is current
+        makeCurrent();
+        
         // Create display connection
         Handle(Aspect_DisplayConnection) aDisplayConnection = new Aspect_DisplayConnection();
         
@@ -174,66 +233,243 @@ void OpenGL3DWidget::initializeViewer()
         
         // Create viewer
         m_viewer = new V3d_Viewer(aGraphicDriver);
-        m_viewer->SetDefaultBackgroundColor(Quantity_NOC_GRAY30);
-        
-        // Create window handle
-#ifdef _WIN32
-        Aspect_Handle aWindowHandle = (Aspect_Handle)winId();
-        m_window = new WNT_Window(aWindowHandle);
-#else
-        Aspect_Handle aWindowHandle = (Aspect_Handle)winId();
-        m_window = new Xw_Window(aDisplayConnection, aWindowHandle);
-#endif
         
         // Create view
         m_view = m_viewer->CreateView();
-        m_view->SetWindow(m_window);
         
-        // Set up lighting
-        Handle(V3d_DirectionalLight) aLight = new V3d_DirectionalLight(V3d_Zneg, Quantity_NOC_WHITE, Standard_True);
-        Handle(V3d_AmbientLight) aAmbientLight = new V3d_AmbientLight(Quantity_NOC_GRAY50);
-        m_viewer->AddLight(aLight);
-        m_viewer->AddLight(aAmbientLight);
-        m_viewer->SetLightOn();
+        // Create window wrapper
+#ifdef _WIN32
+        m_window = new WNT_Window((Aspect_Handle)winId());
+#else
+        m_window = new Xw_Window(aDisplayConnection, (Window)winId());
+#endif
+        
+        // Set the window
+        m_view->SetWindow(m_window);
         
         // Create interactive context
         m_context = new AIS_InteractiveContext(m_viewer);
         
-        // Configure the view
-        m_view->SetBackgroundColor(Quantity_NOC_GRAY30);
-        m_view->MustBeResized();
-        m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_GOLD, 0.08, V3d_ZBUFFER);
+        // Set up lighting
+        Handle(V3d_DirectionalLight) aLight = new V3d_DirectionalLight(V3d_Zneg, Quantity_NOC_WHITE, Standard_True);
+        m_viewer->AddLight(aLight);
+        m_viewer->SetLightOn();
         
-        // Mark as initialized
+        // Basic view setup
+        m_view->SetBackgroundColor(Quantity_NOC_GRAY90);
+        m_view->MustBeResized();
+        
+        // Set up default camera for 3D view
+        setupCamera3D();
+        
+        // Initialize the window
+        if (!m_window->IsMapped()) {
+            m_window->Map();
+        }
+        
         m_isInitialized = true;
         
-        // Emit initialization signal
+        qDebug() << "OpenGL3DWidget viewer initialized successfully";
         emit viewerInitialized();
         
-        qDebug() << "OpenCASCADE 3D viewer initialized successfully";
-        
+    } catch (const Standard_Failure& ex) {
+        qDebug() << "Error initializing viewer:" << ex.GetMessageString();
+        m_isInitialized = false;
     } catch (const std::exception& e) {
-        qDebug() << "Error initializing OpenCASCADE viewer:" << e.what();
+        qDebug() << "Error initializing viewer:" << e.what();
         m_isInitialized = false;
     } catch (...) {
-        qDebug() << "Unknown error initializing OpenCASCADE viewer";
+        qDebug() << "Unknown error during viewer initialization";
         m_isInitialized = false;
     }
 }
 
 void OpenGL3DWidget::updateView()
 {
-    if (!m_view.IsNull() && !m_window.IsNull() && m_isInitialized)
-    {
-        // Simplified update logic to reduce context switching and flickering
-        if (isVisible() && width() > 0 && height() > 0)
-        {
-            try {
-                m_view->Redraw();
-            } catch (...) {
-                qDebug() << "Error during view update";
+    // ESSENTIAL: Ensure context is current before any OpenCASCADE operations
+    // This is the critical fix for black screen issues
+    if (!m_view.IsNull() && m_isInitialized) {
+        // Always make context current before OpenCASCADE operations
+        makeCurrent(); // makeCurrent() returns void
+        
+        try {
+            m_view->Invalidate();
+            m_view->Redraw();
+            
+            // Ensure the frame is flushed to prevent partial renders
+            glFlush();
+            
+        } catch (const std::exception& e) {
+            qDebug() << "Error in updateView:" << e.what();
+        }
+        
+        // DON'T call doneCurrent() - let Qt handle context management
+    }
+}
+
+void OpenGL3DWidget::mousePressEvent(QMouseEvent *event)
+{
+    // Store mouse position and button state
+    m_lastMousePos = event->pos();
+    m_dragButton = event->button();
+    m_isMousePressed = true;
+
+    // Handle selection mode first
+    if (m_selectionMode && event->button() == Qt::LeftButton && !m_context.IsNull()) {
+        makeCurrent(); // makeCurrent() returns void
+        
+        m_context->MoveTo(event->pos().x(), event->pos().y(), m_view, Standard_True);
+        if (m_context->HasDetected()) {
+            m_context->SelectDetected(AIS_SelectionScheme_Replace);
+            for (m_context->InitSelected(); m_context->MoreSelected(); m_context->NextSelected()) {
+                Handle(AIS_Shape) ais = Handle(AIS_Shape)::DownCast(m_context->SelectedInteractive());
+                if (!ais.IsNull()) {
+                    Standard_Real x, y, z;
+                    m_view->Convert(event->pos().x(), event->pos().y(), x, y, z);
+                    emit shapeSelected(ais->Shape(), gp_Pnt(x, y, z));
+                }
             }
         }
+        // In selection mode, don't start dragging
+        m_isDragging = false;
+        return;
+    }
+    
+    // Only start dragging for navigation (not in selection mode)
+    m_isDragging = true;
+    
+    // Accept the event to ensure we receive move and release events
+    event->accept();
+}
+
+void OpenGL3DWidget::mouseMoveEvent(QMouseEvent *event)
+{
+    if (m_view.IsNull()) {
+        return;
+    }
+
+    // Calculate smooth mouse delta
+    QPoint currentPos = event->pos();
+    QPoint delta = currentPos - m_lastMousePos;
+    
+    // Only process mouse movement if we're actually dragging and not in selection mode
+    if (m_isDragging && !m_selectionMode && m_isMousePressed) {
+        
+        // CRITICAL: Ensure context is current for interaction - prevents black screen
+        makeCurrent(); // makeCurrent() returns void
+        
+        // Check if we're in XZ lathe mode and restrict rotation
+        if (m_currentViewMode == ViewMode::LatheXZ) {
+            // In XZ lathe mode, ONLY allow panning and zooming - NO rotation
+            if ((event->buttons() & Qt::MiddleButton) || 
+                ((event->buttons() & Qt::LeftButton) && (event->modifiers() & Qt::ShiftModifier)) ||
+                (event->buttons() & Qt::LeftButton)) { // All mouse drags become panning in XZ mode
+                
+                // Use OpenCASCADE's Pan method with proper delta calculation
+                m_view->Pan(currentPos.x() - m_lastMousePos.x(), m_lastMousePos.y() - currentPos.y());
+                throttledRedraw();
+            }
+            // Rotation is completely disabled in XZ mode to maintain plane lock
+        } else {
+            // Full 3D mode - allow all navigation
+            // Left mouse button: Rotation (improved handling)
+            if ((event->buttons() & Qt::LeftButton) && m_dragButton == Qt::LeftButton) {
+                // Use OpenCASCADE's StartRotation and Rotation methods for smooth rotation
+                if (!m_isDragStarted) {
+                    m_view->StartRotation(m_lastMousePos.x(), m_lastMousePos.y());
+                    m_isDragStarted = true;
+                }
+                m_view->Rotation(currentPos.x(), currentPos.y());
+                throttledRedraw();
+            }
+            // Middle mouse button OR Shift+Left: Panning (fixed implementation)
+            else if ((event->buttons() & Qt::MiddleButton) || 
+                     ((event->buttons() & Qt::LeftButton) && (event->modifiers() & Qt::ShiftModifier))) {
+                // Use OpenCASCADE's Pan method with proper delta calculation
+                m_view->Pan(currentPos.x() - m_lastMousePos.x(), m_lastMousePos.y() - currentPos.y());
+                throttledRedraw();
+            }
+        }
+        
+    } else if (m_selectionMode && !m_context.IsNull()) {
+        // In selection mode, just provide hover feedback
+        makeCurrent(); // makeCurrent() returns void
+        m_context->MoveTo(currentPos.x(), currentPos.y(), m_view, Standard_False);
+    }
+
+    // Update last mouse position for next move event
+    m_lastMousePos = currentPos;
+    
+    // Accept the event
+    event->accept();
+}
+
+void OpenGL3DWidget::mouseReleaseEvent(QMouseEvent* event)
+{
+    // Clear mouse state
+    m_isDragging = false;
+    m_isDragStarted = false;
+    m_dragButton = Qt::NoButton;
+    m_isMousePressed = false;
+    
+    // Accept the event
+    event->accept();
+}
+
+void OpenGL3DWidget::wheelEvent(QWheelEvent *event)
+{
+    if (m_view.IsNull()) {
+        return;
+    }
+    
+    // CRITICAL: Ensure context is current for zoom operations - prevents black screen
+    makeCurrent(); // makeCurrent() returns void
+    
+    // Get mouse position
+    QPointF mousePos = event->position();
+    Standard_Real mouseX = mousePos.x();
+    Standard_Real mouseY = mousePos.y();
+    
+    // Calculate zoom factor based on wheel delta
+    Standard_Real delta = event->angleDelta().y();
+    
+    if (delta > 0) {
+        // Zoom in - use OpenCASCADE's zoom at point
+        m_view->StartZoomAtPoint(static_cast<int>(mouseX), static_cast<int>(mouseY));
+        m_view->ZoomAtPoint(static_cast<int>(mouseX), static_cast<int>(mouseY), 
+                           static_cast<int>(mouseX), static_cast<int>(mouseY - 10));
+    } else if (delta < 0) {
+        // Zoom out  
+        m_view->StartZoomAtPoint(static_cast<int>(mouseX), static_cast<int>(mouseY));
+        m_view->ZoomAtPoint(static_cast<int>(mouseX), static_cast<int>(mouseY), 
+                           static_cast<int>(mouseX), static_cast<int>(mouseY + 10));
+    }
+    
+    // For XZ lathe mode, ensure we maintain the locked view after zoom
+    if (m_currentViewMode == ViewMode::LatheXZ) {
+        // Re-enforce XZ plane constraints after zoom
+        enforceLathePlaneView();
+    }
+    
+    // Use throttled redraw to prevent excessive updates
+    throttledRedraw();
+    
+    // Accept the event
+    event->accept();
+}
+
+// Method to throttle redraws to prevent excessive updates and black screens
+void OpenGL3DWidget::throttledRedraw()
+{
+    qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
+    if (currentTime - m_lastRedrawTime > 16) { // Max 60 FPS
+        m_lastRedrawTime = currentTime;
+        if (!m_view.IsNull() && m_isInitialized) {
+            // Context should already be current from calling function
+            updateView();
+        }
+    } else if (!m_redrawThrottleTimer->isActive()) {
+        m_redrawThrottleTimer->start();
     }
 }
 
@@ -254,7 +490,7 @@ void OpenGL3DWidget::displayShape(const TopoDS_Shape& shape)
             fitAll();
         } else {
             // Just update the view without fitting
-            updateView();
+            throttledRedraw();
         }
         
         qDebug() << "Shape displayed successfully";
@@ -271,7 +507,7 @@ void OpenGL3DWidget::clearAll()
     if (!m_context.IsNull())
     {
         m_context->RemoveAll(false);
-        updateView();
+        throttledRedraw();
     }
 }
 
@@ -281,76 +517,6 @@ void OpenGL3DWidget::fitAll()
     {
         m_view->FitAll();
         m_view->ZFitAll();
-        updateView();
-    }
-}
-
-void OpenGL3DWidget::mousePressEvent(QMouseEvent *event)
-{
-    m_lastMousePos = event->pos();
-    m_dragButton = event->button();
-
-    if (m_selectionMode && event->button() == Qt::LeftButton && !m_context.IsNull()) {
-        m_context->MoveTo(event->pos().x(), event->pos().y(), m_view, Standard_True);
-        if (m_context->HasDetected()) {
-            m_context->Select(Standard_True);
-            for (m_context->InitSelected(); m_context->MoreSelected(); m_context->NextSelected()) {
-                Handle(AIS_Shape) ais = Handle(AIS_Shape)::DownCast(m_context->SelectedInteractive());
-                if (!ais.IsNull()) {
-                    Standard_Real x, y, z;
-                    m_view->Convert(event->pos().x(), event->pos().y(), x, y, z);
-                    emit shapeSelected(ais->Shape(), gp_Pnt(x, y, z));
-                }
-            }
-        }
-    }
-    
-    m_isDragging = true;
-}
-
-void OpenGL3DWidget::mouseMoveEvent(QMouseEvent *event)
-{
-    if (m_view.IsNull())
-        return;
-
-    if (!m_selectionMode && (event->buttons() & Qt::LeftButton) && m_dragButton == Qt::LeftButton) {
-        m_view->Rotate(event->pos().x(), event->pos().y(), m_lastMousePos.x(), m_lastMousePos.y());
-    } else if (event->buttons() & Qt::MiddleButton ||
-               ((event->buttons() & Qt::LeftButton) && (event->modifiers() & Qt::ShiftModifier))) {
-        m_view->Pan(event->pos().x() - m_lastMousePos.x(), m_lastMousePos.y() - event->pos().y());
-    }
-
-    m_lastMousePos = event->pos();
-    update();
-}
-
-void OpenGL3DWidget::mouseReleaseEvent(QMouseEvent* event)
-{
-    Q_UNUSED(event)
-    m_isDragging = false;
-    m_dragButton = Qt::NoButton;
-}
-
-void OpenGL3DWidget::wheelEvent(QWheelEvent *event)
-{
-    if (!m_view.IsNull())
-    {
-        Standard_Real aFactor = 16;
-        Standard_Real aX = event->position().x();
-        Standard_Real aY = event->position().y();
-        
-        if (event->angleDelta().y() > 0)
-        {
-            aX += aFactor;
-            aY += aFactor;
-        }
-        else
-        {
-            aX -= aFactor;
-            aY -= aFactor;
-        }
-        
-        m_view->Zoom(event->position().x(), event->position().y(), aX, aY);
         updateView();
     }
 }
@@ -624,7 +790,7 @@ void OpenGL3DWidget::setupCameraXZ()
         return;
     }
     
-    // Set up XZ plane view for lathe operations
+    // Set up XZ plane view for lathe operations with strict plane locking
     // Standard lathe coordinate system: X increases top to bottom, Z increases right to left
     // This means we need to look from the Y-negative direction toward the origin
     
@@ -643,7 +809,7 @@ void OpenGL3DWidget::setupCameraXZ()
         m_view->SetEye(eye.X(), eye.Y(), eye.Z());
         m_view->SetUp(up.X(), up.Y(), up.Z());
         
-        // Set orthographic projection for 2D view
+        // Set orthographic projection for 2D view - critical for lathe operations
         m_view->Camera()->SetProjectionType(Graphic3d_Camera::Projection_Orthographic);
         
         // Adjust the view to show the entire grid
@@ -660,10 +826,15 @@ void OpenGL3DWidget::setupCameraXZ()
         // Update the current view mode
         m_currentViewMode = ViewMode::LatheXZ;
         
+        // Store the XZ view parameters for enforcement
+        m_lockedXZEye = eye;
+        m_lockedXZAt = at;
+        m_lockedXZUp = up;
+        
         // Refresh the view
         m_view->Redraw();
         
-        qDebug() << "Switched to XZ plane view (lathe coordinate system)";
+        qDebug() << "Switched to XZ plane view (lathe coordinate system) with strict plane locking";
     }
     catch (const Standard_Failure& ex) {
         qDebug() << "Error setting up XZ camera:" << ex.GetMessageString();
@@ -740,15 +911,134 @@ void OpenGL3DWidget::restore3DCameraState()
     }
 }
 
-void OpenGL3DWidget::createLatheGrid(double /*spacing*/, double /*extent*/)
+void OpenGL3DWidget::createLatheGrid(double spacing, double extent)
 {
-    // Grid creation disabled per latest requirements – keep existing scene objects intact.
-    m_gridVisible = false;
-    return;
+    if (m_context.IsNull()) {
+        return;
+    }
+    
+    // Remove any existing grid first
+    removeLatheGrid();
+    
+    try {
+        // Create grid lines for XZ plane
+        // X-axis lines (horizontal in the view)
+        for (double z = -extent; z <= extent; z += spacing) {
+            gp_Pnt p1(-extent, 0.0, z);
+            gp_Pnt p2(extent, 0.0, z);
+            
+            Handle(Geom_Line) line = new Geom_Line(p1, gp_Dir(gp_Vec(p1, p2)));
+            Handle(AIS_Line) aisLine = new AIS_Line(line);
+            
+            // Set grid line appearance
+            Handle(Prs3d_Drawer) drawer = aisLine->Attributes();
+            Handle(Prs3d_LineAspect) lineAspect = new Prs3d_LineAspect(
+                Quantity_NOC_GRAY60, Aspect_TOL_SOLID, 1.0);
+            drawer->SetLineAspect(lineAspect);
+            aisLine->SetAttributes(drawer);
+            
+            m_context->Display(aisLine, Standard_False);
+            m_gridLines.push_back(aisLine);
+        }
+        
+        // Z-axis lines (vertical in the view)  
+        for (double x = -extent; x <= extent; x += spacing) {
+            gp_Pnt p1(x, 0.0, -extent);
+            gp_Pnt p2(x, 0.0, extent);
+            
+            Handle(Geom_Line) line = new Geom_Line(p1, gp_Dir(gp_Vec(p1, p2)));
+            Handle(AIS_Line) aisLine = new AIS_Line(line);
+            
+            // Set grid line appearance
+            Handle(Prs3d_Drawer) drawer = aisLine->Attributes();
+            Handle(Prs3d_LineAspect) lineAspect = new Prs3d_LineAspect(
+                Quantity_NOC_GRAY60, Aspect_TOL_SOLID, 1.0);
+            drawer->SetLineAspect(lineAspect);
+            aisLine->SetAttributes(drawer);
+            
+            m_context->Display(aisLine, Standard_False);
+            m_gridLines.push_back(aisLine);
+        }
+        
+        // Add coordinate axes (more prominent)
+        // X-axis (red)
+        gp_Pnt xStart(0.0, 0.0, 0.0);
+        gp_Pnt xEnd(extent, 0.0, 0.0);
+        Handle(Geom_Line) xLine = new Geom_Line(xStart, gp_Dir(1.0, 0.0, 0.0));
+        Handle(AIS_Line) xAxis = new AIS_Line(xLine);
+        Handle(Prs3d_Drawer) xDrawer = xAxis->Attributes();
+        Handle(Prs3d_LineAspect) xLineAspect = new Prs3d_LineAspect(
+            Quantity_NOC_RED, Aspect_TOL_SOLID, 2.0);
+        xDrawer->SetLineAspect(xLineAspect);
+        xAxis->SetAttributes(xDrawer);
+        m_context->Display(xAxis, Standard_False);
+        m_gridLines.push_back(xAxis);
+        
+        // Z-axis (blue)
+        gp_Pnt zStart(0.0, 0.0, 0.0);
+        gp_Pnt zEnd(0.0, 0.0, extent);
+        Handle(Geom_Line) zLine = new Geom_Line(zStart, gp_Dir(0.0, 0.0, 1.0));
+        Handle(AIS_Line) zAxis = new AIS_Line(zLine);
+        Handle(Prs3d_Drawer) zDrawer = zAxis->Attributes();
+        Handle(Prs3d_LineAspect) zLineAspect = new Prs3d_LineAspect(
+            Quantity_NOC_BLUE, Aspect_TOL_SOLID, 2.0);
+        zDrawer->SetLineAspect(zLineAspect);
+        zAxis->SetAttributes(zDrawer);
+        m_context->Display(zAxis, Standard_False);
+        m_gridLines.push_back(zAxis);
+        
+        m_gridVisible = true;
+        m_context->UpdateCurrentViewer();
+        
+        qDebug() << "Created lathe grid with" << m_gridLines.size() << "lines";
+        
+    } catch (const std::exception& e) {
+        qDebug() << "Error creating lathe grid:" << e.what();
+    }
 }
 
 void OpenGL3DWidget::removeLatheGrid()
 {
-    // Grid removal disabled because grid is not created anymore, prevents inadvertent RemoveAll().
-    return;
+    if (m_context.IsNull() || m_gridLines.empty()) {
+        return;
+    }
+    
+    try {
+        // Remove all grid lines from the display
+        for (Handle(AIS_Line) line : m_gridLines) {
+            if (!line.IsNull()) {
+                m_context->Remove(line, Standard_False);
+            }
+        }
+        
+        m_gridLines.clear();
+        m_gridVisible = false;
+        m_context->UpdateCurrentViewer();
+        
+        qDebug() << "Removed lathe grid";
+        
+    } catch (const std::exception& e) {
+        qDebug() << "Error removing lathe grid:" << e.what();
+    }
+}
+
+void OpenGL3DWidget::enforceLathePlaneView()
+{
+    if (m_view.IsNull()) {
+        return;
+    }
+    
+    try {
+        // Re-enforce XZ plane constraints after zoom
+        m_view->SetAt(m_lockedXZAt.X(), m_lockedXZAt.Y(), m_lockedXZAt.Z());
+        m_view->SetEye(m_lockedXZEye.X(), m_lockedXZEye.Y(), m_lockedXZEye.Z());
+        m_view->SetUp(m_lockedXZUp.X(), m_lockedXZUp.Y(), m_lockedXZUp.Z());
+        
+        m_view->Redraw();
+        
+        qDebug() << "XZ plane view enforced after zoom";
+    }
+    catch (const Standard_Failure& ex) {
+        qDebug() << "Error enforcing XZ plane view:" << ex.GetMessageString();
+    }
 } 
