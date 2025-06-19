@@ -47,7 +47,6 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_stored3DProjection(Graphic3d_Camera::Projection_Perspective)
     , m_has3DCameraState(false)
     , m_workspaceController(nullptr)
-    , m_gridVisible(false)
 {
     // Enable mouse tracking for proper interaction
     setMouseTracking(true);
@@ -82,9 +81,6 @@ OpenGL3DWidget::~OpenGL3DWidget()
         delete m_updateTimer;
         m_updateTimer = nullptr;
     }
-    
-    // Clean up lathe grid if present
-    removeLatheGrid();
     
     // Release OpenCASCADE resources
     m_context.Nullify();
@@ -335,22 +331,8 @@ void OpenGL3DWidget::wheelEvent(QWheelEvent *event)
 {
     if (!m_view.IsNull())
     {
-        Standard_Real aFactor = 16;
-        Standard_Real aX = event->position().x();
-        Standard_Real aY = event->position().y();
-        
-        if (event->angleDelta().y() > 0)
-        {
-            aX += aFactor;
-            aY += aFactor;
-        }
-        else
-        {
-            aX -= aFactor;
-            aY -= aFactor;
-        }
-        
-        m_view->Zoom(event->position().x(), event->position().y(), aX, aY);
+        Standard_Real factor = (event->angleDelta().y() > 0) ? 0.9 : 1.1;
+        m_view->SetScale(m_view->Scale() * factor);
         updateView();
     }
 }
@@ -525,16 +507,7 @@ void OpenGL3DWidget::setViewMode(ViewMode mode)
         
         m_currentViewMode = mode;
         applyCameraForViewMode();
-        
-        // Show or hide grid based on view mode
-        if (mode == ViewMode::LatheXZ) {
-            // Create grid for lathe view
-            createLatheGrid();
-        } else {
-            // Remove grid when switching to 3D view
-            removeLatheGrid();
-        }
-        
+
         // Emit signal for UI updates
         emit viewModeChanged(mode);
         
@@ -583,11 +556,6 @@ void OpenGL3DWidget::setupCamera3D()
     }
     
     try {
-        // Remove any existing grid
-        if (m_gridVisible) {
-            removeLatheGrid();
-        }
-        
         // Restore previous 3D camera state if available
         if (m_has3DCameraState) {
             restore3DCameraState();
@@ -646,17 +614,13 @@ void OpenGL3DWidget::setupCameraXZ()
         // Set orthographic projection for 2D view
         m_view->Camera()->SetProjectionType(Graphic3d_Camera::Projection_Orthographic);
         
-        // Adjust the view to show the entire grid
-        double extent = 250.0;  // Match or exceed grid extent
+        // Adjust the view to a reasonable default extent
+        double extent = 250.0;
         m_view->SetSize(extent * 1.2);  // Scale to leave some margin
         
         // Change trihedron display to match lathe coordinate system
         m_view->TriedronErase();
         m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_RED, 0.08, V3d_ZBUFFER);
-        
-        // Create the grid
-        createLatheGrid(10.0, 200.0);
-        
         // Update the current view mode
         m_currentViewMode = ViewMode::LatheXZ;
         
@@ -709,10 +673,6 @@ void OpenGL3DWidget::restore3DCameraState()
     }
     
     try {
-        // Remove the grid if it's visible
-        if (m_gridVisible) {
-            removeLatheGrid();
-        }
         
         // Restore stored camera parameters
         m_view->SetAt(m_stored3DAt.X(), m_stored3DAt.Y(), m_stored3DAt.Z());
@@ -739,16 +699,3 @@ void OpenGL3DWidget::restore3DCameraState()
         qDebug() << "Error restoring 3D camera:" << ex.GetMessageString();
     }
 }
-
-void OpenGL3DWidget::createLatheGrid(double /*spacing*/, double /*extent*/)
-{
-    // Grid creation disabled per latest requirements – keep existing scene objects intact.
-    m_gridVisible = false;
-    return;
-}
-
-void OpenGL3DWidget::removeLatheGrid()
-{
-    // Grid removal disabled because grid is not created anymore, prevents inadvertent RemoveAll().
-    return;
-} 
