@@ -146,8 +146,8 @@ public:
     void applyWorkpieceTransformationToToolpaths();
 
     // Display a 2-D lathe profile (radius,Z) as a wireframe overlay.
-    bool displayLatheProfile(const std::vector<IntuiCAM::Geometry::Point2D>& profile,
-                             const QString& name);
+    bool displayLatheProfile(const std::vector<IntuiCAM::Geometry::Point2D>& profile, const QString& name = "Profile");
+    void removeProfile(const QString& name);
 
 signals:
     /**
@@ -213,6 +213,8 @@ private:
     QMap<QString, Handle(AIS_Shape)> m_displayedToolpaths;
     // Store original untransformed toolpath shapes to avoid accumulating transformations
     QMap<QString, TopoDS_Shape> m_originalToolpathShapes;
+    // Store profile shapes separately
+    QMap<QString, Handle(AIS_Shape)> m_displayedProfiles;
     ToolpathDisplaySettings m_displaySettings;
     WorkpieceManager* m_workpieceManager;
 };

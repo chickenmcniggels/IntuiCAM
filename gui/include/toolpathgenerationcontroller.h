@@ -181,7 +181,7 @@ public:
      * @brief Update specific parameters with incremental regeneration
      * @param changes List of parameter changes to apply
      */
-    void updateParameters(const QVector<ParameterChange>& changes);
+    void updateParameters(const QList<ParameterChange>& changes);
 
     /**
      * @brief Update a single parameter with immediate feedback
@@ -402,7 +402,7 @@ private:
         QStringList operationsToRegenerate;
         QStringList visualOnlyUpdates;
     };
-    UpdateStrategy analyzeParameterChanges(const QVector<ParameterChange>& changes);
+    UpdateStrategy analyzeParameterChanges(const QList<ParameterChange>& changes);
 
     /**
      * @brief Perform incremental toolpath regeneration
@@ -427,7 +427,7 @@ private:
      * @param newRequest New generation request
      * @return List of detected parameter changes
      */
-    QVector<ParameterChange> detectParameterChanges(const GenerationRequest& newRequest);
+    QList<ParameterChange> detectParameterChanges(const GenerationRequest& newRequest);
 
     /**
      * @brief Regenerate the contouring operation with updated parameters
