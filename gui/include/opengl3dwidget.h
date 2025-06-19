@@ -233,21 +233,16 @@ private:
      * @brief Restore previously stored 3D camera state
      */
     void restore3DCameraState();
-    
+
     /**
-     * @brief Enforce XZ plane view constraints after zoom/interaction
-     */
-    void enforceLathePlaneView();
-    
-    /**
-     * @brief Create grid for lathe coordinate system
-     * @param spacing Grid line spacing
-     * @param extent Grid extent in both directions
+     * @brief Create and display a grid for the lathe XZ view
+     * @param spacing Spacing between grid lines in mm
+     * @param extent Maximum distance from origin for grid lines
      */
     void createLatheGrid(double spacing = 10.0, double extent = 200.0);
-    
+
     /**
-     * @brief Remove lathe grid from display
+     * @brief Remove the lathe grid from display
      */
     void removeLatheGrid();
 
@@ -304,26 +299,6 @@ private:
     Standard_Real m_gridExtent;
     
     // Grid objects are managed by the AIS context, no need to store references
-    
-    // Improved mouse control and rendering stability
-    double m_mouseSensitivity;          ///< Mouse sensitivity multiplier
-    bool m_isMousePressed;              ///< Track mouse press state
-    qint64 m_lastRedrawTime;            ///< Last redraw timestamp for throttling
-    QTimer* m_redrawThrottleTimer;      ///< Timer for throttled redraws to prevent flicker
-
-    // XZ plane locking parameters (for strict lathe view enforcement)
-    gp_Pnt m_lockedXZEye;     ///< Locked camera eye position for XZ plane
-    gp_Pnt m_lockedXZAt;      ///< Locked camera target for XZ plane
-    gp_Dir m_lockedXZUp;      ///< Locked camera up vector for XZ plane
-    
-    // Grid management for lathe mode
-    std::vector<Handle(AIS_Line)> m_gridLines; ///< Grid lines for lathe XZ view
-    
-private slots:
-    /**
-     * @brief Throttled redraw to prevent excessive updates and flickering
-     */
-    void throttledRedraw();
 };
 
 #endif // OPENGL3DWIDGET_H 

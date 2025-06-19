@@ -52,12 +52,6 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_has3DCameraState(false)
     , m_workspaceController(nullptr)
     , m_gridVisible(false)
-    , m_mouseSensitivity(1.0)
-    , m_isMousePressed(false)
-    , m_lastRedrawTime(0)
-    , m_lockedXZEye(0.0, -1000.0, 0.0)
-    , m_lockedXZAt(0.0, 0.0, 0.0)
-    , m_lockedXZUp(-1.0, 0.0, 0.0)
 {
     // Enable mouse tracking for proper interaction
     setMouseTracking(true);
@@ -119,12 +113,6 @@ OpenGL3DWidget::~OpenGL3DWidget()
         m_updateTimer->stop();
         delete m_updateTimer;
         m_updateTimer = nullptr;
-    }
-    
-    if (m_redrawThrottleTimer) {
-        m_redrawThrottleTimer->stop();
-        delete m_redrawThrottleTimer;
-        m_redrawThrottleTimer = nullptr;
     }
     
     // Clean up lathe grid if present
@@ -418,105 +406,24 @@ void OpenGL3DWidget::mouseReleaseEvent(QMouseEvent* event)
 
 void OpenGL3DWidget::wheelEvent(QWheelEvent *event)
 {
-    if (m_view.IsNull()) {
-        return;
-    }
-    
-    // CRITICAL: Ensure context is current for zoom operations - prevents black screen
-    makeCurrent(); // makeCurrent() returns void
-    
-    // Get mouse position
-    QPointF mousePos = event->position();
-    Standard_Real mouseX = mousePos.x();
-    Standard_Real mouseY = mousePos.y();
-    
-    // Calculate zoom factor based on wheel delta
-    Standard_Real delta = event->angleDelta().y();
-    
-    if (delta > 0) {
-        // Zoom in - use OpenCASCADE's zoom at point
-        m_view->StartZoomAtPoint(static_cast<int>(mouseX), static_cast<int>(mouseY));
-        m_view->ZoomAtPoint(static_cast<int>(mouseX), static_cast<int>(mouseY), 
-                           static_cast<int>(mouseX), static_cast<int>(mouseY - 10));
-    } else if (delta < 0) {
-        // Zoom out  
-        m_view->StartZoomAtPoint(static_cast<int>(mouseX), static_cast<int>(mouseY));
-        m_view->ZoomAtPoint(static_cast<int>(mouseX), static_cast<int>(mouseY), 
-                           static_cast<int>(mouseX), static_cast<int>(mouseY + 10));
-    }
-    
-    // For XZ lathe mode, ensure we maintain the locked view after zoom
-    if (m_currentViewMode == ViewMode::LatheXZ) {
-        // Re-enforce XZ plane constraints after zoom
-        enforceLathePlaneView();
-    }
-    
-    // Use throttled redraw to prevent excessive updates
-    throttledRedraw();
-    
-    // Accept the event
-    event->accept();
-}
-
-// Method to throttle redraws to prevent excessive updates and black screens
-void OpenGL3DWidget::throttledRedraw()
-{
-    qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
-    if (currentTime - m_lastRedrawTime > 16) { // Max 60 FPS
-        m_lastRedrawTime = currentTime;
-        if (!m_view.IsNull() && m_isInitialized) {
-            // Context should already be current from calling function
-            updateView();
-        }
-    } else if (!m_redrawThrottleTimer->isActive()) {
-        m_redrawThrottleTimer->start();
-    }
-}
-
-void OpenGL3DWidget::displayShape(const TopoDS_Shape& shape)
-{
-    if (m_context.IsNull() || shape.IsNull())
-        return;
-        
-    try {
-        // Create AIS shape
-        Handle(AIS_Shape) aisShape = new AIS_Shape(shape);
-        
-        // Display the shape
-        m_context->Display(aisShape, AIS_Shaded, 0, false);
-        
-        // Only auto-fit if enabled
-        if (m_autoFitEnabled) {
-            fitAll();
-        } else {
-            // Just update the view without fitting
-            throttledRedraw();
-        }
-        
-        qDebug() << "Shape displayed successfully";
-        
-    } catch (const std::exception& e) {
-        qDebug() << "Error displaying shape:" << e.what();
-    } catch (...) {
-        qDebug() << "Unknown error displaying shape";
-    }
-}
-
-void OpenGL3DWidget::clearAll()
-{
-    if (!m_context.IsNull())
-    {
-        m_context->RemoveAll(false);
-        throttledRedraw();
-    }
-}
-
-void OpenGL3DWidget::fitAll()
-{
     if (!m_view.IsNull())
     {
-        m_view->FitAll();
-        m_view->ZFitAll();
+        Standard_Real aFactor = 16;
+        Standard_Real aX = event->position().x();
+        Standard_Real aY = event->position().y();
+        
+        if (event->angleDelta().y() > 0)
+        {
+            aX += aFactor;
+            aY += aFactor;
+        }
+        else
+        {
+            aX -= aFactor;
+            aY -= aFactor;
+        }
+        
+        m_view->Zoom(event->position().x(), event->position().y(), aX, aY);
         updateView();
     }
 }
@@ -691,16 +598,7 @@ void OpenGL3DWidget::setViewMode(ViewMode mode)
         
         m_currentViewMode = mode;
         applyCameraForViewMode();
-        
-        // Show or hide grid based on view mode
-        if (mode == ViewMode::LatheXZ) {
-            // Create grid for lathe view
-            createLatheGrid();
-        } else {
-            // Remove grid when switching to 3D view
-            removeLatheGrid();
-        }
-        
+
         // Emit signal for UI updates
         emit viewModeChanged(mode);
         
@@ -749,11 +647,6 @@ void OpenGL3DWidget::setupCamera3D()
     }
     
     try {
-        // Remove any existing grid
-        if (m_gridVisible) {
-            removeLatheGrid();
-        }
-        
         // Restore previous 3D camera state if available
         if (m_has3DCameraState) {
             restore3DCameraState();
@@ -812,17 +705,13 @@ void OpenGL3DWidget::setupCameraXZ()
         // Set orthographic projection for 2D view - critical for lathe operations
         m_view->Camera()->SetProjectionType(Graphic3d_Camera::Projection_Orthographic);
         
-        // Adjust the view to show the entire grid
-        double extent = 250.0;  // Match or exceed grid extent
+        // Adjust the view to a reasonable default extent
+        double extent = 250.0;
         m_view->SetSize(extent * 1.2);  // Scale to leave some margin
         
         // Change trihedron display to match lathe coordinate system
         m_view->TriedronErase();
         m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_RED, 0.08, V3d_ZBUFFER);
-        
-        // Create the grid
-        createLatheGrid(10.0, 200.0);
-        
         // Update the current view mode
         m_currentViewMode = ViewMode::LatheXZ;
         
@@ -880,10 +769,6 @@ void OpenGL3DWidget::restore3DCameraState()
     }
     
     try {
-        // Remove the grid if it's visible
-        if (m_gridVisible) {
-            removeLatheGrid();
-        }
         
         // Restore stored camera parameters
         m_view->SetAt(m_stored3DAt.X(), m_stored3DAt.Y(), m_stored3DAt.Z());
@@ -911,134 +796,15 @@ void OpenGL3DWidget::restore3DCameraState()
     }
 }
 
-void OpenGL3DWidget::createLatheGrid(double spacing, double extent)
+void OpenGL3DWidget::createLatheGrid(double /*spacing*/, double /*extent*/)
 {
-    if (m_context.IsNull()) {
-        return;
-    }
-    
-    // Remove any existing grid first
-    removeLatheGrid();
-    
-    try {
-        // Create grid lines for XZ plane
-        // X-axis lines (horizontal in the view)
-        for (double z = -extent; z <= extent; z += spacing) {
-            gp_Pnt p1(-extent, 0.0, z);
-            gp_Pnt p2(extent, 0.0, z);
-            
-            Handle(Geom_Line) line = new Geom_Line(p1, gp_Dir(gp_Vec(p1, p2)));
-            Handle(AIS_Line) aisLine = new AIS_Line(line);
-            
-            // Set grid line appearance
-            Handle(Prs3d_Drawer) drawer = aisLine->Attributes();
-            Handle(Prs3d_LineAspect) lineAspect = new Prs3d_LineAspect(
-                Quantity_NOC_GRAY60, Aspect_TOL_SOLID, 1.0);
-            drawer->SetLineAspect(lineAspect);
-            aisLine->SetAttributes(drawer);
-            
-            m_context->Display(aisLine, Standard_False);
-            m_gridLines.push_back(aisLine);
-        }
-        
-        // Z-axis lines (vertical in the view)  
-        for (double x = -extent; x <= extent; x += spacing) {
-            gp_Pnt p1(x, 0.0, -extent);
-            gp_Pnt p2(x, 0.0, extent);
-            
-            Handle(Geom_Line) line = new Geom_Line(p1, gp_Dir(gp_Vec(p1, p2)));
-            Handle(AIS_Line) aisLine = new AIS_Line(line);
-            
-            // Set grid line appearance
-            Handle(Prs3d_Drawer) drawer = aisLine->Attributes();
-            Handle(Prs3d_LineAspect) lineAspect = new Prs3d_LineAspect(
-                Quantity_NOC_GRAY60, Aspect_TOL_SOLID, 1.0);
-            drawer->SetLineAspect(lineAspect);
-            aisLine->SetAttributes(drawer);
-            
-            m_context->Display(aisLine, Standard_False);
-            m_gridLines.push_back(aisLine);
-        }
-        
-        // Add coordinate axes (more prominent)
-        // X-axis (red)
-        gp_Pnt xStart(0.0, 0.0, 0.0);
-        gp_Pnt xEnd(extent, 0.0, 0.0);
-        Handle(Geom_Line) xLine = new Geom_Line(xStart, gp_Dir(1.0, 0.0, 0.0));
-        Handle(AIS_Line) xAxis = new AIS_Line(xLine);
-        Handle(Prs3d_Drawer) xDrawer = xAxis->Attributes();
-        Handle(Prs3d_LineAspect) xLineAspect = new Prs3d_LineAspect(
-            Quantity_NOC_RED, Aspect_TOL_SOLID, 2.0);
-        xDrawer->SetLineAspect(xLineAspect);
-        xAxis->SetAttributes(xDrawer);
-        m_context->Display(xAxis, Standard_False);
-        m_gridLines.push_back(xAxis);
-        
-        // Z-axis (blue)
-        gp_Pnt zStart(0.0, 0.0, 0.0);
-        gp_Pnt zEnd(0.0, 0.0, extent);
-        Handle(Geom_Line) zLine = new Geom_Line(zStart, gp_Dir(0.0, 0.0, 1.0));
-        Handle(AIS_Line) zAxis = new AIS_Line(zLine);
-        Handle(Prs3d_Drawer) zDrawer = zAxis->Attributes();
-        Handle(Prs3d_LineAspect) zLineAspect = new Prs3d_LineAspect(
-            Quantity_NOC_BLUE, Aspect_TOL_SOLID, 2.0);
-        zDrawer->SetLineAspect(zLineAspect);
-        zAxis->SetAttributes(zDrawer);
-        m_context->Display(zAxis, Standard_False);
-        m_gridLines.push_back(zAxis);
-        
-        m_gridVisible = true;
-        m_context->UpdateCurrentViewer();
-        
-        qDebug() << "Created lathe grid with" << m_gridLines.size() << "lines";
-        
-    } catch (const std::exception& e) {
-        qDebug() << "Error creating lathe grid:" << e.what();
-    }
+    // Grid creation disabled per latest requirements – keep existing scene objects intact.
+    m_gridVisible = false;
+    return;
 }
 
 void OpenGL3DWidget::removeLatheGrid()
 {
-    if (m_context.IsNull() || m_gridLines.empty()) {
-        return;
-    }
-    
-    try {
-        // Remove all grid lines from the display
-        for (Handle(AIS_Line) line : m_gridLines) {
-            if (!line.IsNull()) {
-                m_context->Remove(line, Standard_False);
-            }
-        }
-        
-        m_gridLines.clear();
-        m_gridVisible = false;
-        m_context->UpdateCurrentViewer();
-        
-        qDebug() << "Removed lathe grid";
-        
-    } catch (const std::exception& e) {
-        qDebug() << "Error removing lathe grid:" << e.what();
-    }
-}
-
-void OpenGL3DWidget::enforceLathePlaneView()
-{
-    if (m_view.IsNull()) {
-        return;
-    }
-    
-    try {
-        // Re-enforce XZ plane constraints after zoom
-        m_view->SetAt(m_lockedXZAt.X(), m_lockedXZAt.Y(), m_lockedXZAt.Z());
-        m_view->SetEye(m_lockedXZEye.X(), m_lockedXZEye.Y(), m_lockedXZEye.Z());
-        m_view->SetUp(m_lockedXZUp.X(), m_lockedXZUp.Y(), m_lockedXZUp.Z());
-        
-        m_view->Redraw();
-        
-        qDebug() << "XZ plane view enforced after zoom";
-    }
-    catch (const Standard_Failure& ex) {
-        qDebug() << "Error enforcing XZ plane view:" << ex.GetMessageString();
-    }
+    // Grid removal disabled because grid is not created anymore, prevents inadvertent RemoveAll().
+    return;
 } 
