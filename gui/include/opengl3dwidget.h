@@ -163,6 +163,30 @@ public:
      */
     void setWorkspaceController(class WorkspaceController* controller) { m_workspaceController = controller; }
 
+    /**
+     * @brief Enable or disable toolpath visibility
+     * @param visible True to show toolpaths, false to hide
+     */
+    void setToolpathsVisible(bool visible);
+
+    /**
+     * @brief Enable or disable profile visibility
+     * @param visible True to show profiles, false to hide
+     */
+    void setProfilesVisible(bool visible);
+
+    /**
+     * @brief Check if toolpaths are currently visible
+     * @return True if toolpaths are visible
+     */
+    bool areToolpathsVisible() const { return m_toolpathsVisible; }
+
+    /**
+     * @brief Check if profiles are currently visible
+     * @return True if profiles are visible
+     */
+    bool areProfilesVisible() const { return m_profilesVisible; }
+
 signals:
     /**
      * @brief Emitted when the viewer is successfully initialized
@@ -315,6 +339,10 @@ private:
     bool m_gridVisible;
     Standard_Real m_gridSpacing;
     Standard_Real m_gridExtent;
+    
+    // Visibility control for toolpaths and profiles
+    bool m_toolpathsVisible;
+    bool m_profilesVisible;
     
     // Grid objects are managed by the AIS context, no need to store references
 };

@@ -403,23 +403,8 @@ void MainWindow::setupConnections()
                 }, Qt::DirectConnection);
     }
     
-    // Connect to the toolpath generation controller
-    if (m_toolpathGenerationController) {
-        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::generationStarted,
-                this, &MainWindow::handleToolpathGenerationStarted);
-        
-        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::progressUpdated,
-                this, &MainWindow::handleToolpathProgressUpdated);
-        
-        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::operationCompleted,
-                this, &MainWindow::handleToolpathOperationCompleted);
-        
-        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::generationCompleted,
-                this, &MainWindow::handleToolpathGenerationCompleted);
-        
-        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::errorOccurred,
-                this, &MainWindow::handleToolpathGenerationError);
-    }
+    // Note: Toolpath generation controller connections are handled in setupWorkspaceConnections()
+    // to ensure proper initialization order
     
     if (m_workspaceController && m_toolpathGenerationController) {
         connect(m_workspaceController->getWorkpieceManager(), &WorkpieceManager::workpieceTransformed,
@@ -448,6 +433,7 @@ void MainWindow::setupWorkspaceConnections()
             // Initialize the toolpath generation controller with the same context
             if (m_toolpathGenerationController) {
                 m_toolpathGenerationController->initialize(context);
+                m_toolpathGenerationController->setWorkspaceController(m_workspaceController);
                 
                 // Connect toolpath generation signals
                 connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::generationStarted,
@@ -477,8 +463,16 @@ void MainWindow::setupWorkspaceConnections()
                 connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::errorOccurred,
                         this, &MainWindow::handleToolpathGenerationError);
                 
+                // Connect parameter synchronization signals
+                connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::parameterValidated,
+                        this, &MainWindow::handleParameterValidation);
+                connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::incrementalUpdateCompleted,
+                        this, &MainWindow::handleIncrementalUpdateCompleted);
+                connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::parameterCacheUpdated,
+                        this, &MainWindow::handleParameterCacheUpdated);
+                
                 if (m_outputWindow) {
-                    m_outputWindow->append("Toolpath generation controller initialized successfully");
+                    m_outputWindow->append("Toolpath generation controller initialized successfully with parameter synchronization");
                 }
             }
             
@@ -1531,72 +1525,369 @@ void MainWindow::handleOperationToggled(const QString& operationName, bool enabl
 
 void MainWindow::handleGenerateToolpaths()
 {
+    // IMMEDIATE CRASH TEST - Show message box to confirm method is called
+    QMessageBox::information(this, "Debug", "handleGenerateToolpaths() called!");
+    
+    // Add extensive debugging to identify crash location
+    if (m_outputWindow) {
+        m_outputWindow->append("=== DEBUG: Starting handleGenerateToolpaths() ===");
+    }
+    
+    // Check if we have all the necessary components
     if (!m_toolpathGenerationController) {
+        statusBar()->showMessage("Error: Toolpath generation controller not available", 3000);
         if (m_outputWindow) {
-            m_outputWindow->append("Error: Toolpath generation controller not initialized");
+            m_outputWindow->append("ERROR: m_toolpathGenerationController is null");
         }
-        statusBar()->showMessage("Error: Toolpath generation controller not initialized", 3000);
         return;
     }
     
-    // First, connect the toolpath controller to the UI for progress updates
     if (m_outputWindow) {
-        m_toolpathGenerationController->connectStatusText(m_outputWindow);
+        m_outputWindow->append("DEBUG: ToolpathGenerationController available");
     }
     
-    // Gather parameters from setup panel
-    double rawDiameter = m_setupConfigPanel ? m_setupConfigPanel->getRawDiameter() : 0.0;
-    double distanceToChuck = m_setupConfigPanel ? m_setupConfigPanel->getDistanceToChuck() : 0.0;
-    bool orientationFlipped = m_setupConfigPanel ? m_setupConfigPanel->isOrientationFlipped() : false;
-    QString stepFilePath = m_setupConfigPanel ? m_setupConfigPanel->getStepFilePath() : QString();
-
-    TopoDS_Shape partShape;
-    if (m_workspaceController && m_workspaceController->hasPartShape()) {
-        partShape = m_workspaceController->getPartShape();
-    }
-    
-    // Check if we have a valid raw material diameter
-    if (rawDiameter <= 0.0) {
+    if (!m_workspaceController) {
+        statusBar()->showMessage("Error: Workspace controller not available", 3000);
         if (m_outputWindow) {
-            m_outputWindow->append("Warning: No valid raw material diameter detected. Using default value of 50mm.");
+            m_outputWindow->append("ERROR: m_workspaceController is null");
         }
-        rawDiameter = 50.0; // Default value
+        return;
     }
     
-    // Create request with appropriate parameters
+    if (m_outputWindow) {
+        m_outputWindow->append("DEBUG: WorkspaceController available");
+    }
+    
+    if (!m_workspaceController->isInitialized()) {
+        statusBar()->showMessage("Error: Workspace not initialized. Please load a STEP file first.", 3000);
+        if (m_outputWindow) {
+            m_outputWindow->append("ERROR: WorkspaceController not initialized");
+        }
+        return;
+    }
+    
+    if (m_outputWindow) {
+        m_outputWindow->append("DEBUG: WorkspaceController initialized");
+    }
+    
+    if (!m_setupConfigPanel) {
+        statusBar()->showMessage("Error: Setup configuration panel not available", 3000);
+        if (m_outputWindow) {
+            m_outputWindow->append("ERROR: m_setupConfigPanel is null");
+        }
+        return;
+    }
+    
+    if (m_outputWindow) {
+        m_outputWindow->append("DEBUG: SetupConfigPanel available");
+    }
+    
+    // Check if we have a part loaded
+    if (!m_workspaceController->hasPartShape()) {
+        statusBar()->showMessage("Error: No part loaded. Please load a STEP file first.", 3000);
+        if (m_outputWindow) {
+            m_outputWindow->append("ERROR: No part shape loaded");
+        }
+        return;
+    }
+    
+    if (m_outputWindow) {
+        m_outputWindow->append("DEBUG: Part shape available");
+    }
+    
+    // Gather data from the setup configuration panel with error checking
+    QString stepFilePath;
+    try {
+        stepFilePath = m_setupConfigPanel->getStepFilePath();
+        if (m_outputWindow) {
+            m_outputWindow->append(QString("DEBUG: Step file path retrieved: %1").arg(stepFilePath));
+        }
+    } catch (...) {
+        statusBar()->showMessage("Error: Failed to get STEP file path", 3000);
+        if (m_outputWindow) {
+            m_outputWindow->append("ERROR: Exception getting step file path");
+        }
+        return;
+    }
+    
+    if (stepFilePath.isEmpty()) {
+        statusBar()->showMessage("Error: No STEP file selected", 3000);
+        if (m_outputWindow) {
+            m_outputWindow->append("ERROR: Step file path is empty");
+        }
+        return;
+    }
+    
+    // Create the generation request with extensive error checking
     IntuiCAM::GUI::ToolpathGenerationController::GenerationRequest request;
-    request.rawDiameter = rawDiameter;
-    request.distanceToChuck = distanceToChuck;
-    request.orientationFlipped = orientationFlipped;
-    request.partShape = partShape;
-    request.stepFilePath = stepFilePath;
     
-    // Enabled operations
-    QStringList ops{"Contouring", "Threading", "Chamfering", "Parting"};
-    for (const QString& op : ops) {
-        if (m_setupConfigPanel && m_setupConfigPanel->isOperationEnabled(op)) {
-            request.enabledOperations.append(op);
+    try {
+        // Basic part information
+        request.stepFilePath = stepFilePath;
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Getting part shape from workspace controller");
+        }
+        request.partShape = m_workspaceController->getPartShape();
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Getting material type from setup panel");
+        }
+        request.materialType = m_setupConfigPanel->getMaterialType();
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Getting raw diameter from setup panel");
+        }
+        request.rawDiameter = m_setupConfigPanel->getRawDiameter();
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Getting distance to chuck from setup panel");
+        }
+        request.distanceToChuck = m_setupConfigPanel->getDistanceToChuck();
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Getting orientation flip from setup panel");
+        }
+        request.orientationFlipped = m_setupConfigPanel->isOrientationFlipped();
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Basic part information gathered successfully");
+        }
+        
+    } catch (...) {
+        statusBar()->showMessage("Error: Failed to gather basic part information", 3000);
+        if (m_outputWindow) {
+            m_outputWindow->append("ERROR: Exception gathering basic part information");
+        }
+        return;
+    }
+    
+    // Operation settings - gather enabled operations with error checking
+    QStringList enabledOperations;
+    try {
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Checking enabled operations");
+        }
+        
+        if (m_setupConfigPanel->isOperationEnabled("Contouring")) {
+            enabledOperations << "Contouring";
+            if (m_outputWindow) {
+                m_outputWindow->append("DEBUG: Contouring operation enabled");
+            }
+        }
+        if (m_setupConfigPanel->isOperationEnabled("Threading")) {
+            enabledOperations << "Threading";
+            if (m_outputWindow) {
+                m_outputWindow->append("DEBUG: Threading operation enabled");
+            }
+        }
+        if (m_setupConfigPanel->isOperationEnabled("Chamfering")) {
+            enabledOperations << "Chamfering";
+            if (m_outputWindow) {
+                m_outputWindow->append("DEBUG: Chamfering operation enabled");
+            }
+        }
+        if (m_setupConfigPanel->isOperationEnabled("Parting")) {
+            enabledOperations << "Parting";
+            if (m_outputWindow) {
+                m_outputWindow->append("DEBUG: Parting operation enabled");
+            }
+        }
+        
+        if (m_outputWindow) {
+            m_outputWindow->append(QString("DEBUG: Found %1 enabled operations: %2").arg(enabledOperations.size()).arg(enabledOperations.join(", ")));
+        }
+        
+    } catch (...) {
+        statusBar()->showMessage("Error: Failed to check enabled operations", 3000);
+        if (m_outputWindow) {
+            m_outputWindow->append("ERROR: Exception checking enabled operations");
+        }
+        return;
+    }
+    
+    // Also check for legacy operations from timeline if available
+    if (m_toolpathTimeline) {
+        try {
+            if (m_outputWindow) {
+                m_outputWindow->append("DEBUG: Checking timeline for additional operations");
+            }
+            
+            for (int i = 0; i < m_toolpathTimeline->getToolpathCount(); ++i) {
+                if (m_toolpathTimeline->isToolpathEnabled(i)) {
+                    QString toolpathType = m_toolpathTimeline->getToolpathType(i);
+                    if (!enabledOperations.contains(toolpathType)) {
+                        enabledOperations << toolpathType;
+                        if (m_outputWindow) {
+                            m_outputWindow->append(QString("DEBUG: Added timeline operation: %1").arg(toolpathType));
+                        }
+                    }
+                }
+            }
+        } catch (...) {
+            if (m_outputWindow) {
+                m_outputWindow->append("WARNING: Exception checking timeline operations - continuing");
+            }
         }
     }
-
-    // Operation allowances
-    if (m_setupConfigPanel) {
+    
+    request.enabledOperations = enabledOperations;
+    
+    if (enabledOperations.isEmpty()) {
+        statusBar()->showMessage("Error: No operations enabled. Please enable at least one operation.", 3000);
+        if (m_outputWindow) {
+            m_outputWindow->append("ERROR: No operations enabled");
+        }
+        return;
+    }
+    
+    // Operation parameters with error checking
+    try {
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Getting operation parameters");
+        }
+        
         request.facingAllowance = m_setupConfigPanel->getFacingAllowance();
         request.roughingAllowance = m_setupConfigPanel->getRoughingAllowance();
         request.finishingAllowance = m_setupConfigPanel->getFinishingAllowance();
         request.partingWidth = m_setupConfigPanel->getPartingWidth();
-        request.tolerance = m_setupConfigPanel->getTolerance();
-        request.materialType = m_setupConfigPanel->getMaterialType();
-        request.surfaceFinish = m_setupConfigPanel->getSurfaceFinish();
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Operation parameters retrieved successfully");
+        }
+        
+    } catch (...) {
+        statusBar()->showMessage("Error: Failed to get operation parameters", 3000);
+        if (m_outputWindow) {
+            m_outputWindow->append("ERROR: Exception getting operation parameters");
+        }
+        return;
     }
     
-    // Generate the toolpaths
-    m_toolpathGenerationController->generateToolpaths(request);
+    // Quality settings with error checking
+    try {
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Getting quality settings");
+        }
+        
+        request.surfaceFinish = m_setupConfigPanel->getSurfaceFinish();
+        request.tolerance = m_setupConfigPanel->getTolerance();
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Quality settings retrieved successfully");
+        }
+        
+    } catch (...) {
+        statusBar()->showMessage("Error: Failed to get quality settings", 3000);
+        if (m_outputWindow) {
+            m_outputWindow->append("ERROR: Exception getting quality settings");
+        }
+        return;
+    }
+    
+    // Create default tool if none is available
+    try {
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Creating default tool");
+        }
+        
+        request.tool = m_toolpathGenerationController->createDefaultTool("Contouring");
+        if (!request.tool) {
+            statusBar()->showMessage("Error: Failed to create default tool", 3000);
+            if (m_outputWindow) {
+                m_outputWindow->append("ERROR: createDefaultTool returned null");
+            }
+            return;
+        }
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Default tool created successfully");
+        }
+        
+    } catch (...) {
+        statusBar()->showMessage("Error: Exception creating default tool", 3000);
+        if (m_outputWindow) {
+            m_outputWindow->append("ERROR: Exception creating default tool");
+        }
+        return;
+    }
+    
+    // Set profile generation parameters
+    request.profileTolerance = 0.01; // Default profile tolerance
+    request.profileSections = 100;   // Default number of profile sections
+    
+    // Provide user feedback
+    statusBar()->showMessage("Starting toolpath generation...", 2000);
     
     if (m_outputWindow) {
-        m_outputWindow->append("Initiated toolpath generation for roughing operation");
+        m_outputWindow->append("=== TOOLPATH GENERATION STARTED ===");
+        m_outputWindow->append(QString("Part file: %1").arg(stepFilePath));
+        m_outputWindow->append(QString("Material: %1").arg(static_cast<int>(request.materialType)));
+        m_outputWindow->append(QString("Raw diameter: %1 mm").arg(request.rawDiameter));
+        m_outputWindow->append(QString("Distance to chuck: %1 mm").arg(request.distanceToChuck));
+        m_outputWindow->append(QString("Enabled operations: %1").arg(enabledOperations.join(", ")));
+        m_outputWindow->append(QString("Surface finish: %1").arg(static_cast<int>(request.surfaceFinish)));
+        m_outputWindow->append(QString("Tolerance: %1 mm").arg(request.tolerance));
+        m_outputWindow->append("DEBUG: About to call generateToolpaths()");
     }
-    statusBar()->showMessage("Generating roughing toolpath...", 3000);
+    
+    // Disable the button during generation to prevent multiple concurrent requests
+    if (m_generateButton) {
+        m_generateButton->setEnabled(false);
+        m_generateButton->setText("⚙ Generating...");
+    }
+    
+    // Connect to completion signals to re-enable the button (only if not already connected)
+    static bool signalsConnected = false;
+    if (!signalsConnected) {
+        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::generationCompleted,
+                this, [this]() {
+                    if (m_generateButton) {
+                        m_generateButton->setEnabled(true);
+                        m_generateButton->setText("⚙ Generate Toolpaths");
+                    }
+                });
+        
+        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::errorOccurred,
+                this, [this](const QString&) {
+                    if (m_generateButton) {
+                        m_generateButton->setEnabled(true);
+                        m_generateButton->setText("⚙ Generate Toolpaths");
+                    }
+                });
+        
+        signalsConnected = true;
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Signal connections established");
+        }
+    }
+    
+    // Start the generation process
+    try {
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: Calling m_toolpathGenerationController->generateToolpaths()");
+        }
+        
+        m_toolpathGenerationController->generateToolpaths(request);
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("DEBUG: generateToolpaths() call completed successfully");
+        }
+        
+    } catch (...) {
+        statusBar()->showMessage("Error: Exception during toolpath generation", 3000);
+        if (m_outputWindow) {
+            m_outputWindow->append("ERROR: Exception calling generateToolpaths()");
+        }
+        
+        // Re-enable the button
+        if (m_generateButton) {
+            m_generateButton->setEnabled(true);
+            m_generateButton->setText("⚙ Generate Toolpaths");
+        }
+        return;
+    }
 }
 
 // Toolpath generation handler implementations
@@ -2061,43 +2352,8 @@ void MainWindow::setupUiConnections()
                 m_toolpathManager, &ToolpathManager::applyWorkpieceTransformationToToolpaths);
     }
     
-    // Connect workpiece position changes to toolpath updates
-    if (m_workspaceController && m_toolpathManager) {
-        // Connect using a direct connection to ensure immediate update
-        connect(m_workspaceController, &WorkspaceController::workpiecePositionChanged,
-                this, [this](double distance) {
-                    // Ensure toolpaths update when workpiece position changes
-                    if (m_toolpathManager) {
-                        qDebug() << "MainWindow: Workpiece position changed to" << distance << "mm, updating toolpaths";
-                        
-                        // Force toolpath update with current workpiece transformation
-                        QTimer::singleShot(100, [this]() {
-                            if (m_toolpathManager) {
-                                m_toolpathManager->applyWorkpieceTransformationToToolpaths();
-                                qDebug() << "MainWindow: Applied toolpath transformations after position change";
-                            }
-                        });
-                    }
-                }, Qt::DirectConnection);
-    }
-    
-    // Connect to the toolpath generation controller
-    if (m_toolpathGenerationController) {
-        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::generationStarted,
-                this, &MainWindow::handleToolpathGenerationStarted);
-        
-        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::progressUpdated,
-                this, &MainWindow::handleToolpathProgressUpdated);
-        
-        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::operationCompleted,
-                this, &MainWindow::handleToolpathOperationCompleted);
-        
-        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::generationCompleted,
-                this, &MainWindow::handleToolpathGenerationCompleted);
-        
-        connect(m_toolpathGenerationController, &IntuiCAM::GUI::ToolpathGenerationController::errorOccurred,
-                this, &MainWindow::handleToolpathGenerationError);
-    }
+    // Note: workpiecePositionChanged and toolpath generation controller connections 
+    // are handled in setupWorkspaceConnections() to avoid duplicates and ensure proper initialization order
 }
 
 void MainWindow::handleShowChuckToggled(bool checked)
@@ -2173,15 +2429,16 @@ void MainWindow::handleShowToolpathsToggled(bool checked)
 
 void MainWindow::handleShowPartToggled(bool checked)
 {
-    if (!m_workpieceManager) {
-        return;
-    }
-
-    m_workpieceManager->setWorkpiecesVisible(checked);
-    statusBar()->showMessage(checked ? tr("Part displayed") : tr("Part hidden"), 2000);
-
-    if (m_outputWindow) {
-        m_outputWindow->append(QString("Part visibility toggled: %1").arg(checked ? "Visible" : "Hidden"));
+    if (m_workspaceController) {
+        WorkpieceManager* workpieceManager = m_workspaceController->getWorkpieceManager();
+        if (workpieceManager) {
+            workpieceManager->setWorkpiecesVisible(checked);
+            
+            // Check if m_outputWindow is valid before using it
+            if (m_outputWindow) {
+                m_outputWindow->append(QString("Part visibility toggled: %1").arg(checked ? "Visible" : "Hidden"));
+            }
+        }
     }
 }
 
@@ -2290,4 +2547,61 @@ void MainWindow::handleWorkpieceTransformed()
         highlightThreadCandidateFaces();
     }
     updateHighlightedThreadFace();
+}
+
+// =====================================================================================
+// Parameter Synchronization Handlers
+// =====================================================================================
+
+void MainWindow::handleParameterValidation(const QString& parameterName, bool isValid, const QString& errorMessage)
+{
+    if (m_outputWindow) {
+        if (isValid) {
+            m_outputWindow->append(QString("✓ Parameter '%1' validated successfully").arg(parameterName));
+        } else {
+            m_outputWindow->append(QString("✗ Parameter '%1' validation failed: %2")
+                                  .arg(parameterName)
+                                  .arg(errorMessage));
+        }
+    }
+    
+    // Update UI feedback based on validation results
+    // For example, you could highlight invalid parameters in red
+    if (m_setupConfigPanel) {
+        // m_setupConfigPanel->setParameterValidation(parameterName, isValid, errorMessage);
+        // This would need to be implemented in the SetupConfigurationPanel
+    }
+}
+
+void MainWindow::handleIncrementalUpdateCompleted(const QStringList& affectedOperations, int updateDuration)
+{
+    if (m_outputWindow) {
+        if (affectedOperations.isEmpty()) {
+            m_outputWindow->append(QString("Visual parameters updated in %1ms").arg(updateDuration));
+        } else {
+            m_outputWindow->append(QString("Incremental update completed in %1ms - updated operations: %2")
+                                  .arg(updateDuration)
+                                  .arg(affectedOperations.join(", ")));
+        }
+    }
+    
+    // Update progress or status indicators if needed
+    statusBar()->showMessage(QString("Toolpaths updated (%1ms)").arg(updateDuration), 2000);
+}
+
+void MainWindow::handleParameterCacheUpdated(const QString& parameterName, const QVariant& newValue)
+{
+    // This is called whenever a parameter is cached
+    // You can use this for debugging or to update UI indicators
+    if (m_outputWindow && parameterName.contains("debug")) {
+        m_outputWindow->append(QString("Parameter cache updated: %1 = %2")
+                              .arg(parameterName)
+                              .arg(newValue.toString()));
+    }
+    
+    // Update any UI indicators that show current parameter values
+    // For example, if there's a status display showing current tool diameter:
+    if (parameterName == "toolDiameter") {
+        statusBar()->showMessage(QString("Tool diameter: %1mm").arg(newValue.toDouble()), 1000);
+    }
 }

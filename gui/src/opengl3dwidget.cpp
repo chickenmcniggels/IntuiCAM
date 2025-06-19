@@ -21,6 +21,8 @@
 #include <Quantity_Color.hxx>
 #include <AIS_DisplayMode.hxx>
 #include <AIS_SelectionScheme.hxx>
+#include <AIS_DisplayStatus.hxx>
+#include <NCollection_Mat4.hxx>
 #include <StdSelect_BRepOwner.hxx>
 #include <SelectMgr_SortCriterion.hxx>
 #include <Prs3d_Drawer.hxx>
@@ -57,6 +59,8 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_lockedXZUp(-1.0, 0.0, 0.0)
     , m_workspaceController(nullptr)
     , m_gridVisible(false)
+    , m_toolpathsVisible(true)
+    , m_profilesVisible(true)
 {
     // Enable mouse tracking for proper interaction
     setMouseTracking(true);
@@ -937,6 +941,80 @@ void OpenGL3DWidget::fitAll()
             qDebug() << "View fitted to all objects";
         } catch (const std::exception& e) {
             qDebug() << "Error fitting view:" << e.what();
+        }
+    }
+}
+
+void OpenGL3DWidget::setToolpathsVisible(bool visible)
+{
+    if (m_toolpathsVisible == visible) {
+        return; // No change needed
+    }
+    
+    m_toolpathsVisible = visible;
+    
+    if (!m_context.IsNull()) {
+        try {
+            // Find all toolpath objects in the context and update their visibility
+            // Toolpath objects would typically be identified by their type or naming convention
+            AIS_ListOfInteractive allObjects;
+            m_context->DisplayedObjects(allObjects);
+            
+            for (AIS_ListOfInteractive::Iterator anIter(allObjects); anIter.More(); anIter.Next()) {
+                Handle(AIS_InteractiveObject) obj = anIter.Value();
+                if (!obj.IsNull()) {
+                    // For now, we'll update all objects - in a full implementation,
+                    // you would check if the object is a toolpath based on its type or attributes
+                    if (visible) {
+                        m_context->SetDisplayMode(obj, 1, Standard_False); // 1 = shaded mode
+                    } else {
+                        m_context->Erase(obj, Standard_False);
+                    }
+                }
+            }
+            
+            updateView();
+            qDebug() << "Toolpaths visibility set to:" << visible;
+            
+        } catch (const std::exception& e) {
+            qDebug() << "Error setting toolpath visibility:" << e.what();
+        }
+    }
+}
+
+void OpenGL3DWidget::setProfilesVisible(bool visible)
+{
+    if (m_profilesVisible == visible) {
+        return; // No change needed
+    }
+    
+    m_profilesVisible = visible;
+    
+    if (!m_context.IsNull()) {
+        try {
+            // Find all profile objects in the context and update their visibility
+            // Profile objects would typically be identified by their type or naming convention
+            AIS_ListOfInteractive allObjects;
+            m_context->DisplayedObjects(allObjects);
+            
+            for (AIS_ListOfInteractive::Iterator anIter(allObjects); anIter.More(); anIter.Next()) {
+                Handle(AIS_InteractiveObject) obj = anIter.Value();
+                if (!obj.IsNull()) {
+                    // For now, we'll update all objects - in a full implementation,
+                    // you would check if the object is a profile based on its type or attributes
+                    if (visible) {
+                        m_context->SetDisplayMode(obj, 0, Standard_False); // 0 = wireframe mode
+                    } else {
+                        m_context->Erase(obj, Standard_False);
+                    }
+                }
+            }
+            
+            updateView();
+            qDebug() << "Profiles visibility set to:" << visible;
+            
+        } catch (const std::exception& e) {
+            qDebug() << "Error setting profile visibility:" << e.what();
         }
     }
 } 

@@ -38,6 +38,8 @@ public:
         double clearanceAngle = 7.0;    // degrees
         double rakeAngle = 0.0;         // degrees
         double insertWidth = 3.0;       // mm
+        double diameter = 10.0;         // mm - cutting diameter
+        double length = 50.0;           // mm - tool length
     };
     
 private:
@@ -55,6 +57,10 @@ public:
     const CuttingParameters& getCuttingParameters() const { return cuttingParams_; }
     const Geometry& getGeometry() const { return geometry_; }
     
+    // Additional convenience getters
+    double getDiameter() const { return geometry_.diameter; }
+    double getLength() const { return geometry_.length; }
+    
     void setCuttingParameters(const CuttingParameters& params) { cuttingParams_ = params; }
     void setGeometry(const Geometry& geom) { geometry_ = geom; }
 };
@@ -63,6 +69,19 @@ public:
 enum class MovementType {
     Rapid,          // G0 - rapid positioning
     Linear,         // G1 - linear interpolation
+    CircularCW,     // G2 - circular interpolation clockwise
+    CircularCCW,    // G3 - circular interpolation counter-clockwise
+    Dwell,          // G4 - dwell/pause
+    ToolChange      // Tool change operation
+};
+
+// Additional enum for display compatibility
+enum class MoveType {
+    Rapid,          // G0 - rapid positioning
+    Feed,           // G1 - linear feed interpolation
+    Cut,            // Cutting moves
+    Plunge,         // Plunge moves
+    Linear = Feed,  // Alias for compatibility
     CircularCW,     // G2 - circular interpolation clockwise
     CircularCCW,    // G3 - circular interpolation counter-clockwise
     Dwell,          // G4 - dwell/pause
@@ -101,6 +120,7 @@ public:
     
     // Getters
     const std::vector<Movement>& getMovements() const { return movements_; }
+    const std::vector<Movement>& getMoves() const { return movements_; } // Alias for compatibility
     std::shared_ptr<Tool> getTool() const { return tool_; }
     const std::string& getName() const { return name_; }
     

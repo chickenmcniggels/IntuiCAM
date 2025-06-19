@@ -23,6 +23,7 @@
 #include <IntuiCAM/Toolpath/Types.h>
 #include <IntuiCAM/Geometry/Types.h>
 #include <IntuiCAM/Toolpath/LatheProfile.h>
+#include <IntuiCAM/Toolpath/ContouringOperation.h>
 
 // Forward declaration of SimplePart
 namespace IntuiCAM {
@@ -36,10 +37,12 @@ private:
 public:
     SimplePart(double volume = 1000.0, double surfaceArea = 500.0) 
         : volume_(volume), surfaceArea_(surfaceArea) {
-        // Default bounding box for a simple cylinder
-        boundingBox_.min = Point3D(-25.0, -25.0, -50.0);
-        boundingBox_.max = Point3D(25.0, 25.0, 50.0);
+        // Initialize a simple bounding box
+        boundingBox_.min = Point3D(0.0, 0.0, 0.0);
+        boundingBox_.max = Point3D(50.0, 50.0, 100.0);
     }
+    
+    virtual ~SimplePart() = default;
     
     double getVolume() const override { return volume_; }
     double getSurfaceArea() const override { return surfaceArea_; }
@@ -51,19 +54,17 @@ public:
     }
     
     std::unique_ptr<Mesh> generateMesh(double tolerance = 0.1) const override {
-        auto mesh = std::make_unique<Mesh>();
-        // Create a simple cylindrical mesh (simplified)
-        // This is a placeholder implementation
-        return mesh;
+        // Return a simple placeholder mesh
+        return std::make_unique<Mesh>();
     }
     
     std::vector<Point3D> detectCylindricalFeatures() const override {
-        // Return center axis points for a simple cylinder
-        return {Point3D(0, 0, -50), Point3D(0, 0, 50)};
+        // Return some sample cylindrical features
+        return {Point3D(25.0, 25.0, 50.0)};
     }
     
     std::optional<double> getLargestCylinderDiameter() const override {
-        return 50.0; // Default diameter
+        return 50.0; // Return a reasonable diameter
     }
 };
 }
@@ -95,9 +96,18 @@ IntuiCAM::GUI::ToolpathGenerationController::ToolpathGenerationController(QObjec
     , m_connectedStatusText(nullptr)
     , m_toolpathManager(nullptr)
     , m_workspaceController(nullptr)
+    , m_realTimeUpdatesEnabled(true)
+    , m_debounceTimer(new QTimer(this))
+    , m_hasCachedRequest(false)
 {
     // Setup process timer for step-by-step generation
     m_processTimer->setSingleShot(true);
+    
+    // Setup debounce timer for parameter changes
+    m_debounceTimer->setSingleShot(true);
+    m_debounceTimer->setInterval(500); // 500ms debounce delay
+    connect(m_debounceTimer, &QTimer::timeout, 
+            this, &ToolpathGenerationController::processPendingParameterChanges);
     
     // Initialize result structure
     m_currentResult.success = false;
@@ -153,8 +163,9 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateToolpaths(const Genera
         return;
     }
     
-    // Store the request
+    // Store the request and cache parameters
     m_currentRequest = request;
+    cacheParameters(request);
     m_cancellationRequested = false;
     
     // Reset result
@@ -442,61 +453,134 @@ bool IntuiCAM::GUI::ToolpathGenerationController::generateOperationToolpaths()
             
             // Create different operations based on type
             if (operationName == "Contouring") {
-                auto roughingOp = std::make_unique<IntuiCAM::Toolpath::RoughingOperation>(
-                    operationName.toStdString(), tool);
-                
-                // Show lathe profile overlay for manual single roughing generation
-                if (m_toolpathManager && m_workspaceController) {
-                    if (m_workspaceController->hasPartShape()) {
+                // Use our new ContouringOperation for comprehensive toolpath generation
+                try {
+                    updateProgress(operationProgress + 5, "Extracting part profile...");
+                    
+                    // Extract part geometry for contouring
+                    std::unique_ptr<IntuiCAM::Geometry::Part> part;
+                    if (m_workspaceController && m_workspaceController->hasPartShape()) {
                         TopoDS_Shape partShape = m_workspaceController->getPartShape();
-                        IntuiCAM::Geometry::OCCTPart part(&partShape);
-                        auto profile = IntuiCAM::Toolpath::LatheProfile::extract(part, 150);
-                        if (!profile.empty()) {
-                            m_toolpathManager->displayLatheProfile(profile, "PartProfileOverlay");
+                        part = std::make_unique<IntuiCAM::Geometry::OCCTPart>(&partShape);
+                    } else {
+                        // Fallback to dummy part
+                        part = std::make_unique<IntuiCAM::Geometry::SimplePart>();
+                    }
+                    
+                    // Create contouring operation
+                    IntuiCAM::Toolpath::ContouringOperation contouringOp;
+                    
+                    // Setup contouring parameters from request
+                    IntuiCAM::Toolpath::ContouringOperation::Parameters contourParams;
+                    contourParams.safetyHeight = 5.0;
+                    contourParams.clearanceDistance = 1.0;
+                    
+                    // Configure sub-operations based on enabled operations in request
+                    contourParams.enableFacing = m_currentRequest.enabledOperations.contains("Facing") || 
+                                               m_currentRequest.facingAllowance > 0.0;
+                    contourParams.enableRoughing = m_currentRequest.enabledOperations.contains("Roughing") ||
+                                                 m_currentRequest.roughingAllowance > 0.0;
+                    contourParams.enableFinishing = m_currentRequest.enabledOperations.contains("Finishing") ||
+                                                  m_currentRequest.finishingAllowance > 0.0;
+                    
+                    // Set operation-specific parameters
+                    if (contourParams.enableFacing) {
+                        // FacingOperation parameters: startDiameter, endDiameter, stepover, stockAllowance, roughingOnly
+                        contourParams.facingParams.stockAllowance = m_currentRequest.facingAllowance;
+                    }
+                    
+                    if (contourParams.enableRoughing) {
+                        // RoughingOperation parameters: startDiameter, endDiameter, startZ, endZ, depthOfCut, stockAllowance
+                        contourParams.roughingParams.depthOfCut = m_currentRequest.roughingAllowance > 0.0 ? 
+                                                                m_currentRequest.roughingAllowance : 1.0;
+                        contourParams.roughingParams.stockAllowance = m_currentRequest.finishingAllowance;
+                    }
+                    
+                    if (contourParams.enableFinishing) {
+                        // FinishingOperation parameters: targetDiameter, startZ, endZ, surfaceSpeed, feedRate
+                        contourParams.finishingParams.feedRate = m_currentRequest.finishingAllowance > 0.0 ?
+                                                                m_currentRequest.finishingAllowance * 0.1 : 0.05;
+                        contourParams.finishingParams.surfaceSpeed = 150.0;  // m/min for good surface finish
+                    }
+                    
+                    updateProgress(operationProgress + 10, "Generating contouring toolpaths...");
+                    
+                    // Generate the complete contouring operation
+                    auto contourResult = contouringOp.generateToolpaths(*part, tool, contourParams);
+                    
+                    if (!contourResult.success) {
+                        emit operationCompleted(operationName, false, QString("Contouring failed: %1")
+                                              .arg(QString::fromStdString(contourResult.errorMessage)));
+                        continue;
+                    }
+                    
+                    updateProgress(operationProgress + 15, "Displaying profile and toolpaths...");
+                    
+                    // Display the extracted profile
+                    if (m_toolpathManager && !contourResult.extractedProfile.empty()) {
+                        m_toolpathManager->displayLatheProfile(contourResult.extractedProfile, "ContourProfile");
+                        logMessage(QString("Extracted profile with %1 points").arg(contourResult.extractedProfile.size()));
+                    }
+                    
+                    // Display generated toolpaths
+                    int toolpathDisplayed = 0;
+                    if (contourResult.facingToolpath && contourParams.enableFacing) {
+                        if (m_toolpathManager->displayToolpath(*contourResult.facingToolpath, "Facing")) {
+                            toolpathDisplayed++;
+                            emit operationCompleted("Facing", true, "Facing toolpath generated successfully");
                         }
                     }
+                    
+                    if (contourResult.roughingToolpath && contourParams.enableRoughing) {
+                        if (m_toolpathManager->displayToolpath(*contourResult.roughingToolpath, "Roughing")) {
+                            toolpathDisplayed++;
+                            emit operationCompleted("Roughing", true, "Roughing toolpath generated successfully");
+                        }
+                    }
+                    
+                    if (contourResult.finishingToolpath && contourParams.enableFinishing) {
+                        if (m_toolpathManager->displayToolpath(*contourResult.finishingToolpath, "Finishing")) {
+                            toolpathDisplayed++;
+                            emit operationCompleted("Finishing", true, "Finishing toolpath generated successfully");
+                        }
+                    }
+                    
+                    if (toolpathDisplayed > 0) {
+                        logMessage(QString("Successfully generated %1 contouring toolpaths").arg(toolpathDisplayed));
+                        logMessage(QString("Estimated machining time: %1 minutes").arg(contourResult.estimatedTime, 0, 'f', 1));
+                        logMessage(QString("Total moves: %1").arg(contourResult.totalMoves));
+                        
+                        // Update result statistics
+                        m_currentResult.estimatedMachiningTime += contourResult.estimatedTime;
+                        
+                        emit operationCompleted(operationName, true, 
+                            QString("Contouring completed: %1 toolpaths, %2 min estimated")
+                            .arg(toolpathDisplayed).arg(contourResult.estimatedTime, 0, 'f', 1));
+                    } else {
+                        emit operationCompleted(operationName, false, "No toolpaths were generated");
+                    }
+                    
+                    // Skip to next operation - don't create the old operation object
+                    continue;
+                    
+                } catch (const std::exception& e) {
+                    emit operationCompleted(operationName, false, 
+                        QString("Contouring exception: %1").arg(e.what()));
+                    continue;
                 }
-                
-                // Set roughing parameters using request values
-                IntuiCAM::Toolpath::RoughingOperation::Parameters params;
-                params.startDiameter = m_currentRequest.rawDiameter;
-                params.endDiameter = m_currentRequest.rawDiameter - 2.0 * m_currentRequest.finishingAllowance;
-                params.startZ = 0.0;
-                params.endZ = -50.0; // placeholder
-                params.depthOfCut = m_currentRequest.roughingAllowance > 0.0 ? m_currentRequest.roughingAllowance : 1.0;
-                params.stockAllowance = m_currentRequest.finishingAllowance;
-                
-                roughingOp->setParameters(params);
-                operation = std::move(roughingOp);
             }
-            else if (operationName == "Threading") {
-                auto threadingOp = std::make_unique<IntuiCAM::Toolpath::ThreadingOperation>(
-                    operationName.toStdString(), tool);
-
-                IntuiCAM::Toolpath::ThreadingOperation::Parameters params;
-                threadingOp->setParameters(params);
-                operation = std::move(threadingOp);
-            }
-            else if (operationName == "Chamfering") {
-                auto chamferOp = std::make_unique<IntuiCAM::Toolpath::FinishingOperation>(
-                    operationName.toStdString(), tool);
-                IntuiCAM::Toolpath::FinishingOperation::Parameters params;
-                params.targetDiameter = m_currentRequest.rawDiameter - 2.0 * m_currentRequest.finishingAllowance;
-                chamferOp->setParameters(params);
-                operation = std::move(chamferOp);
-            }
-            else if (operationName == "Parting") {
-                auto partingOp = std::make_unique<IntuiCAM::Toolpath::PartingOperation>(
-                    operationName.toStdString(), tool);
-                IntuiCAM::Toolpath::PartingOperation::Parameters params;
-                params.partingDiameter = m_currentRequest.rawDiameter;
-                params.retractDistance = m_currentRequest.partingWidth;
-                partingOp->setParameters(params);
-                operation = std::move(partingOp);
+            else if (operationName == "Threading" || operationName == "Chamfering" || 
+                    operationName == "Parting" || operationName == "Grooving") {
+                // Skip non-contouring operations for now - only contouring is implemented
+                logMessage(QString("Skipping %1 operation - only contouring is currently supported").arg(operationName));
+                emit operationCompleted(operationName, false, 
+                    QString("%1 operation skipped - only contouring is currently implemented").arg(operationName));
+                continue;
             }
             else {
                 // Handle other operation types...
-                emit operationCompleted(operationName, false, "Operation type not implemented yet");
+                logMessage(QString("Unknown operation type: %1").arg(operationName));
+                emit operationCompleted(operationName, false, "Operation type not recognized");
                 continue;
             }
             
@@ -940,22 +1024,10 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
 // Helper method to map an operation name to its type
 QString IntuiCAM::GUI::ToolpathGenerationController::getOperationTypeString(const QString& operationName) const
 {
-    // Parse the operation name to extract the type
-    // Operation names often have format like "Facing_001", "Roughing_123", etc.
-    if (operationName.startsWith("Facing")) return "Facing";
-    if (operationName.startsWith("Roughing")) return "Roughing";
-    if (operationName.startsWith("Finishing")) return "Finishing";
-    if (operationName.startsWith("Parting")) return "Parting";
-    if (operationName.startsWith("Threading")) return "Threading";
-    if (operationName.startsWith("Grooving")) return "Grooving";
-    
-    // If no specific prefix found, try to parse from format "Type_number"
-    int underscorePos = operationName.indexOf('_');
-    if (underscorePos > 0) {
-        return operationName.left(underscorePos);
-    }
-    
-    // Fallback
+    if (operationName.contains("Facing", Qt::CaseInsensitive)) return "Facing";
+    if (operationName.contains("Roughing", Qt::CaseInsensitive)) return "Roughing";
+    if (operationName.contains("Finishing", Qt::CaseInsensitive)) return "Finishing";
+    if (operationName.contains("Contouring", Qt::CaseInsensitive)) return "Contouring";
     return "Unknown";
 }
 
@@ -1381,22 +1453,299 @@ void IntuiCAM::GUI::ToolpathGenerationController::displayGeneratedToolpath(
 // === Helper: OCCT gp_Trsf -> Geometry::Matrix4x4 ===
 static IntuiCAM::Geometry::Matrix4x4 toMatrix4x4(const gp_Trsf& trsf)
 {
-    using IntuiCAM::Geometry::Matrix4x4;
-    Matrix4x4 mat = Matrix4x4::identity();
-
-    // Fill rotation + scaling
-    for (int r = 1; r <= 3; ++r) {
-        for (int c = 1; c <= 3; ++c) {
-            mat.data[(r - 1) * 4 + (c - 1)] = trsf.Value(r, c);
+    IntuiCAM::Geometry::Matrix4x4 result;
+    
+    // Use the correct OpenCASCADE API
+    NCollection_Mat4<Standard_Real> mat4;
+    trsf.GetMat4(mat4);
+    
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            result.data[i*4 + j] = mat4.GetValue(i, j);
         }
     }
+    
+    return result;
+}
 
-    // Translation part (OCCT uses gp_XYZ)
-    gp_XYZ t = trsf.TranslationPart();
-    mat.data[3]  = t.X();
-    mat.data[7]  = t.Y();
-    mat.data[11] = t.Z();
+// =====================================================================================
+// Parameter Synchronization Implementation
+// =====================================================================================
 
-    // Last row already identity (0 0 0 1)
-    return mat;
+void IntuiCAM::GUI::ToolpathGenerationController::updateParameters(const QList<ParameterChange>& changes)
+{
+    if (changes.isEmpty()) {
+        return;
+    }
+    
+    auto startTime = std::chrono::steady_clock::now();
+    
+    // Clear existing debouncing timer
+    if (m_debounceTimer->isActive()) {
+        m_debounceTimer->stop();
+    }
+    
+    // Add new changes to pending list
+    for (const auto& change : changes) {
+        m_pendingChanges.append(change);
+    }
+    
+    // Start/restart debouncing timer
+    m_debounceTimer->start(m_debounceInterval);
+    
+    auto endTime = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+    
+    qDebug() << QString("Queued %1 parameter changes for processing (took %2ms)")
+               .arg(changes.size()).arg(duration);
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::processPendingParameterChanges()
+{
+    if (m_pendingChanges.isEmpty()) {
+        return;
+    }
+    
+    auto startTime = std::chrono::steady_clock::now();
+    
+    // Update the parameter cache and emit signals
+    QVector<ParameterChange> pendingChanges = m_pendingChanges; // Copy before clearing
+    for (const auto& change : m_pendingChanges) {
+        m_cachedParameters[change.parameterName] = change.newValue;
+        emit parameterCacheUpdated(change.parameterName, change.newValue);
+    }
+    
+    // Clear pending changes
+    int numChanges = m_pendingChanges.size();
+    m_pendingChanges.clear();
+    
+    auto endTime = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+    
+    // Emit completion signal
+    QStringList affectedOperations;
+    emit incrementalUpdateCompleted(affectedOperations, duration);
+    
+    qDebug() << QString("Completed processing %1 parameter changes in %2ms")
+               .arg(numChanges).arg(duration);
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::cacheParameters(const GenerationRequest& request)
+{
+    m_cachedRequest = request;
+    m_hasCachedRequest = true;
+    
+    // Cache specific parameter values for efficient comparison
+    m_cachedParameters.clear();
+    
+    // Tool parameters
+    if (request.tool) {
+        m_cachedParameters["toolDiameter"] = request.tool->getDiameter();
+        m_cachedParameters["toolLength"] = request.tool->getLength();
+        // Add other tool parameters as needed
+    }
+    
+    // Operation parameters
+    m_cachedParameters["enableFacing"] = request.enabledOperations.contains("Facing");
+    m_cachedParameters["enableRoughing"] = request.enabledOperations.contains("Roughing");
+    m_cachedParameters["enableFinishing"] = request.enabledOperations.contains("Finishing");
+    m_cachedParameters["enableContouring"] = request.enabledOperations.contains("Contouring");
+    
+    // Quality parameters
+    m_cachedParameters["profileTolerance"] = request.profileTolerance;
+    m_cachedParameters["profileSections"] = request.profileSections;
+    
+    // Add operation-specific parameters
+    // This would be expanded based on the actual GenerationRequest structure
+    
+    logMessage(QString("Cached %1 parameters").arg(m_cachedParameters.size()));
+}
+
+QVector<IntuiCAM::GUI::ToolpathGenerationController::ParameterChange> 
+IntuiCAM::GUI::ToolpathGenerationController::detectParameterChanges(const GenerationRequest& newRequest)
+{
+    QVector<ParameterChange> changes;
+    
+    if (!m_hasCachedRequest) {
+        // No cached request to compare against
+        return changes;
+    }
+    
+    // Compare tool parameters
+    if (newRequest.tool && m_cachedRequest.tool) {
+        if (newRequest.tool->getDiameter() != m_cachedRequest.tool->getDiameter()) {
+            changes.append(ParameterChange(ParameterChangeType::Tool, "toolDiameter", 
+                                         m_cachedRequest.tool->getDiameter(), 
+                                         newRequest.tool->getDiameter()));
+        }
+        
+        if (newRequest.tool->getLength() != m_cachedRequest.tool->getLength()) {
+            changes.append(ParameterChange(ParameterChangeType::Tool, "toolLength",
+                                         m_cachedRequest.tool->getLength(),
+                                         newRequest.tool->getLength()));
+        }
+    }
+    
+    // Compare operation enablement
+    if (newRequest.enabledOperations != m_cachedRequest.enabledOperations) {
+        changes.append(ParameterChange(ParameterChangeType::Operation, "enabledOperations",
+                                     QVariant::fromValue(m_cachedRequest.enabledOperations),
+                                     QVariant::fromValue(newRequest.enabledOperations)));
+    }
+    
+    // Compare quality parameters
+    if (newRequest.profileTolerance != m_cachedRequest.profileTolerance) {
+        changes.append(ParameterChange(ParameterChangeType::Geometry, "profileTolerance",
+                                     m_cachedRequest.profileTolerance,
+                                     newRequest.profileTolerance));
+    }
+    
+    if (newRequest.profileSections != m_cachedRequest.profileSections) {
+        changes.append(ParameterChange(ParameterChangeType::Geometry, "profileSections",
+                                     m_cachedRequest.profileSections,
+                                     newRequest.profileSections));
+    }
+    
+    return changes;
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::regenerateContouringOperation()
+{
+    // This method would regenerate just the contouring operation
+    // Implementation would depend on the specific toolpath generation architecture
+    logMessage("Regenerating contouring operation with updated parameters");
+    
+    // For now, this is a placeholder that would contain the actual regeneration logic
+    // In a complete implementation, this would:
+    // 1. Extract the current profile (if not geometry changes)
+    // 2. Regenerate contouring toolpaths with new parameters
+    // 3. Update the display
+    // 4. Emit appropriate signals
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::onParameterChanged(const QString& parameterName, 
+                                                                    const QVariant& newValue, 
+                                                                    const QString& operationName)
+{
+    // Handle single parameter change
+    updateParameter(ParameterChangeType::Operation, parameterName, newValue, operationName);
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::onParametersChanged(const QMap<QString, QVariant>& parameters)
+{
+    // Handle batch parameter changes
+    QVector<ParameterChange> changes;
+    for (auto it = parameters.begin(); it != parameters.end(); ++it) {
+        QString oldValueStr = m_cachedParameters.value(it.key(), QVariant()).toString();
+        changes.append(ParameterChange(ParameterChangeType::Operation, it.key(), 
+                                     QVariant(oldValueStr), it.value()));
+    }
+    
+    updateParameters(changes);
+}
+
+void IntuiCAM::GUI::ToolpathGenerationController::updateParameter(ParameterChangeType changeType, 
+                                                                  const QString& parameterName, 
+                                                                  const QVariant& newValue,
+                                                                  const QString& operationName)
+{
+    // Validate the parameter value first
+    QString validationError = validateParameterValue(parameterName, newValue);
+    if (!validationError.isEmpty()) {
+        emit parameterValidated(parameterName, false, validationError);
+        return;
+    }
+    
+    // Cache old value
+    QVariant oldValue = m_cachedParameters.value(parameterName);
+    
+    // Create parameter change record
+    ParameterChange change(changeType, parameterName, oldValue, newValue);
+    change.affectedOperations = operationName.isEmpty() ? QStringList() : QStringList() << operationName;
+    
+    // Update cache
+    m_cachedParameters[parameterName] = newValue;
+    
+    // Handle the change based on type
+    switch (changeType) {
+        case ParameterChangeType::Geometry:
+            // Geometry changes require full regeneration
+            logMessage(QString("Geometry parameter %1 changed - full regeneration required").arg(parameterName));
+            emit parameterCacheUpdated(parameterName, newValue);
+            break;
+            
+        case ParameterChangeType::Tool:
+            // Tool changes affect all toolpaths
+            logMessage(QString("Tool parameter %1 changed - toolpath regeneration required").arg(parameterName));
+            emit parameterCacheUpdated(parameterName, newValue);
+            break;
+            
+        case ParameterChangeType::Operation:
+            // Operation changes affect specific operations
+            logMessage(QString("Operation parameter %1 changed for %2").arg(parameterName).arg(operationName));
+            if (!operationName.isEmpty()) {
+                regenerateToolpath(operationName, getOperationTypeString(operationName));
+            }
+            emit parameterCacheUpdated(parameterName, newValue);
+            break;
+            
+        case ParameterChangeType::Visual:
+            // Visual changes only affect display
+            logMessage(QString("Visual parameter %1 changed").arg(parameterName));
+            emit parameterCacheUpdated(parameterName, newValue);
+            break;
+    }
+    
+    emit parameterValidated(parameterName, true, QString());
+}
+
+QString IntuiCAM::GUI::ToolpathGenerationController::validateParameterValue(const QString& parameterName, const QVariant& value)
+{
+    // Parameter validation logic
+    if (parameterName.contains("diameter", Qt::CaseInsensitive)) {
+        bool ok;
+        double diameterValue = value.toDouble(&ok);
+        if (!ok || diameterValue <= 0.0) {
+            return "Diameter must be a positive number";
+        }
+        if (diameterValue > 500.0) {
+            return "Diameter value seems unusually large (>500mm)";
+        }
+    }
+    
+    if (parameterName.contains("feedrate", Qt::CaseInsensitive) || parameterName.contains("feed_rate", Qt::CaseInsensitive)) {
+        bool ok;
+        double feedValue = value.toDouble(&ok);
+        if (!ok || feedValue <= 0.0) {
+            return "Feed rate must be a positive number";
+        }
+        if (feedValue > 10.0) {
+            return "Feed rate seems unusually high (>10 mm/rev)";
+        }
+    }
+    
+    if (parameterName.contains("speed", Qt::CaseInsensitive)) {
+        bool ok;
+        double speedValue = value.toDouble(&ok);
+        if (!ok || speedValue <= 0.0) {
+            return "Speed must be a positive number";
+        }
+        if (speedValue > 10000.0) {
+            return "Speed seems unusually high (>10000 RPM)";
+        }
+    }
+    
+    if (parameterName.contains("tolerance", Qt::CaseInsensitive)) {
+        bool ok;
+        double toleranceValue = value.toDouble(&ok);
+        if (!ok || toleranceValue <= 0.0) {
+            return "Tolerance must be a positive number";
+        }
+        if (toleranceValue > 10.0) {
+            return "Tolerance seems unusually large (>10mm)";
+        }
+    }
+    
+    // Add more validation rules as needed
+    return QString(); // Empty string means valid
 } 

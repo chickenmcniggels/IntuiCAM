@@ -133,6 +133,11 @@ private slots:
     void handleToolpathGenerationCompleted();
     void handleToolpathGenerationError(const QString& errorMessage);
     
+    // Parameter synchronization handlers
+    void handleParameterValidation(const QString& parameterName, bool isValid, const QString& errorMessage);
+    void handleIncrementalUpdateCompleted(const QStringList& affectedOperations, int updateDuration);
+    void handleParameterCacheUpdated(const QString& parameterName, const QVariant& newValue);
+    
     // Toolpath timeline handlers
     void handleToolpathSelected(int index);
     void handleToolpathParametersRequested(int index, const QString& operationType);
