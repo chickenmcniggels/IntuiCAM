@@ -23,8 +23,10 @@ Whether you’re a user looking to generate your first turning job or a develope
 - [Architecture Overview](architecture.md)  
   High-level description of IntuiCAM’s modular design, outlining how the core engine, GUI, and plugins interact.
 
-- [Core Design](core/core_design.md)  
+- [Core Design](core/core_design.md)
   Deep dive into the C++ core library, its API, data structures, and toolpath algorithms.
+- [Dummy Toolpath Example](core/dummy_toolpath_class.md)
+  Minimal sample showing how to create new operations.
 
 - [GUI Design](gui/gui_design.md)  
   Details of the Qt-based frontend: UI patterns, viewports, workflow controls, and extensibility.
