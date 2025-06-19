@@ -83,10 +83,13 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, dou
 #### Black Screen Fix
 **Problem**: The 3D viewer would go black when the widget lost focus or wasn't actively interacted with.
 
-**Solution**: Initial versions added extensive focus and window event handling.
-These callbacks have proven unnecessary with modern Qt and actually introduced
-lag. The viewer now relies on the default event flow with a lightweight
-`updateView()` implementation and an optional continuous update timer.
+**Solution**: Rely on Qt's recommended approach. The viewer now preserves the
+previous frame using `QOpenGLWidget::PartialUpdate` and simply calls
+`update()` when focus changes. According to the
+[Qt documentation](https://doc.qt.io/qt-6/qopenglwidget.html), a repaint
+should be requested via `update()` when triggered from outside
+`paintGL()`. This prevents the framebuffer from being cleared and avoids the
+black screen.
 
 ```cpp
 void OpenGL3DWidget::updateView()
@@ -197,7 +200,10 @@ prevents flickering during window activation changes.
 
 ### Issue: Black Screen on Focus Loss
 **Status**: ✅ Fixed in v1.1
-**Solution**: Enhanced focus event handling with immediate redraws and continuous update support
+**Solution**: The widget now preserves its content using
+`QOpenGLWidget::PartialUpdate` and issues an `update()` call whenever focus
+changes. This follows Qt's official guidance and prevents the viewer from
+turning black.
 
 ### Issue: Raw Material Not Encompassing Part
 **Status**: ✅ Fixed in v1.2
