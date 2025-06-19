@@ -9,6 +9,11 @@
 
 int main(int argc, char *argv[])
 {
+
+    // Share OpenGL contexts across widgets to prevent black screens when focus
+    // changes. This follows guidelines from Context7 research.
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+
     QApplication app(argc, argv);
     
     // CRITICAL: Set global OpenGL surface format BEFORE creating OpenGL widgets

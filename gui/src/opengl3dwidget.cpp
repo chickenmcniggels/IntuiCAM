@@ -453,51 +453,7 @@ void OpenGL3DWidget::wheelEvent(QWheelEvent *event)
     }
 }
 
-// CRITICAL: Focus event handling to prevent black screen
-void OpenGL3DWidget::focusInEvent(QFocusEvent *event)
-{
-    QOpenGLWidget::focusInEvent(event);
-    
-    // ESSENTIAL: Ensure proper context when gaining focus
-    if (m_isInitialized && !m_view.IsNull()) {
-        makeCurrent();
-        // Force a redraw to prevent black screen
-        QTimer::singleShot(1, this, [this]() {
-            if (m_isInitialized && !m_view.IsNull()) {
-                makeCurrent();
-                m_view->Redraw();
-            }
-        });
-    }
-}
 
-void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
-{
-    QOpenGLWidget::focusOutEvent(event);
-    // Don't call doneCurrent() here as it can cause black screen
-}
-
-void OpenGL3DWidget::showEvent(QShowEvent *event)
-{
-    QOpenGLWidget::showEvent(event);
-    
-    // ESSENTIAL: Ensure proper initialization when widget becomes visible
-    if (m_isInitialized && !m_view.IsNull()) {
-        QTimer::singleShot(1, this, [this]() {
-            if (m_isInitialized && !m_view.IsNull()) {
-                makeCurrent();
-                m_view->MustBeResized();
-                m_view->Redraw();
-            }
-        });
-    }
-}
-
-void OpenGL3DWidget::hideEvent(QHideEvent *event)
-{
-    QOpenGLWidget::hideEvent(event);
-    // Don't do anything special here to avoid context issues
-}
 
 void OpenGL3DWidget::setContinuousUpdate(bool enabled)
 {
