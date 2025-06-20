@@ -378,12 +378,4 @@ void PartLoadingPanel::updateAxisInfo(const CylinderInfo& info)
     
     m_axisInfoLabel->setText(infoText);
 
-    // Auto-set raw material diameter based on part diameter + extra margin
-    if (!m_updating) {
-        m_updating = true;
-        double suggestedDiameter = info.diameter + 10.0; // Add 10mm margin
-        m_rawMaterialDiameterSpinBox->setValue(suggestedDiameter);
-        m_updating = false;
-        emit rawMaterialDiameterChanged(suggestedDiameter);
-    }
 } 

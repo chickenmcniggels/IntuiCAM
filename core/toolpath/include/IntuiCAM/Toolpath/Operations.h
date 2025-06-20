@@ -6,4 +6,6 @@
 #include <IntuiCAM/Toolpath/FinishingOperation.h>
 #include <IntuiCAM/Toolpath/PartingOperation.h>
 #include <IntuiCAM/Toolpath/ThreadingOperation.h>
-#include <IntuiCAM/Toolpath/GroovingOperation.h> 
+#include <IntuiCAM/Toolpath/GroovingOperation.h>
+#include <IntuiCAM/Toolpath/DummyOperation.h>
+#include <IntuiCAM/Toolpath/ContouringOperation.h>

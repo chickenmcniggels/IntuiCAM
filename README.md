@@ -6,6 +6,9 @@
 **IntuiCAM** is an open-source CAM project in **active development**. The goal is to deliver an intuitive, cross-platform solution for CNC turning. A modular **C++ core library** drives the toolpath algorithms while a Qt-based GUI guides you from STEP import to G-code export. Python bindings allow integration and automation.
 > **Project Status:** Pre-release / development in progress. Expect missing features and rapid changes.
 
+
+![image](https://github.com/user-attachments/assets/34024db4-e501-45cc-af62-eb78560b7549)
+
 ---
 ## Project Goals
 - Provide a modern, free CAM solution focused on CNC turning

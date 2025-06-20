@@ -83,27 +83,20 @@ TopoDS_Shape RawMaterialManager::createCylinderForWorkpiece(double diameter, dou
 #### Black Screen Fix
 **Problem**: The 3D viewer would go black when the widget lost focus or wasn't actively interacted with.
 
-**Solution**: Implemented robust focus and event handling:
-- Enhanced `updateView()` method with explicit context management
-- Added continuous update timer support
-- Proper focus event handling (`focusInEvent`, `focusOutEvent`) with immediate redraw
-- Show/hide event management to ensure proper rendering lifecycle
+**Solution**: Rely on Qt's recommended approach. The viewer now preserves the
+previous frame using `QOpenGLWidget::PartialUpdate` and simply calls
+`update()` when focus changes. According to the
+[Qt documentation](https://doc.qt.io/qt-6/qopenglwidget.html), a repaint
+should be requested via `update()` when triggered from outside
+`paintGL()`. This prevents the framebuffer from being cleared and avoids the
+black screen.
 
 ```cpp
 void OpenGL3DWidget::updateView()
 {
-    if (!m_view.IsNull() && !m_window.IsNull())
+    if (!m_view.IsNull())
     {
-        // Ensure the OpenGL context is current before updating
-        makeCurrent();
-        
-        // Force redraw even if widget doesn't have focus
         m_view->Redraw();
-        
-        // Make sure the rendering is complete
-        if (context()) {
-            context()->swapBuffers(context()->surface());
-        }
     }
 }
 ```
@@ -198,22 +191,19 @@ Mouse interactions are translated to OCCT view operations:
 
 ### Focus Management
 
-The widget maintains rendering even when losing focus:
-
-```cpp
-void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
-{
-    QOpenGLWidget::focusOutEvent(event);
-    // Force an update even when losing focus to prevent black screen
-    update();
-}
-```
+Earlier versions overrode several focus and window events to avoid a black
+viewer. The implementation has since been simplified—the default
+`QOpenGLWidget` handlers are reliable and avoiding the extra event processing
+prevents flickering during window activation changes.
 
 ## Known Issues and Solutions
 
 ### Issue: Black Screen on Focus Loss
 **Status**: ✅ Fixed in v1.1
-**Solution**: Enhanced focus event handling with immediate redraws and continuous update support
+**Solution**: The widget now preserves its content using
+`QOpenGLWidget::PartialUpdate` and issues an `update()` call whenever focus
+changes. This follows Qt's official guidance and prevents the viewer from
+turning black.
 
 ### Issue: Raw Material Not Encompassing Part
 **Status**: ✅ Fixed in v1.2

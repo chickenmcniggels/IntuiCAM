@@ -22,6 +22,9 @@
 #include <gp_Ax1.hxx>
 #include <gp_Pnt.hxx>
 #include <TopoDS_Shape.hxx>
+#include <AIS_Shape.hxx>
+#include <Prs3d_Drawer.hxx>
+#include <BRepAdaptor_Surface.hxx>
 
 // Project includes
 
@@ -108,8 +111,12 @@ private slots:
     void handleMaterialTypeChanged(IntuiCAM::GUI::MaterialType material);
     void handleRawMaterialDiameterChanged(double diameter);
     void handleManualAxisSelectionRequested();
+    void handleAutoRawDiameterRequested();
+    void handleThreadFaceSelectionRequested();
+    void handleThreadFaceSelected(const TopoDS_Shape& face);
+    void handleWorkpieceTransformed();
     void handleOperationToggled(const QString& operationName, bool enabled);
-    void handleAutomaticToolpathGeneration();
+    void handleGenerateToolpaths();
     
     // 3D viewer handlers
     void handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& clickPoint);
@@ -125,6 +132,11 @@ private slots:
     void handleToolpathOperationCompleted(const QString& operationName, bool success, const QString& message);
     void handleToolpathGenerationCompleted();
     void handleToolpathGenerationError(const QString& errorMessage);
+    
+    // Parameter synchronization handlers
+    void handleParameterValidation(const QString& parameterName, bool isValid, const QString& errorMessage);
+    void handleIncrementalUpdateCompleted(const QStringList& affectedOperations, int updateDuration);
+    void handleParameterCacheUpdated(const QString& parameterName, const QVariant& newValue);
     
     // Toolpath timeline handlers
     void handleToolpathSelected(int index);
@@ -169,6 +181,7 @@ private:
     IntuiCAM::GUI::SetupConfigurationPanel *m_setupConfigPanel;
     OpenGL3DWidget *m_3dViewer;
     ToolpathTimelineWidget *m_toolpathTimeline;
+    QPushButton *m_generateButton;
     QPushButton *m_simulateButton;
     
     // Legacy components (for gradual migration)
@@ -201,6 +214,8 @@ private:
     // Material and Tool Management
     IntuiCAM::GUI::MaterialManager *m_materialManager;
     IntuiCAM::GUI::ToolManager *m_toolManager;
+
+    bool m_selectingThreadFace = false;
     
     // Toolpath Generation Controller
     IntuiCAM::GUI::ToolpathGenerationController *m_toolpathGenerationController;
@@ -236,6 +251,16 @@ private:
     void createViewModeOverlayButton(QWidget* parent);
     void updateViewModeOverlayButton();
     void initializeWorkspace();
+
+    void highlightThreadCandidateFaces();
+    void clearThreadCandidateHighlights();
+    void updateHighlightedThreadFace();
+    void clearHighlightedThreadFace();
+
+    QVector<Handle(AIS_Shape)> m_candidateThreadFaces;
+    Handle(AIS_Shape) m_currentThreadFaceAIS;
+    TopoDS_Shape m_currentThreadFaceLocal;
+    int m_currentThreadRow = -1;
 };
 
 #endif // MAINWINDOW_H

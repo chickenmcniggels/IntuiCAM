@@ -64,7 +64,7 @@ SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     , m_partingTab(nullptr)
     , m_materialManager(nullptr)
     , m_toolManager(nullptr)
-    , m_materialPropertiesLabel(nullptr)
+    
     , m_contouringEnabledCheck(nullptr)
     , m_threadingEnabledCheck(nullptr)
     , m_chamferingEnabledCheck(nullptr)
@@ -73,6 +73,9 @@ SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     setupUI();
     setupConnections();
     applyTabStyling();
+
+    // Ensure widgets respect the initial Advanced Mode state
+    updateAdvancedMode();
 }
 
 SetupConfigurationPanel::~SetupConfigurationPanel() {
@@ -250,41 +253,21 @@ void SetupConfigurationPanel::setupPartTab() {
   m_rawDiameterSpin->setValue(50.0);
   m_rawDiameterSpin->setSuffix(" mm");
   m_rawDiameterSpin->setDecimals(1);
+  m_autoRawDiameterButton = new QPushButton("Auto");
+  m_autoRawDiameterButton->setMaximumWidth(60);
 
   m_rawDiameterLayout->addWidget(m_rawDiameterLabel);
   m_rawDiameterLayout->addWidget(m_rawDiameterSpin);
+  m_rawDiameterLayout->addWidget(m_autoRawDiameterButton);
   m_rawDiameterLayout->addStretch();
   m_materialLayout->addLayout(m_rawDiameterLayout);
 
-  // Raw material length (auto-calculated, display only)
-  m_rawLengthLabel = new QLabel("Raw Length: Auto-calculated");
+  // Raw material length display
+  m_rawLengthLabel = new QLabel("Raw material length required: 0.0 mm");
   m_rawLengthLabel->setStyleSheet("color: #666; font-size: 11px;");
   m_materialLayout->addWidget(m_rawLengthLabel);
 
-  // Material properties display
-  m_materialPropertiesLabel =
-      new QLabel("Material properties will be shown here");
-  m_materialPropertiesLabel->setStyleSheet(
-      "color: #666; font-size: 11px; padding: 8px; background: #f5f5f5; "
-      "border-radius: 4px;");
-  m_materialPropertiesLabel->setWordWrap(true);
-  m_materialLayout->addWidget(m_materialPropertiesLabel);
 
-  // Material details button
-  m_materialDetailsButton =
-      new QPushButton("Material Details & Cutting Parameters");
-  m_materialDetailsButton->setMaximumHeight(28);
-  m_materialDetailsButton->setStyleSheet("QPushButton {"
-                                         "  background-color: #4CAF50;"
-                                         "  color: white;"
-                                         "  border: none;"
-                                         "  border-radius: 4px;"
-                                         "  font-size: 11px;"
-                                         "}"
-                                         "QPushButton:hover {"
-                                         "  background-color: #45a049;"
-                                         "}");
-  m_materialLayout->addWidget(m_materialDetailsButton);
 
   partTabLayout->addWidget(m_materialGroup);
 
@@ -352,32 +335,13 @@ void SetupConfigurationPanel::setupMachiningTab() {
   m_finishingAllowanceLayout->addStretch();
   m_machiningParamsLayout->addLayout(m_finishingAllowanceLayout);
 
-  // Number of finishing passes
-  QHBoxLayout *finishPassLayout = new QHBoxLayout();
-  QLabel *finishPassLabel = new QLabel("Finishing Passes:");
-  finishPassLabel->setMinimumWidth(140);
-  m_finishingPassesSpin = new QSpinBox();
-  m_finishingPassesSpin->setRange(1, 10);
-  m_finishingPassesSpin->setValue(1);
-  finishPassLayout->addWidget(finishPassLabel);
-  finishPassLayout->addWidget(m_finishingPassesSpin);
-  finishPassLayout->addStretch();
-  m_machiningParamsLayout->addLayout(finishPassLayout);
-
-  // Parting width
-  m_partingWidthLayout = new QHBoxLayout();
-  m_partingWidthLabel = new QLabel("Parting Width:");
-  m_partingWidthLabel->setMinimumWidth(140);
-  m_partingWidthSpin = new QDoubleSpinBox();
-  m_partingWidthSpin->setRange(1.0, 5.0);
-  m_partingWidthSpin->setValue(3.0);
-  m_partingWidthSpin->setSuffix(" mm");
-  m_partingWidthSpin->setDecimals(1);
-
-  m_partingWidthLayout->addWidget(m_partingWidthLabel);
-  m_partingWidthLayout->addWidget(m_partingWidthSpin);
-  m_partingWidthLayout->addStretch();
-  m_machiningParamsLayout->addLayout(m_partingWidthLayout);
+  // Flood coolant simple toggle
+  QHBoxLayout *coolLayout = new QHBoxLayout();
+  m_contourFloodCheck = new QCheckBox("Flood Coolant");
+  m_contourFloodCheck->setChecked(true);
+  coolLayout->addWidget(m_contourFloodCheck);
+  coolLayout->addStretch();
+  m_machiningParamsLayout->addLayout(coolLayout);
 
   contourLayout->addWidget(m_machiningParamsGroup);
 
@@ -431,19 +395,44 @@ void SetupConfigurationPanel::setupMachiningTab() {
 
   // Advanced cutting parameters
   m_contourAdvancedGroup = new QGroupBox("Advanced Cutting");
-  QFormLayout *contourAdvLayout = new QFormLayout(m_contourAdvancedGroup);
-  m_contourDepthSpin = new QDoubleSpinBox();
-  m_contourDepthSpin->setRange(0.01, 10.0);
-  m_contourDepthSpin->setSuffix(" mm");
-  m_contourFeedSpin = new QDoubleSpinBox();
-  m_contourFeedSpin->setRange(0.1, 1000.0);
-  m_contourFeedSpin->setSuffix(" mm/rev");
-  m_contourSpeedSpin = new QDoubleSpinBox();
-  m_contourSpeedSpin->setRange(10.0, 10000.0);
-  m_contourSpeedSpin->setSuffix(" RPM");
-  contourAdvLayout->addRow("Depth of Cut:", m_contourDepthSpin);
-  contourAdvLayout->addRow("Feed Rate:", m_contourFeedSpin);
-  contourAdvLayout->addRow("Spindle Speed:", m_contourSpeedSpin);
+  QVBoxLayout *contourAdvLayout = new QVBoxLayout(m_contourAdvancedGroup);
+
+  auto createSection = [this](const QString &title, QGroupBox **group,
+                              QDoubleSpinBox **depth, QDoubleSpinBox **feed,
+                              QDoubleSpinBox **speed, QCheckBox **css) {
+    *group = new QGroupBox(title);
+    QFormLayout *form = new QFormLayout(*group);
+    *depth = new QDoubleSpinBox();
+    (*depth)->setRange(0.01, 10.0);
+    (*depth)->setSuffix(" mm");
+    *feed = new QDoubleSpinBox();
+    (*feed)->setRange(0.1, 1000.0);
+    (*feed)->setSuffix(" mm/rev");
+    *speed = new QDoubleSpinBox();
+    (*speed)->setRange(10.0, 10000.0);
+    (*speed)->setSuffix(" RPM");
+    *css = new QCheckBox("Constant Surface Speed");
+    (*css)->setChecked(true);
+    form->addRow("Cut Depth:", *depth);
+    form->addRow("Feed Rate:", *feed);
+    form->addRow("Spindle Speed:", *speed);
+    form->addRow(QString(), *css);
+    return form;
+  };
+
+  createSection("Facing", &m_contourFacingGroup, &m_contourFacingDepthSpin,
+                &m_contourFacingFeedSpin, &m_contourFacingSpeedSpin,
+                &m_contourFacingCssCheck);
+  createSection("Roughing", &m_contourRoughGroup, &m_contourRoughDepthSpin,
+                &m_contourRoughFeedSpin, &m_contourRoughSpeedSpin,
+                &m_contourRoughCssCheck);
+  createSection("Finishing", &m_contourFinishGroup, &m_contourFinishDepthSpin,
+                &m_contourFinishFeedSpin, &m_contourFinishSpeedSpin,
+                &m_contourFinishCssCheck);
+
+  contourAdvLayout->addWidget(m_contourFacingGroup);
+  contourAdvLayout->addWidget(m_contourRoughGroup);
+  contourAdvLayout->addWidget(m_contourFinishGroup);
   contourLayout->addWidget(m_contourAdvancedGroup);
 
   contourLayout->addStretch();
@@ -457,25 +446,19 @@ void SetupConfigurationPanel::setupMachiningTab() {
   threadEnableLayout->addWidget(m_threadingEnabledCheck);
   threadEnableLayout->addStretch();
   threadingLayout->addLayout(threadEnableLayout);
+  QHBoxLayout *threadCoolLayout = new QHBoxLayout();
+  m_threadFloodCheck = new QCheckBox("Flood Coolant");
+  m_threadFloodCheck->setChecked(true);
+  threadCoolLayout->addWidget(m_threadFloodCheck);
+  threadCoolLayout->addStretch();
+  threadingLayout->addLayout(threadCoolLayout);
+
   QLabel *threadingInfo = new QLabel("Select faces to thread in the 3D view.");
   threadingInfo->setWordWrap(true);
   threadingLayout->addWidget(threadingInfo);
 
-  QHBoxLayout *pitchLayout = new QHBoxLayout();
-  QLabel *pitchLabel = new QLabel("Thread Pitch:");
-  pitchLabel->setMinimumWidth(140);
-  m_threadPitchSpin = new QDoubleSpinBox();
-  m_threadPitchSpin->setRange(0.1, 10.0);
-  m_threadPitchSpin->setValue(1.0);
-  m_threadPitchSpin->setDecimals(2);
-  m_threadPitchSpin->setSuffix(" mm");
-  pitchLayout->addWidget(pitchLabel);
-  pitchLayout->addWidget(m_threadPitchSpin);
-  pitchLayout->addStretch();
-  threadingLayout->addLayout(pitchLayout);
-
   m_threadFacesTable = new QTableWidget(0, 3);
-  QStringList threadHeaders{"Face", "Preset", "Pitch"};
+  QStringList threadHeaders{"Preset", "Pitch", "Depth"};
   m_threadFacesTable->setHorizontalHeaderLabels(threadHeaders);
   m_threadFacesTable->horizontalHeader()->setStretchLastSection(true);
   threadingLayout->addWidget(m_threadFacesTable);
@@ -523,8 +506,15 @@ void SetupConfigurationPanel::setupMachiningTab() {
   chamferSizeLayout->addStretch();
   chamferLayout->addLayout(chamferSizeLayout);
 
+  QHBoxLayout *chamferCoolLayout = new QHBoxLayout();
+  m_chamferFloodCheck = new QCheckBox("Flood Coolant");
+  m_chamferFloodCheck->setChecked(true);
+  chamferCoolLayout->addWidget(m_chamferFloodCheck);
+  chamferCoolLayout->addStretch();
+  chamferLayout->addLayout(chamferCoolLayout);
+
   m_chamferFacesTable = new QTableWidget(0, 4);
-  QStringList chamferHeaders{"Face", "Symmetric", "Value A", "Value B"};
+  QStringList chamferHeaders{"Face", "Chamfer Type", "Value A", "Value B/Angle"};
   m_chamferFacesTable->setHorizontalHeaderLabels(chamferHeaders);
   m_chamferFacesTable->horizontalHeader()->setStretchLastSection(true);
   chamferLayout->addWidget(m_chamferFacesTable);
@@ -592,12 +582,42 @@ void SetupConfigurationPanel::setupMachiningTab() {
   m_partingWidthLayout->addStretch();
   partLayout->addLayout(m_partingWidthLayout);
 
+  QHBoxLayout *partCoolLayout = new QHBoxLayout();
+  m_partFloodCheck = new QCheckBox("Flood Coolant");
+  m_partFloodCheck->setChecked(true);
+  partCoolLayout->addWidget(m_partFloodCheck);
+  partCoolLayout->addStretch();
+  partLayout->addLayout(partCoolLayout);
+
   QGroupBox *partingToolsGroup = new QGroupBox("Recommended Tools");
   QVBoxLayout *partingToolsLayout = new QVBoxLayout(partingToolsGroup);
   QListWidget *partingToolsList = new QListWidget();
   partingToolsLayout->addWidget(partingToolsList);
   partLayout->addWidget(partingToolsGroup);
   m_operationToolLists.insert("parting", partingToolsList);
+
+  // Parting advanced parameters
+  m_partingAdvancedGroup = new QGroupBox("Advanced Cutting");
+  QFormLayout *partAdvLayout = new QFormLayout(m_partingAdvancedGroup);
+  m_partingDepthSpin = new QDoubleSpinBox();
+  m_partingDepthSpin->setRange(0.01, 5.0);
+  m_partingDepthSpin->setSuffix(" mm");
+  m_partingFeedSpin = new QDoubleSpinBox();
+  m_partingFeedSpin->setRange(0.1, 500.0);
+  m_partingFeedSpin->setSuffix(" mm/rev");
+  m_partingSpeedSpin = new QDoubleSpinBox();
+  m_partingSpeedSpin->setRange(10.0, 10000.0);
+  m_partingSpeedSpin->setSuffix(" RPM");
+  m_partingCssCheck = new QCheckBox("Constant Surface Speed");
+  m_partingCssCheck->setChecked(true);
+  m_partingRetractCombo = new QComboBox();
+  m_partingRetractCombo->addItems({"Direct", "Diagonal", "Custom"});
+  partAdvLayout->addRow("Cut Depth:", m_partingDepthSpin);
+  partAdvLayout->addRow("Feed Rate:", m_partingFeedSpin);
+  partAdvLayout->addRow("Spindle Speed:", m_partingSpeedSpin);
+  partAdvLayout->addRow("Retract Mode:", m_partingRetractCombo);
+  partAdvLayout->addRow(QString(), m_partingCssCheck);
+  partLayout->addWidget(m_partingAdvancedGroup);
 
   partLayout->addStretch();
 }
@@ -613,13 +633,11 @@ void SetupConfigurationPanel::setupConnections() {
           &SetupConfigurationPanel::onMaterialChanged);
 
   // Material and tool management connections
-  if (m_materialDetailsButton) {
-    connect(m_materialDetailsButton, &QPushButton::clicked, this,
-            &SetupConfigurationPanel::onToolSelectionRequested);
-  }
   connect(m_rawDiameterSpin,
           QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
           &SetupConfigurationPanel::onConfigurationChanged);
+  connect(m_autoRawDiameterButton, &QPushButton::clicked, this,
+          &SetupConfigurationPanel::onAutoRawDiameterClicked);
 
   // Part positioning connections
   connect(m_distanceSlider, &QSlider::valueChanged, this, [this](int value) {
@@ -651,9 +669,6 @@ void SetupConfigurationPanel::setupConnections() {
   connect(m_partingWidthSpin,
           QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
           &SetupConfigurationPanel::onConfigurationChanged);
-  connect(m_threadPitchSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
   connect(m_chamferSizeSpin,
           QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
           &SetupConfigurationPanel::onConfigurationChanged);
@@ -672,10 +687,24 @@ void SetupConfigurationPanel::setupConnections() {
   if (m_threadingEnabledCheck) {
     connect(m_threadingEnabledCheck, &QCheckBox::toggled, this,
             &SetupConfigurationPanel::onOperationToggled);
+    connect(m_addThreadFaceButton, &QPushButton::clicked, this,
+            &SetupConfigurationPanel::onAddThreadFace);
+    connect(m_removeThreadFaceButton, &QPushButton::clicked, this,
+            &SetupConfigurationPanel::onRemoveThreadFace);
+    connect(m_threadFacesTable, &QTableWidget::itemSelectionChanged, this,
+            &SetupConfigurationPanel::onThreadFaceRowSelected);
+    connect(m_threadFacesTable, &QTableWidget::cellChanged, this,
+            &SetupConfigurationPanel::onThreadFaceCellChanged);
   }
   if (m_chamferingEnabledCheck) {
     connect(m_chamferingEnabledCheck, &QCheckBox::toggled, this,
             &SetupConfigurationPanel::onOperationToggled);
+    connect(m_addChamferFaceButton, &QPushButton::clicked, this,
+            &SetupConfigurationPanel::onAddChamferFace);
+    connect(m_removeChamferFaceButton, &QPushButton::clicked, this,
+            &SetupConfigurationPanel::onRemoveChamferFace);
+    connect(m_chamferFacesTable, &QTableWidget::itemSelectionChanged, this,
+            &SetupConfigurationPanel::onChamferFaceRowSelected);
   }
   if (m_partingEnabledCheck) {
     connect(m_partingEnabledCheck, &QCheckBox::toggled, this,
@@ -830,7 +859,7 @@ void SetupConfigurationPanel::setOrientationFlipped(bool flipped) {
 
 void SetupConfigurationPanel::updateRawMaterialLength(double length) {
   m_rawLengthLabel->setText(
-      QString("Raw Length: %1 mm (auto-calculated)").arg(length, 0, 'f', 1));
+      QString("Raw material length required: %1 mm").arg(length, 0, 'f', 1));
 }
 
 void SetupConfigurationPanel::setFacingAllowance(double allowance) {
@@ -897,6 +926,10 @@ void SetupConfigurationPanel::onManualAxisSelectionClicked() {
   emit manualAxisSelectionRequested();
   m_axisInfoLabel->setText("Selection mode enabled - click on a cylindrical "
                            "surface or circular edge in the 3D view");
+}
+
+void SetupConfigurationPanel::onAutoRawDiameterClicked() {
+  emit autoRawDiameterRequested();
 }
 
 void SetupConfigurationPanel::onConfigurationChanged() {
@@ -997,33 +1030,20 @@ QStringList SetupConfigurationPanel::getRecommendedTools() const {
 }
 
 void SetupConfigurationPanel::updateMaterialProperties() {
-  if (!m_materialManager || !m_materialPropertiesLabel) {
+  if (!m_materialManager) {
     return;
   }
 
   QString materialName = getSelectedMaterialName();
   if (materialName.isEmpty()) {
-    m_materialPropertiesLabel->setText("No material selected");
     return;
   }
 
   MaterialProperties props =
       m_materialManager->getMaterialProperties(materialName);
   if (props.name.isEmpty()) {
-    m_materialPropertiesLabel->setText("Material properties not available");
     return;
   }
-
-  QString propertiesText = QString("Density: %1 kg/m³\n"
-                                   "Machinability: %2/10\n"
-                                   "Recommended Speed: %3 m/min\n"
-                                   "Recommended Feed: %4 mm/rev")
-                               .arg(props.density, 0, 'f', 0)
-                               .arg(props.machinabilityRating * 10, 0, 'f', 1)
-                               .arg(props.recommendedSurfaceSpeed, 0, 'f', 0)
-                               .arg(props.recommendedFeedRate, 0, 'f', 2);
-
-  m_materialPropertiesLabel->setText(propertiesText);
 
   // Update tool recommendations when material changes
   updateToolRecommendations();
@@ -1159,12 +1179,23 @@ void SetupConfigurationPanel::updateAdvancedMode() {
     m_partingWidthLabel->setVisible(adv);
   if (m_partingWidthSpin)
     m_partingWidthSpin->setVisible(adv);
+  if (m_partingAdvancedGroup)
+    m_partingAdvancedGroup->setVisible(adv);
   if (m_toleranceLabel)
     m_toleranceLabel->setVisible(adv);
   if (m_toleranceSpin)
     m_toleranceSpin->setVisible(adv);
   if (m_contourAdvancedGroup)
     m_contourAdvancedGroup->setVisible(adv);
+
+  if (m_contourFloodCheck)
+    m_contourFloodCheck->setVisible(!adv);
+  if (m_threadFloodCheck)
+    m_threadFloodCheck->setVisible(!adv);
+  if (m_chamferFloodCheck)
+    m_chamferFloodCheck->setVisible(!adv);
+  if (m_partFloodCheck)
+    m_partFloodCheck->setVisible(!adv);
 
   if (adv && m_materialManager) {
     QString materialName = getSelectedMaterialName();
@@ -1191,12 +1222,24 @@ void SetupConfigurationPanel::updateAdvancedMode() {
     }
     CuttingParameters cp = m_materialManager->calculateCuttingParameters(
         materialName, 10.0, "facing", finishVal);
-    if (m_contourDepthSpin)
-      m_contourDepthSpin->setValue(cp.depthOfCut);
-    if (m_contourFeedSpin)
-      m_contourFeedSpin->setValue(cp.feedRate);
-    if (m_contourSpeedSpin)
-      m_contourSpeedSpin->setValue(cp.spindleSpeed);
+    if (m_contourFacingDepthSpin)
+      m_contourFacingDepthSpin->setValue(cp.depthOfCut);
+    if (m_contourFacingFeedSpin)
+      m_contourFacingFeedSpin->setValue(cp.feedRate);
+    if (m_contourFacingSpeedSpin)
+      m_contourFacingSpeedSpin->setValue(cp.spindleSpeed);
+    if (m_contourRoughDepthSpin)
+      m_contourRoughDepthSpin->setValue(cp.depthOfCut);
+    if (m_contourRoughFeedSpin)
+      m_contourRoughFeedSpin->setValue(cp.feedRate);
+    if (m_contourRoughSpeedSpin)
+      m_contourRoughSpeedSpin->setValue(cp.spindleSpeed);
+    if (m_contourFinishDepthSpin)
+      m_contourFinishDepthSpin->setValue(cp.depthOfCut);
+    if (m_contourFinishFeedSpin)
+      m_contourFinishFeedSpin->setValue(cp.feedRate);
+    if (m_contourFinishSpeedSpin)
+      m_contourFinishSpeedSpin->setValue(cp.spindleSpeed);
   }
 }
 
@@ -1212,6 +1255,132 @@ void SetupConfigurationPanel::focusOperationTab(const QString &operationName) {
     index = 3;
   if (m_operationsTabWidget)
     m_operationsTabWidget->setCurrentIndex(index);
+}
+
+void SetupConfigurationPanel::onAddThreadFace() {
+  emit requestThreadFaceSelection();
+}
+
+void SetupConfigurationPanel::onRemoveThreadFace() {
+  QList<QTableWidgetSelectionRange> ranges = m_threadFacesTable->selectedRanges();
+  if (ranges.isEmpty())
+    return;
+  int row = ranges.first().topRow();
+  m_threadFacesTable->removeRow(row);
+  if (row >= 0 && row < m_threadFaces.size())
+    m_threadFaces.remove(row);
+  onThreadFaceRowSelected();
+}
+
+void SetupConfigurationPanel::addSelectedThreadFace(const TopoDS_Shape &face) {
+  int row = m_threadFacesTable->rowCount();
+  m_threadFacesTable->insertRow(row);
+
+  QComboBox *presetCombo = new QComboBox();
+  presetCombo->addItems({"None", "M6x1", "M8x1.25", "M10x1.5"});
+  m_threadFacesTable->setCellWidget(row, 0, presetCombo);
+
+  auto *pitchItem = new QTableWidgetItem(QString::number(1.0, 'f', 2));
+  m_threadFacesTable->setItem(row, 1, pitchItem);
+
+  auto *depthItem = new QTableWidgetItem(QString::number(5.0, 'f', 2));
+  m_threadFacesTable->setItem(row, 2, depthItem);
+
+  ThreadFaceConfig cfg;
+  cfg.face = face;
+  cfg.preset = "None";
+  cfg.pitch = 1.0;
+  cfg.depth = 5.0;
+  m_threadFaces.append(cfg);
+
+  connect(presetCombo, &QComboBox::currentTextChanged, this,
+          [this, row, pitchItem](const QString &text) {
+            if (m_updatingThreadTable)
+              return;
+            m_updatingThreadTable = true;
+            if (text == "M6x1") {
+              pitchItem->setText(QString::number(1.0, 'f', 2));
+              m_threadFaces[row].pitch = 1.0;
+            } else if (text == "M8x1.25") {
+              pitchItem->setText(QString::number(1.25, 'f', 2));
+              m_threadFaces[row].pitch = 1.25;
+            } else if (text == "M10x1.5") {
+              pitchItem->setText(QString::number(1.5, 'f', 2));
+              m_threadFaces[row].pitch = 1.5;
+            }
+            m_threadFaces[row].preset = text;
+            m_updatingThreadTable = false;
+          });
+}
+
+void SetupConfigurationPanel::onAddChamferFace() {
+  int row = m_chamferFacesTable->rowCount();
+  m_chamferFacesTable->insertRow(row);
+  m_chamferFacesTable->setItem(row, 0, new QTableWidgetItem(tr("Face %1").arg(row + 1)));
+  m_chamferFacesTable->setItem(row, 1, new QTableWidgetItem("Yes"));
+  m_chamferFacesTable->setItem(row, 2, new QTableWidgetItem(QString::number(m_chamferSizeSpin->value(), 'f', 2)));
+  m_chamferFacesTable->setItem(row, 3, new QTableWidgetItem(QString::number(m_chamferSizeSpin->value(), 'f', 2)));
+
+  ChamferFaceConfig cfg;
+  cfg.faceId = QString::number(row);
+  cfg.symmetric = true;
+  cfg.valueA = m_chamferSizeSpin->value();
+  cfg.valueB = m_chamferSizeSpin->value();
+  m_chamferFaces.append(cfg);
+}
+
+void SetupConfigurationPanel::onRemoveChamferFace() {
+  QList<QTableWidgetSelectionRange> ranges = m_chamferFacesTable->selectedRanges();
+  if (ranges.isEmpty())
+    return;
+  int row = ranges.first().topRow();
+  m_chamferFacesTable->removeRow(row);
+  if (row >= 0 && row < m_chamferFaces.size())
+    m_chamferFaces.remove(row);
+}
+
+void SetupConfigurationPanel::onThreadFaceRowSelected() {
+  QList<QTableWidgetSelectionRange> ranges = m_threadFacesTable->selectedRanges();
+  if (ranges.isEmpty()) {
+    emit threadFaceDeselected();
+    return;
+  }
+  int row = ranges.first().topRow();
+  if (row >= 0 && row < m_threadFaces.size())
+    emit threadFaceSelected(m_threadFaces[row].face);
+}
+
+void SetupConfigurationPanel::onThreadFaceCellChanged(int row, int column) {
+  if (m_updatingThreadTable)
+    return;
+  if (row < 0 || row >= m_threadFaces.size())
+    return;
+
+  if (column == 1) {
+    m_updatingThreadTable = true;
+    QWidget *w = m_threadFacesTable->cellWidget(row, 0);
+    if (auto combo = qobject_cast<QComboBox *>(w)) {
+      combo->setCurrentIndex(0); // None
+    }
+    bool ok = false;
+    double val = m_threadFacesTable->item(row, column)->text().toDouble(&ok);
+    if (ok) m_threadFaces[row].pitch = val;
+    m_threadFaces[row].preset = "None";
+    m_updatingThreadTable = false;
+  } else if (column == 2) {
+    bool ok = false;
+    double val = m_threadFacesTable->item(row, column)->text().toDouble(&ok);
+    if (ok) m_threadFaces[row].depth = val;
+  }
+}
+
+void SetupConfigurationPanel::onChamferFaceRowSelected() {
+  QList<QTableWidgetSelectionRange> ranges = m_chamferFacesTable->selectedRanges();
+  if (ranges.isEmpty())
+    return;
+  int row = ranges.first().topRow();
+  if (row >= 0 && row < m_chamferFaces.size())
+    emit chamferFaceSelected(m_chamferFaces[row].faceId);
 }
 
 // Utility method implementations

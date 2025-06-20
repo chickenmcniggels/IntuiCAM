@@ -1,4 +1,4 @@
-# Lathe Coordinate System Implementation
+#Lathe Coordinate System Implementation
 
 ## Overview
 
@@ -17,18 +17,19 @@ The following coordinate system improvements have been implemented:
    - Z-axis runs horizontally (positive from right to left)
    - View from negative Y-axis toward origin
 
-3. **Grid Visualization**
-   - Created a grid display for the XZ view to provide visual reference
-   - Grid lines at specified intervals (default 10mm)
-   - Highlighted X and Z axes with distinct colors (X: green, Z: red)
+3. **Lathe-Oriented Default 3D View**
+   - The initial 3D camera now positions the Z axis horizontally, matching the lathe orientation
 
-4. **Camera State Preservation**
+4. **Grid Visualization (Removed)**
+   - The previous grid overlay for the XZ view has been removed to simplify the interface
+
+5. **Camera State Preservation**
    - 3D camera state is preserved when switching to XZ view
    - Projection type (perspective or orthographic) is restored when returning to 3D view
    - XZ view settings are consistent with standard lathe conventions
    - Smooth transition between views with proper handling of different projection types
 
-5. **Proper Cleanup and Redisplay**
+6. **Proper Cleanup and Redisplay**
    - Added support for removing and redisplaying objects when switching views
    - Implemented helper methods in all managers to support redisplay operations
    - Efficient handling of object transforms and materials
@@ -38,7 +39,6 @@ The following coordinate system improvements have been implemented:
 The implementation involved changes to several key components:
 
 1. **OpenGL3DWidget**
-   - Added methods for creating and displaying a grid in the XZ view
    - Updated camera setup methods to use proper orthographic projection
    - Implemented state preservation between view modes
 
@@ -60,7 +60,7 @@ To switch between coordinate systems:
    - `ViewMode::Mode3D` for standard 3D view
    - `ViewMode::LatheXZ` for lathe 2D view
 
-The view will automatically adjust the projection, grid display, and camera orientation to match the selected mode.
+The view will automatically adjust the projection and camera orientation to match the selected mode.
 
 ## Benefits
 
@@ -68,7 +68,7 @@ This implementation provides several benefits for lathe operations:
 
 1. **Improved accuracy** in measuring and visualizing lathe operations
 2. **Familiar coordinate system** for CNC lathe programmers
-3. **Visual grid references** for easier part dimensioning
+3. **Removed grid overlay** for a cleaner view
 4. **Better depth perception** with true orthographic projection
 5. **Consistent axis orientation** aligned with G-code conventions
 
@@ -76,7 +76,6 @@ This implementation provides several benefits for lathe operations:
 
 Potential future enhancements to consider:
 
-1. Additional grid customization options (spacing, color, etc.)
-2. Measurement tools specific to the lathe view
-3. Dimension display in the XZ view
-4. Enhanced visualization of cutting depth in lathe operations 
+1. Measurement tools specific to the lathe view
+2. Dimension display in the XZ view
+3. Enhanced visualization of cutting depth in lathe operations

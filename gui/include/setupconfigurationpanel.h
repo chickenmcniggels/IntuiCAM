@@ -16,6 +16,8 @@
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTextEdit>
+#include <QVector>
+#include <TopoDS_Shape.hxx>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -58,6 +60,20 @@ struct OperationConfig {
   QString name;
   QString description;
   QStringList parameters;
+};
+
+struct ThreadFaceConfig {
+  TopoDS_Shape face;
+  QString preset;
+  double pitch = 1.0;
+  double depth = 5.0;
+};
+
+struct ChamferFaceConfig {
+  QString faceId;
+  bool symmetric = true;
+  double valueA = 0.5;
+  double valueB = 0.5;
 };
 
 class SetupConfigurationPanel : public QWidget {
@@ -118,6 +134,7 @@ signals:
   void stepFileSelected(const QString &filePath);
   void materialTypeChanged(MaterialType type);
   void rawMaterialDiameterChanged(double diameter);
+  void autoRawDiameterRequested();
   void distanceToChuckChanged(double distance);
   void orientationFlipped(bool flipped);
   void manualAxisSelectionRequested();
@@ -125,14 +142,27 @@ signals:
   void automaticToolpathGenerationRequested();
   void materialSelectionChanged(const QString &materialName);
   void toolRecommendationsUpdated(const QStringList &toolIds);
+  void requestThreadFaceSelection();
+  void threadFaceSelected(const TopoDS_Shape &face);
+  void threadFaceDeselected();
+  void chamferFaceSelected(const QString &faceId);
 
 public slots:
   void onBrowseStepFile();
   void onConfigurationChanged();
   void onManualAxisSelectionClicked();
+  void onAutoRawDiameterClicked();
   void onOperationToggled();
   void onMaterialChanged();
   void onToolSelectionRequested();
+  void onAddThreadFace();
+  void addSelectedThreadFace(const TopoDS_Shape &face);
+  void onRemoveThreadFace();
+  void onAddChamferFace();
+  void onRemoveChamferFace();
+  void onThreadFaceRowSelected();
+  void onThreadFaceCellChanged(int row, int column);
+  void onChamferFaceRowSelected();
 
 private:
   void setupUI();
@@ -176,7 +206,8 @@ private:
   QHBoxLayout *m_rawDiameterLayout;
   QLabel *m_rawDiameterLabel;
   QDoubleSpinBox *m_rawDiameterSpin;
-  QLabel *m_rawLengthLabel; // Now just a label showing auto-calculated length
+  QPushButton *m_autoRawDiameterButton;
+  QLabel *m_rawLengthLabel; // Displays current raw material length
 
   // Machining Tab Components (Machining Parameters + Operations + Quality)
   QGroupBox *m_machiningParamsGroup;
@@ -195,16 +226,37 @@ private:
   QDoubleSpinBox *m_partingWidthSpin;
 
   // Advanced cutting parameter widgets
+  // Contouring advanced groups
   QGroupBox *m_contourAdvancedGroup;
+  QGroupBox *m_contourFacingGroup;
+  QGroupBox *m_contourRoughGroup;
+  QGroupBox *m_contourFinishGroup;
+  QDoubleSpinBox *m_contourFacingDepthSpin;
+  QDoubleSpinBox *m_contourFacingFeedSpin;
+  QDoubleSpinBox *m_contourFacingSpeedSpin;
+  QCheckBox *m_contourFacingCssCheck;
+  QDoubleSpinBox *m_contourRoughDepthSpin;
+  QDoubleSpinBox *m_contourRoughFeedSpin;
+  QDoubleSpinBox *m_contourRoughSpeedSpin;
+  QCheckBox *m_contourRoughCssCheck;
+  QDoubleSpinBox *m_contourFinishDepthSpin;
+  QDoubleSpinBox *m_contourFinishFeedSpin;
+  QDoubleSpinBox *m_contourFinishSpeedSpin;
+  QCheckBox *m_contourFinishCssCheck;
+
+  // Legacy flat advanced members kept for compatibility
   QDoubleSpinBox *m_contourDepthSpin;
   QDoubleSpinBox *m_contourFeedSpin;
   QDoubleSpinBox *m_contourSpeedSpin;
 
+  // Flood coolant (simple mode)
+  QCheckBox *m_contourFloodCheck;
+  QCheckBox *m_chamferFloodCheck;
+  QCheckBox *m_partFloodCheck;
+  QCheckBox *m_threadFloodCheck;
+
   // Advanced mode toggle
   QCheckBox *m_advancedModeCheck;
-
-  // Simplified parameters
-  QSpinBox *m_finishingPassesSpin;
 
   // Threading face table
   QTableWidget *m_threadFacesTable;
@@ -218,12 +270,26 @@ private:
   QDoubleSpinBox *m_extraChamferStockSpin;
   QDoubleSpinBox *m_chamferDiameterLeaveSpin;
 
+
+  // Stored face/edge configurations
+  QVector<ThreadFaceConfig> m_threadFaces;
+  QVector<ChamferFaceConfig> m_chamferFaces;
+
+  bool m_updatingThreadTable = false;
+  
+  // Parting advanced group
+  QGroupBox *m_partingAdvancedGroup;
+  QDoubleSpinBox *m_partingDepthSpin;
+  QDoubleSpinBox *m_partingFeedSpin;
+  QDoubleSpinBox *m_partingSpeedSpin;
+  QCheckBox *m_partingCssCheck;
+  QComboBox *m_partingRetractCombo;
+
   // Legacy placeholders to preserve binary compatibility
   QGroupBox *m_operationsGroup;
   QVBoxLayout *m_operationsLayout;
   QCheckBox *m_contouringEnabledCheck;
   QCheckBox *m_threadingEnabledCheck;
-  QDoubleSpinBox *m_threadPitchSpin;
   QCheckBox *m_chamferingEnabledCheck;
   QDoubleSpinBox *m_chamferSizeSpin;
   QCheckBox *m_partingEnabledCheck;
@@ -242,9 +308,7 @@ private:
   ToolManager *m_toolManager;
   QMap<QString, QListWidget *> m_operationToolLists;
 
-  // Enhanced material display
-  QLabel *m_materialPropertiesLabel;
-  QPushButton *m_materialDetailsButton;
+
 };
 
 } // namespace GUI

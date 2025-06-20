@@ -19,6 +19,8 @@ set(GUI_SOURCES
     src/toolmanager.cpp
     src/toolpathtimelinewidget.cpp
     src/toolpathmanager.cpp
+    src/aisprofiledisplay.cpp
+    src/aistoolpathdisplay.cpp
 )
 
 set(GUI_HEADERS
@@ -36,6 +38,8 @@ set(GUI_HEADERS
     include/toolmanager.h
     include/toolpathtimelinewidget.h
     include/toolpathmanager.h
+    include/aisprofiledisplay.h
+    include/aistoolpathdisplay.h
 )
 
 set(GUI_UI_FILES

@@ -202,6 +202,13 @@ public:
      */
     double currentMinZ() const;
 
+    /**
+     * @brief Find the largest circular edge diameter on a workpiece
+     * @param workpiece The shape to analyze
+     * @return Largest detected circular edge diameter in mm, or 0.0 if none found
+     */
+    double getLargestCircularEdgeDiameter(const TopoDS_Shape& workpiece) const;
+
 signals:
     /**
      * @brief Emitted when a cylinder is detected in a workpiece
@@ -236,6 +243,7 @@ signals:
 private:
     Handle(AIS_InteractiveContext) m_context;
     QVector<Handle(AIS_Shape)> m_workpieces;
+    bool m_visible{true};
     
     // Analysis results
     gp_Ax1 m_mainCylinderAxis;
@@ -277,4 +285,4 @@ private:
     QString generateCylinderDescription(const CylinderInfo& info, int index);
 };
 
-#endif // WORKPIECEMANAGER_H 
+#endif // WORKPIECEMANAGER_H

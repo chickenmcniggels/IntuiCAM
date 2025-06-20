@@ -18,6 +18,7 @@
 #include <GeomAbs_SurfaceType.hxx>
 #include <TopLoc_Location.hxx>
 #include <Poly_Triangulation.hxx>
+#include <BRepTools.hxx>
 
 namespace IntuiCAM {
 namespace Geometry {
@@ -207,125 +208,120 @@ double OCCTPart::getSurfaceArea() const {
 std::unique_ptr<Mesh> OCCTPart::generateMesh(double tolerance) const {
     auto mesh = std::make_unique<Mesh>();
     
-    // Create triangulation of the shape
-    BRepMesh_IncrementalMesh incrementalMesh(*static_cast<TopoDS_Shape*>(m_shape), tolerance);
-    incrementalMesh.Perform();
+    if (!m_shape) {
+        return mesh;
+    }
     
-    // Iterate through all faces
-    for (TopExp_Explorer faceExplorer(*static_cast<TopoDS_Shape*>(m_shape), TopAbs_FACE); 
-         faceExplorer.More(); faceExplorer.Next()) {
-        TopoDS_Face face = TopoDS::Face(faceExplorer.Current());
-        TopLoc_Location loc;
+    try {
+        const TopoDS_Shape* shape = static_cast<const TopoDS_Shape*>(m_shape);
         
-        // Get triangulation for this face
-        Handle(Poly_Triangulation) triangulation = BRep_Tool::Triangulation(face, loc);
+        // Generate mesh using OpenCASCADE meshing algorithms
+        BRepMesh_IncrementalMesh mesher(*shape, tolerance);
         
-        if (!triangulation.IsNull()) {
-            // Newer versions of OpenCASCADE use a different method for accessing nodes
-            int nbTriangles = triangulation->NbTriangles();
-            int nbNodes = triangulation->NbNodes();
+        if (mesher.IsDone()) {
+            // Extract triangulation from all faces
+            TopExp_Explorer faceExplorer(*shape, TopAbs_FACE);
             
-            // Iterate through all triangles
-            for (int i = 1; i <= nbTriangles; i++) {
-                // Get triangle vertices indices (1-based in OpenCASCADE)
-                int n1, n2, n3;
-                triangulation->Triangle(i).Get(n1, n2, n3);
+            for (; faceExplorer.More(); faceExplorer.Next()) {
+                const TopoDS_Face& face = TopoDS::Face(faceExplorer.Current());
+                TopLoc_Location location;
                 
-                // Get node coordinates (1-based in OpenCASCADE)
-                gp_Pnt p1 = triangulation->Node(n1).Transformed(loc);
-                gp_Pnt p2 = triangulation->Node(n2).Transformed(loc);
-                gp_Pnt p3 = triangulation->Node(n3).Transformed(loc);
+                Handle(Poly_Triangulation) triangulation = BRep_Tool::Triangulation(face, location);
                 
-                // Create triangle
-                Mesh::Triangle triangle;
-                triangle.vertices[0] = Point3D(p1.X(), p1.Y(), p1.Z());
-                triangle.vertices[1] = Point3D(p2.X(), p2.Y(), p2.Z());
-                triangle.vertices[2] = Point3D(p3.X(), p3.Y(), p3.Z());
-                
-                // Calculate normal (simplified)
-                Vector3D v1(triangle.vertices[1].x - triangle.vertices[0].x,
-                           triangle.vertices[1].y - triangle.vertices[0].y,
-                           triangle.vertices[1].z - triangle.vertices[0].z);
-                           
-                Vector3D v2(triangle.vertices[2].x - triangle.vertices[0].x,
-                           triangle.vertices[2].y - triangle.vertices[0].y,
-                           triangle.vertices[2].z - triangle.vertices[0].z);
-                           
-                // Cross product for normal
-                Vector3D normal;
-                normal.x = v1.y * v2.z - v1.z * v2.y;
-                normal.y = v1.z * v2.x - v1.x * v2.z;
-                normal.z = v1.x * v2.y - v1.y * v2.x;
-                
-                // Normalize
-                double length = std::sqrt(normal.x * normal.x + 
-                                        normal.y * normal.y + 
-                                        normal.z * normal.z);
-                                        
-                if (length > 0.0) {
-                    normal.x /= length;
-                    normal.y /= length;
-                    normal.z /= length;
-                    
-                    // Reverse normal if needed
-                    if (face.Orientation() == TopAbs_REVERSED) {
-                        normal.x = -normal.x;
-                        normal.y = -normal.y;
-                        normal.z = -normal.z;
+                if (!triangulation.IsNull()) {
+                    // Extract triangles from the triangulation
+                    for (int i = 1; i <= triangulation->NbTriangles(); ++i) {
+                        const Poly_Triangle& triangle = triangulation->Triangle(i);
+                        
+                        int n1, n2, n3;
+                        triangle.Get(n1, n2, n3);
+                        
+                        // Get vertices (1-based indexing in OpenCASCADE)
+                        gp_Pnt p1 = triangulation->Node(n1);
+                        gp_Pnt p2 = triangulation->Node(n2);
+                        gp_Pnt p3 = triangulation->Node(n3);
+                        
+                        // Apply location transformation if needed
+                        if (!location.IsIdentity()) {
+                            p1.Transform(location.Transformation());
+                            p2.Transform(location.Transformation());
+                            p3.Transform(location.Transformation());
+                        }
+                        
+                        // Create triangle
+                        Mesh::Triangle meshTriangle;
+                        meshTriangle.vertices[0] = Point3D(p1.X(), p1.Y(), p1.Z());
+                        meshTriangle.vertices[1] = Point3D(p2.X(), p2.Y(), p2.Z());
+                        meshTriangle.vertices[2] = Point3D(p3.X(), p3.Y(), p3.Z());
+                        
+                        // Calculate normal
+                        Vector3D v1(p2.X() - p1.X(), p2.Y() - p1.Y(), p2.Z() - p1.Z());
+                        Vector3D v2(p3.X() - p1.X(), p3.Y() - p1.Y(), p3.Z() - p1.Z());
+                        
+                        meshTriangle.normal = Vector3D(
+                            v1.y * v2.z - v1.z * v2.y,
+                            v1.z * v2.x - v1.x * v2.z,
+                            v1.x * v2.y - v1.y * v2.x
+                        ).normalized();
+                        
+                        mesh->addTriangle(meshTriangle);
                     }
                 }
-                
-                triangle.normal = normal;
-                
-                // Add triangle to mesh
-                mesh->addTriangle(triangle);
             }
         }
+    } catch (const std::exception& e) {
+        // Return empty mesh on error
+        return std::make_unique<Mesh>();
     }
     
     return mesh;
 }
 
 std::vector<Point3D> OCCTPart::detectCylindricalFeatures() const {
-    std::vector<Point3D> features;
+    std::vector<Point3D> cylinderAxes;
     
     if (!m_shape) {
-        return features;
+        return cylinderAxes;
     }
     
     try {
-        // Explore all faces
-        for (TopExp_Explorer faceExplorer(*static_cast<TopoDS_Shape*>(m_shape), TopAbs_FACE); 
-             faceExplorer.More(); faceExplorer.Next()) {
+        const TopoDS_Shape* shape = static_cast<const TopoDS_Shape*>(m_shape);
+        
+        // Iterate through all faces to find cylindrical surfaces
+        TopExp_Explorer faceExplorer(*shape, TopAbs_FACE);
+        
+        for (; faceExplorer.More(); faceExplorer.Next()) {
+            const TopoDS_Face& face = TopoDS::Face(faceExplorer.Current());
             
-            TopoDS_Face face = TopoDS::Face(faceExplorer.Current());
             BRepAdaptor_Surface surface(face);
             
-            // Check if the face is a cylinder
             if (surface.GetType() == GeomAbs_Cylinder) {
-                // Get cylinder data
+                // Found a cylindrical surface
                 gp_Cylinder cylinder = surface.Cylinder();
                 gp_Ax1 axis = cylinder.Axis();
-                gp_Pnt center = axis.Location();
+                
+                // Get cylinder parameters
+                gp_Pnt location = axis.Location();
                 gp_Dir direction = axis.Direction();
-                double radius = cylinder.Radius();
                 
-                // Add the center point
-                features.push_back(Point3D(center.X(), center.Y(), center.Z()));
+                // Store axis start and end points
+                cylinderAxes.push_back(Point3D(location.X(), location.Y(), location.Z()));
                 
-                // Add a point along the axis to indicate direction
-                features.push_back(Point3D(
-                    center.X() + direction.X() * radius,
-                    center.Y() + direction.Y() * radius,
-                    center.Z() + direction.Z() * radius
-                ));
+                // Estimate cylinder length from face bounds
+                double uMin, uMax, vMin, vMax;
+                BRepTools::UVBounds(face, uMin, uMax, vMin, vMax);
+                
+                double height = vMax - vMin;
+                gp_Pnt endPoint = location.Translated(gp_Vec(direction.XYZ() * height));
+                cylinderAxes.push_back(Point3D(endPoint.X(), endPoint.Y(), endPoint.Z()));
             }
         }
-    } catch (const std::exception&) {
-        // Handle exceptions silently
+    } catch (const std::exception& e) {
+        // Return empty list on error
+        return std::vector<Point3D>();
     }
     
-    return features;
+    return cylinderAxes;
 }
 
 std::optional<double> OCCTPart::getLargestCylinderDiameter() const {
@@ -333,58 +329,48 @@ std::optional<double> OCCTPart::getLargestCylinderDiameter() const {
         return std::nullopt;
     }
     
+    double largestDiameter = 0.0;
+    bool foundCylinder = false;
+    
     try {
-        double maxDiameter = 0.0;
-        bool found = false;
+        const TopoDS_Shape* shape = static_cast<const TopoDS_Shape*>(m_shape);
         
-        // Explore all faces
-        for (TopExp_Explorer faceExplorer(*static_cast<TopoDS_Shape*>(m_shape), TopAbs_FACE); 
-             faceExplorer.More(); faceExplorer.Next()) {
+        // Iterate through all faces to find cylindrical surfaces
+        TopExp_Explorer faceExplorer(*shape, TopAbs_FACE);
+        
+        for (; faceExplorer.More(); faceExplorer.Next()) {
+            const TopoDS_Face& face = TopoDS::Face(faceExplorer.Current());
             
-            TopoDS_Face face = TopoDS::Face(faceExplorer.Current());
             BRepAdaptor_Surface surface(face);
             
-            // Check if the face is a cylinder
             if (surface.GetType() == GeomAbs_Cylinder) {
-                // Get cylinder radius
-                double diameter = surface.Cylinder().Radius() * 2.0;
+                gp_Cylinder cylinder = surface.Cylinder();
+                double radius = cylinder.Radius();
+                double diameter = radius * 2.0;
                 
-                // Update max diameter
-                if (diameter > maxDiameter || !found) {
-                    maxDiameter = diameter;
-                    found = true;
+                if (diameter > largestDiameter) {
+                    largestDiameter = diameter;
+                    foundCylinder = true;
                 }
             }
         }
-        
-        if (found) {
-            return maxDiameter;
-        }
-    } catch (const std::exception&) {
-        // Handle exceptions silently
+    } catch (const std::exception& e) {
+        return std::nullopt;
     }
     
-    return std::nullopt;
+    return foundCylinder ? std::optional<double>(largestDiameter) : std::nullopt;
 }
 
 const TopoDS_Shape& OCCTPart::getOCCTShape() const {
-    if (!m_shape) {
-        throw std::runtime_error("OCCTPart: Null shape accessed");
-    }
-    return *static_cast<TopoDS_Shape*>(m_shape);
+    return *static_cast<const TopoDS_Shape*>(m_shape);
 }
 
 void OCCTPart::setOCCTShape(const TopoDS_Shape& shape) {
-    // Delete old shape if it exists
     if (m_shape) {
         delete static_cast<TopoDS_Shape*>(m_shape);
     }
-    
-    // Copy new shape
     m_shape = new TopoDS_Shape(shape);
-    
-    // Reset bounding box
-    m_boundingBoxComputed = false;
+    m_boundingBoxComputed = false; // Invalidate cached bounding box
 }
 
 } // namespace Geometry

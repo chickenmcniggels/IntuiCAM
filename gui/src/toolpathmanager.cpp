@@ -544,68 +544,111 @@ gp_Trsf ToolpathManager::getWorkpieceTransformation() const
 }
 
 // === New method: displayLatheProfile =======================================
-bool ToolpathManager::displayLatheProfile(const std::vector<IntuiCAM::Geometry::Point2D>& profile,
-                                          const QString& name)
+bool ToolpathManager::displayLatheProfile(const std::vector<IntuiCAM::Geometry::Point2D>& profile, const QString& name)
 {
     if (m_context.IsNull()) {
         emit errorOccurred("Cannot display profile: AIS context not initialized");
         return false;
     }
-
-    if (profile.size() < 2) {
-        emit errorOccurred("Profile contains insufficient points");
+    
+    if (profile.empty()) {
+        emit errorOccurred("Cannot display empty profile");
         return false;
     }
-
-    // Remove previous overlay with same name
-    if (m_displayedToolpaths.contains(name)) {
-        removeToolpath(name);
-    }
-
-    // Build wire from consecutive points (assume profile sorted by Z)
-    BRepBuilderAPI_MakeWire wireBuilder;
-    for (size_t i = 0; i < profile.size() - 1; ++i) {
-        const auto& p1 = profile[i];
-        const auto& p2 = profile[i + 1];
-        gp_Pnt gp1(p1.x, 0.0, p1.z);
-        gp_Pnt gp2(p2.x, 0.0, p2.z);
-        if (gp1.Distance(gp2) < 1e-6) continue;
-        BRepBuilderAPI_MakeEdge edge(gp1, gp2);
-        if (edge.IsDone()) {
-            wireBuilder.Add(edge.Edge());
+    
+    // Remove existing profile with the same name if it exists
+    removeProfile(name);
+    
+    try {
+        // Create a compound shape to hold all profile edges
+        BRep_Builder builder;
+        TopoDS_Compound compound;
+        builder.MakeCompound(compound);
+        
+        // Convert 2D profile points to 3D (assuming Y=0 for turning operations)
+        std::vector<gp_Pnt> points3D;
+        for (const auto& point : profile) {
+            // For lathe profiles: x = radius, z = z-position
+            points3D.emplace_back(point.x, 0.0, point.z);
         }
-    }
-
-    if (!wireBuilder.IsDone()) {
-        emit errorOccurred("Failed to build profile wire");
+        
+        // Create edges connecting consecutive points
+        for (size_t i = 1; i < points3D.size(); ++i) {
+            const gp_Pnt& p1 = points3D[i-1];
+            const gp_Pnt& p2 = points3D[i];
+            
+            // Skip degenerate edges
+            if (p1.Distance(p2) < 1e-6) {
+                continue;
+            }
+            
+            BRepBuilderAPI_MakeEdge edgeBuilder(p1, p2);
+            if (edgeBuilder.IsDone()) {
+                builder.Add(compound, edgeBuilder.Edge());
+            }
+        }
+        
+        // Apply workpiece transformation if available
+        gp_Trsf transformation = getWorkpieceTransformation();
+        TopoDS_Shape transformedShape = compound;
+        
+        if (transformation.Form() != gp_Identity) {
+            BRepBuilderAPI_Transform transformer(compound, transformation, Standard_True);
+            if (transformer.IsDone()) {
+                transformedShape = transformer.Shape();
+            }
+        }
+        
+        // Create AIS shape for visualization
+        Handle(AIS_Shape) profileAIS = new AIS_Shape(transformedShape);
+        
+        // Set profile display properties (different from toolpaths)
+        profileAIS->SetColor(Quantity_NOC_YELLOW);
+        profileAIS->SetWidth(2.0);
+        profileAIS->SetTransparency(0.3);
+        
+        // Display the profile
+        m_context->Display(profileAIS, Standard_False);
+        
+        // Store the profile AIS object for later removal
+        m_displayedProfiles[name] = profileAIS;
+        
+        // Force view update
+        m_context->UpdateCurrentViewer();
+        
+        qDebug() << "Profile displayed:" << name << "with" << profile.size() << "points";
+        return true;
+        
+    } catch (const Standard_Failure& e) {
+        QString errorMsg = QString("OpenCASCADE error displaying profile: %1").arg(e.GetMessageString());
+        emit errorOccurred(errorMsg);
+        return false;
+    } catch (const std::exception& e) {
+        QString errorMsg = QString("Error displaying profile: %1").arg(e.what());
+        emit errorOccurred(errorMsg);
         return false;
     }
+}
 
-    TopoDS_Shape profileShape = wireBuilder.Wire();
-    m_originalToolpathShapes[name] = profileShape; // reuse maps for easy transform management
-
-    // Transform into world space according to workpiece
-    gp_Trsf trsf = getWorkpieceTransformation();
-    TopoDS_Shape worldShape = profileShape;
-    if (trsf.Form() != gp_Identity) {
-        BRepBuilderAPI_Transform transformer(profileShape, trsf, Standard_True);
-        if (transformer.IsDone()) {
-            worldShape = transformer.Shape();
-        }
+void ToolpathManager::removeProfile(const QString& name)
+{
+    if (m_context.IsNull()) {
+        return;
     }
-
-    Handle(AIS_Shape) profileAIS = new AIS_Shape(worldShape);
-
-    // Custom display properties: magenta, thin line
-    Quantity_Color color(1.0, 0.0, 1.0, Quantity_TOC_RGB);
-    Handle(Prs3d_LineAspect) aspect = new Prs3d_LineAspect(color, Aspect_TOL_SOLID, 1.0);
-    profileAIS->Attributes()->SetWireAspect(aspect);
-    profileAIS->SetDisplayMode(AIS_WireFrame);
-
-    m_context->Display(profileAIS, Standard_False);
-    m_displayedToolpaths[name] = profileAIS;
-    m_context->UpdateCurrentViewer();
-
-    emit toolpathDisplayed(name);
-    return true;
+    
+    if (m_displayedProfiles.contains(name)) {
+        Handle(AIS_Shape) profileAIS = m_displayedProfiles[name];
+        
+        // Erase from display
+        if (!profileAIS.IsNull()) {
+            m_context->Erase(profileAIS, Standard_False);
+        }
+        
+        // Remove from map
+        m_displayedProfiles.remove(name);
+        
+        m_context->UpdateCurrentViewer();
+        
+        qDebug() << "Profile removed:" << name;
+    }
 } 

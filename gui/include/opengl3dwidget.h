@@ -13,6 +13,9 @@
 #include <QShowEvent>
 #include <QHideEvent>
 
+// Standard includes
+#include <vector>
+
 // OpenCASCADE includes
 #include <V3d_View.hxx>
 #include <V3d_Viewer.hxx>
@@ -160,6 +163,30 @@ public:
      */
     void setWorkspaceController(class WorkspaceController* controller) { m_workspaceController = controller; }
 
+    /**
+     * @brief Enable or disable toolpath visibility
+     * @param visible True to show toolpaths, false to hide
+     */
+    void setToolpathsVisible(bool visible);
+
+    /**
+     * @brief Enable or disable profile visibility
+     * @param visible True to show profiles, false to hide
+     */
+    void setProfilesVisible(bool visible);
+
+    /**
+     * @brief Check if toolpaths are currently visible
+     * @return True if toolpaths are visible
+     */
+    bool areToolpathsVisible() const { return m_toolpathsVisible; }
+
+    /**
+     * @brief Check if profiles are currently visible
+     * @return True if profiles are visible
+     */
+    bool areProfilesVisible() const { return m_profilesVisible; }
+
 signals:
     /**
      * @brief Emitted when the viewer is successfully initialized
@@ -192,16 +219,14 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
     
-    // Comprehensive event handling to prevent black screen
+    // Focus handling - call update() on focus changes to avoid black screens
     void focusInEvent(QFocusEvent *event) override;
     void focusOutEvent(QFocusEvent *event) override;
     void showEvent(QShowEvent *event) override;
     void hideEvent(QHideEvent *event) override;
-    void changeEvent(QEvent *event) override;
-    void paintEvent(QPaintEvent *event) override;
-    void enterEvent(QEnterEvent *event) override;
-    void leaveEvent(QEvent *event) override;
-    bool event(QEvent *event) override;
+    
+    // Basic QOpenGLWidget lifecycle events are sufficient. Extra overrides
+    // were removed for a leaner and more stable implementation.
 
 private:
     /**
@@ -210,50 +235,32 @@ private:
     void initializeViewer();
     
     /**
-     * @brief Update the 3D view
+     * @brief Update the 3D view rendering
      */
     void updateView();
     
     /**
-     * @brief Force a robust redraw of the viewer
-     */
-    void forceRedraw();
-    
-    /**
-     * @brief Ensure the viewer context is valid and ready
-     */
-    void ensureViewerReady();
-    
-    /**
-     * @brief Handle window activation changes
-     */
-    void handleActivationChange(bool active);
-
-    /**
-     * @brief Apply the camera settings for the current view mode
+     * @brief Apply camera settings based on current view mode
      */
     void applyCameraForViewMode();
-
+    
     /**
-     * @brief Set up camera for 3D mode with standard perspective view
+     * @brief Set up 3D perspective camera
      */
     void setupCamera3D();
-
+    
     /**
-     * @brief Set up camera for XZ plane mode (lathe coordinate system)
-     * X increases from top to bottom, Z increases from left to right
+     * @brief Set up XZ plane orthographic camera for lathe view
      */
     void setupCameraXZ();
-
+    
     /**
-     * @brief Store current 3D camera state before switching to lathe mode
-     *        (includes projection type)
+     * @brief Store current 3D camera state for restoration
      */
     void store3DCameraState();
-
+    
     /**
-     * @brief Restore 3D camera state when switching back from lathe mode
-     *        (restores projection type as well)
+     * @brief Restore previously stored 3D camera state
      */
     void restore3DCameraState();
 
@@ -268,6 +275,11 @@ private:
      * @brief Remove the lathe grid from display
      */
     void removeLatheGrid();
+    
+    /**
+     * @brief Throttled redraw to prevent excessive render calls
+     */
+    void throttledRedraw();
 
     // OpenCASCADE handles
     Handle(V3d_Viewer) m_viewer;
@@ -277,17 +289,18 @@ private:
     
     // Mouse interaction state
     bool m_isDragging;
+    bool m_isDragStarted;
     QPoint m_lastMousePos;
     Qt::MouseButton m_dragButton;
+    bool m_isMousePressed;
     
     // Update management
     bool m_continuousUpdate;
     QTimer* m_updateTimer;
-    QTimer* m_robustRefreshTimer;  // For preventing persistent black screens
+    QTimer* m_redrawThrottleTimer;
     
     // State tracking
     bool m_isInitialized;
-    bool m_needsRefresh;
 
     // Selection mode
     bool m_selectionMode;
@@ -313,6 +326,11 @@ private:
     double m_stored3DScale;
     Graphic3d_Camera::Projection m_stored3DProjection;
     bool m_has3DCameraState;
+    
+    // XZ view locking parameters
+    gp_Pnt m_lockedXZEye;
+    gp_Pnt m_lockedXZAt;
+    gp_Dir m_lockedXZUp;
 
     // Workspace controller
     class WorkspaceController* m_workspaceController;
@@ -321,6 +339,10 @@ private:
     bool m_gridVisible;
     Standard_Real m_gridSpacing;
     Standard_Real m_gridExtent;
+    
+    // Visibility control for toolpaths and profiles
+    bool m_toolpathsVisible;
+    bool m_profilesVisible;
     
     // Grid objects are managed by the AIS context, no need to store references
 };

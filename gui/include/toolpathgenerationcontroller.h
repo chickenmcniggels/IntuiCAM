@@ -9,6 +9,8 @@
 #include <QProgressBar>
 #include <QTextEdit>
 #include <QMap>
+#include <QVariant>
+#include <QElapsedTimer>
 
 // OpenCASCADE includes
 #include <TopoDS_Shape.hxx>
@@ -53,13 +55,24 @@ namespace IntuiCAM {
 namespace GUI {
 
 /**
- * @brief Controller for automatic toolpath generation
+ * @brief Parameter change types for incremental updates
+ */
+enum class ParameterChangeType {
+    Geometry,      ///< Affects profile extraction - requires full regeneration
+    Tool,          ///< Affects all toolpaths - requires toolpath regeneration
+    Operation,     ///< Affects specific operations - requires partial regeneration
+    Visual         ///< Affects only display - requires display updates only
+};
+
+/**
+ * @brief Advanced toolpath generation controller with real-time parameter synchronization
  * 
- * This controller coordinates the automatic generation of toolpaths based on:
- * - Part geometry analysis
- * - Material properties
- * - Selected operations
- * - Quality requirements
+ * This controller manages the complete toolpath generation pipeline including:
+ * - Profile extraction from part geometry
+ * - Multi-operation toolpath generation (facing, roughing, finishing)
+ * - Real-time parameter synchronization and incremental updates
+ * - Visual feedback and progress tracking
+ * - Advanced caching and performance optimization
  */
 class ToolpathGenerationController : public QObject
 {
@@ -84,6 +97,11 @@ public:
         // Quality settings
         IntuiCAM::GUI::SurfaceFinish surfaceFinish;
         double tolerance;
+        
+        // Additional required fields
+        std::shared_ptr<IntuiCAM::Toolpath::Tool> tool;
+        double profileTolerance = 0.01;
+        int profileSections = 100;
     };
 
     struct GenerationResult {
@@ -103,6 +121,21 @@ public:
         Optimizing,
         Completed,
         Error
+    };
+
+    /**
+     * @brief Parameter change information for incremental updates
+     */
+    struct ParameterChange {
+        ParameterChangeType type;
+        QString parameterName;
+        QVariant oldValue;
+        QVariant newValue;
+        QStringList affectedOperations;
+        
+        ParameterChange(ParameterChangeType t, const QString& name, 
+                       const QVariant& oldVal, const QVariant& newVal)
+            : type(t), parameterName(name), oldValue(oldVal), newValue(newVal) {}
     };
 
     explicit ToolpathGenerationController(QObject *parent = nullptr);
@@ -144,8 +177,73 @@ public:
      */
     void regenerateAllToolpaths();
 
+    /**
+     * @brief Update specific parameters with incremental regeneration
+     * @param changes List of parameter changes to apply
+     */
+    void updateParameters(const QList<ParameterChange>& changes);
+
+    /**
+     * @brief Update a single parameter with immediate feedback
+     * @param changeType Type of parameter change
+     * @param parameterName Name of the parameter
+     * @param newValue New parameter value
+     * @param operationName Optional operation name for operation-specific parameters
+     */
+    void updateParameter(ParameterChangeType changeType, 
+                        const QString& parameterName, 
+                        const QVariant& newValue,
+                        const QString& operationName = QString());
+
+    /**
+     * @brief Enable or disable real-time parameter synchronization
+     * @param enabled True to enable real-time updates
+     */
+    void setRealTimeUpdatesEnabled(bool enabled) { m_realTimeUpdatesEnabled = enabled; }
+
+    /**
+     * @brief Check if real-time updates are enabled
+     * @return True if real-time updates are enabled
+     */
+    bool isRealTimeUpdatesEnabled() const { return m_realTimeUpdatesEnabled; }
+
+    /**
+     * @brief Set the debounce delay for parameter changes
+     * @param milliseconds Delay in milliseconds (default: 500ms)
+     */
+    void setParameterDebounceDelay(int milliseconds) { m_debounceTimer->setInterval(milliseconds); }
+
+    /**
+     * @brief Validate parameter value without applying changes
+     * @param parameterName Name of the parameter to validate
+     * @param value Value to validate
+     * @return Empty string if valid, error message if invalid
+     */
+    QString validateParameterValue(const QString& parameterName, const QVariant& value);
+
+    /**
+     * @brief Get current cached parameter values
+     * @return Map of parameter names to values
+     */
+    QMap<QString, QVariant> getCurrentParameters() const { return m_cachedParameters; }
+
 public slots:
     void onGenerationRequested(const GenerationRequest& request);
+
+    /**
+     * @brief Handle parameter changes from UI components
+     * @param parameterName Name of the changed parameter
+     * @param newValue New parameter value
+     * @param operationName Optional operation name
+     */
+    void onParameterChanged(const QString& parameterName, const QVariant& newValue, 
+                           const QString& operationName = QString());
+
+    /**
+     * @brief Handle batch parameter changes
+     * @param parameters Map of parameter names to values
+     */
+    void onParametersChanged(const QMap<QString, QVariant>& parameters);
 
 signals:
     void generationStarted();
@@ -161,6 +259,28 @@ signals:
     void toolpathRemoved(const QString& name);
     void toolpathRegenerated(const QString& name, const QString& type);
 
+    /**
+     * @brief Emitted when parameter validation completes
+     * @param parameterName Name of the validated parameter
+     * @param isValid True if parameter is valid
+     * @param errorMessage Error message if invalid (empty if valid)
+     */
+    void parameterValidated(const QString& parameterName, bool isValid, const QString& errorMessage);
+
+    /**
+     * @brief Emitted when incremental update completes
+     * @param affectedOperations List of operations that were updated
+     * @param updateDuration Time taken for the update (milliseconds)
+     */
+    void incrementalUpdateCompleted(const QStringList& affectedOperations, int updateDuration);
+
+    /**
+     * @brief Emitted when parameter cache is updated
+     * @param parameterName Name of the updated parameter
+     * @param newValue New parameter value
+     */
+    void parameterCacheUpdated(const QString& parameterName, const QVariant& newValue);
+
 private slots:
     void performAnalysis();
     void performPlanning();
@@ -168,6 +288,11 @@ private slots:
     void performOptimization();
     void finishGeneration();
     void handleError(const QString& errorMessage);
+
+    /**
+     * @brief Process pending parameter changes (debounced)
+     */
+    void processPendingParameterChanges();
 
 private:
     // Core generation steps
@@ -215,7 +340,7 @@ private:
     QMap<QString, std::shared_ptr<IntuiCAM::Toolpath::Toolpath>> m_generatedToolpaths;
 
     // Dependencies
-    Handle(AIS_InteractiveContext) m_context;
+    Handle(AIS_InteractiveContext) m_context; // viewer context for tool display
     ToolpathTimelineWidget* m_timelineWidget;
     QTextEdit* m_statusText;
     WorkspaceController* m_workspaceController;
@@ -252,6 +377,62 @@ private:
         
     // Helper method to determine parameter dialog type
     IntuiCAM::GUI::OperationParameterDialog::OperationType getOperationParameterDialogType(const QString& operationType) const;
+
+    // Parameter synchronization members
+    bool m_realTimeUpdatesEnabled;
+    QTimer* m_debounceTimer;
+    int m_debounceInterval = 500; // Add missing member variable
+    QMap<QString, QVariant> m_cachedParameters;
+    QVector<ParameterChange> m_pendingChanges;
+    GenerationRequest m_cachedRequest;
+    bool m_hasCachedRequest;
+    QMutex m_parameterMutex;
+    
+    // Performance tracking
+    QElapsedTimer m_updateTimer;
+    QMap<QString, int> m_updateDurations;
+
+    /**
+     * @brief Determine what needs to be updated based on parameter changes
+     * @param changes List of parameter changes
+     * @return Update strategy information
+     */
+    struct UpdateStrategy {
+        bool needsProfileRegeneration;
+        QStringList operationsToRegenerate;
+        QStringList visualOnlyUpdates;
+    };
+    UpdateStrategy analyzeParameterChanges(const QList<ParameterChange>& changes);
+
+    /**
+     * @brief Perform incremental toolpath regeneration
+     * @param strategy Update strategy determined by analyzeParameterChanges
+     */
+    void performIncrementalUpdate(const UpdateStrategy& strategy);
+
+    /**
+     * @brief Update visual properties without regenerating toolpaths
+     * @param visualParameters List of visual parameters to update
+     */
+    void updateVisualProperties(const QStringList& visualParameters);
+
+    /**
+     * @brief Cache current parameter values
+     * @param request Generation request to cache
+     */
+    void cacheParameters(const GenerationRequest& request);
+
+    /**
+     * @brief Detect changes between cached and new parameters
+     * @param newRequest New generation request
+     * @return List of detected parameter changes
+     */
+    QList<ParameterChange> detectParameterChanges(const GenerationRequest& newRequest);
+
+    /**
+     * @brief Regenerate the contouring operation with updated parameters
+     */
+    void regenerateContouringOperation();
 };
 
 } // namespace GUI

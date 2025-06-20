@@ -29,6 +29,10 @@ These settings are dedicated to lathe turning and are independent for every step
 
 ### Simple vs Advanced Mode
 
-The setup panel now offers a checkbox labeled **Advanced Mode**. When disabled, only the most important parameters are shown for each operation. For example, Contouring displays just the facing allowance, number of finishing passes and the final surface finish. Threading and Chamfering list the selected faces in tables where you can add or remove entries and adjust individual parameters.
+The setup panel now offers a checkbox labeled **Advanced Mode**. When disabled, only the most important parameters are shown for each operation. For example, Contouring displays just the facing allowance and the final surface finish. Threading and Chamfering list the selected faces in tables where you can add or remove entries and adjust individual parameters.
 
 Enabling **Advanced Mode** reveals additional controls such as calculated cutting depth, feed rate and spindle speed. These values are pre‑filled from the material database but can be fine‑tuned manually.
+
+In this mode, Contouring exposes separate **Facing**, **Roughing** and **Finishing** sections. Each section lets you specify spindle speed (RPM), feed rate, surface speed and cutting depth and includes a checkbox for constant surface speed.
+Parting offers the same parameters plus a drop-down to choose the retract mode. When Advanced Mode is disabled, you simply enable or disable flood coolant for each operation.
+For Chamfering, the edge table now contains a *Chamfer Type* column allowing `Equal Distance`, `Two Distance` or `Distance & Angle` values per edge.

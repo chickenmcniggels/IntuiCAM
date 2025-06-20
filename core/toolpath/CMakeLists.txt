@@ -12,6 +12,8 @@ set(CORE_TOOLPATH_SOURCES
     "src/PartingOperation.cpp"
     "src/ThreadingOperation.cpp"
     "src/GroovingOperation.cpp"
+    "src/DummyOperation.cpp"
+    "src/ContouringOperation.cpp"
     "src/ToolpathPlanner.cpp"
     "src/LatheProfile.cpp"
     "include/IntuiCAM/Toolpath/Types.h"
@@ -22,6 +24,8 @@ set(CORE_TOOLPATH_SOURCES
     "include/IntuiCAM/Toolpath/PartingOperation.h"
     "include/IntuiCAM/Toolpath/ThreadingOperation.h"
     "include/IntuiCAM/Toolpath/GroovingOperation.h"
+    "include/IntuiCAM/Toolpath/DummyOperation.h"
+    "include/IntuiCAM/Toolpath/ContouringOperation.h"
     "include/IntuiCAM/Toolpath/LatheProfile.h"
     "include/IntuiCAM/Toolpath/ToolpathPlanner.h"
 )
