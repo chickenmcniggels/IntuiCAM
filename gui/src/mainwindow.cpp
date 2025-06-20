@@ -420,6 +420,12 @@ void MainWindow::setupWorkspaceConnections()
         
         if (!context.IsNull()) {
             m_workspaceController->initialize(context, m_stepLoader);
+            if (m_toolpathManager) {
+                m_toolpathManager->initialize(context);
+                if (m_outputWindow) {
+                    m_outputWindow->append("Toolpath manager initialized successfully");
+                }
+            }
             if (m_outputWindow) {
                 m_outputWindow->append("Workspace controller initialized successfully");
             }
@@ -2195,6 +2201,12 @@ void MainWindow::initializeWorkspace()
         
         if (!context.IsNull()) {
             m_workspaceController->initialize(context, m_stepLoader);
+            if (m_toolpathManager) {
+                m_toolpathManager->initialize(context);
+                if (m_outputWindow) {
+                    m_outputWindow->append("Toolpath manager initialized successfully");
+                }
+            }
             if (m_outputWindow) {
                 m_outputWindow->append("Workspace controller initialized successfully");
             }
