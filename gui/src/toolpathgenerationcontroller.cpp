@@ -1508,13 +1508,12 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
         return;
     }
     
-    // Apply current workpiece transformation so Z-orientation is respected
-    if (m_workpieceManager) {
-        gp_Trsf wpTrsf = m_workpieceManager->getCurrentTransformation();
-        IntuiCAM::Geometry::Matrix4x4 mat = toMatrix4x4(wpTrsf);
-        toolpath->applyTransform(mat);
-    }
-    // (Raw material orientation could be applied similarly if required)
+    // Toolpaths are stored in local part coordinates. The ToolpathManager
+    // applies the current workpiece transformation when displaying them,
+    // so we should not transform the toolpath here. Applying the
+    // transformation twice resulted in toolpaths being placed outside the
+    // visible area.  Keep the toolpath untransformed and let the manager
+    // handle positioning.
 
     // If a toolpath with the same name already exists, remove it first (to avoid tile accumulation)
     const bool existedBefore = (m_toolpaths.find(operationName) != m_toolpaths.end());
