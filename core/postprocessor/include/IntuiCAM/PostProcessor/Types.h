@@ -10,27 +10,29 @@ namespace IntuiCAM {
 namespace PostProcessor {
 
 // G-code generation and machine-specific adaptations
+
+struct MachineConfig {
+    std::string machineName = "Generic Lathe";
+    std::string units = "mm";           // "mm" or "inch"
+    bool absoluteCoordinates = true;    // G90/G91
+    bool spindleClockwise = true;       // M3/M4
+    double rapidFeedRate = 5000.0;      // mm/min
+    double maxSpindleSpeed = 3000.0;    // RPM
+
+    // Machine limits
+    double maxX = 200.0;                // mm
+    double maxZ = 300.0;                // mm
+    double minX = 0.0;                  // mm
+    double minZ = -300.0;               // mm
+
+    // Safety settings
+    bool useToolLengthCompensation = true;
+    bool useCoolant = true;
+    double safeRetractZ = 5.0;          // mm
+};
+
 class GCodeGenerator {
 public:
-    struct MachineConfig {
-        std::string machineName = "Generic Lathe";
-        std::string units = "mm";           // "mm" or "inch"
-        bool absoluteCoordinates = true;    // G90/G91
-        bool spindleClockwise = true;       // M3/M4
-        double rapidFeedRate = 5000.0;      // mm/min
-        double maxSpindleSpeed = 3000.0;    // RPM
-        
-        // Machine limits
-        double maxX = 200.0;                // mm
-        double maxZ = 300.0;                // mm
-        double minX = 0.0;                  // mm
-        double minZ = -300.0;               // mm
-        
-        // Safety settings
-        bool useToolLengthCompensation = true;
-        bool useCoolant = true;
-        double safeRetractZ = 5.0;          // mm
-    };
     
     struct PostProcessorOptions {
         bool includeComments = true;
@@ -47,7 +49,8 @@ private:
     int currentLineNumber_;
     
 public:
-    GCodeGenerator(const MachineConfig& config = MachineConfig{});
+    GCodeGenerator(const MachineConfig& config);
+    GCodeGenerator();
     
     // Configuration
     void setMachineConfig(const MachineConfig& config) { config_ = config; }
@@ -75,6 +78,7 @@ private:
     std::string formatFeedRate(double feedRate) const;
     std::string formatSpindleSpeed(double rpm) const;
 };
+
 
 // Post-processor for specific machine types
 class PostProcessor {

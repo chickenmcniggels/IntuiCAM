@@ -11,6 +11,10 @@ GCodeGenerator::GCodeGenerator(const MachineConfig& config)
     : config_(config), currentLineNumber_(10) {
 }
 
+GCodeGenerator::GCodeGenerator()
+    : config_(), currentLineNumber_(10) {
+}
+
 std::string GCodeGenerator::generateGCode(const std::vector<std::shared_ptr<Toolpath::Toolpath>>& toolpaths) {
     std::ostringstream gcode;
     
@@ -281,7 +285,7 @@ PostProcessor::ProcessingResult PostProcessor::process(const Toolpath::Toolpath&
 }
 
 void PostProcessor::customizeForMachine(MachineType type) {
-    GCodeGenerator::MachineConfig config;
+    MachineConfig config;
     
     switch (type) {
         case MachineType::Fanuc:

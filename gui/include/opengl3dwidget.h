@@ -22,7 +22,11 @@
 #include <AIS_InteractiveContext.hxx>
 #include <OpenGl_GraphicDriver.hxx>
 #include <Aspect_DisplayConnection.hxx>
-#include <WNT_Window.hxx>
+#ifdef _WIN32
+#  include <WNT_Window.hxx>
+#else
+#  include <Aspect_Window.hxx>
+#endif
 #include <AIS_Shape.hxx>
 #include <TopoDS_Shape.hxx>
 #include <gp_Pnt.hxx>
@@ -285,7 +289,11 @@ private:
     Handle(V3d_Viewer) m_viewer;
     Handle(V3d_View) m_view;
     Handle(AIS_InteractiveContext) m_context;
+#ifdef _WIN32
     Handle(WNT_Window) m_window;
+#else
+    Handle(Aspect_Window) m_window;
+#endif
     
     // Mouse interaction state
     bool m_isDragging;
