@@ -2189,57 +2189,10 @@ void MainWindow::handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& cl
 
 void MainWindow::initializeWorkspace()
 {
-    if (m_workspaceController && m_3dViewer) {
-        // Get the context from the viewer and initialize workspace controller
-        Handle(AIS_InteractiveContext) context = m_3dViewer->getContext();
-        
-        if (!context.IsNull()) {
-            m_workspaceController->initialize(context, m_stepLoader);
-            if (m_outputWindow) {
-                m_outputWindow->append("Workspace controller initialized successfully");
-            }
-            
-            // Setup connections for workspace events
-            connect(m_workspaceController, &WorkspaceController::chuckInitialized,
-                    this, &MainWindow::handleChuckInitialized);
-            connect(m_workspaceController, &WorkspaceController::chuckCenterlineDetected,
-                    this, &MainWindow::handleChuckCenterlineDetected);
-            connect(m_workspaceController, &WorkspaceController::multipleCylindersDetected,
-                    this, &MainWindow::handleMultipleCylindersDetected);
-            connect(m_workspaceController, &WorkspaceController::cylinderAxisSelected,
-                    this, &MainWindow::handleCylinderAxisSelected);
-            connect(m_workspaceController, &WorkspaceController::workpieceWorkflowCompleted,
-                    this, &MainWindow::handleWorkpieceWorkflowCompleted);
-            connect(m_workspaceController, &WorkspaceController::manualAxisSelected,
-                    this, &MainWindow::handleManualAxisSelected);
-            
-            // Connect raw material creation for length updates
-            if (m_workspaceController->getRawMaterialManager()) {
-                connect(m_workspaceController->getRawMaterialManager(), &RawMaterialManager::rawMaterialCreated,
-                        this, &MainWindow::handleRawMaterialCreated);
-            }
-            
-            // Enable auto-fit for initial file loading, but disable for parameter updates
-            m_3dViewer->setAutoFitEnabled(true);
-            
-            // Automatically load the chuck
-            QString chuckFilePath = "C:/Users/nikla/Downloads/three_jaw_chuck.step";
-            bool chuckSuccess = m_workspaceController->initializeChuck(chuckFilePath);
-            if (chuckSuccess) {
-                if (m_outputWindow) {
-                    m_outputWindow->append("Chuck loaded successfully from: " + chuckFilePath);
-                }
-                statusBar()->showMessage("Workspace and chuck ready", 2000);
-            } else {
-                if (m_outputWindow) {
-                    m_outputWindow->append("Warning: Failed to load chuck from: " + chuckFilePath);
-                }
-                statusBar()->showMessage("Workspace ready (chuck not loaded)", 3000);
-            }
-        } else {
-            statusBar()->showMessage("Failed to get viewer context", 3000);
-        }
-    }
+    // Use the same comprehensive setup routine as the initial application startup
+    // to ensure the workspace, toolpath generation controller and related
+    // managers are fully initialized with the 3D viewer context.
+    setupWorkspaceConnections();
 }
 
 void MainWindow::handleToolpathSelected(int index)
