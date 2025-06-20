@@ -1,4 +1,4 @@
-# Lathe Coordinate System Implementation
+#Lathe Coordinate System Implementation
 
 ## Overview
 
@@ -17,16 +17,19 @@ The following coordinate system improvements have been implemented:
    - Z-axis runs horizontally (positive from right to left)
    - View from negative Y-axis toward origin
 
-3. **Grid Visualization (Removed)**
+3. **Lathe-Oriented Default 3D View**
+   - The initial 3D camera now positions the Z axis horizontally, matching the lathe orientation
+
+4. **Grid Visualization (Removed)**
    - The previous grid overlay for the XZ view has been removed to simplify the interface
 
-4. **Camera State Preservation**
+5. **Camera State Preservation**
    - 3D camera state is preserved when switching to XZ view
    - Projection type (perspective or orthographic) is restored when returning to 3D view
    - XZ view settings are consistent with standard lathe conventions
    - Smooth transition between views with proper handling of different projection types
 
-5. **Proper Cleanup and Redisplay**
+6. **Proper Cleanup and Redisplay**
    - Added support for removing and redisplaying objects when switching views
    - Implemented helper methods in all managers to support redisplay operations
    - Efficient handling of object transforms and materials
