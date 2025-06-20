@@ -340,7 +340,7 @@ private:
     QMap<QString, std::shared_ptr<IntuiCAM::Toolpath::Toolpath>> m_generatedToolpaths;
 
     // Dependencies
-    Handle(AIS_InteractiveContext) m_context;
+    Handle(AIS_InteractiveContext) m_context; // viewer context for tool display
     ToolpathTimelineWidget* m_timelineWidget;
     QTextEdit* m_statusText;
     WorkspaceController* m_workspaceController;

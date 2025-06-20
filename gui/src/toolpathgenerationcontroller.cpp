@@ -137,9 +137,14 @@ IntuiCAM::GUI::ToolpathGenerationController::~ToolpathGenerationController()
 
 void IntuiCAM::GUI::ToolpathGenerationController::initialize(Handle(AIS_InteractiveContext) context)
 {
-    // Initialize the toolpath manager
+    m_context = context;
+
     if (m_toolpathManager) {
-        m_toolpathManager->initialize(context);
+        if (m_context.IsNull()) {
+            emit errorOccurred("Invalid AIS context - toolpaths cannot be displayed");
+        } else {
+            m_toolpathManager->initialize(m_context);
+        }
     }
 }
 
@@ -149,9 +154,15 @@ void IntuiCAM::GUI::ToolpathGenerationController::setWorkspaceController(Workspa
     if (workspaceController) {
         m_workpieceManager = workspaceController->getWorkpieceManager();
         m_rawMaterialManager = workspaceController->getRawMaterialManager();
+        if (m_toolpathManager) {
+            m_toolpathManager->setWorkpieceManager(m_workpieceManager);
+        }
     } else {
         m_workpieceManager = nullptr;
         m_rawMaterialManager = nullptr;
+        if (m_toolpathManager) {
+            m_toolpathManager->setWorkpieceManager(nullptr);
+        }
     }
 }
 
@@ -161,6 +172,11 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateToolpaths(const Genera
     
     if (m_status != GenerationStatus::Idle) {
         emit errorOccurred("Generation already in progress. Please wait or cancel current operation.");
+        return;
+    }
+
+    if (!m_workspaceController || !m_workspaceController->isInitialized()) {
+        emit errorOccurred("Workspace not initialized - load a part before generating toolpaths");
         return;
     }
 
