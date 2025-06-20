@@ -901,9 +901,11 @@ bool IntuiCAM::GUI::ToolpathGenerationController::validateResults()
     logMessage("Checking for potential collisions...");
     if (m_toolpaths.size() > 1) {
         // Check for overlapping bounding boxes between different toolpaths
-        auto toolpathsVec = std::vector<std::pair<QString, std::unique_ptr<IntuiCAM::Toolpath::Toolpath>&>>();
+        // Store raw pointers to avoid issues with references in containers
+        std::vector<std::pair<QString, IntuiCAM::Toolpath::Toolpath*>> toolpathsVec;
+        toolpathsVec.reserve(m_toolpaths.size());
         for (auto& pair : m_toolpaths) {
-            toolpathsVec.emplace_back(pair.first, pair.second);
+            toolpathsVec.emplace_back(pair.first, pair.second.get());
         }
         
         bool collisionFound = false;
