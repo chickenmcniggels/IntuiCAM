@@ -33,8 +33,6 @@ class OpenGL3DWidget;
 class StepLoader;
 class WorkspaceController;
 class PartLoadingPanel;
-class ToolpathTimelineWidget;
-class ToolpathManager;
 class WorkpieceManager;
 
 // Forward declarations for namespaced types
@@ -43,7 +41,7 @@ namespace GUI {
     class SetupConfigurationPanel;
     class MaterialManager;
     class ToolManager;
-    class ToolpathGenerationController;
+    class OperationParameterDialog;
     enum class MaterialType;
     enum class SurfaceFinish;
 }
@@ -126,25 +124,8 @@ private slots:
     // Setup tab actions
     void simulateToolpaths();
     
-    // Toolpath generation handlers
-    void handleToolpathGenerationStarted();
-    void handleToolpathProgressUpdated(int percentage, const QString& statusMessage);
-    void handleToolpathOperationCompleted(const QString& operationName, bool success, const QString& message);
-    void handleToolpathGenerationCompleted();
-    void handleToolpathGenerationError(const QString& errorMessage);
-    
-    // Parameter synchronization handlers
-    void handleParameterValidation(const QString& parameterName, bool isValid, const QString& errorMessage);
-    void handleIncrementalUpdateCompleted(const QStringList& affectedOperations, int updateDuration);
-    void handleParameterCacheUpdated(const QString& parameterName, const QVariant& newValue);
-    
-    // Toolpath timeline handlers
-    void handleToolpathSelected(int index);
-    void handleToolpathParametersRequested(int index, const QString& operationType);
-    void handleAddToolpathRequested(const QString& operationType);
-    void handleRemoveToolpathRequested(int index);
-    void handleToolpathReordered(int fromIndex, int toIndex);
-    void handleToolpathEnabledChanged(int index, bool enabled);
+    // Operation parameter dialog handler
+
 
     // Overlay control for chuck visibility
     void handleShowChuckToggled(bool checked);
@@ -180,7 +161,6 @@ private:
     QSplitter *m_mainSplitter;
     IntuiCAM::GUI::SetupConfigurationPanel *m_setupConfigPanel;
     OpenGL3DWidget *m_3dViewer;
-    ToolpathTimelineWidget *m_toolpathTimeline;
     QPushButton *m_generateButton;
     QPushButton *m_simulateButton;
     
@@ -208,7 +188,6 @@ private:
     // Business logic controllers
     WorkspaceController *m_workspaceController;
     StepLoader *m_stepLoader;
-    ToolpathManager *m_toolpathManager;
     WorkpieceManager *m_workpieceManager;
     
     // Material and Tool Management
@@ -216,9 +195,6 @@ private:
     IntuiCAM::GUI::ToolManager *m_toolManager;
 
     bool m_selectingThreadFace = false;
-    
-    // Toolpath Generation Controller
-    IntuiCAM::GUI::ToolpathGenerationController *m_toolpathGenerationController;
     
     // Menus
     QMenu *m_fileMenu;
