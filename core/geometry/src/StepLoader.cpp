@@ -96,7 +96,7 @@ StepLoader::ImportResult StepLoader::importStepFromString(const std::string& ste
     return result;
 }
 
-bool StepLoader::exportStepFile(const std::string& filePath, 
+bool StepLoader::exportStepFile(const std::string& filePath,
                                const std::vector<const Part*>& parts,
                                const ExportOptions& options) {
     // Placeholder implementation
@@ -117,6 +117,11 @@ bool StepLoader::exportStepFile(const std::string& filePath,
     file << "END-ISO-10303-21;\n";
     
     return true;
+}
+
+bool StepLoader::exportStepFile(const std::string& filePath,
+                               const std::vector<const Part*>& parts) {
+    return exportStepFile(filePath, parts, ExportOptions{});
 }
 
 bool StepLoader::validateStepFile(const std::string& filePath) {

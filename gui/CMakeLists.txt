@@ -83,8 +83,8 @@ target_link_libraries(${GUI_EXECUTABLE_NAME} PRIVATE
     
     # Data exchange - Updated library names
     TKXSBase
-    TKDESTEP
-    TKDEIGES
+    TKSTEP
+    TKIGES
     
     # Application framework and visualization
     TKVCAF

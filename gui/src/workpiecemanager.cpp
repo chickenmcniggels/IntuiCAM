@@ -21,6 +21,7 @@
 #include <Bnd_Box.hxx>
 #include <BRepBndLib.hxx>
 #include <TopoDS_Edge.hxx>
+#include <TopoDS_Vertex.hxx>
 #include <BRepAdaptor_Curve.hxx>
 #include <GeomAbs_CurveType.hxx>
 #include <gp_Circ.hxx>

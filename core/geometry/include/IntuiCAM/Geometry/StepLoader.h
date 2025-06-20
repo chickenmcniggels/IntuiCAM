@@ -17,20 +17,18 @@ public:
         std::string errorMessage;
     };
     
-    struct ExportOptions {
-        double tolerance = 0.01;
-        bool writeUnits = true;
-        std::string units = "mm";
-    };
-    
+    struct ExportOptions;
+
     // Import operations
     static ImportResult importStepFile(const std::string& filePath);
     static ImportResult importStepFromString(const std::string& stepData);
     
     // Export operations
-    static bool exportStepFile(const std::string& filePath, 
-                              const std::vector<const Part*>& parts,
-                              const ExportOptions& options = ExportOptions{});
+    static bool exportStepFile(const std::string& filePath,
+                               const std::vector<const Part*>& parts,
+                               const ExportOptions& options);
+    static bool exportStepFile(const std::string& filePath,
+                               const std::vector<const Part*>& parts);
     
     // Validation
     static bool validateStepFile(const std::string& filePath);
@@ -38,6 +36,12 @@ public:
     
 private:
     StepLoader() = default;
+};
+
+struct StepLoader::ExportOptions {
+    double tolerance = 0.01;
+    bool writeUnits = true;
+    std::string units = "mm";
 };
 
 // OpenCASCADE integration utilities

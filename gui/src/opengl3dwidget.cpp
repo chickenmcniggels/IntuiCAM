@@ -35,7 +35,13 @@
 #include <WNT_Window.hxx>
 #else
 #include <Xw_Window.hxx>
+#include <X11/Xlib.h>
 #endif
+
+// Hash function for Handle(AIS_Shape) to be used with Qt containers
+uint qHash(const Handle(AIS_Shape)& key, uint seed = 0) noexcept {
+    return ::qHash(reinterpret_cast<quintptr>(key.get()), seed);
+}
 
 OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     : QOpenGLWidget(parent)

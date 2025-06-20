@@ -118,5 +118,12 @@ ToolpathPlanner::generateSequence(const Geometry::Part& rawMaterial,
     return sequence;
 }
 
+std::vector<std::unique_ptr<IntuiCAM::Toolpath::Toolpath>>
+ToolpathPlanner::generateSequence(const Geometry::Part& rawMaterial,
+                                  const Geometry::Part& finishedPart)
+{
+    return generateSequence(rawMaterial, finishedPart, Parameters{}, Geometry::Matrix4x4::identity());
+}
+
 } // namespace Toolpath
 } // namespace IntuiCAM 
