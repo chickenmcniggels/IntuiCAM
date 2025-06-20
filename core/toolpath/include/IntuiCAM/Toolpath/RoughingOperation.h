@@ -48,6 +48,9 @@ public:
     void setParameters(const Parameters& params) { params_ = params; }
     const Parameters& getParameters() const { return params_; }
     
+    // Static validation method for use by ContouringOperation
+    static std::string validateParameters(const Parameters& params);
+    
     std::unique_ptr<Toolpath> generateToolpath(const Geometry::Part& part) override;
     bool validate() const override;
 };

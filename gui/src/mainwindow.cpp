@@ -51,6 +51,12 @@
 #include <BRepBuilderAPI_Transform.hxx>
 #include <TopExp_Explorer.hxx>
 #include <TopoDS.hxx>
+#include <Bnd_Box.hxx>
+#include <BRepBndLib.hxx>
+
+// IntuiCAM Toolpath Pipeline includes
+#include <IntuiCAM/Toolpath/ToolpathGenerationPipeline.h>
+#include <IntuiCAM/Toolpath/Types.h>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -1395,32 +1401,32 @@ void MainWindow::handleOperationToggled(const QString& operationName, bool enabl
 
 void MainWindow::handleGenerateToolpaths()
 {
-    statusBar()->showMessage("Opening operation parameter dialogs...", 2000);
+    statusBar()->showMessage("Starting toolpath generation...", 2000);
     
     if (m_outputWindow) {
-        m_outputWindow->append("=== Operation Parameter Configuration ===");
+        m_outputWindow->append("=== Toolpath Generation Started ===");
     }
     
-    // Check if we have a part loaded
+    // Step 1: Check if we have a part loaded
     if (!m_workspaceController || !m_workspaceController->hasPartShape()) {
-        statusBar()->showMessage("Error: No part loaded. Please load a STEP file first.", 3000);
+        statusBar()->showMessage("Error: No part loaded. Please load a STEP file first.", 5000);
         if (m_outputWindow) {
-            m_outputWindow->append("ERROR: No part shape loaded");
+            m_outputWindow->append("ERROR: No part shape loaded - please load a STEP file first");
         }
         return;
     }
     
-    // Get enabled operations from setup panel
+    // Step 2: Get enabled operations from setup panel
     QStringList enabledOperations;
     if (m_setupConfigPanel) {
-        if (m_setupConfigPanel->isOperationEnabled("Facing")) {
-            enabledOperations << "Facing";
+        if (m_setupConfigPanel->isOperationEnabled("Contouring")) {
+            enabledOperations << "Contouring";
         }
-        if (m_setupConfigPanel->isOperationEnabled("Roughing")) {
-            enabledOperations << "Roughing";
+        if (m_setupConfigPanel->isOperationEnabled("Threading")) {
+            enabledOperations << "Threading";
         }
-        if (m_setupConfigPanel->isOperationEnabled("Finishing")) {
-            enabledOperations << "Finishing";
+        if (m_setupConfigPanel->isOperationEnabled("Chamfering")) {
+            enabledOperations << "Chamfering";
         }
         if (m_setupConfigPanel->isOperationEnabled("Parting")) {
             enabledOperations << "Parting";
@@ -1428,9 +1434,9 @@ void MainWindow::handleGenerateToolpaths()
     }
     
     if (enabledOperations.isEmpty()) {
-        statusBar()->showMessage("No operations enabled. Please enable at least one operation.", 3000);
+        statusBar()->showMessage("No operations enabled. Please enable at least one operation.", 5000);
         if (m_outputWindow) {
-            m_outputWindow->append("No operations enabled");
+            m_outputWindow->append("ERROR: No operations enabled - please enable at least one operation in the setup panel");
         }
         return;
     }
@@ -1439,10 +1445,219 @@ void MainWindow::handleGenerateToolpaths()
         m_outputWindow->append(QString("Enabled operations: %1").arg(enabledOperations.join(", ")));
     }
     
-    statusBar()->showMessage("Toolpath generation feature not available.", 2000);
+    try {
+        // Step 3: Get part geometry and workspace data
+        TopoDS_Shape partGeometry = m_workspaceController->getPartShape();
+        
+        // Step 4: Create enabled operations list for pipeline
+        std::vector<IntuiCAM::Toolpath::ToolpathGenerationPipeline::EnabledOperation> pipelineOps;
+        
+        for (const QString& opName : enabledOperations) {
+            IntuiCAM::Toolpath::ToolpathGenerationPipeline::EnabledOperation op;
+            op.operationType = opName.toStdString();
+            op.enabled = true;
+            
+            // Fill operation parameters based on setup panel values
+            if (opName == "Contouring") {
+                op.numericParams["facingAllowance"] = m_setupConfigPanel ? m_setupConfigPanel->getFacingAllowance() : 0.5;
+                op.numericParams["roughingAllowance"] = m_setupConfigPanel ? m_setupConfigPanel->getRoughingAllowance() : 0.2;
+                op.numericParams["finishingAllowance"] = m_setupConfigPanel ? m_setupConfigPanel->getFinishingAllowance() : 0.05;
+                op.stringParams["material"] = m_setupConfigPanel ? m_setupConfigPanel->getSelectedMaterialName().toStdString() : "steel";
+            }
+            else if (opName == "Threading") {
+                op.numericParams["pitch"] = 1.5; // Default metric thread pitch
+                op.numericParams["depth"] = 2.0; // Default thread depth
+                op.stringParams["threadForm"] = "metric";
+            }
+            else if (opName == "Chamfering") {
+                op.numericParams["chamferSize"] = 0.5; // Default chamfer size
+                op.numericParams["chamferAngle"] = 45.0; // Default chamfer angle
+            }
+            else if (opName == "Parting") {
+                op.numericParams["partingWidth"] = m_setupConfigPanel ? m_setupConfigPanel->getPartingWidth() : 3.0;
+                op.numericParams["retractDistance"] = 5.0; // Default retract distance
+            }
+            
+            pipelineOps.push_back(std::move(op));
+        }
+        
+        // Step 5: Get global parameters from workspace and setup panel
+        IntuiCAM::Toolpath::ToolpathGenerationPipeline::ToolpathGenerationParameters globalParams;
+        
+        // Get turning axis from workspace (chuck centerline)
+        if (m_workspaceController->hasChuckCenterline()) {
+            globalParams.turningAxis = m_workspaceController->getChuckCenterlineAxis();
+        } else {
+            // Default Z-axis if no chuck centerline
+            globalParams.turningAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
+        }
+        
+        // Get material and other parameters from setup panel
+        if (m_setupConfigPanel) {
+            globalParams.materialType = m_setupConfigPanel->getSelectedMaterialName().toStdString();
+            globalParams.profileTolerance = m_setupConfigPanel->getTolerance();
+        }
+        
+        // Estimate part dimensions (basic bounding box approach)
+        Bnd_Box bbox;
+        BRepBndLib::Add(partGeometry, bbox);
+        if (!bbox.IsVoid()) {
+            double xmin, ymin, zmin, xmax, ymax, zmax;
+            bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+            globalParams.partDiameter = std::max(xmax - xmin, ymax - ymin) * 2.0;  // Rough estimate
+            globalParams.partLength = zmax - zmin;
+        }
+        
+        // Step 6: Get primary tool (use first recommended tool or create default)
+        std::shared_ptr<IntuiCAM::Toolpath::Tool> primaryTool;
+        if (m_toolManager) {
+            // Try to get best tool for the first operation
+            auto bestTool = m_toolManager->getBestTool(
+                enabledOperations.first().toLower(),
+                QString::fromStdString(globalParams.materialType),
+                globalParams.partDiameter
+            );
+            
+            if (!bestTool.id.isEmpty()) {
+                // Convert CuttingTool to Toolpath::Tool (simplified)
+                primaryTool = std::make_shared<IntuiCAM::Toolpath::Tool>(
+                    IntuiCAM::Toolpath::Tool::Type::Turning,
+                    bestTool.name.toStdString()
+                );
+                primaryTool->setDiameter(bestTool.geometry.diameter);
+                primaryTool->setLength(bestTool.geometry.length);
+            }
+        }
+        
+        // Create default tool if none found
+        if (!primaryTool) {
+            primaryTool = std::make_shared<IntuiCAM::Toolpath::Tool>(IntuiCAM::Toolpath::Tool::Type::Turning, "Default Turning Tool");
+            primaryTool->setDiameter(12.0); // 12mm default tool diameter
+            primaryTool->setLength(100.0);  // 100mm default tool length
+        }
+        
+        if (m_outputWindow) {
+            m_outputWindow->append(QString("Using tool: %1 (diameter: %2mm)")
+                                   .arg(QString::fromStdString(primaryTool->getName()))
+                                   .arg(primaryTool->getDiameter(), 0, 'f', 1));
+        }
+        
+        // Step 7: Create generation request
+        IntuiCAM::Toolpath::ToolpathGenerationPipeline::GenerationRequest request;
+        request.partGeometry = partGeometry;
+        request.enabledOps = pipelineOps;
+        request.globalParams = globalParams;
+        request.primaryTool = primaryTool;
+        
+        // Add progress callback
+        request.progressCallback = [this](double progress, const std::string& message) {
+            statusBar()->showMessage(QString::fromStdString(message), 1000);
+            if (m_outputWindow) {
+                m_outputWindow->append(QString("Progress: %1% - %2")
+                                       .arg(static_cast<int>(progress * 100))
+                                       .arg(QString::fromStdString(message)));
+            }
+        };
+        
+        // Step 8: Execute pipeline
+        if (m_outputWindow) {
+            m_outputWindow->append("Executing toolpath generation pipeline...");
+        }
+        
+        IntuiCAM::Toolpath::ToolpathGenerationPipeline pipeline;
+        auto result = pipeline.generateToolpaths(request);
+        
+        // Step 9: Process results
+        if (result.success) {
+            statusBar()->showMessage(QString("Toolpath generation completed successfully! Generated %1 toolpaths.")
+                                     .arg(result.generatedToolpaths.size()), 5000);
+            
+            if (m_outputWindow) {
+                m_outputWindow->append("=== Toolpath Generation Results ===");
+                m_outputWindow->append(QString("✓ Generated %1 toolpaths successfully")
+                                       .arg(result.generatedToolpaths.size()));
+                m_outputWindow->append(QString("✓ Extracted profile with %1 points")
+                                       .arg(result.extractedProfile.size()));
+                m_outputWindow->append(QString("✓ Total machining time: %1 minutes")
+                                       .arg(result.statistics.totalMachiningTime, 0, 'f', 1));
+                m_outputWindow->append(QString("✓ Total material removal: %1 mm³")
+                                       .arg(result.statistics.materialRemovalVolume, 0, 'f', 2));
+                m_outputWindow->append(QString("✓ Total movements: %1")
+                                       .arg(result.statistics.totalMovements));
+                
+                // Log warnings if any
+                for (const auto& warning : result.warnings) {
+                    m_outputWindow->append(QString("⚠ Warning: %1").arg(QString::fromStdString(warning)));
+                }
+            }
+            
+            // Step 10: Display toolpaths in 3D viewer
+            if (m_3dViewer && !result.toolpathDisplayObjects.empty()) {
+                // Add toolpath display objects to the 3D viewer
+                for (const auto& displayObj : result.toolpathDisplayObjects) {
+                    m_3dViewer->getContext()->Display(displayObj, Standard_False);
+                }
+                
+                // Add profile display object if available
+                if (!result.profileDisplayObject.IsNull()) {
+                    m_3dViewer->getContext()->Display(result.profileDisplayObject, Standard_False);
+                }
+                
+                // Update display
+                m_3dViewer->getContext()->UpdateCurrentViewer();
+                m_3dViewer->update();
+                
+                if (m_outputWindow) {
+                    m_outputWindow->append("✓ Toolpaths displayed in 3D viewer");
+                }
+            }
+            
+            // Step 11: Switch to simulation tab to show results
+            if (m_tabWidget) {
+                m_tabWidget->setCurrentIndex(2); // Switch to simulation tab
+                if (m_outputWindow) {
+                    m_outputWindow->append("Switched to Simulation tab for review");
+                }
+            }
+            
+        } else {
+            // Handle errors
+            statusBar()->showMessage(QString("Toolpath generation failed: %1")
+                                     .arg(QString::fromStdString(result.errorMessage)), 5000);
+            
+            if (m_outputWindow) {
+                m_outputWindow->append("=== Toolpath Generation Failed ===");
+                m_outputWindow->append(QString("✗ Error: %1").arg(QString::fromStdString(result.errorMessage)));
+                
+                // Log warnings as well
+                for (const auto& warning : result.warnings) {
+                    m_outputWindow->append(QString("⚠ Warning: %1").arg(QString::fromStdString(warning)));
+                }
+            }
+        }
+        
+    } catch (const std::exception& e) {
+        QString errorMsg = QString("Exception during toolpath generation: %1").arg(e.what());
+        statusBar()->showMessage(errorMsg, 5000);
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("=== Toolpath Generation Exception ===");
+            m_outputWindow->append(QString("✗ Exception: %1").arg(e.what()));
+        }
+    } catch (...) {
+        QString errorMsg = "Unknown exception during toolpath generation";
+        statusBar()->showMessage(errorMsg, 5000);
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("=== Toolpath Generation Exception ===");
+            m_outputWindow->append("✗ Unknown exception occurred");
+        }
+    }
+    
+    if (m_outputWindow) {
+        m_outputWindow->append("=== Toolpath Generation Complete ===");
+    }
 }
-
-
 
 // Empty implementations for workspace event handlers
 void MainWindow::handleWorkspaceError(const QString& source, const QString& message)
@@ -1687,8 +1902,6 @@ void MainWindow::initializeWorkspace()
     setupWorkspaceConnections();
     initialized = true;
 }
-
-
 
 // Add this method to log messages to the output window
 void MainWindow::logToOutput(const QString& message)

@@ -63,6 +63,10 @@ public:
     
     void setCuttingParameters(const CuttingParameters& params) { cuttingParams_ = params; }
     void setGeometry(const Geometry& geom) { geometry_ = geom; }
+    
+    // Convenience setters for geometry
+    void setDiameter(double diameter) { geometry_.diameter = diameter; }
+    void setLength(double length) { geometry_.length = length; }
 };
 
 // Movement types for toolpath generation
@@ -92,12 +96,17 @@ enum class MoveType {
 struct Movement {
     MovementType type;
     Geometry::Point3D position;
+    Geometry::Point3D startPoint;  // Starting position of movement
+    Geometry::Point3D endPoint;    // Ending position of movement
     double feedRate = 0.0;
     double spindleSpeed = 0.0;
     std::string comment;
     
     Movement(MovementType t, const Geometry::Point3D& pos) 
-        : type(t), position(pos) {}
+        : type(t), position(pos), startPoint(pos), endPoint(pos) {}
+        
+    Movement(MovementType t, const Geometry::Point3D& start, const Geometry::Point3D& end) 
+        : type(t), position(end), startPoint(start), endPoint(end) {}
 };
 
 // Sequence of movements with types and parameters
@@ -116,6 +125,7 @@ public:
     void addLinearMove(const Geometry::Point3D& position, double feedRate);
     void addCircularMove(const Geometry::Point3D& position, const Geometry::Point3D& center, 
                         bool clockwise, double feedRate);
+    void addThreadingMove(const Geometry::Point3D& position, double feedRate, double pitch);
     void addDwell(double seconds);
     
     // Getters

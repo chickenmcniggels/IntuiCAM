@@ -16,6 +16,10 @@ set(CORE_TOOLPATH_SOURCES
     "src/ContouringOperation.cpp"
     "src/ToolpathPlanner.cpp"
     "src/LatheProfile.cpp"
+    "src/ToolpathGenerationPipeline.cpp"
+    "src/ProfileExtractor.cpp"
+    "src/OperationParameterManager.cpp"
+    "src/ToolpathDisplayObject.cpp"
     "include/IntuiCAM/Toolpath/Types.h"
     "include/IntuiCAM/Toolpath/Operations.h"
     "include/IntuiCAM/Toolpath/FacingOperation.h"
@@ -28,6 +32,10 @@ set(CORE_TOOLPATH_SOURCES
     "include/IntuiCAM/Toolpath/ContouringOperation.h"
     "include/IntuiCAM/Toolpath/LatheProfile.h"
     "include/IntuiCAM/Toolpath/ToolpathPlanner.h"
+    "include/IntuiCAM/Toolpath/ToolpathGenerationPipeline.h"
+    "include/IntuiCAM/Toolpath/ProfileExtractor.h"
+    "include/IntuiCAM/Toolpath/OperationParameterManager.h"
+    "include/IntuiCAM/Toolpath/ToolpathDisplayObject.h"
 )
 
 add_library(${CORE_TOOLPATH_LIB_NAME} STATIC ${CORE_TOOLPATH_SOURCES})

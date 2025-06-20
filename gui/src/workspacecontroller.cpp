@@ -3,6 +3,8 @@
 #include "workpiecemanager.h"
 #include "rawmaterialmanager.h"
 #include <IntuiCAM/Geometry/IStepLoader.h>
+#include <IntuiCAM/Toolpath/ToolpathGenerationPipeline.h>
+#include <IntuiCAM/Toolpath/ToolpathDisplayObject.h>
 
 #include <QDebug>
 #include <cmath>
@@ -838,6 +840,125 @@ void WorkspaceController::redisplayAll()
 
     // Force viewer redraw
     m_context->UpdateCurrentViewer();
+}
+
+bool WorkspaceController::generateToolpaths()
+{
+    if (!m_initialized) {
+        emit errorOccurred("WorkspaceController", "Workspace not initialized");
+        return false;
+    }
+    
+    if (!hasPartShape()) {
+        emit errorOccurred("WorkspaceController", "No part loaded - cannot generate toolpaths");
+        return false;
+    }
+    
+    try {
+        qDebug() << "WorkspaceController: Starting toolpath generation";
+        
+        // Get the current part shape
+        TopoDS_Shape partShape = getPartShape();
+        
+        // Create the toolpath generation pipeline
+        auto pipeline = std::make_unique<IntuiCAM::Toolpath::ToolpathGenerationPipeline>();
+        
+        // Set up enabled operations (for now, enable a basic set)
+        std::vector<IntuiCAM::Toolpath::ToolpathGenerationPipeline::EnabledOperation> enabledOps;
+        
+        // Add a contouring operation as an example
+        IntuiCAM::Toolpath::ToolpathGenerationPipeline::EnabledOperation contouringOp;
+        contouringOp.operationType = "Contouring";
+        contouringOp.enabled = true;
+        
+        // Set some default parameters using the correct structure
+        contouringOp.numericParams["toolDiameter"] = 12.0;
+        contouringOp.numericParams["stepover"] = 8.0;
+        contouringOp.numericParams["depthOfCut"] = 2.0;
+        contouringOp.numericParams["feedRate"] = 300.0;
+        contouringOp.numericParams["spindleSpeed"] = 1200.0;
+        contouringOp.stringParams["material"] = "steel";
+        
+        enabledOps.push_back(contouringOp);
+        
+        // Create default tool
+        auto defaultTool = std::make_shared<IntuiCAM::Toolpath::Tool>(
+            IntuiCAM::Toolpath::Tool::Type::Turning, "Default Turning Tool");
+        defaultTool->setDiameter(12.0);
+        defaultTool->setLength(100.0);
+        
+        // Set up global parameters
+        IntuiCAM::Toolpath::ToolpathGenerationPipeline::ToolpathGenerationParameters globalParams;
+        globalParams.turningAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1)); // Default Z-axis
+        globalParams.safetyHeight = 5.0;
+        globalParams.clearanceDistance = 1.0;
+        globalParams.profileTolerance = 0.01;
+        globalParams.profileSections = 100;
+        globalParams.materialType = "steel";
+        globalParams.partDiameter = 50.0;
+        globalParams.partLength = 100.0;
+        
+        // Create generation request
+        IntuiCAM::Toolpath::ToolpathGenerationPipeline::GenerationRequest request;
+        request.partGeometry = partShape;
+        request.enabledOps = enabledOps;
+        request.globalParams = globalParams;
+        request.primaryTool = defaultTool;
+        
+        // Set up progress callback
+        request.progressCallback = [](double progress, const std::string& status) {
+            qDebug() << "Toolpath generation progress:" << QString::number(progress * 100, 'f', 1) 
+                     << "% -" << QString::fromStdString(status);
+        };
+        
+        // Generate toolpaths
+        qDebug() << "WorkspaceController: Executing toolpath generation pipeline";
+        auto result = pipeline->generateToolpaths(request);
+        
+        if (!result.success) {
+            QString errorMsg = QString("Toolpath generation failed: %1")
+                               .arg(QString::fromStdString(result.errorMessage));
+            emit errorOccurred("WorkspaceController", errorMsg);
+            return false;
+        }
+        
+        qDebug() << "WorkspaceController: Toolpath generation successful";
+        qDebug() << "  - Generated" << result.generatedToolpaths.size() << "toolpaths";
+        qDebug() << "  - Extracted profile with" << result.extractedProfile.size() << "points";
+        qDebug() << "  - Total estimated time:" << result.statistics.totalMachiningTime << "minutes";
+        
+        // Display the generated toolpaths in the 3D viewer
+        for (size_t i = 0; i < result.toolpathDisplayObjects.size(); ++i) {
+            const auto& displayObj = result.toolpathDisplayObjects[i];
+            if (!displayObj.IsNull()) {
+                m_context->Display(displayObj, Standard_False);
+                qDebug() << "  - Displayed toolpath" << i;
+            }
+        }
+        
+        // Display the 2D profile if available
+        if (!result.profileDisplayObject.IsNull()) {
+            m_context->Display(result.profileDisplayObject, Standard_False);
+            qDebug() << "  - Displayed 2D profile";
+        }
+        
+        // Update the viewer
+        m_context->UpdateCurrentViewer();
+        
+        qDebug() << "WorkspaceController: Toolpath generation and display completed successfully";
+        return true;
+        
+    } catch (const std::exception& e) {
+        QString errorMsg = QString("Toolpath generation failed with exception: %1").arg(e.what());
+        emit errorOccurred("WorkspaceController", errorMsg);
+        qDebug() << errorMsg;
+        return false;
+    } catch (...) {
+        QString errorMsg = "Toolpath generation failed with unknown error";
+        emit errorOccurred("WorkspaceController", errorMsg);
+        qDebug() << errorMsg;
+        return false;
+    }
 }
 
  

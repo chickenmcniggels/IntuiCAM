@@ -22,6 +22,10 @@
 #include <gp_Circ.hxx>
 #include <Precision.hxx>
 
+// IntuiCAM includes
+#include <IntuiCAM/Toolpath/ToolpathGenerationPipeline.h>
+#include <IntuiCAM/Toolpath/Types.h>
+
 // Forward declarations
 class ChuckManager;
 class WorkpieceManager;
@@ -192,6 +196,12 @@ public:
      * @brief Redisplay all scene objects (chuck, workpieces, raw material). Used after a global context clear.
      */
     void redisplayAll();
+
+    /**
+     * @brief Generate toolpaths for enabled operations using the current part geometry
+     * @return True if toolpath generation was successful
+     */
+    bool generateToolpaths();
 
 signals:
     /**
