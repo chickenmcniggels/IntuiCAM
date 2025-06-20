@@ -606,11 +606,23 @@ bool IntuiCAM::GUI::ToolpathGenerationController::generateOperationToolpaths()
                     contourParams.clearanceDistance = 1.0;
                     
                     // Configure sub-operations based on enabled operations in request
-                    contourParams.enableFacing = m_currentRequest.enabledOperations.contains("Facing") || 
+                    // If the user enables "Contouring", run all sub-operations
+                    // (facing, roughing, finishing) by default. Individual
+                    // operations can still be forced via explicit selections or
+                    // non-zero allowances.
+                    const bool contouringSelected =
+                        m_currentRequest.enabledOperations.contains("Contouring");
+
+                    contourParams.enableFacing = contouringSelected ||
+                                               m_currentRequest.enabledOperations.contains("Facing") ||
                                                m_currentRequest.facingAllowance > 0.0;
-                    contourParams.enableRoughing = m_currentRequest.enabledOperations.contains("Roughing") ||
+
+                    contourParams.enableRoughing = contouringSelected ||
+                                                 m_currentRequest.enabledOperations.contains("Roughing") ||
                                                  m_currentRequest.roughingAllowance > 0.0;
-                    contourParams.enableFinishing = m_currentRequest.enabledOperations.contains("Finishing") ||
+
+                    contourParams.enableFinishing = contouringSelected ||
+                                                  m_currentRequest.enabledOperations.contains("Finishing") ||
                                                   m_currentRequest.finishingAllowance > 0.0;
                     
                     // Set operation-specific parameters
