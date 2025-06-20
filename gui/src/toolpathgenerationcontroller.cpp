@@ -1661,15 +1661,16 @@ static IntuiCAM::Geometry::Matrix4x4 toMatrix4x4(const gp_Trsf& trsf)
     
     // Extract translation vector
     gp_XYZ translation = trsf.TranslationPart();
-    mat.data[3] = translation.X();   // [0][3] in 4x4 matrix
-    mat.data[7] = translation.Y();   // [1][3] in 4x4 matrix
-    mat.data[11] = translation.Z();  // [2][3] in 4x4 matrix
-    
-    // Set homogeneous coordinate row
-    mat.data[12] = 0.0;  // [3][0]
-    mat.data[13] = 0.0;  // [3][1]
-    mat.data[14] = 0.0;  // [3][2]
-    mat.data[15] = 1.0;  // [3][3]
+    // Matrix4x4 stores translation in the last column (indices 12,13,14)
+    mat.data[12] = translation.X();
+    mat.data[13] = translation.Y();
+    mat.data[14] = translation.Z();
+
+    // Ensure homogeneous coordinate row is valid
+    mat.data[3] = 0.0;
+    mat.data[7] = 0.0;
+    mat.data[11] = 0.0;
+    mat.data[15] = 1.0;
     
     return mat;
 }
