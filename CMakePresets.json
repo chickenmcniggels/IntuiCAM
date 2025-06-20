@@ -59,6 +59,26 @@
         "cacheVariables": {
           "CMAKE_BUILD_TYPE": "Release"
         }
+      },
+      {
+        "name": "native-release",
+        "displayName": "Native Release",
+        "generator": "Ninja",
+        "binaryDir": "${sourceDir}/build_native",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Release",
+          "INTUICAM_BUILD_PYTHON": "OFF"
+        }
+      },
+      {
+        "name": "native-debug",
+        "displayName": "Native Debug",
+        "generator": "Ninja",
+        "binaryDir": "${sourceDir}/build_native",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Debug",
+          "INTUICAM_BUILD_PYTHON": "OFF"
+        }
       }
     ],
     "buildPresets": [
@@ -79,6 +99,14 @@
       {
         "name": "ninja-release",
         "configurePreset": "ninja-release"
+      },
+      {
+        "name": "native-release",
+        "configurePreset": "native-release"
+      },
+      {
+        "name": "native-debug",
+        "configurePreset": "native-debug"
       }
     ],
     "testPresets": [
@@ -103,6 +131,16 @@
         "name": "ninja-release",
         "configurePreset": "ninja-release",
         "output": {"outputOnFailure": true}
+      },
+      {
+        "name": "native-release",
+        "configurePreset": "native-release",
+        "output": {"outputOnFailure": true}
+      },
+      {
+        "name": "native-debug",
+        "configurePreset": "native-debug",
+        "output": {"outputOnFailure": true}
       }
     ]
-  } 
+  }

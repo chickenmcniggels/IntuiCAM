@@ -28,9 +28,16 @@ public:
     static ImportResult importStepFromString(const std::string& stepData);
     
     // Export operations
-    static bool exportStepFile(const std::string& filePath, 
+    static bool exportStepFile(const std::string& filePath,
                               const std::vector<const Part*>& parts,
-                              const ExportOptions& options = ExportOptions{});
+                              const ExportOptions& options);
+
+    // Convenience overload using default options
+    static bool exportStepFile(const std::string& filePath,
+                              const std::vector<const Part*>& parts)
+    {
+        return exportStepFile(filePath, parts, ExportOptions{});
+    }
     
     // Validation
     static bool validateStepFile(const std::string& filePath);

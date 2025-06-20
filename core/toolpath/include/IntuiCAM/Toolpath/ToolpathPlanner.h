@@ -24,8 +24,17 @@ public:
     static std::vector<std::unique_ptr<IntuiCAM::Toolpath::Toolpath>>
     generateSequence(const Geometry::Part& rawMaterial,
                      const Geometry::Part& finishedPart,
-                     const Parameters& params = Parameters(),
+                     const Parameters& params,
                      const Geometry::Matrix4x4& worldTransform = Geometry::Matrix4x4::identity());
+
+    // Convenience overload using default parameters
+    static std::vector<std::unique_ptr<IntuiCAM::Toolpath::Toolpath>>
+    generateSequence(const Geometry::Part& rawMaterial,
+                     const Geometry::Part& finishedPart,
+                     const Geometry::Matrix4x4& worldTransform = Geometry::Matrix4x4::identity())
+    {
+        return generateSequence(rawMaterial, finishedPart, Parameters{}, worldTransform);
+    }
 };
 
 } // namespace Toolpath

@@ -47,7 +47,10 @@ private:
     int currentLineNumber_;
     
 public:
-    GCodeGenerator(const MachineConfig& config = MachineConfig{});
+    explicit GCodeGenerator(const MachineConfig& config);
+
+    // Convenience constructor using default machine configuration
+    GCodeGenerator() : GCodeGenerator(MachineConfig{}) {}
     
     // Configuration
     void setMachineConfig(const MachineConfig& config) { config_ = config; }
