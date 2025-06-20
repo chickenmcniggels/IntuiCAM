@@ -901,6 +901,7 @@ bool IntuiCAM::GUI::ToolpathGenerationController::validateResults()
     logMessage("Checking for potential collisions...");
     if (m_toolpaths.size() > 1) {
         // Check for overlapping bounding boxes between different toolpaths
+        std::vector<std::pair<QString, IntuiCAM::Toolpath::Toolpath*>> toolpathsVec;
         // Store raw pointers to avoid issues with references in containers
         std::vector<std::pair<QString, IntuiCAM::Toolpath::Toolpath*>> toolpathsVec;
         toolpathsVec.reserve(m_toolpaths.size());
@@ -911,8 +912,8 @@ bool IntuiCAM::GUI::ToolpathGenerationController::validateResults()
         bool collisionFound = false;
         for (size_t i = 0; i < toolpathsVec.size(); ++i) {
             for (size_t j = i + 1; j < toolpathsVec.size(); ++j) {
-                auto& toolpath1 = toolpathsVec[i].second;
-                auto& toolpath2 = toolpathsVec[j].second;
+                IntuiCAM::Toolpath::Toolpath* toolpath1 = toolpathsVec[i].second;
+                IntuiCAM::Toolpath::Toolpath* toolpath2 = toolpathsVec[j].second;
                 
                 if (toolpath1 && toolpath2) {
                     auto bbox1 = toolpath1->getBoundingBox();
