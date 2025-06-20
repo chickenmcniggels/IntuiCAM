@@ -541,7 +541,12 @@ bool IntuiCAM::GUI::ToolpathGenerationController::generateOperationToolpaths()
 {
     int operationCount = 0;
     int totalOperations = m_currentResult.generatedOperations.size();
-    
+
+    if (totalOperations == 0) {
+        logMessage("No operations scheduled for generation");
+        return false;
+    }
+
     for (const QString& operationName : m_currentResult.generatedOperations) {
         if (m_cancellationRequested) return false;
         
@@ -981,14 +986,23 @@ bool IntuiCAM::GUI::ToolpathGenerationController::validateResults()
 QStringList IntuiCAM::GUI::ToolpathGenerationController::determineOptimalOperationSequence()
 {
     QStringList sequence;
-    
+
     // Build sequence based on enabled operations and optimal order
     for (const QString& operation : DEFAULT_OPERATION_ORDER) {
         if (m_currentRequest.enabledOperations.contains(operation)) {
             sequence.append(operation);
         }
     }
-    
+
+    // Append any additional enabled operations that are not part of the
+    // predefined default order. This ensures custom or future operations
+    // are still executed even if they are unknown to DEFAULT_OPERATION_ORDER.
+    for (const QString& operation : m_currentRequest.enabledOperations) {
+        if (!sequence.contains(operation)) {
+            sequence.append(operation);
+        }
+    }
+
     return sequence;
 }
 
