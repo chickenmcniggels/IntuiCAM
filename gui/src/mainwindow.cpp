@@ -131,7 +131,12 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowTitle(tr("IntuiCAM - Computer Aided Manufacturing"));
     resize(1280, 800);
     
-    // Initialize workspace automatically after a short delay to ensure OpenGL is ready
+    // Initialize the workspace once the OpenGL viewer is ready
+    connect(m_3dViewer, &OpenGL3DWidget::viewerInitialized,
+            this, &MainWindow::initializeWorkspace);
+
+    // Fallback initialization in case the signal was emitted before the
+    // connection or the viewer initializes instantly
     QTimer::singleShot(100, this, &MainWindow::initializeWorkspace);
 }
 
