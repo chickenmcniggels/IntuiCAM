@@ -1664,10 +1664,11 @@ static IntuiCAM::Geometry::Matrix4x4 toMatrix4x4(const gp_Trsf& trsf)
     IntuiCAM::Geometry::Matrix4x4 mat;
     
     // Extract rotation matrix (3x3) - OpenCASCADE uses 1-based indexing
-    // Matrix4x4 uses data[16] in row-major order
-    for (int i = 1; i <= 3; ++i) {
-        for (int j = 1; j <= 3; ++j) {
-            mat.data[(i-1)*4 + (j-1)] = trsf.Value(i, j);
+    // Matrix4x4 stores values in column-major order to match applyTransform()
+    for (int row = 1; row <= 3; ++row) {
+        for (int col = 1; col <= 3; ++col) {
+            // column-major: index = column*4 + row
+            mat.data[(col-1)*4 + (row-1)] = trsf.Value(row, col);
         }
     }
     
