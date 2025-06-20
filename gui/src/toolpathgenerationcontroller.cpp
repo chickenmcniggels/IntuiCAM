@@ -1375,14 +1375,14 @@ std::unique_ptr<IntuiCAM::Toolpath::Operation> IntuiCAM::GUI::ToolpathGeneration
 
 // Fix the generateAndDisplayToolpath method
 
-void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
+bool IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
     const QString& operationName,
     const QString& operationType,
     std::shared_ptr<IntuiCAM::Toolpath::Tool> tool)
 {
     if (!m_toolpathManager) {
         logMessage("Cannot generate toolpath: Toolpath manager not initialized");
-        return;
+        return false;
     }
 
     // Store the tool for this operation
@@ -1491,13 +1491,13 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
     }
     else {
         logMessage(QString("Unknown operation type: %1").arg(operationType));
-        return;
+        return false;
     }
     
     // Validate the operation parameters
     if (!operation->validate()) {
         logMessage(QString("Invalid parameters for %1 operation").arg(operationType));
-        return;
+        return false;
     }
     
     // Generate the toolpath
@@ -1505,7 +1505,7 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
     
     if (!toolpath) {
         logMessage(QString("Failed to generate toolpath for %1").arg(operationName));
-        return;
+        return false;
     }
     
     // Toolpaths are stored in local part coordinates. The ToolpathManager
@@ -1538,7 +1538,10 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateAndDisplayToolpath(
         }
     } else {
         qDebug() << "Failed to display toolpath for operation:" << operationName;
+        return false;
     }
+
+    return true;
 }
 
 // Helper method to map an operation name to its type
@@ -2176,7 +2179,9 @@ void IntuiCAM::GUI::ToolpathGenerationController::regenerateToolpath(const QStri
         }
         
         // Generate and display the toolpath
-        generateAndDisplayToolpath(operationName, operationType, tool);
+        if (!generateAndDisplayToolpath(operationName, operationType, tool)) {
+            logMessage(QString("Error displaying regenerated toolpath %1").arg(operationName));
+        }
         
     } catch (const std::exception& e) {
         logMessage(QString("Error regenerating toolpath %1: %2").arg(operationName).arg(e.what()));

@@ -161,7 +161,7 @@ public:
     void connectStatusText(QTextEdit* statusText);
 
     // New methods for direct toolpath handling
-    void generateAndDisplayToolpath(const QString& operationName, 
+    bool generateAndDisplayToolpath(const QString& operationName,
                                    const QString& operationType,
                                    std::shared_ptr<IntuiCAM::Toolpath::Tool> tool);
     
