@@ -5,6 +5,9 @@
 
 **IntuiCAM** will be an open-source CAM application initially focused on CNC turning. It will provide an intuitive desktop GUI for generating reliable toolpaths—and a standalone **C++ Core library** for CAM processing, complete with Python bindings to enable seamless integration in other workflows and applications.
 
+
+![image](https://github.com/user-attachments/assets/34024db4-e501-45cc-af62-eb78560b7549)
+
 ---
 
 ## Key Features
