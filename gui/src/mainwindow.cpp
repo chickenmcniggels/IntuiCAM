@@ -985,9 +985,6 @@ QWidget* MainWindow::createSetupTab()
     m_propertiesPanel = new QTextEdit;
     m_propertiesPanel->hide();
     
-    // Connect generation and simulation buttons
-    connect(m_generateButton, &QPushButton::clicked, this, &MainWindow::handleGenerateToolpaths);
-    connect(m_simulateButton, &QPushButton::clicked, this, &MainWindow::simulateToolpaths);
     
     // Connect export button
     connect(exportButton, &QPushButton::clicked, [this]() {
