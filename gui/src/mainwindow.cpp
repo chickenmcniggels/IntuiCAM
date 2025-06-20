@@ -1525,9 +1525,6 @@ void MainWindow::handleOperationToggled(const QString& operationName, bool enabl
 
 void MainWindow::handleGenerateToolpaths()
 {
-    // IMMEDIATE CRASH TEST - Show message box to confirm method is called
-    QMessageBox::information(this, "Debug", "handleGenerateToolpaths() called!");
-    
     // Add extensive debugging to identify crash location
     if (m_outputWindow) {
         m_outputWindow->append("=== DEBUG: Starting handleGenerateToolpaths() ===");
@@ -1544,6 +1541,16 @@ void MainWindow::handleGenerateToolpaths()
     
     if (m_outputWindow) {
         m_outputWindow->append("DEBUG: ToolpathGenerationController available");
+    }
+
+    // Avoid launching a new generation process while one is already active
+    if (m_toolpathGenerationController->getStatus() !=
+        IntuiCAM::GUI::ToolpathGenerationController::GenerationStatus::Idle) {
+        statusBar()->showMessage("Toolpath generation already in progress", 3000);
+        if (m_outputWindow) {
+            m_outputWindow->append("WARNING: Generation already running");
+        }
+        return;
     }
     
     if (!m_workspaceController) {

@@ -163,6 +163,11 @@ void IntuiCAM::GUI::ToolpathGenerationController::generateToolpaths(const Genera
         emit errorOccurred("Generation already in progress. Please wait or cancel current operation.");
         return;
     }
+
+    if (!m_toolpathManager) {
+        emit errorOccurred("Toolpath manager not initialized");
+        return;
+    }
     
     // Store the request and cache parameters
     m_currentRequest = request;
