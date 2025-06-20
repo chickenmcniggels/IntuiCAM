@@ -16,7 +16,6 @@ set(GUI_SOURCES
     src/setupconfigurationpanel.cpp
     src/materialmanager.cpp
     src/toolmanager.cpp
-    src/aisprofiledisplay.cpp
 )
 
 set(GUI_HEADERS
@@ -31,7 +30,6 @@ set(GUI_HEADERS
     include/setupconfigurationpanel.h
     include/materialmanager.h
     include/toolmanager.h
-    include/aisprofiledisplay.h
 )
 
 set(GUI_UI_FILES
