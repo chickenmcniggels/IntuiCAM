@@ -7,6 +7,8 @@
 #include "setupconfigurationpanel.h"
 #include "materialmanager.h"
 #include "toolmanager.h"
+#include "toolmanagementtab.h"
+#include "toolmanagementdialog.h"
 
 #include "rawmaterialmanager.h"  // For RawMaterialManager signals
 #include "chuckmanager.h"
@@ -86,6 +88,8 @@ MainWindow::MainWindow(QWidget *parent)
     , m_workpieceManager(nullptr)
     , m_materialManager(nullptr)
     , m_toolManager(nullptr)
+    , m_toolManagementTab(nullptr)
+    , m_toolManagementDialog(nullptr)
     , m_fileMenu(nullptr)
     , m_editMenu(nullptr)
     , m_viewMenu(nullptr)
@@ -116,6 +120,10 @@ MainWindow::MainWindow(QWidget *parent)
     // Create material and tool managers
     m_materialManager = new IntuiCAM::GUI::MaterialManager(this);
     m_toolManager = new IntuiCAM::GUI::ToolManager(this);
+    
+    // Create tool management components
+    m_toolManagementTab = new ToolManagementTab(this);
+    m_toolManagementDialog = new ToolManagementDialog(this);
     
     // Create UI
     createMenus();
@@ -329,6 +337,22 @@ void MainWindow::setupConnections()
                 this, &MainWindow::handleGenerateToolpaths);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::operationToggled,
                 this, &MainWindow::handleOperationToggled);
+    }
+    
+    // Tool management connections
+    if (m_toolManagementTab && m_toolManagementDialog) {
+        // Connect tool tab signals to dialog for editing
+        connect(m_toolManagementTab, &ToolManagementTab::toolDoubleClicked,
+                this, [this](const QString& toolId) {
+                    m_toolManagementDialog->editTool(toolId);
+                    m_toolManagementDialog->show();
+                });
+        
+        // Connect dialog signals back to tab for updates
+        connect(m_toolManagementDialog, &ToolManagementDialog::toolModified,
+                m_toolManagementTab, &ToolManagementTab::onToolModified);
+        connect(m_toolManagementDialog, &ToolManagementDialog::toolAdded,
+                m_toolManagementTab, &ToolManagementTab::onToolAdded);
     }
     
     // Toolpath pipeline connections removed
@@ -1008,8 +1032,17 @@ QWidget* MainWindow::createSimulationTab()
 QWidget* MainWindow::createMachineTab()
 {
     QWidget* machineWidget = new QWidget;
-    QHBoxLayout* layout = new QHBoxLayout(machineWidget);
-    layout->setContentsMargins(0, 0, 0, 0);
+    QVBoxLayout* mainLayout = new QVBoxLayout(machineWidget);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(0);
+    
+    // Create tabbed interface for machine functionality
+    QTabWidget* machineTabWidget = new QTabWidget;
+    
+    // ========== Machine Control Tab ==========
+    QWidget* controlTabWidget = new QWidget;
+    QHBoxLayout* controlTabLayout = new QHBoxLayout(controlTabWidget);
+    controlTabLayout->setContentsMargins(0, 0, 0, 0);
     
     // Left panel - machine controls
     m_machineControlPanel = new QWidget;
@@ -1049,10 +1082,26 @@ QWidget* MainWindow::createMachineTab()
     QPushButton* jogBtn = new QPushButton("Jog Mode");
     QPushButton* emergencyBtn = new QPushButton("Emergency Stop");
     
-    // Make emergency button bold to indicate importance
+    // Make emergency button bold and red to indicate importance
     QFont emergencyFont = emergencyBtn->font();
     emergencyFont.setBold(true);
     emergencyBtn->setFont(emergencyFont);
+    emergencyBtn->setStyleSheet(
+        "QPushButton {"
+        "  background-color: #dc3545;"
+        "  color: white;"
+        "  border: none;"
+        "  border-radius: 6px;"
+        "  font-weight: bold;"
+        "  padding: 8px 16px;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: #c82333;"
+        "}"
+        "QPushButton:pressed {"
+        "  background-color: #bd2130;"
+        "}"
+    );
     
     manualLayout->addWidget(homeBtn);
     manualLayout->addWidget(jogBtn);
@@ -1101,8 +1150,21 @@ QWidget* MainWindow::createMachineTab()
         statusBar()->showMessage("Machine connection functionality coming soon", 3000);
     });
     
-    layout->addWidget(m_machineControlPanel);
-    layout->addWidget(m_machineFeedWidget, 1);
+    controlTabLayout->addWidget(m_machineControlPanel);
+    controlTabLayout->addWidget(m_machineFeedWidget, 1);
+    
+    // ========== Tool Management Tab ==========
+    // Use the actual ToolManagementTab widget that provides full functionality
+    // including tool editing, filtering, library management, and parameter synchronization
+    
+    // Add tabs to the machine tab widget
+    machineTabWidget->addTab(controlTabWidget, "🔧 Machine Control");
+    machineTabWidget->addTab(m_toolManagementTab, "🔨 Tool Management");
+    
+    // Set default tab
+    machineTabWidget->setCurrentIndex(0);
+    
+    mainLayout->addWidget(machineTabWidget);
     
     return machineWidget;
 }

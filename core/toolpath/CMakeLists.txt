@@ -5,6 +5,7 @@ set(CORE_TOOLPATH_LIB_NAME intuicam_core_toolpath)
 # Explicitly list all source files
 set(CORE_TOOLPATH_SOURCES
     "src/Types.cpp"
+    "src/ToolTypes.cpp"
     "src/Operations.cpp"
     "src/FacingOperation.cpp"
     "src/RoughingOperation.cpp"
@@ -21,6 +22,7 @@ set(CORE_TOOLPATH_SOURCES
     "src/OperationParameterManager.cpp"
     "src/ToolpathDisplayObject.cpp"
     "include/IntuiCAM/Toolpath/Types.h"
+    "include/IntuiCAM/Toolpath/ToolTypes.h"
     "include/IntuiCAM/Toolpath/Operations.h"
     "include/IntuiCAM/Toolpath/FacingOperation.h"
     "include/IntuiCAM/Toolpath/RoughingOperation.h"

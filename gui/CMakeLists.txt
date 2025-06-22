@@ -16,6 +16,9 @@ set(GUI_SOURCES
     src/setupconfigurationpanel.cpp
     src/materialmanager.cpp
     src/toolmanager.cpp
+    src/toolmanagementdialog.cpp
+    src/toolmanagementtab.cpp
+    src/operationparameterdialog.cpp
 )
 
 set(GUI_HEADERS
@@ -30,6 +33,9 @@ set(GUI_HEADERS
     include/setupconfigurationpanel.h
     include/materialmanager.h
     include/toolmanager.h
+    include/toolmanagementdialog.h
+    include/toolmanagementtab.h
+    include/operationparameterdialog.h
 )
 
 set(GUI_UI_FILES
@@ -100,6 +106,32 @@ target_link_libraries(${GUI_EXECUTABLE_NAME} PRIVATE
     
     # Hidden line removal
     TKHLR
+    
+    # Phase 5: Additional OpenCASCADE libraries for advanced 3D geometry generation
+    # NOTE: These libraries are for advanced 3D geometry generation
+    # Currently commented out to focus on basic functionality
+    # They can be re-enabled once the core build is working
+    
+    # Geometric utilities and advanced topology
+    # TKGeomBase  # Duplicate - already listed above
+    # TKG2d       # Commented out - may not be available
+    # TKAdvTools  # Commented out - may not be available in all OpenCASCADE installations
+    
+    # Advanced modeling features
+    # TKFeat      # Commented out - may not be available
+    # TKFillet    # Commented out - may not be available
+    # TKOffset    # Commented out - may not be available
+    
+    # BRep tools and builders
+    # TKBRepBuilderAPI  # Commented out - may not be available
+    # TKBRepPrimAPI     # Commented out - may not be available
+    # TKBRepAlgoAPI     # Commented out - may not be available
+    # TKBRepFilletAPI   # Commented out - may not be available
+    
+    # Additional geometry and curve/surface support
+    # TKGCPnts  # Commented out - may not be available
+    # TKLoc     # Commented out - may not be available
+    # TKTObjDRAW# Commented out - may not be available
 )
 
 # Optional: Set additional compiler flags for better optimization and warnings

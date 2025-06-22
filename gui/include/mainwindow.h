@@ -34,6 +34,8 @@ class StepLoader;
 class WorkspaceController;
 class PartLoadingPanel;
 class WorkpieceManager;
+class ToolManagementTab;
+class ToolManagementDialog;
 
 // Forward declarations for namespaced types
 namespace IntuiCAM {
@@ -193,6 +195,10 @@ private:
     // Material and Tool Management
     IntuiCAM::GUI::MaterialManager *m_materialManager;
     IntuiCAM::GUI::ToolManager *m_toolManager;
+    
+    // Tool Management Components
+    class ToolManagementTab *m_toolManagementTab;
+    class ToolManagementDialog *m_toolManagementDialog;
 
     bool m_selectingThreadFace = false;
     
