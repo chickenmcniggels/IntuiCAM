@@ -1674,12 +1674,9 @@ void MainWindow::handleGenerateToolpaths()
                 }
             }
             
-            // Step 11: Switch to simulation tab to show results
-            if (m_tabWidget) {
-                m_tabWidget->setCurrentIndex(2); // Switch to simulation tab
-                if (m_outputWindow) {
-                    m_outputWindow->append("Switched to Simulation tab for review");
-                }
+            // Step 11: Inform user that simulation preview is available
+            if (m_outputWindow) {
+                m_outputWindow->append("Toolpath generation complete - switch to the Simulation tab to review");
             }
             
         } else {
