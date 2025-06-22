@@ -25,7 +25,7 @@ The following coordinate system improvements have been implemented:
 
 5. **Camera State Preservation**
    - 3D camera state is preserved when switching to XZ view
-   - Projection type (perspective or orthographic) is restored when returning to 3D view
+   - Orthographic projection is used consistently in both views
    - XZ view settings are consistent with standard lathe conventions
    - Smooth transition between views with proper handling of different projection types
 

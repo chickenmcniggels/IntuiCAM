@@ -52,7 +52,7 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_hoverHighlightEnabled(true)
     , m_currentViewMode(ViewMode::Mode3D)
     , m_stored3DScale(1.0)
-    , m_stored3DProjection(Graphic3d_Camera::Projection_Perspective)
+    , m_stored3DProjection(Graphic3d_Camera::Projection_Orthographic)
     , m_has3DCameraState(false)
     , m_lockedXZEye(0.0, -1000.0, 0.0)
     , m_lockedXZAt(0.0, 0.0, 0.0)
@@ -727,14 +727,14 @@ void OpenGL3DWidget::setupCamera3D()
       if (m_has3DCameraState) {
         restore3DCameraState();
       } else {
-        // Set up default 3D perspective view with Z axis horizontal
+        // Set up default 3D view with Z axis horizontal
         m_view->SetAt(0.0, 0.0, 0.0);
         m_view->SetEye(200.0, -300.0, 0.0);
         m_view->SetUp(-1.0, 0.0, 0.0);
 
-        // Explicitly set perspective projection for 3D mode
+        // Use orthographic projection for consistent visualization
         m_view->Camera()->SetProjectionType(
-            Graphic3d_Camera::Projection_Perspective);
+            Graphic3d_Camera::Projection_Orthographic);
 
         // Ensure the view shows the coordinate trihedron
         m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_GOLD, 0.08,
@@ -748,7 +748,7 @@ void OpenGL3DWidget::setupCamera3D()
         m_view->FitAll();
         m_view->Redraw();
         
-        qDebug() << "Set up 3D camera view with perspective projection";
+        qDebug() << "Set up 3D camera view with orthographic projection";
     }
     catch (const Standard_Failure& ex) {
         qDebug() << "Error setting up 3D camera:" << ex.GetMessageString();
