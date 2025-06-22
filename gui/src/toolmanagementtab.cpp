@@ -420,7 +420,6 @@ void ToolManagementTab::onToolListDoubleClicked() {
     if (currentItem) {
         QString toolId = currentItem->text(COL_NAME);
         emit toolDoubleClicked(toolId);
-        editSelectedTool();
     }
 }
 
