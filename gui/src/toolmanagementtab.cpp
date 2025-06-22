@@ -395,6 +395,7 @@ void ToolManagementTab::populateToolList() {
     item2->setText(COL_USAGE, "45%");
     
     m_toolTreeWidget->resizeColumnToContents(0);
+}
 
 // Slot implementations
 void ToolManagementTab::onToolListSelectionChanged() {
