@@ -260,11 +260,35 @@ QWidget* ToolManagementDialog::createInsertPropertiesTab() {
     auto basicGroup = new QGroupBox("Basic Properties");
     auto basicLayout = new QFormLayout(basicGroup);
     
-    basicLayout->addRow("ISO Code:", new QLineEdit());
-    basicLayout->addRow("Shape:", new QComboBox());
-    basicLayout->addRow("Size:", new QDoubleSpinBox());
-    basicLayout->addRow("Thickness:", new QDoubleSpinBox());
-    basicLayout->addRow("Corner Radius:", new QDoubleSpinBox());
+    m_isoCodeEdit = new QLineEdit();
+    basicLayout->addRow("ISO Code:", m_isoCodeEdit);
+
+    m_insertShapeCombo = new QComboBox();
+    m_insertShapeCombo->addItem("Triangle", static_cast<int>(InsertShape::TRIANGLE));
+    m_insertShapeCombo->addItem("Square", static_cast<int>(InsertShape::SQUARE));
+    m_insertShapeCombo->addItem("Pentagon", static_cast<int>(InsertShape::PENTAGON));
+    m_insertShapeCombo->addItem("Diamond 80\xC2\xB0", static_cast<int>(InsertShape::DIAMOND_80));
+    m_insertShapeCombo->addItem("Diamond 55\xC2\xB0", static_cast<int>(InsertShape::DIAMOND_55));
+    m_insertShapeCombo->addItem("Hexagon", static_cast<int>(InsertShape::HEXAGON));
+    m_insertShapeCombo->addItem("Octagon", static_cast<int>(InsertShape::OCTAGON));
+    m_insertShapeCombo->addItem("Rhombic 86\xC2\xB0", static_cast<int>(InsertShape::RHOMBIC_86));
+    m_insertShapeCombo->addItem("Rhombic 75\xC2\xB0", static_cast<int>(InsertShape::RHOMBIC_75));
+    m_insertShapeCombo->addItem("Rhombus 80\xC2\xB0", static_cast<int>(InsertShape::RHOMBUS_80));
+    m_insertShapeCombo->addItem("Rhombus 55\xC2\xB0", static_cast<int>(InsertShape::RHOMBUS_55));
+    m_insertShapeCombo->addItem("Rhombus 35\xC2\xB0", static_cast<int>(InsertShape::RHOMBUS_35));
+    m_insertShapeCombo->addItem("Round", static_cast<int>(InsertShape::ROUND));
+    m_insertShapeCombo->addItem("Trigon", static_cast<int>(InsertShape::TRIGON));
+    m_insertShapeCombo->addItem("Custom", static_cast<int>(InsertShape::CUSTOM));
+    basicLayout->addRow("Shape:", m_insertShapeCombo);
+
+    m_inscribedCircleSpin = new QDoubleSpinBox();
+    basicLayout->addRow("Size:", m_inscribedCircleSpin);
+
+    m_thicknessSpin = new QDoubleSpinBox();
+    basicLayout->addRow("Thickness:", m_thicknessSpin);
+
+    m_cornerRadiusSpin = new QDoubleSpinBox();
+    basicLayout->addRow("Corner Radius:", m_cornerRadiusSpin);
     
     layout->addWidget(basicGroup);
     
@@ -272,9 +296,39 @@ QWidget* ToolManagementDialog::createInsertPropertiesTab() {
     auto advancedGroup = new QGroupBox("Advanced Properties");
     auto advancedLayout = new QFormLayout(advancedGroup);
     
-    advancedLayout->addRow("Material:", new QComboBox());
-    advancedLayout->addRow("Coating:", new QComboBox());
-    advancedLayout->addRow("Tolerance Class:", new QComboBox());
+    m_materialCombo = new QComboBox();
+    m_materialCombo->addItem("Uncoated Carbide", static_cast<int>(InsertMaterial::UNCOATED_CARBIDE));
+    m_materialCombo->addItem("Coated Carbide", static_cast<int>(InsertMaterial::COATED_CARBIDE));
+    m_materialCombo->addItem("Cermet", static_cast<int>(InsertMaterial::CERMET));
+    m_materialCombo->addItem("Ceramic", static_cast<int>(InsertMaterial::CERAMIC));
+    m_materialCombo->addItem("CBN", static_cast<int>(InsertMaterial::CBN));
+    m_materialCombo->addItem("PCD", static_cast<int>(InsertMaterial::PCD));
+    m_materialCombo->addItem("HSS", static_cast<int>(InsertMaterial::HSS));
+    m_materialCombo->addItem("Cast Alloy", static_cast<int>(InsertMaterial::CAST_ALLOY));
+    m_materialCombo->addItem("Diamond", static_cast<int>(InsertMaterial::DIAMOND));
+    advancedLayout->addRow("Material:", m_materialCombo);
+
+    m_coatingCombo = new QComboBox();
+    const auto coatingTypes = ISOToolDatabase::getCoatingTypes();
+    for (const auto& c : coatingTypes) {
+        m_coatingCombo->addItem(QString::fromStdString(c));
+    }
+    advancedLayout->addRow("Coating:", m_coatingCombo);
+
+    m_toleranceCombo = new QComboBox();
+    m_toleranceCombo->addItem("A", static_cast<int>(InsertTolerance::A_PRECISION));
+    m_toleranceCombo->addItem("B", static_cast<int>(InsertTolerance::B_PRECISION));
+    m_toleranceCombo->addItem("C", static_cast<int>(InsertTolerance::C_PRECISION));
+    m_toleranceCombo->addItem("D", static_cast<int>(InsertTolerance::D_PRECISION));
+    m_toleranceCombo->addItem("E", static_cast<int>(InsertTolerance::E_PRECISION));
+    m_toleranceCombo->addItem("F", static_cast<int>(InsertTolerance::F_PRECISION));
+    m_toleranceCombo->addItem("G", static_cast<int>(InsertTolerance::G_PRECISION));
+    m_toleranceCombo->addItem("H", static_cast<int>(InsertTolerance::H_PRECISION));
+    m_toleranceCombo->addItem("K", static_cast<int>(InsertTolerance::K_PRECISION));
+    m_toleranceCombo->addItem("L", static_cast<int>(InsertTolerance::L_PRECISION));
+    m_toleranceCombo->addItem("M", static_cast<int>(InsertTolerance::M_PRECISION));
+    m_toleranceCombo->addItem("N", static_cast<int>(InsertTolerance::N_PRECISION));
+    advancedLayout->addRow("Tolerance Class:", m_toleranceCombo);
     
     layout->addWidget(advancedGroup);
     layout->addStretch();
@@ -290,10 +344,27 @@ QWidget* ToolManagementDialog::createHolderPropertiesTab() {
     auto holderGroup = new QGroupBox("Holder Properties");
     auto holderLayout = new QFormLayout(holderGroup);
     
-    holderLayout->addRow("Holder Code:", new QLineEdit());
-    holderLayout->addRow("Hand Orientation:", new QComboBox());
-    holderLayout->addRow("Clamping Style:", new QComboBox());
-    holderLayout->addRow("Shank Size:", new QDoubleSpinBox());
+    m_holderISOCodeEdit = new QLineEdit();
+    holderLayout->addRow("Holder Code:", m_holderISOCodeEdit);
+
+    m_handOrientationCombo = new QComboBox();
+    m_handOrientationCombo->addItem("Right Hand", static_cast<int>(HandOrientation::RIGHT_HAND));
+    m_handOrientationCombo->addItem("Left Hand", static_cast<int>(HandOrientation::LEFT_HAND));
+    m_handOrientationCombo->addItem("Neutral", static_cast<int>(HandOrientation::NEUTRAL));
+    holderLayout->addRow("Hand Orientation:", m_handOrientationCombo);
+
+    m_clampingStyleCombo = new QComboBox();
+    m_clampingStyleCombo->addItem("Top Clamp", static_cast<int>(ClampingStyle::TOP_CLAMP));
+    m_clampingStyleCombo->addItem("Top Clamp Hole", static_cast<int>(ClampingStyle::TOP_CLAMP_HOLE));
+    m_clampingStyleCombo->addItem("Lever Clamp", static_cast<int>(ClampingStyle::LEVER_CLAMP));
+    m_clampingStyleCombo->addItem("Screw Clamp", static_cast<int>(ClampingStyle::SCREW_CLAMP));
+    m_clampingStyleCombo->addItem("Wedge Clamp", static_cast<int>(ClampingStyle::WEDGE_CLAMP));
+    m_clampingStyleCombo->addItem("Pin Lock", static_cast<int>(ClampingStyle::PIN_LOCK));
+    m_clampingStyleCombo->addItem("Cartridge", static_cast<int>(ClampingStyle::CARTRIDGE));
+    holderLayout->addRow("Clamping Style:", m_clampingStyleCombo);
+
+    m_shankWidthSpin = new QDoubleSpinBox();
+    holderLayout->addRow("Shank Size:", m_shankWidthSpin);
     
     layout->addWidget(holderGroup);
     layout->addStretch();
