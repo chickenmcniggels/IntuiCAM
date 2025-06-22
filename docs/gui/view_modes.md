@@ -7,14 +7,14 @@ IntuiCAM's 3D viewer supports two distinct viewing modes that can be seamlessly 
 ## Viewing Modes
 
 ### 3D Mode (Default)
-- **Description**: Full 3D perspective view with complete rotation freedom
+- **Description**: Full 3D view with complete rotation freedom
 - **Mouse Controls**:
   - Left Click + Drag: Rotate view around the model
   - Middle Click + Drag: Pan the view
   - Right Click + Drag: Zoom in/out
   - Mouse Wheel: Zoom in/out
 - **Features**:
-  - Perspective projection for realistic 3D visualization
+  - Orthographic projection for consistent 3D visualization
   - Coordinate trihedron display (bottom-left corner)
   - Full 3D navigation capabilities
   - Camera state preservation when switching views
@@ -68,7 +68,7 @@ ViewMode currentMode = viewer->getViewMode();
 ## Implementation Details
 
 ### Projection Type
-- 3D Mode: Uses Graphic3d_Camera::Projection_Perspective for realistic depth perception
+- 3D Mode: Uses Graphic3d_Camera::Projection_Orthographic for consistent visualization
 - XZ Mode: Uses Graphic3d_Camera::Projection_Orthographic for accurate dimensional representation
 
 ### State Preservation
@@ -83,7 +83,7 @@ When switching between modes, the 3D camera state is preserved, allowing users t
 
 ### OpenCASCADE Integration
 - Uses OpenCASCADE's `V3d_View` camera settings
-- Explicitly sets `Graphic3d_Camera::Projection_Perspective` for 3D mode
+- Explicitly sets `Graphic3d_Camera::Projection_Orthographic` for 3D mode
 - Explicitly sets `Graphic3d_Camera::Projection_Orthographic` for XZ mode
 - Proper camera positioning and orientation for each mode
 

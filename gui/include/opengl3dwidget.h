@@ -245,7 +245,7 @@ private:
     void applyCameraForViewMode();
     
     /**
-     * @brief Set up 3D perspective camera
+     * @brief Set up 3D orthographic camera
      */
     void setupCamera3D();
     
