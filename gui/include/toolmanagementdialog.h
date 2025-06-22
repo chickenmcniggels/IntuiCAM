@@ -18,12 +18,24 @@
 #include <QFormLayout>
 #include <QTimer>
 #include <QSlider>
+#include <QJsonObject>
 
 // OpenCASCADE includes
 #include <TopoDS_Shape.hxx>
 #include <AIS_InteractiveObject.hxx>
 #include <AIS_Shape.hxx>
 #include <AIS_InteractiveContext.hxx>
+#include <BRepPrimAPI_MakeCylinder.hxx>
+#include <BRepPrimAPI_MakeCone.hxx>
+#include <BRepPrimAPI_MakeBox.hxx>
+#include <BRepAlgoAPI_Fuse.hxx>
+#include <BRepAlgoAPI_Cut.hxx>
+#include <BRepBuilderAPI_Transform.hxx>
+#include <gp_Ax2.hxx>
+#include <gp_Trsf.hxx>
+#include <Quantity_Color.hxx>
+#include <AIS_DisplayMode.hxx>
+#include <Graphic3d_MaterialAspect.hxx>
 
 // Project includes
 #include "opengl3dwidget.h"
@@ -51,6 +63,14 @@ namespace Toolpath {
 }
 }
 
+namespace IntuiCAM {
+    namespace GUI {
+        class ToolManager;
+    }
+}
+
+class OpenGL3DWidget;
+
 class ToolManagementDialog : public QDialog
 {
     Q_OBJECT
@@ -73,6 +93,9 @@ public:
     
     // Get the tool ID
     QString getToolId() const { return m_currentToolId; }
+    
+    // Set the tool manager for persistence
+    void setToolManager(IntuiCAM::GUI::ToolManager* toolManager);
 
 signals:
     void toolSaved(const QString& toolId);
@@ -80,8 +103,12 @@ signals:
     
     // 3D visualization signals
     void tool3DVisualizationChanged(const QString& toolId);
+    void toolGeometryUpdated(const TopoDS_Shape& toolShape);
 
 private slots:
+    // Tool type selection
+    void onToolTypeChanged(int index);
+    
     // Parameter change slots (trigger auto-save)
     void onInsertParameterChanged();
     void onHolderParameterChanged();
@@ -102,6 +129,13 @@ private slots:
     void onShowDimensionsChanged(bool show);
     void onShowAnnotationsChanged(bool show);
     void onZoomChanged(int value);
+    void onWireframeClicked();
+    void onShadedClicked();
+    void onShadedWithEdgesClicked();
+    void onIsometricViewClicked();
+    void onFrontViewClicked();
+    void onTopViewClicked();
+    void onRightViewClicked();
 
 private:
     // UI Creation methods
@@ -109,6 +143,7 @@ private:
     void createMainLayout();
     void createToolEditPanel();
     void create3DVisualizationPanel();
+    void createToolTypeSelector();
     
     // Tool editing tabs
     QWidget* createInsertPropertiesTab();
@@ -128,6 +163,14 @@ private:
     void setup3DViewer();
     void generate3DToolGeometry();
     void updateRealTime3DVisualization();
+    TopoDS_Shape createInsertGeometry();
+    TopoDS_Shape createHolderGeometry();
+    TopoDS_Shape createAssembledToolGeometry();
+    void updateVisualizationMode(int mode);
+    void setupViewControls();
+    void applyMaterialToShape(Handle(AIS_Shape) aisShape, const QString& materialType);
+    void clearPreviousToolGeometry();
+    void updateViewControlsState();
     
     // Auto-save functionality
     void setupAutoSave();
@@ -164,6 +207,59 @@ private:
     void updateGroovingInsertFromFields();
     void updateHolderDataFromFields();
     void updateCuttingDataFromFields();
+    void updateToolInfoFromFields();
+    
+    // Helper method for initializing tool assembly
+    void initializeToolAssemblyForType(IntuiCAM::Toolpath::ToolType toolType);
+    
+    // Tool type specific UI methods  
+    void showToolTypeSpecificTabs(IntuiCAM::Toolpath::ToolType toolType);
+    void hideAllInsertTabs();
+    void setupDefaultToolParameters(IntuiCAM::Toolpath::ToolType toolType);
+    
+    // Default parameter setup methods for each tool type
+    void setupGeneralTurningDefaults();
+    void setupBoringDefaults();
+    void setupThreadingDefaults();
+    void setupGroovingDefaults();
+    void setupPartingDefaults();
+    void setupFormToolDefaults();
+    void setupHolderDefaults();
+    void setupCuttingDataDefaults(IntuiCAM::Toolpath::ToolType toolType);
+    
+    // Tool assembly persistence
+    QString getToolAssemblyDatabasePath() const;
+    bool saveToolAssemblyToDatabase();
+    bool loadToolAssemblyFromDatabase(const QString& toolId);
+    QJsonObject toolAssemblyToJson(const IntuiCAM::Toolpath::ToolAssembly& assembly) const;
+    IntuiCAM::Toolpath::ToolAssembly toolAssemblyFromJson(const QJsonObject& json) const;
+    
+    // Conversion helpers for insert types
+    QJsonObject generalTurningInsertToJson(const IntuiCAM::Toolpath::GeneralTurningInsert& insert) const;
+    IntuiCAM::Toolpath::GeneralTurningInsert generalTurningInsertFromJson(const QJsonObject& json) const;
+    QJsonObject threadingInsertToJson(const IntuiCAM::Toolpath::ThreadingInsert& insert) const;
+    IntuiCAM::Toolpath::ThreadingInsert threadingInsertFromJson(const QJsonObject& json) const;
+    QJsonObject groovingInsertToJson(const IntuiCAM::Toolpath::GroovingInsert& insert) const;
+    IntuiCAM::Toolpath::GroovingInsert groovingInsertFromJson(const QJsonObject& json) const;
+    QJsonObject toolHolderToJson(const IntuiCAM::Toolpath::ToolHolder& holder) const;
+    IntuiCAM::Toolpath::ToolHolder toolHolderFromJson(const QJsonObject& json) const;
+    QJsonObject cuttingDataToJson(const IntuiCAM::Toolpath::CuttingData& cuttingData) const;
+    IntuiCAM::Toolpath::CuttingData cuttingDataFromJson(const QJsonObject& json) const;
+
+    // Tool geometry generation helpers
+    TopoDS_Shape createSquareInsert(double inscribedCircle, double thickness, double cornerRadius);
+    TopoDS_Shape createTriangleInsert(double inscribedCircle, double thickness, double cornerRadius);
+    TopoDS_Shape createDiamondInsert(double inscribedCircle, double thickness, double cornerRadius);
+    TopoDS_Shape createRoundInsert(double inscribedCircle, double thickness);
+    TopoDS_Shape createThreadingInsert(double thickness, double width, double length);
+    TopoDS_Shape createGroovingInsert(double thickness, double width, double length, double grooveWidth);
+    TopoDS_Shape createRectangularHolder(double length, double width, double height);
+    TopoDS_Shape createCylindricalHolder(double diameter, double length);
+    
+    // View control helper methods
+    void setStandardView(const gp_Dir& viewDirection, const gp_Dir& upDirection);
+    void resetCameraPosition();
+    void fitViewToTool();
 
 private:
     // Main layout
@@ -173,6 +269,7 @@ private:
     // Tool Edit Panel
     QWidget* m_toolEditPanel;
     QVBoxLayout* m_toolEditLayout;
+    QComboBox* m_toolTypeCombo;
     QTabWidget* m_toolEditTabs;
     
     // Tabs
@@ -191,9 +288,17 @@ private:
     QComboBox* m_visualizationModeCombo;
     QPushButton* m_fitViewButton;
     QPushButton* m_resetViewButton;
+    QPushButton* m_wireframeButton;
+    QPushButton* m_shadedButton;
+    QPushButton* m_shadedEdgesButton;
+    QPushButton* m_isometricViewButton;
+    QPushButton* m_frontViewButton;
+    QPushButton* m_topViewButton;
+    QPushButton* m_rightViewButton;
     QCheckBox* m_showDimensionsCheck;
     QCheckBox* m_showAnnotationsCheck;
     QSlider* m_zoomSlider;
+    QLabel* m_zoomLabel;
     
     // General Turning Insert Tab Components
     QWidget* m_turningInsertTab;
@@ -319,6 +424,21 @@ private:
     
     // Constants
     static const int AUTO_SAVE_DELAY_MS = 1000; // 1 second after last change
+    
+    // Tool manager reference for broader integration
+    IntuiCAM::GUI::ToolManager* m_toolManager;
+    
+    // Tool geometry objects
+    Handle(AIS_Shape) m_currentInsertShape;
+    Handle(AIS_Shape) m_currentHolderShape;
+    Handle(AIS_Shape) m_currentAssembledShape;
+    TopoDS_Shape m_currentToolGeometry;
+    
+    // Visualization state
+    int m_currentVisualizationMode;
+    bool m_showDimensions;
+    bool m_showAnnotations;
+    double m_currentZoomLevel;
 };
 
 #endif // TOOLMANAGEMENTDIALOG_H 

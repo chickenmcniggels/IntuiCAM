@@ -124,6 +124,10 @@ MainWindow::MainWindow(QWidget *parent)
     m_toolManagementTab = new ToolManagementTab(this);
     // ToolManagementDialog is now created on-demand when needed
     
+    // Ensure default tools are created immediately on first run
+    // This will create the tool database if it doesn't exist
+    m_toolManagementTab->ensureDefaultToolsExist();
+    
     // Create UI
     createMenus();
     createStatusBar();

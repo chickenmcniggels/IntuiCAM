@@ -11,6 +11,10 @@
 #include <QApplication>
 #include <QStyle>
 #include <QDebug>
+#include <QStandardPaths>
+#include <QDir>
+#include <QFile>
+#include <QDateTime>
 
 using namespace IntuiCAM::Toolpath;
 
@@ -50,6 +54,8 @@ ToolManagementTab::ToolManagementTab(QWidget *parent)
     setupUI();
     setupConnections();
     setupContextMenu();
+    // Ensure default tools exist before populating the list
+    ensureDefaultToolsExist();
     populateToolList();
 }
 
@@ -373,28 +379,112 @@ void ToolManagementTab::setupContextMenu() {
 void ToolManagementTab::populateToolList() {
     m_toolTreeWidget->clear();
     
-    // Sample tools for demonstration
-    auto item1 = new QTreeWidgetItem(m_toolTreeWidget);
-    item1->setText(COL_NAME, "CNMG120408 General Turn");
-    item1->setText(COL_TYPE, "General Turning");
-    item1->setText(COL_TOOL_NUMBER, "T01");
-    item1->setText(COL_TURRET_POS, "1");
-    item1->setText(COL_STATUS, "Active");
-    item1->setText(COL_INSERT_TYPE, "CNMG120408");
-    item1->setText(COL_HOLDER_TYPE, "MCLNR2525M12");
-    item1->setText(COL_USAGE, "85%");
+    // Load tools from the tool assembly database
+    QString databasePath = getToolAssemblyDatabasePath();
+    QFile file(databasePath);
     
-    auto item2 = new QTreeWidgetItem(m_toolTreeWidget);
-    item2->setText(COL_NAME, "16ER Threading Tool");
-    item2->setText(COL_TYPE, "Threading");
-    item2->setText(COL_TOOL_NUMBER, "T02");
-    item2->setText(COL_TURRET_POS, "2");
-    item2->setText(COL_STATUS, "Active");
-    item2->setText(COL_INSERT_TYPE, "16ER1.0ISO");
-    item2->setText(COL_HOLDER_TYPE, "SER1616H16");
-    item2->setText(COL_USAGE, "45%");
+    if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << "Tool assembly database not found, creating default tools:" << databasePath;
+        
+        // Automatically create default tools when no database exists
+        createDefaultToolDatabase();
+        
+        // Try to open the newly created database
+        if (!file.open(QIODevice::ReadOnly)) {
+            qWarning() << "Failed to create or open tool assembly database:" << databasePath;
+            return;
+        }
+    }
     
-    m_toolTreeWidget->resizeColumnToContents(0);
+    // Read and parse the tool database
+    QByteArray data = file.readAll();
+    file.close();
+    
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error != QJsonParseError::NoError) {
+        qWarning() << "Failed to parse tool assembly database:" << error.errorString();
+        return;
+    }
+    
+    if (!doc.isObject()) {
+        qWarning() << "Tool assembly database is not a valid JSON object";
+        return;
+    }
+    
+    QJsonObject database = doc.object();
+    if (!database.contains("tools")) {
+        qDebug() << "No tools found in database";
+        return;
+    }
+    
+    QJsonArray toolsArray = database["tools"].toArray();
+    
+    // Populate tree widget with tools from database
+    for (const QJsonValue& toolValue : toolsArray) {
+        QJsonObject toolObj = toolValue.toObject();
+        
+        auto item = new QTreeWidgetItem(m_toolTreeWidget);
+        item->setText(COL_NAME, QString::fromStdString(toolObj["name"].toString().toStdString()));
+        item->setText(COL_TYPE, formatToolType(static_cast<IntuiCAM::Toolpath::ToolType>(toolObj["toolType"].toInt())));
+        item->setText(COL_TOOL_NUMBER, toolObj["toolNumber"].toString());
+        item->setText(COL_TURRET_POS, QString::number(toolObj["turretPosition"].toInt()));
+        item->setText(COL_STATUS, toolObj["isActive"].toBool() ? "Active" : "Inactive");
+        
+        // Extract insert type from the tool data
+        QString insertType = "Unknown";
+        if (toolObj.contains("turningInsert")) {
+            QJsonObject insertObj = toolObj["turningInsert"].toObject();
+            insertType = insertObj["isoCode"].toString();
+            if (insertType.isEmpty()) {
+                insertType = QString("General Turning Insert");
+            }
+        } else if (toolObj.contains("threadingInsert")) {
+            QJsonObject insertObj = toolObj["threadingInsert"].toObject();
+            insertType = insertObj["isoCode"].toString();
+            if (insertType.isEmpty()) {
+                insertType = QString("Threading Insert");
+            }
+        } else if (toolObj.contains("groovingInsert")) {
+            QJsonObject insertObj = toolObj["groovingInsert"].toObject();
+            insertType = insertObj["isoCode"].toString();
+            if (insertType.isEmpty()) {
+                insertType = QString("Grooving Insert");
+            }
+        }
+        item->setText(COL_INSERT_TYPE, insertType);
+        
+        // Extract holder type from the tool data
+        QString holderType = "Unknown";
+        if (toolObj.contains("holder")) {
+            QJsonObject holderObj = toolObj["holder"].toObject();
+            holderType = holderObj["isoCode"].toString();
+            if (holderType.isEmpty()) {
+                holderType = QString("Tool Holder");
+            }
+        }
+        item->setText(COL_HOLDER_TYPE, holderType);
+        
+        // Format usage (for now, showing placeholder)
+        double usageMinutes = toolObj["usageMinutes"].toDouble(0.0);
+        double expectedLifeMinutes = toolObj["expectedLifeMinutes"].toDouble(480.0);
+        QString usage = QString("%1/%2 min").arg(usageMinutes, 0, 'f', 0).arg(expectedLifeMinutes, 0, 'f', 0);
+        item->setText(COL_USAGE, usage);
+        
+        // Set visual appearance based on status
+        if (item->text(COL_STATUS) == "Active") {
+            item->setForeground(COL_STATUS, QBrush(getToolStatusColor(true)));
+        } else {
+            item->setForeground(COL_STATUS, QBrush(getToolStatusColor(false)));
+        }
+    }
+    
+    qDebug() << "Loaded" << toolsArray.size() << "tools from database";
+    
+    // Resize columns to fit content
+    for (int i = 0; i < m_toolTreeWidget->columnCount(); ++i) {
+        m_toolTreeWidget->resizeColumnToContents(i);
+    }
 }
 
 // Slot implementations
@@ -776,80 +866,798 @@ void ToolManagementTab::exportToolLibrary() {
 
 void ToolManagementTab::loadDefaultTools() {
     auto reply = QMessageBox::question(this, "Load Default Tools",
-        "This will replace your current tool library with default tools. Continue?",
+        "This will replace your current tool library with 5 realistic default tools. Continue?",
         QMessageBox::Yes | QMessageBox::No);
     
     if (reply == QMessageBox::Yes) {
-        // Clear existing tools
-        m_toolTreeWidget->clear();
+        // Create 5 comprehensive default tools with realistic parameters
+        QJsonArray toolsArray;
         
-        // Add comprehensive default tool set with realistic specifications
-        QTreeWidgetItem* tool1 = new QTreeWidgetItem(m_toolTreeWidget);
-        tool1->setText(COL_NAME, "General Turning CNMG");
-        tool1->setText(COL_TYPE, "General Turning");
-        tool1->setText(COL_TOOL_NUMBER, "T01");
-        tool1->setText(COL_TURRET_POS, "1");
-        tool1->setText(COL_STATUS, "Active");
-        tool1->setText(COL_INSERT_TYPE, "CNMG120408");
-        tool1->setText(COL_HOLDER_TYPE, "MCLNR2525M12");
-        tool1->setText(COL_USAGE, "120/480 min");
-        tool1->setForeground(COL_STATUS, QBrush(getToolStatusColor(true)));
+        // Tool 1: General Turning Tool - CNMG120408
+        QJsonObject tool1;
+        tool1["id"] = "CNMG120408_GeneralTurn";
+        tool1["name"] = "CNMG120408 General Turning";
+        tool1["manufacturer"] = "Sandvik";
+        tool1["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
+        tool1["toolNumber"] = "T01";
+        tool1["turretPosition"] = 1;
+        tool1["isActive"] = true;
+        tool1["toolOffset_X"] = 0.0;
+        tool1["toolOffset_Z"] = 0.0;
+        tool1["toolLengthOffset"] = 0.0;
+        tool1["toolRadiusOffset"] = 0.4;
+        tool1["expectedLifeMinutes"] = 480.0;
+        tool1["usageMinutes"] = 120.0;
+        tool1["cycleCount"] = 45;
+        tool1["notes"] = "Standard general turning tool for roughing and semi-finishing operations";
         
-        QTreeWidgetItem* tool2 = new QTreeWidgetItem(m_toolTreeWidget);
-        tool2->setText(COL_NAME, "Threading 16ER");
-        tool2->setText(COL_TYPE, "Threading");
-        tool2->setText(COL_TOOL_NUMBER, "T02");
-        tool2->setText(COL_TURRET_POS, "2");
-        tool2->setText(COL_STATUS, "Active");
-        tool2->setText(COL_INSERT_TYPE, "16ER1.0ISO");
-        tool2->setText(COL_HOLDER_TYPE, "SER2525M16");
-        tool2->setText(COL_USAGE, "45/240 min");
-        tool2->setForeground(COL_STATUS, QBrush(getToolStatusColor(true)));
+        // General Turning Insert
+        QJsonObject turningInsert1;
+        turningInsert1["isoCode"] = "CNMG120408";
+        turningInsert1["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+        turningInsert1["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+        turningInsert1["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+        turningInsert1["sizeSpecifier"] = "12";
+        turningInsert1["inscribedCircle"] = 12.7;
+        turningInsert1["thickness"] = 4.76;
+        turningInsert1["cornerRadius"] = 0.8;
+        turningInsert1["cuttingEdgeLength"] = 12.7;
+        turningInsert1["width"] = 12.7;
+        turningInsert1["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+        turningInsert1["substrate"] = "WC-Co";
+        turningInsert1["coating"] = "TiAlN";
+        turningInsert1["manufacturer"] = "Sandvik";
+        turningInsert1["partNumber"] = "CNMG 12 04 08-PM 4325";
+        turningInsert1["rake_angle"] = 0.0;
+        turningInsert1["inclination_angle"] = -6.0;
+        turningInsert1["name"] = "CNMG120408 Coated Carbide";
+        turningInsert1["isActive"] = true;
+        tool1["turningInsert"] = turningInsert1;
         
-        QTreeWidgetItem* tool3 = new QTreeWidgetItem(m_toolTreeWidget);
-        tool3->setText(COL_NAME, "Grooving GTN");
-        tool3->setText(COL_TYPE, "Grooving");
-        tool3->setText(COL_TOOL_NUMBER, "T03");
-        tool3->setText(COL_TURRET_POS, "3");
-        tool3->setText(COL_STATUS, "Active");
-        tool3->setText(COL_INSERT_TYPE, "GTN3");
-        tool3->setText(COL_HOLDER_TYPE, "MGEHR2525-3");
-        tool3->setText(COL_USAGE, "30/180 min");
-        tool3->setForeground(COL_STATUS, QBrush(getToolStatusColor(true)));
+        // Tool Holder
+        QJsonObject holder1;
+        holder1["isoCode"] = "MCLNR2525M12";
+        holder1["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+        holder1["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+        holder1["cuttingWidth"] = 25.0;
+        holder1["headLength"] = 50.0;
+        holder1["overallLength"] = 150.0;
+        holder1["shankWidth"] = 25.0;
+        holder1["shankHeight"] = 25.0;
+        holder1["isRoundShank"] = false;
+        holder1["insertSeatAngle"] = 95.0;
+        holder1["insertSetback"] = 2.0;
+        holder1["manufacturer"] = "Sandvik";
+        tool1["holder"] = holder1;
         
-        QTreeWidgetItem* tool4 = new QTreeWidgetItem(m_toolTreeWidget);
-        tool4->setText(COL_NAME, "Parting MGMN");
-        tool4->setText(COL_TYPE, "Parting");
-        tool4->setText(COL_TOOL_NUMBER, "T04");
-        tool4->setText(COL_TURRET_POS, "4");
-        tool4->setText(COL_STATUS, "Inactive");
-        tool4->setText(COL_INSERT_TYPE, "MGMN300");
-        tool4->setText(COL_HOLDER_TYPE, "MGEHR2525-3");
-        tool4->setText(COL_USAGE, "0/120 min");
-        tool4->setForeground(COL_STATUS, QBrush(getToolStatusColor(false)));
+        // Cutting Data
+        QJsonObject cuttingData1;
+        cuttingData1["constantSurfaceSpeed"] = true;
+        cuttingData1["surfaceSpeed"] = 250.0;
+        cuttingData1["spindleSpeed"] = 800;
+        cuttingData1["feedPerRevolution"] = true;
+        cuttingData1["cuttingFeedrate"] = 0.25;
+        cuttingData1["plungeFeedrate"] = 0.1;
+        cuttingData1["retractFeedrate"] = 5.0;
+        cuttingData1["maxDepthOfCut"] = 3.0;
+        cuttingData1["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+        tool1["cuttingData"] = cuttingData1;
         
-        QTreeWidgetItem* tool5 = new QTreeWidgetItem(m_toolTreeWidget);
-        tool5->setText(COL_NAME, "Boring CCMT");
-        tool5->setText(COL_TYPE, "Boring");
-        tool5->setText(COL_TOOL_NUMBER, "T05");
-        tool5->setText(COL_TURRET_POS, "5");
-        tool5->setText(COL_STATUS, "Active");
-        tool5->setText(COL_INSERT_TYPE, "CCMT09T308");
-        tool5->setText(COL_HOLDER_TYPE, "A20R-SCLCR09");
-        tool5->setText(COL_USAGE, "85/360 min");
-        tool5->setForeground(COL_STATUS, QBrush(getToolStatusColor(true)));
+        toolsArray.append(tool1);
         
-        // Resize columns to fit content
-        for (int i = 0; i < m_toolTreeWidget->columnCount(); ++i) {
-            m_toolTreeWidget->resizeColumnToContents(i);
+        // Tool 2: Threading Tool - 16ER1.0ISO
+        QJsonObject tool2;
+        tool2["id"] = "16ER10ISO_Threading";
+        tool2["name"] = "16ER1.0ISO Threading Tool";
+        tool2["manufacturer"] = "Iscar";
+        tool2["toolType"] = static_cast<int>(ToolType::THREADING);
+        tool2["toolNumber"] = "T02";
+        tool2["turretPosition"] = 2;
+        tool2["isActive"] = true;
+        tool2["toolOffset_X"] = 0.0;
+        tool2["toolOffset_Z"] = 0.0;
+        tool2["toolLengthOffset"] = 0.0;
+        tool2["toolRadiusOffset"] = 0.0;
+        tool2["expectedLifeMinutes"] = 240.0;
+        tool2["usageMinutes"] = 45.0;
+        tool2["cycleCount"] = 18;
+        tool2["notes"] = "Metric threading tool for M6-M24 threads";
+        
+        // Threading Insert
+        QJsonObject threadingInsert2;
+        threadingInsert2["isoCode"] = "16ER1.0ISO";
+        threadingInsert2["thickness"] = 3.18;
+        threadingInsert2["width"] = 6.0;
+        threadingInsert2["minThreadPitch"] = 0.5;
+        threadingInsert2["maxThreadPitch"] = 2.0;
+        threadingInsert2["internalThreads"] = true;
+        threadingInsert2["externalThreads"] = true;
+        threadingInsert2["threadProfile"] = static_cast<int>(ThreadProfile::METRIC);
+        threadingInsert2["threadProfileAngle"] = 60.0;
+        threadingInsert2["threadTipType"] = static_cast<int>(ThreadTipType::SHARP_POINT);
+        threadingInsert2["threadTipRadius"] = 0.0;
+        threadingInsert2["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+        threadingInsert2["manufacturer"] = "Iscar";
+        threadingInsert2["name"] = "16ER1.0ISO Threading Insert";
+        threadingInsert2["isActive"] = true;
+        tool2["threadingInsert"] = threadingInsert2;
+        
+        // Tool Holder
+        QJsonObject holder2;
+        holder2["isoCode"] = "SER2525M16";
+        holder2["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+        holder2["clampingStyle"] = static_cast<int>(ClampingStyle::SCREW_CLAMP);
+        holder2["cuttingWidth"] = 16.0;
+        holder2["headLength"] = 40.0;
+        holder2["overallLength"] = 150.0;
+        holder2["shankWidth"] = 25.0;
+        holder2["shankHeight"] = 25.0;
+        holder2["isRoundShank"] = false;
+        holder2["insertSeatAngle"] = 90.0;
+        holder2["insertSetback"] = 1.5;
+        holder2["manufacturer"] = "Iscar";
+        tool2["holder"] = holder2;
+        
+        // Cutting Data
+        QJsonObject cuttingData2;
+        cuttingData2["constantSurfaceSpeed"] = true;
+        cuttingData2["surfaceSpeed"] = 120.0;
+        cuttingData2["spindleSpeed"] = 400;
+        cuttingData2["feedPerRevolution"] = true;
+        cuttingData2["cuttingFeedrate"] = 1.0; // pitch dependent
+        cuttingData2["plungeFeedrate"] = 0.05;
+        cuttingData2["retractFeedrate"] = 2.0;
+        cuttingData2["maxDepthOfCut"] = 0.6;
+        cuttingData2["coolantType"] = static_cast<int>(CoolantType::MIST);
+        tool2["cuttingData"] = cuttingData2;
+        
+        toolsArray.append(tool2);
+        
+        // Tool 3: Grooving Tool - GTN3
+        QJsonObject tool3;
+        tool3["id"] = "GTN3_Grooving";
+        tool3["name"] = "GTN3 Grooving Tool";
+        tool3["manufacturer"] = "Kyocera";
+        tool3["toolType"] = static_cast<int>(ToolType::GROOVING);
+        tool3["toolNumber"] = "T03";
+        tool3["turretPosition"] = 3;
+        tool3["isActive"] = true;
+        tool3["toolOffset_X"] = 0.0;
+        tool3["toolOffset_Z"] = 0.0;
+        tool3["toolLengthOffset"] = 0.0;
+        tool3["toolRadiusOffset"] = 0.0;
+        tool3["expectedLifeMinutes"] = 180.0;
+        tool3["usageMinutes"] = 30.0;
+        tool3["cycleCount"] = 25;
+        tool3["notes"] = "3mm grooving tool for standard grooves and recesses";
+        
+        // Grooving Insert
+        QJsonObject groovingInsert3;
+        groovingInsert3["isoCode"] = "GTN3";
+        groovingInsert3["thickness"] = 3.0;
+        groovingInsert3["overallLength"] = 12.0;
+        groovingInsert3["width"] = 3.0;
+        groovingInsert3["cornerRadius"] = 0.1;
+        groovingInsert3["headLength"] = 8.0;
+        groovingInsert3["grooveWidth"] = 3.0;
+        groovingInsert3["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+        groovingInsert3["manufacturer"] = "Kyocera";
+        groovingInsert3["name"] = "GTN3 Grooving Insert";
+        groovingInsert3["isActive"] = true;
+        tool3["groovingInsert"] = groovingInsert3;
+        
+        // Tool Holder
+        QJsonObject holder3;
+        holder3["isoCode"] = "MGEHR2525-3";
+        holder3["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+        holder3["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+        holder3["cuttingWidth"] = 3.0;
+        holder3["headLength"] = 30.0;
+        holder3["overallLength"] = 150.0;
+        holder3["shankWidth"] = 25.0;
+        holder3["shankHeight"] = 25.0;
+        holder3["isRoundShank"] = false;
+        holder3["insertSeatAngle"] = 90.0;
+        holder3["insertSetback"] = 1.0;
+        holder3["manufacturer"] = "Kyocera";
+        tool3["holder"] = holder3;
+        
+        // Cutting Data
+        QJsonObject cuttingData3;
+        cuttingData3["constantSurfaceSpeed"] = true;
+        cuttingData3["surfaceSpeed"] = 180.0;
+        cuttingData3["spindleSpeed"] = 600;
+        cuttingData3["feedPerRevolution"] = true;
+        cuttingData3["cuttingFeedrate"] = 0.05;
+        cuttingData3["plungeFeedrate"] = 0.02;
+        cuttingData3["retractFeedrate"] = 1.0;
+        cuttingData3["maxDepthOfCut"] = 3.0;
+        cuttingData3["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+        tool3["cuttingData"] = cuttingData3;
+        
+        toolsArray.append(tool3);
+        
+        // Tool 4: Parting Tool - MGMN300
+        QJsonObject tool4;
+        tool4["id"] = "MGMN300_Parting";
+        tool4["name"] = "MGMN300 Parting Tool";
+        tool4["manufacturer"] = "Mitsubishi";
+        tool4["toolType"] = static_cast<int>(ToolType::PARTING);
+        tool4["toolNumber"] = "T04";
+        tool4["turretPosition"] = 4;
+        tool4["isActive"] = false; // Start inactive for safety
+        tool4["toolOffset_X"] = 0.0;
+        tool4["toolOffset_Z"] = 0.0;
+        tool4["toolLengthOffset"] = 0.0;
+        tool4["toolRadiusOffset"] = 0.0;
+        tool4["expectedLifeMinutes"] = 120.0;
+        tool4["usageMinutes"] = 0.0;
+        tool4["cycleCount"] = 0;
+        tool4["notes"] = "3mm parting/cutoff tool for diameters up to 50mm";
+        
+        // Grooving Insert (used for parting)
+        QJsonObject groovingInsert4;
+        groovingInsert4["isoCode"] = "MGMN300";
+        groovingInsert4["thickness"] = 3.0;
+        groovingInsert4["overallLength"] = 15.0;
+        groovingInsert4["width"] = 3.0;
+        groovingInsert4["cornerRadius"] = 0.05;
+        groovingInsert4["headLength"] = 10.0;
+        groovingInsert4["grooveWidth"] = 3.0;
+        groovingInsert4["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+        groovingInsert4["manufacturer"] = "Mitsubishi";
+        groovingInsert4["name"] = "MGMN300 Parting Insert";
+        groovingInsert4["isActive"] = true;
+        tool4["groovingInsert"] = groovingInsert4;
+        
+        // Tool Holder
+        QJsonObject holder4;
+        holder4["isoCode"] = "MGEHR2525-3";
+        holder4["handOrientation"] = static_cast<int>(HandOrientation::NEUTRAL);
+        holder4["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+        holder4["cuttingWidth"] = 3.0;
+        holder4["headLength"] = 30.0;
+        holder4["overallLength"] = 150.0;
+        holder4["shankWidth"] = 25.0;
+        holder4["shankHeight"] = 25.0;
+        holder4["isRoundShank"] = false;
+        holder4["insertSeatAngle"] = 90.0;
+        holder4["insertSetback"] = 0.5;
+        holder4["manufacturer"] = "Mitsubishi";
+        tool4["holder"] = holder4;
+        
+        // Cutting Data
+        QJsonObject cuttingData4;
+        cuttingData4["constantSurfaceSpeed"] = true;
+        cuttingData4["surfaceSpeed"] = 120.0;
+        cuttingData4["spindleSpeed"] = 400;
+        cuttingData4["feedPerRevolution"] = true;
+        cuttingData4["cuttingFeedrate"] = 0.03;
+        cuttingData4["plungeFeedrate"] = 0.01;
+        cuttingData4["retractFeedrate"] = 1.0;
+        cuttingData4["maxDepthOfCut"] = 25.0; // for parting through
+        cuttingData4["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+        tool4["cuttingData"] = cuttingData4;
+        
+        toolsArray.append(tool4);
+        
+        // Tool 5: Boring Tool - CCMT09T308
+        QJsonObject tool5;
+        tool5["id"] = "CCMT09T308_Boring";
+        tool5["name"] = "CCMT09T308 Boring Tool";
+        tool5["manufacturer"] = "Kennametal";
+        tool5["toolType"] = static_cast<int>(ToolType::BORING);
+        tool5["toolNumber"] = "T05";
+        tool5["turretPosition"] = 5;
+        tool5["isActive"] = true;
+        tool5["toolOffset_X"] = 0.0;
+        tool5["toolOffset_Z"] = 0.0;
+        tool5["toolLengthOffset"] = 0.0;
+        tool5["toolRadiusOffset"] = 0.8;
+        tool5["expectedLifeMinutes"] = 360.0;
+        tool5["usageMinutes"] = 85.0;
+        tool5["cycleCount"] = 32;
+        tool5["notes"] = "Boring bar for internal turning operations, min bore 20mm";
+        
+        // General Turning Insert (used for boring)
+        QJsonObject turningInsert5;
+        turningInsert5["isoCode"] = "CCMT09T308";
+        turningInsert5["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+        turningInsert5["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+        turningInsert5["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+        turningInsert5["sizeSpecifier"] = "09";
+        turningInsert5["inscribedCircle"] = 9.525;
+        turningInsert5["thickness"] = 3.97;
+        turningInsert5["cornerRadius"] = 0.8;
+        turningInsert5["cuttingEdgeLength"] = 9.525;
+        turningInsert5["width"] = 9.525;
+        turningInsert5["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+        turningInsert5["substrate"] = "WC-Co";
+        turningInsert5["coating"] = "TiCN+Al2O3+TiN";
+        turningInsert5["manufacturer"] = "Kennametal";
+        turningInsert5["partNumber"] = "CCMT 09 T3 08-KM KC5010";
+        turningInsert5["rake_angle"] = 7.0;
+        turningInsert5["inclination_angle"] = -6.0;
+        turningInsert5["name"] = "CCMT09T308 Positive Insert";
+        turningInsert5["isActive"] = true;
+        tool5["turningInsert"] = turningInsert5;
+        
+        // Tool Holder
+        QJsonObject holder5;
+        holder5["isoCode"] = "A20R-SCLCR09";
+        holder5["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+        holder5["clampingStyle"] = static_cast<int>(ClampingStyle::SCREW_CLAMP);
+        holder5["cuttingWidth"] = 20.0;
+        holder5["headLength"] = 35.0;
+        holder5["overallLength"] = 200.0;
+        holder5["shankWidth"] = 20.0;
+        holder5["shankHeight"] = 20.0;
+        holder5["isRoundShank"] = true;
+        holder5["shankDiameter"] = 20.0;
+        holder5["insertSeatAngle"] = 95.0;
+        holder5["insertSetback"] = 1.5;
+        holder5["manufacturer"] = "Kennametal";
+        tool5["holder"] = holder5;
+        
+        // Cutting Data
+        QJsonObject cuttingData5;
+        cuttingData5["constantSurfaceSpeed"] = true;
+        cuttingData5["surfaceSpeed"] = 200.0;
+        cuttingData5["spindleSpeed"] = 800;
+        cuttingData5["feedPerRevolution"] = true;
+        cuttingData5["cuttingFeedrate"] = 0.15;
+        cuttingData5["plungeFeedrate"] = 0.05;
+        cuttingData5["retractFeedrate"] = 3.0;
+        cuttingData5["maxDepthOfCut"] = 2.0;
+        cuttingData5["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+        tool5["cuttingData"] = cuttingData5;
+        
+        toolsArray.append(tool5);
+        
+        // Save to database
+        QJsonObject database;
+        database["tools"] = toolsArray;
+        database["version"] = "1.0";
+        database["created"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+        database["description"] = "IntuiCAM Default Tool Library";
+        
+        // Write to database file
+        QString databasePath = getToolAssemblyDatabasePath();
+        QJsonDocument doc(database);
+        QFile file(databasePath);
+        
+        if (file.open(QIODevice::WriteOnly)) {
+            file.write(doc.toJson());
+            file.close();
+            
+            qDebug() << "Successfully saved 5 default tools to database:" << databasePath;
+            
+            // Refresh the tool list to show the new tools
+            refreshToolList();
+            
+            QMessageBox::information(this, "Default Tools Loaded", 
+                "Successfully created and loaded 5 realistic default tools:\n\n"
+                "• CNMG120408 General Turning (T01)\n"
+                "• 16ER1.0ISO Threading Tool (T02)\n"
+                "• GTN3 Grooving Tool (T03)\n"
+                "• MGMN300 Parting Tool (T04)\n"
+                "• CCMT09T308 Boring Tool (T05)\n\n"
+                "All tools include complete insert, holder, and cutting parameters.");
+        } else {
+            QMessageBox::warning(this, "Error", 
+                "Failed to save default tools to database: " + file.errorString());
         }
         
-        updateToolCounts();
-        clearToolInfo();
         emit toolLibraryChanged();
-        
-        QMessageBox::information(this, "Default Tools Loaded", 
-            "Successfully loaded 5 default tools into the library.");
+    }
+}
+
+void ToolManagementTab::ensureDefaultToolsExist() {
+    QString databasePath = getToolAssemblyDatabasePath();
+    qDebug() << "ToolManagementTab::ensureDefaultToolsExist() - Database path:" << databasePath;
+    QFile file(databasePath);
+    
+    // If database file doesn't exist, create it with default tools
+    if (!file.exists()) {
+        qDebug() << "No tool database found, creating default tools on startup";
+        createDefaultToolDatabase();
+    } else {
+        // If file exists, check if it has tools in it
+        if (file.open(QIODevice::ReadOnly)) {
+            QByteArray data = file.readAll();
+            file.close();
+            
+            QJsonParseError error;
+            QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+            if (error.error == QJsonParseError::NoError && doc.isObject()) {
+                QJsonObject database = doc.object();
+                if (database.contains("tools")) {
+                    QJsonArray toolsArray = database["tools"].toArray();
+                    if (toolsArray.isEmpty()) {
+                        qDebug() << "Tool database exists but is empty, creating default tools";
+                        createDefaultToolDatabase();
+                    } else {
+                        qDebug() << "Tool database exists with" << toolsArray.size() << "tools";
+                    }
+                } else {
+                    qDebug() << "Tool database exists but has no tools array, creating default tools";
+                    createDefaultToolDatabase();
+                }
+            } else {
+                qDebug() << "Tool database exists but is corrupted, recreating with default tools";
+                createDefaultToolDatabase();
+            }
+        } else {
+            qDebug() << "Could not read tool database, creating default tools";
+            createDefaultToolDatabase();
+        }
+    }
+}
+
+void ToolManagementTab::createDefaultToolDatabase() {
+    qDebug() << "ToolManagementTab::createDefaultToolDatabase() - Creating 5 default tools";
+    // Create the same 5 default tools as in loadDefaultTools() but without user confirmation
+    QJsonArray toolsArray;
+    
+    // Tool 1: General Turning Tool - CNMG120408
+    QJsonObject tool1;
+    tool1["id"] = "CNMG120408_GeneralTurn";
+    tool1["name"] = "CNMG120408 General Turning";
+    tool1["manufacturer"] = "Sandvik";
+    tool1["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
+    tool1["toolNumber"] = "T01";
+    tool1["turretPosition"] = 1;
+    tool1["isActive"] = true;
+    tool1["toolOffset_X"] = 0.0;
+    tool1["toolOffset_Z"] = 0.0;
+    tool1["toolLengthOffset"] = 0.0;
+    tool1["toolRadiusOffset"] = 0.4;
+    tool1["expectedLifeMinutes"] = 480.0;
+    tool1["usageMinutes"] = 120.0;
+    tool1["cycleCount"] = 45;
+    tool1["notes"] = "Standard general turning tool for roughing and semi-finishing operations";
+    
+    // General Turning Insert
+    QJsonObject turningInsert1;
+    turningInsert1["isoCode"] = "CNMG120408";
+    turningInsert1["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+    turningInsert1["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+    turningInsert1["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+    turningInsert1["sizeSpecifier"] = "12";
+    turningInsert1["inscribedCircle"] = 12.7;
+    turningInsert1["thickness"] = 4.76;
+    turningInsert1["cornerRadius"] = 0.8;
+    turningInsert1["cuttingEdgeLength"] = 12.7;
+    turningInsert1["width"] = 12.7;
+    turningInsert1["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+    turningInsert1["substrate"] = "WC-Co";
+    turningInsert1["coating"] = "TiAlN";
+    turningInsert1["manufacturer"] = "Sandvik";
+    turningInsert1["partNumber"] = "CNMG 12 04 08-PM 4325";
+    turningInsert1["rake_angle"] = 0.0;
+    turningInsert1["inclination_angle"] = -6.0;
+    turningInsert1["name"] = "CNMG120408 Coated Carbide";
+    turningInsert1["isActive"] = true;
+    tool1["turningInsert"] = turningInsert1;
+    
+    // Tool Holder
+    QJsonObject holder1;
+    holder1["isoCode"] = "MCLNR2525M12";
+    holder1["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+    holder1["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+    holder1["cuttingWidth"] = 25.0;
+    holder1["headLength"] = 50.0;
+    holder1["overallLength"] = 150.0;
+    holder1["shankWidth"] = 25.0;
+    holder1["shankHeight"] = 25.0;
+    holder1["isRoundShank"] = false;
+    holder1["insertSeatAngle"] = 95.0;
+    holder1["insertSetback"] = 2.0;
+    holder1["manufacturer"] = "Sandvik";
+    tool1["holder"] = holder1;
+    
+    // Cutting Data
+    QJsonObject cuttingData1;
+    cuttingData1["constantSurfaceSpeed"] = true;
+    cuttingData1["surfaceSpeed"] = 250.0;
+    cuttingData1["spindleSpeed"] = 800;
+    cuttingData1["feedPerRevolution"] = true;
+    cuttingData1["cuttingFeedrate"] = 0.25;
+    cuttingData1["plungeFeedrate"] = 0.1;
+    cuttingData1["retractFeedrate"] = 5.0;
+    cuttingData1["maxDepthOfCut"] = 3.0;
+    cuttingData1["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+    tool1["cuttingData"] = cuttingData1;
+    
+    toolsArray.append(tool1);
+    
+    // Tool 2: Threading Tool - 16ER1.0ISO
+    QJsonObject tool2;
+    tool2["id"] = "16ER10ISO_Threading";
+    tool2["name"] = "16ER1.0ISO Threading Tool";
+    tool2["manufacturer"] = "Iscar";
+    tool2["toolType"] = static_cast<int>(ToolType::THREADING);
+    tool2["toolNumber"] = "T02";
+    tool2["turretPosition"] = 2;
+    tool2["isActive"] = true;
+    tool2["toolOffset_X"] = 0.0;
+    tool2["toolOffset_Z"] = 0.0;
+    tool2["toolLengthOffset"] = 0.0;
+    tool2["toolRadiusOffset"] = 0.0;
+    tool2["expectedLifeMinutes"] = 240.0;
+    tool2["usageMinutes"] = 45.0;
+    tool2["cycleCount"] = 18;
+    tool2["notes"] = "Metric threading tool for M6-M24 threads";
+    
+    // Threading Insert
+    QJsonObject threadingInsert2;
+    threadingInsert2["isoCode"] = "16ER1.0ISO";
+    threadingInsert2["thickness"] = 3.18;
+    threadingInsert2["width"] = 6.0;
+    threadingInsert2["minThreadPitch"] = 0.5;
+    threadingInsert2["maxThreadPitch"] = 2.0;
+    threadingInsert2["internalThreads"] = true;
+    threadingInsert2["externalThreads"] = true;
+    threadingInsert2["threadProfile"] = static_cast<int>(ThreadProfile::METRIC);
+    threadingInsert2["threadProfileAngle"] = 60.0;
+    threadingInsert2["threadTipType"] = static_cast<int>(ThreadTipType::SHARP_POINT);
+    threadingInsert2["threadTipRadius"] = 0.0;
+    threadingInsert2["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+    threadingInsert2["manufacturer"] = "Iscar";
+    threadingInsert2["name"] = "16ER1.0ISO Threading Insert";
+    threadingInsert2["isActive"] = true;
+    tool2["threadingInsert"] = threadingInsert2;
+    
+    // Tool Holder
+    QJsonObject holder2;
+    holder2["isoCode"] = "SER2525M16";
+    holder2["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+    holder2["clampingStyle"] = static_cast<int>(ClampingStyle::SCREW_CLAMP);
+    holder2["cuttingWidth"] = 16.0;
+    holder2["headLength"] = 40.0;
+    holder2["overallLength"] = 150.0;
+    holder2["shankWidth"] = 25.0;
+    holder2["shankHeight"] = 25.0;
+    holder2["isRoundShank"] = false;
+    holder2["insertSeatAngle"] = 90.0;
+    holder2["insertSetback"] = 1.5;
+    holder2["manufacturer"] = "Iscar";
+    tool2["holder"] = holder2;
+    
+    // Cutting Data
+    QJsonObject cuttingData2;
+    cuttingData2["constantSurfaceSpeed"] = true;
+    cuttingData2["surfaceSpeed"] = 120.0;
+    cuttingData2["spindleSpeed"] = 400;
+    cuttingData2["feedPerRevolution"] = true;
+    cuttingData2["cuttingFeedrate"] = 1.0; // pitch dependent
+    cuttingData2["plungeFeedrate"] = 0.05;
+    cuttingData2["retractFeedrate"] = 2.0;
+    cuttingData2["maxDepthOfCut"] = 0.6;
+    cuttingData2["coolantType"] = static_cast<int>(CoolantType::MIST);
+    tool2["cuttingData"] = cuttingData2;
+    
+    toolsArray.append(tool2);
+    
+    // Tool 3: Grooving Tool - GTN3
+    QJsonObject tool3;
+    tool3["id"] = "GTN3_Grooving";
+    tool3["name"] = "GTN3 Grooving Tool";
+    tool3["manufacturer"] = "Kyocera";
+    tool3["toolType"] = static_cast<int>(ToolType::GROOVING);
+    tool3["toolNumber"] = "T03";
+    tool3["turretPosition"] = 3;
+    tool3["isActive"] = true;
+    tool3["toolOffset_X"] = 0.0;
+    tool3["toolOffset_Z"] = 0.0;
+    tool3["toolLengthOffset"] = 0.0;
+    tool3["toolRadiusOffset"] = 0.0;
+    tool3["expectedLifeMinutes"] = 180.0;
+    tool3["usageMinutes"] = 30.0;
+    tool3["cycleCount"] = 25;
+    tool3["notes"] = "3mm grooving tool for standard grooves and recesses";
+    
+    // Grooving Insert
+    QJsonObject groovingInsert3;
+    groovingInsert3["isoCode"] = "GTN3";
+    groovingInsert3["thickness"] = 3.0;
+    groovingInsert3["overallLength"] = 12.0;
+    groovingInsert3["width"] = 3.0;
+    groovingInsert3["cornerRadius"] = 0.1;
+    groovingInsert3["headLength"] = 8.0;
+    groovingInsert3["grooveWidth"] = 3.0;
+    groovingInsert3["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+    groovingInsert3["manufacturer"] = "Kyocera";
+    groovingInsert3["name"] = "GTN3 Grooving Insert";
+    groovingInsert3["isActive"] = true;
+    tool3["groovingInsert"] = groovingInsert3;
+    
+    // Tool Holder
+    QJsonObject holder3;
+    holder3["isoCode"] = "MGEHR2525-3";
+    holder3["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+    holder3["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+    holder3["cuttingWidth"] = 3.0;
+    holder3["headLength"] = 30.0;
+    holder3["overallLength"] = 150.0;
+    holder3["shankWidth"] = 25.0;
+    holder3["shankHeight"] = 25.0;
+    holder3["isRoundShank"] = false;
+    holder3["insertSeatAngle"] = 90.0;
+    holder3["insertSetback"] = 1.0;
+    holder3["manufacturer"] = "Kyocera";
+    tool3["holder"] = holder3;
+    
+    // Cutting Data
+    QJsonObject cuttingData3;
+    cuttingData3["constantSurfaceSpeed"] = true;
+    cuttingData3["surfaceSpeed"] = 180.0;
+    cuttingData3["spindleSpeed"] = 600;
+    cuttingData3["feedPerRevolution"] = true;
+    cuttingData3["cuttingFeedrate"] = 0.05;
+    cuttingData3["plungeFeedrate"] = 0.02;
+    cuttingData3["retractFeedrate"] = 1.0;
+    cuttingData3["maxDepthOfCut"] = 3.0;
+    cuttingData3["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+    tool3["cuttingData"] = cuttingData3;
+    
+    toolsArray.append(tool3);
+    
+    // Tool 4: Parting Tool - MGMN300
+    QJsonObject tool4;
+    tool4["id"] = "MGMN300_Parting";
+    tool4["name"] = "MGMN300 Parting Tool";
+    tool4["manufacturer"] = "Mitsubishi";
+    tool4["toolType"] = static_cast<int>(ToolType::PARTING);
+    tool4["toolNumber"] = "T04";
+    tool4["turretPosition"] = 4;
+    tool4["isActive"] = false; // Start inactive for safety
+    tool4["toolOffset_X"] = 0.0;
+    tool4["toolOffset_Z"] = 0.0;
+    tool4["toolLengthOffset"] = 0.0;
+    tool4["toolRadiusOffset"] = 0.0;
+    tool4["expectedLifeMinutes"] = 120.0;
+    tool4["usageMinutes"] = 0.0;
+    tool4["cycleCount"] = 0;
+    tool4["notes"] = "3mm parting/cutoff tool for diameters up to 50mm";
+    
+    // Grooving Insert (used for parting)
+    QJsonObject groovingInsert4;
+    groovingInsert4["isoCode"] = "MGMN300";
+    groovingInsert4["thickness"] = 3.0;
+    groovingInsert4["overallLength"] = 15.0;
+    groovingInsert4["width"] = 3.0;
+    groovingInsert4["cornerRadius"] = 0.05;
+    groovingInsert4["headLength"] = 10.0;
+    groovingInsert4["grooveWidth"] = 3.0;
+    groovingInsert4["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+    groovingInsert4["manufacturer"] = "Mitsubishi";
+    groovingInsert4["name"] = "MGMN300 Parting Insert";
+    groovingInsert4["isActive"] = true;
+    tool4["groovingInsert"] = groovingInsert4;
+    
+    // Tool Holder
+    QJsonObject holder4;
+    holder4["isoCode"] = "MGEHR2525-3";
+    holder4["handOrientation"] = static_cast<int>(HandOrientation::NEUTRAL);
+    holder4["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+    holder4["cuttingWidth"] = 3.0;
+    holder4["headLength"] = 30.0;
+    holder4["overallLength"] = 150.0;
+    holder4["shankWidth"] = 25.0;
+    holder4["shankHeight"] = 25.0;
+    holder4["isRoundShank"] = false;
+    holder4["insertSeatAngle"] = 90.0;
+    holder4["insertSetback"] = 0.5;
+    holder4["manufacturer"] = "Mitsubishi";
+    tool4["holder"] = holder4;
+    
+    // Cutting Data
+    QJsonObject cuttingData4;
+    cuttingData4["constantSurfaceSpeed"] = true;
+    cuttingData4["surfaceSpeed"] = 120.0;
+    cuttingData4["spindleSpeed"] = 400;
+    cuttingData4["feedPerRevolution"] = true;
+    cuttingData4["cuttingFeedrate"] = 0.03;
+    cuttingData4["plungeFeedrate"] = 0.01;
+    cuttingData4["retractFeedrate"] = 1.0;
+    cuttingData4["maxDepthOfCut"] = 25.0; // for parting through
+    cuttingData4["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+    tool4["cuttingData"] = cuttingData4;
+    
+    toolsArray.append(tool4);
+    
+    // Tool 5: Boring Tool - CCMT09T308
+    QJsonObject tool5;
+    tool5["id"] = "CCMT09T308_Boring";
+    tool5["name"] = "CCMT09T308 Boring Tool";
+    tool5["manufacturer"] = "Kennametal";
+    tool5["toolType"] = static_cast<int>(ToolType::BORING);
+    tool5["toolNumber"] = "T05";
+    tool5["turretPosition"] = 5;
+    tool5["isActive"] = true;
+    tool5["toolOffset_X"] = 0.0;
+    tool5["toolOffset_Z"] = 0.0;
+    tool5["toolLengthOffset"] = 0.0;
+    tool5["toolRadiusOffset"] = 0.8;
+    tool5["expectedLifeMinutes"] = 360.0;
+    tool5["usageMinutes"] = 85.0;
+    tool5["cycleCount"] = 32;
+    tool5["notes"] = "Boring bar for internal turning operations, min bore 20mm";
+    
+    // General Turning Insert (used for boring)
+    QJsonObject turningInsert5;
+    turningInsert5["isoCode"] = "CCMT09T308";
+    turningInsert5["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+    turningInsert5["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+    turningInsert5["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+    turningInsert5["sizeSpecifier"] = "09";
+    turningInsert5["inscribedCircle"] = 9.525;
+    turningInsert5["thickness"] = 3.97;
+    turningInsert5["cornerRadius"] = 0.8;
+    turningInsert5["cuttingEdgeLength"] = 9.525;
+    turningInsert5["width"] = 9.525;
+    turningInsert5["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+    turningInsert5["substrate"] = "WC-Co";
+    turningInsert5["coating"] = "TiCN+Al2O3+TiN";
+    turningInsert5["manufacturer"] = "Kennametal";
+    turningInsert5["partNumber"] = "CCMT 09 T3 08-KM KC5010";
+    turningInsert5["rake_angle"] = 7.0;
+    turningInsert5["inclination_angle"] = -6.0;
+    turningInsert5["name"] = "CCMT09T308 Positive Insert";
+    turningInsert5["isActive"] = true;
+    tool5["turningInsert"] = turningInsert5;
+    
+    // Tool Holder
+    QJsonObject holder5;
+    holder5["isoCode"] = "A20R-SCLCR09";
+    holder5["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+    holder5["clampingStyle"] = static_cast<int>(ClampingStyle::SCREW_CLAMP);
+    holder5["cuttingWidth"] = 20.0;
+    holder5["headLength"] = 35.0;
+    holder5["overallLength"] = 200.0;
+    holder5["shankWidth"] = 20.0;
+    holder5["shankHeight"] = 20.0;
+    holder5["isRoundShank"] = true;
+    holder5["shankDiameter"] = 20.0;
+    holder5["insertSeatAngle"] = 95.0;
+    holder5["insertSetback"] = 1.5;
+    holder5["manufacturer"] = "Kennametal";
+    tool5["holder"] = holder5;
+    
+    // Cutting Data
+    QJsonObject cuttingData5;
+    cuttingData5["constantSurfaceSpeed"] = true;
+    cuttingData5["surfaceSpeed"] = 200.0;
+    cuttingData5["spindleSpeed"] = 800;
+    cuttingData5["feedPerRevolution"] = true;
+    cuttingData5["cuttingFeedrate"] = 0.15;
+    cuttingData5["plungeFeedrate"] = 0.05;
+    cuttingData5["retractFeedrate"] = 3.0;
+    cuttingData5["maxDepthOfCut"] = 2.0;
+    cuttingData5["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+    tool5["cuttingData"] = cuttingData5;
+    
+    toolsArray.append(tool5);
+    
+    // Save to database
+    QJsonObject database;
+    database["tools"] = toolsArray;
+    database["version"] = "1.0";
+    database["created"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    database["description"] = "IntuiCAM Default Tool Library - Auto-created on first run";
+    
+    // Write to database file
+    QString databasePath = getToolAssemblyDatabasePath();
+    QJsonDocument doc(database);
+    QFile file(databasePath);
+    
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(doc.toJson());
+        file.close();
+        qDebug() << "Successfully created default tool database with 5 tools:" << databasePath;
+    } else {
+        qWarning() << "Failed to create default tool database:" << file.errorString();
     }
 }
 
@@ -1149,4 +1957,15 @@ QStringList ToolManagementTab::getSelectedToolIds() const {
         toolIds << item->text(COL_NAME);
     }
     return toolIds;
+}
+
+QString ToolManagementTab::getToolAssemblyDatabasePath() const {
+    QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir dir(dataDir);
+    if (!dir.exists()) {
+        dir.mkpath(dataDir);
+    }
+    
+    QString dbPath = dir.filePath("tool_assemblies.json");
+    return dbPath;
 }

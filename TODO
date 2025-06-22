@@ -4,8 +4,14 @@ TODO (Bugs)
 - apply a stylesheet
 - calculate raw material with user specified facing allowance
 - update documentation to include all changes 
-- ensure consistent file, method and class naming conventions (rename MainWIndow.cpp to mainwindow.cpp)
 - correctly apply the transformations of the generated toolpath to be synced with the parts transformation along the z axis
 - change the initial viewer orientation to correspond to the standard lathe orientation
 - select part orientation axis from 3d view is not working but used to work flawlessly
-- test_core.exe shouldnt be build. I want to remove it from the project.
+
+- Tool Name in library not linked to parameter in editor
+- Tool Manager should be moved up one tab view to where its next to the machine tab not inside of the machine tab. 
+- Tool 3d preview in dialog should replace the view controls with a view cube and the standard mouse controls
+- if a tool is generated without a name, it cannot be deleted. Ensure a tool is only saved once a name is entered
+- tool lists in operation tabs should be linked to the actual tool list
+- Toolpath generation pipeline should take actual tools into account
+- In addition to the generated toolpaths, the extracted 2d profile should also be dispalyed in the viewer and be managed by the visibility menu

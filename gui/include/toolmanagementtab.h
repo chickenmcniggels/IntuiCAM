@@ -59,6 +59,7 @@ public:
     void importToolLibrary();
     void exportToolLibrary();
     void loadDefaultTools();
+    void ensureDefaultToolsExist();
 
 signals:
     void toolSelected(const QString& toolId);
@@ -122,6 +123,7 @@ private:
     
     // Tool list management
     void populateToolList();
+    void createDefaultToolDatabase();
     void updateToolListItem(const QString& toolId);
     void removeToolListItem(const QString& toolId);
     QString getSelectedToolId() const;
@@ -141,6 +143,7 @@ private:
     QIcon getToolTypeIcon(IntuiCAM::Toolpath::ToolType toolType) const;
     QColor getToolStatusColor(bool isActive) const;
     QString getToolStatusText(bool isActive) const;
+    QString getToolAssemblyDatabasePath() const;
     
     // UI Components - Main Layout
     QVBoxLayout* m_mainLayout;
