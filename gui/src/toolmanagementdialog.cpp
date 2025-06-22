@@ -1174,48 +1174,90 @@ void ToolManagementDialog::loadToolParametersIntoFields(const ToolAssembly& asse
 
 void ToolManagementDialog::loadGeneralTurningInsertParameters(const GeneralTurningInsert& insert) {
     qDebug() << "Loading general turning insert parameters";
-    
-    // Implementation for loading general turning insert parameters
-    // This is a stub implementation to prevent crashes
-    qDebug() << "Insert ISO Code:" << QString::fromStdString(insert.isoCode);
-    qDebug() << "Insert Name:" << QString::fromStdString(insert.name);
+
+    if (m_isoCodeEdit) m_isoCodeEdit->setText(QString::fromStdString(insert.isoCode));
+    if (m_insertShapeCombo) setComboBoxByValue(m_insertShapeCombo, static_cast<int>(insert.shape));
+    if (m_reliefAngleCombo) setComboBoxByValue(m_reliefAngleCombo, static_cast<int>(insert.reliefAngle));
+    if (m_toleranceCombo) setComboBoxByValue(m_toleranceCombo, static_cast<int>(insert.tolerance));
+    if (m_materialCombo) setComboBoxByValue(m_materialCombo, static_cast<int>(insert.material));
+    if (m_substrateCombo) m_substrateCombo->setCurrentText(QString::fromStdString(insert.substrate));
+    if (m_coatingCombo) m_coatingCombo->setCurrentText(QString::fromStdString(insert.coating));
+    if (m_inscribedCircleSpin) m_inscribedCircleSpin->setValue(insert.inscribedCircle);
+    if (m_thicknessSpin) m_thicknessSpin->setValue(insert.thickness);
+    if (m_cornerRadiusSpin) m_cornerRadiusSpin->setValue(insert.cornerRadius);
+    if (m_cuttingEdgeLengthSpin) m_cuttingEdgeLengthSpin->setValue(insert.cuttingEdgeLength);
+    if (m_widthSpin) m_widthSpin->setValue(insert.width);
+    if (m_rakeAngleSpin) m_rakeAngleSpin->setValue(insert.rake_angle);
+    if (m_inclinationAngleSpin) m_inclinationAngleSpin->setValue(insert.inclination_angle);
 }
 
 void ToolManagementDialog::loadThreadingInsertParameters(const ThreadingInsert& insert) {
     qDebug() << "Loading threading insert parameters";
-    
-    // Implementation for loading threading insert parameters
-    // This is a stub implementation to prevent crashes
-    qDebug() << "Threading Insert ISO Code:" << QString::fromStdString(insert.isoCode);
-    qDebug() << "Threading Insert Name:" << QString::fromStdString(insert.name);
+
+    if (m_threadingISOCodeEdit) m_threadingISOCodeEdit->setText(QString::fromStdString(insert.isoCode));
+    if (m_threadingThicknessSpin) m_threadingThicknessSpin->setValue(insert.thickness);
+    if (m_threadingWidthSpin) m_threadingWidthSpin->setValue(insert.width);
+    if (m_minThreadPitchSpin) m_minThreadPitchSpin->setValue(insert.minThreadPitch);
+    if (m_maxThreadPitchSpin) m_maxThreadPitchSpin->setValue(insert.maxThreadPitch);
+    if (m_internalThreadsCheck) m_internalThreadsCheck->setChecked(insert.internalThreads);
+    if (m_externalThreadsCheck) m_externalThreadsCheck->setChecked(insert.externalThreads);
+    if (m_threadProfileAngleSpin) m_threadProfileAngleSpin->setValue(insert.threadProfileAngle);
+    if (m_threadTipRadiusSpin) m_threadTipRadiusSpin->setValue(insert.threadTipRadius);
 }
 
 void ToolManagementDialog::loadGroovingInsertParameters(const GroovingInsert& insert) {
     qDebug() << "Loading grooving insert parameters";
-    
-    // Implementation for loading grooving insert parameters
-    // This is a stub implementation to prevent crashes
-    qDebug() << "Grooving Insert ISO Code:" << QString::fromStdString(insert.isoCode);
-    qDebug() << "Grooving Insert Name:" << QString::fromStdString(insert.name);
+
+    if (m_groovingISOCodeEdit) m_groovingISOCodeEdit->setText(QString::fromStdString(insert.isoCode));
+    if (m_groovingThicknessSpin) m_groovingThicknessSpin->setValue(insert.thickness);
+    if (m_groovingOverallLengthSpin) m_groovingOverallLengthSpin->setValue(insert.overallLength);
+    if (m_groovingWidthSpin) m_groovingWidthSpin->setValue(insert.width);
+    if (m_groovingCornerRadiusSpin) m_groovingCornerRadiusSpin->setValue(insert.cornerRadius);
+    if (m_groovingHeadLengthSpin) m_groovingHeadLengthSpin->setValue(insert.headLength);
+    if (m_grooveWidthSpin) m_grooveWidthSpin->setValue(insert.grooveWidth);
 }
 
 void ToolManagementDialog::loadHolderParameters(const ToolHolder& holder) {
     qDebug() << "Loading holder parameters";
-    
-    // Implementation for loading holder parameters
-    // This is a stub implementation to prevent crashes
-    qDebug() << "Holder ISO Code:" << QString::fromStdString(holder.isoCode);
-    qDebug() << "Holder Name:" << QString::fromStdString(holder.name);
+
+    if (m_holderISOCodeEdit) m_holderISOCodeEdit->setText(QString::fromStdString(holder.isoCode));
+    if (m_handOrientationCombo) setComboBoxByValue(m_handOrientationCombo, static_cast<int>(holder.handOrientation));
+    if (m_clampingStyleCombo) setComboBoxByValue(m_clampingStyleCombo, static_cast<int>(holder.clampingStyle));
+    if (m_cuttingWidthSpin) m_cuttingWidthSpin->setValue(holder.cuttingWidth);
+    if (m_headLengthSpin) m_headLengthSpin->setValue(holder.headLength);
+    if (m_overallLengthSpin) m_overallLengthSpin->setValue(holder.overallLength);
+    if (m_shankWidthSpin) m_shankWidthSpin->setValue(holder.shankWidth);
+    if (m_shankHeightSpin) m_shankHeightSpin->setValue(holder.shankHeight);
+    if (m_roundShankCheck) m_roundShankCheck->setChecked(holder.roundShank);
+    if (m_shankDiameterSpin) m_shankDiameterSpin->setValue(holder.shankDiameter);
+    if (m_insertSeatAngleSpin) m_insertSeatAngleSpin->setValue(holder.insertSeatAngle);
+    if (m_insertSetbackSpin) m_insertSetbackSpin->setValue(holder.insertSetback);
+    if (m_sideAngleSpin) m_sideAngleSpin->setValue(holder.sideAngle);
+    if (m_backAngleSpin) m_backAngleSpin->setValue(holder.backAngle);
+    if (m_isInternalCheck) m_isInternalCheck->setChecked(holder.isInternal);
+    if (m_isGroovingCheck) m_isGroovingCheck->setChecked(holder.isGrooving);
+    if (m_isThreadingCheck) m_isThreadingCheck->setChecked(holder.isThreading);
 }
 
 void ToolManagementDialog::loadCuttingDataParameters(const CuttingData& cuttingData) {
     qDebug() << "Loading cutting data parameters";
-    
-    // Implementation for loading cutting data parameters
-    // This is a stub implementation to prevent crashes
-    qDebug() << "Surface Speed:" << cuttingData.surfaceSpeed;
-    qDebug() << "Feedrate:" << cuttingData.cuttingFeedrate;
-    qDebug() << "Max Depth:" << cuttingData.maxDepthOfCut;
+
+    if (m_constantSurfaceSpeedCheck) m_constantSurfaceSpeedCheck->setChecked(cuttingData.constantSurfaceSpeed);
+    if (m_surfaceSpeedSpin) m_surfaceSpeedSpin->setValue(cuttingData.surfaceSpeed);
+    if (m_spindleRPMSpin) m_spindleRPMSpin->setValue(cuttingData.spindleRPM);
+    if (m_feedPerRevolutionCheck) m_feedPerRevolutionCheck->setChecked(cuttingData.feedPerRevolution);
+    if (m_cuttingFeedrateSpin) m_cuttingFeedrateSpin->setValue(cuttingData.cuttingFeedrate);
+    if (m_leadInFeedrateSpin) m_leadInFeedrateSpin->setValue(cuttingData.leadInFeedrate);
+    if (m_leadOutFeedrateSpin) m_leadOutFeedrateSpin->setValue(cuttingData.leadOutFeedrate);
+    if (m_maxDepthOfCutSpin) m_maxDepthOfCutSpin->setValue(cuttingData.maxDepthOfCut);
+    if (m_maxFeedrateSpin) m_maxFeedrateSpin->setValue(cuttingData.maxFeedrate);
+    if (m_minSurfaceSpeedSpin) m_minSurfaceSpeedSpin->setValue(cuttingData.minSurfaceSpeed);
+    if (m_maxSurfaceSpeedSpin) m_maxSurfaceSpeedSpin->setValue(cuttingData.maxSurfaceSpeed);
+    if (m_floodCoolantCheck) m_floodCoolantCheck->setChecked(cuttingData.floodCoolant);
+    if (m_mistCoolantCheck) m_mistCoolantCheck->setChecked(cuttingData.mistCoolant);
+    if (m_preferredCoolantCombo) setComboBoxByValue(m_preferredCoolantCombo, static_cast<int>(cuttingData.preferredCoolant));
+    if (m_coolantPressureSpin) m_coolantPressureSpin->setValue(cuttingData.coolantPressure);
+    if (m_coolantFlowSpin) m_coolantFlowSpin->setValue(cuttingData.coolantFlow);
 }
 
 // ============================================================================
