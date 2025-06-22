@@ -525,24 +525,16 @@ void ToolManagementTab::selectTool(const QString& toolId) {
 }
 
 void ToolManagementTab::addNewTool() {
-    auto dialog = new ToolManagementDialog(this);
-    
-    // Set dialog window properties
-    dialog->setWindowTitle("Add New Tool");
-    dialog->setModal(true);
-    dialog->resize(800, 600);
+    auto dialog = new ToolManagementDialog(IntuiCAM::Toolpath::ToolType::GENERAL_TURNING, this);
     
     // Connect signals to handle new tool creation
-    connect(dialog, &ToolManagementDialog::toolAdded,
+    connect(dialog, &ToolManagementDialog::toolSaved,
             this, [this](const QString& toolId) {
-                qDebug() << "Tool added signal received for:" << toolId;
+                qDebug() << "Tool saved signal received for:" << toolId;
                 refreshToolList();
                 selectTool(toolId); // Select the newly added tool
                 emit toolAdded(toolId);
             });
-    
-    connect(dialog, &ToolManagementDialog::toolLibraryChanged,
-            this, &ToolManagementTab::onToolLibraryUpdated);
     
     // Connect error handling
     connect(dialog, &ToolManagementDialog::errorOccurred,
@@ -550,9 +542,6 @@ void ToolManagementTab::addNewTool() {
                 QMessageBox::warning(this, "Tool Management Error", error);
                 emit errorOccurred(error);
             });
-    
-    // Set up for new tool creation
-    dialog->addNewTool(IntuiCAM::Toolpath::ToolType::GENERAL_TURNING);
     
     // Show dialog and handle result
     int result = dialog->exec();
@@ -569,24 +558,16 @@ void ToolManagementTab::addNewTool() {
 void ToolManagementTab::editSelectedTool() {
     QString toolId = getSelectedToolId();
     if (!toolId.isEmpty()) {
-        auto dialog = new ToolManagementDialog(this);
-        
-        // Set dialog window properties
-        dialog->setWindowTitle(QString("Edit Tool: %1").arg(toolId));
-        dialog->setModal(true);
-        dialog->resize(800, 600);
+        auto dialog = new ToolManagementDialog(toolId, this);
         
         // Connect signals
-        connect(dialog, &ToolManagementDialog::toolModified,
+        connect(dialog, &ToolManagementDialog::toolSaved,
                 this, [this](const QString& modifiedToolId) {
-                    qDebug() << "Tool modified signal received for:" << modifiedToolId;
+                    qDebug() << "Tool saved signal received for:" << modifiedToolId;
                     refreshToolList();
                     selectTool(modifiedToolId); // Re-select the modified tool
                     emit toolModified(modifiedToolId);
                 });
-        
-        connect(dialog, &ToolManagementDialog::toolLibraryChanged,
-                this, &ToolManagementTab::onToolLibraryUpdated);
         
         // Connect error handling
         connect(dialog, &ToolManagementDialog::errorOccurred,
@@ -594,9 +575,6 @@ void ToolManagementTab::editSelectedTool() {
                     QMessageBox::warning(this, "Tool Management Error", error);
                     emit errorOccurred(error);
                 });
-        
-        // Set up for editing existing tool
-        dialog->editTool(toolId);
         
         // Show dialog and handle result
         int result = dialog->exec();
@@ -1059,12 +1037,16 @@ void ToolManagementTab::onToolPropertiesAction() {
     // Open a properties dialog for the selected tool
     QString toolId = getSelectedToolId();
     if (!toolId.isEmpty()) {
-        auto dialog = new ToolManagementDialog(this);
-        dialog->editTool(toolId);
+        auto dialog = new ToolManagementDialog(toolId, this);
+        
+        // Connect save signal to refresh list
+        connect(dialog, &ToolManagementDialog::toolSaved,
+                this, [this](const QString&) {
+                    refreshToolList();
+                });
+        
         dialog->exec();
         dialog->deleteLater();
-        
-        refreshToolList();
     }
 }
 

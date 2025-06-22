@@ -89,7 +89,6 @@ MainWindow::MainWindow(QWidget *parent)
     , m_materialManager(nullptr)
     , m_toolManager(nullptr)
     , m_toolManagementTab(nullptr)
-    , m_toolManagementDialog(nullptr)
     , m_fileMenu(nullptr)
     , m_editMenu(nullptr)
     , m_viewMenu(nullptr)
@@ -123,7 +122,7 @@ MainWindow::MainWindow(QWidget *parent)
     
     // Create tool management components
     m_toolManagementTab = new ToolManagementTab(this);
-    m_toolManagementDialog = new ToolManagementDialog(this);
+    // ToolManagementDialog is now created on-demand when needed
     
     // Create UI
     createMenus();
@@ -340,19 +339,21 @@ void MainWindow::setupConnections()
     }
     
     // Tool management connections
-    if (m_toolManagementTab && m_toolManagementDialog) {
-        // Connect tool tab signals to dialog for editing
+    if (m_toolManagementTab) {
+        // Connect tool tab signals to open individual editing dialogs
         connect(m_toolManagementTab, &ToolManagementTab::toolDoubleClicked,
                 this, [this](const QString& toolId) {
-                    m_toolManagementDialog->editTool(toolId);
-                    m_toolManagementDialog->show();
+                    // Create a new dialog for editing this specific tool
+                    auto dialog = new ToolManagementDialog(toolId, this);
+                    
+                    // Connect to handle tool saves
+                    connect(dialog, &ToolManagementDialog::toolSaved,
+                            m_toolManagementTab, &ToolManagementTab::onToolModified);
+                    
+                    // Show the dialog modally
+                    dialog->exec();
+                    dialog->deleteLater();
                 });
-        
-        // Connect dialog signals back to tab for updates
-        connect(m_toolManagementDialog, &ToolManagementDialog::toolModified,
-                m_toolManagementTab, &ToolManagementTab::onToolModified);
-        connect(m_toolManagementDialog, &ToolManagementDialog::toolAdded,
-                m_toolManagementTab, &ToolManagementTab::onToolAdded);
     }
     
     // Toolpath pipeline connections removed

@@ -2,6 +2,7 @@
 # Professional CAM Application Development Guidelines
 
 USE POWERSHELL SYNTAX (NOT THE && SYNTAX)!!! Youre on Windows
+Build with powershell so i can see the errors and fix the errors 
 
 
 ## Project Overview

@@ -198,7 +198,6 @@ private:
     
     // Tool Management Components
     class ToolManagementTab *m_toolManagementTab;
-    class ToolManagementDialog *m_toolManagementDialog;
 
     bool m_selectingThreadFace = false;
     
