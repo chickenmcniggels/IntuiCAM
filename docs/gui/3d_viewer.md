@@ -100,6 +100,11 @@ thread affinity checks via `Qt::AA_DontCheckOpenGLContextThreadAffinity` so
 temporary dialogs creating OpenGL widgets do not invalidate the shared
 context.
 
+To further guard against the viewer being unloaded when other widgets gain
+focus, the main window now enables **continuous updates** whenever the
+Setup tab is active. This keeps the framebuffer alive and eliminates the
+occasional black screen when interacting with dialogs or side panels.
+
 ```cpp
 void OpenGL3DWidget::updateView()
 {
