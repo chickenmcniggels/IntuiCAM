@@ -95,7 +95,10 @@ In addition, all `QOpenGLWidget` instances now share a single OpenGL context by
 setting the application attribute `Qt::AA_ShareOpenGLContexts` before the
 `QApplication` is created. Sharing the context ensures that the viewer widgets
 retain their resources even when other widgets gain focus or are shown, so the
-3D view does not turn black.
+3D view does not turn black. The application also disables OpenGL context
+thread affinity checks via `Qt::AA_DontCheckOpenGLContextThreadAffinity` so
+temporary dialogs creating OpenGL widgets do not invalidate the shared
+context.
 
 ```cpp
 void OpenGL3DWidget::updateView()
