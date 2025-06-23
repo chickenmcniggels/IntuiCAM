@@ -343,6 +343,14 @@ void MainWindow::setupConnections()
                 this, &MainWindow::handleGenerateToolpaths);
         connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::operationToggled,
                 this, &MainWindow::handleOperationToggled);
+
+        connect(m_setupConfigPanel, &IntuiCAM::GUI::SetupConfigurationPanel::recommendedToolActivated,
+                this, [this](const QString& toolId) {
+                    if (m_toolManagementTab && m_tabWidget) {
+                        m_toolManagementTab->selectTool(toolId);
+                        m_tabWidget->setCurrentWidget(m_toolManagementTab);
+                    }
+                });
     }
     
     // Tool management connections

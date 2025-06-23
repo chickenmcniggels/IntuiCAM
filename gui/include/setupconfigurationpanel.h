@@ -23,6 +23,7 @@
 
 // Forward declarations
 class QListWidget;
+class QListWidgetItem;
 
 // Include manager headers
 #include "materialmanager.h"
@@ -142,6 +143,7 @@ signals:
   void automaticToolpathGenerationRequested();
   void materialSelectionChanged(const QString &materialName);
   void toolRecommendationsUpdated(const QStringList &toolIds);
+  void recommendedToolActivated(const QString &toolId);
   void requestThreadFaceSelection();
   void threadFaceSelected(const TopoDS_Shape &face);
   void threadFaceDeselected();
@@ -155,6 +157,7 @@ public slots:
   void onOperationToggled();
   void onMaterialChanged();
   void onToolSelectionRequested();
+  void onRecommendedToolDoubleClicked(QListWidgetItem *item);
   void onAddThreadFace();
   void addSelectedThreadFace(const TopoDS_Shape &face);
   void onRemoveThreadFace();

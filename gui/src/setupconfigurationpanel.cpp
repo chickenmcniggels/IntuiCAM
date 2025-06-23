@@ -710,6 +710,14 @@ void SetupConfigurationPanel::setupConnections() {
     connect(m_partingEnabledCheck, &QCheckBox::toggled, this,
             &SetupConfigurationPanel::onOperationToggled);
   }
+
+  // Connect recommended tool list interactions
+  for (auto list : m_operationToolLists) {
+    if (list) {
+      connect(list, &QListWidget::itemDoubleClicked, this,
+              &SetupConfigurationPanel::onRecommendedToolDoubleClicked);
+    }
+  }
 }
 
 void SetupConfigurationPanel::applyTabStyling() {
@@ -1157,6 +1165,16 @@ void SetupConfigurationPanel::onToolSelectionRequested() {
   if (!selectedTools.isEmpty()) {
     qDebug() << "Selected tools:" << selectedTools;
     // Here we could emit a signal to show detailed tool information
+  }
+}
+
+void SetupConfigurationPanel::onRecommendedToolDoubleClicked(QListWidgetItem *item) {
+  if (!item)
+    return;
+  QVariant data = item->data(Qt::UserRole);
+  if (data.isValid()) {
+    QString toolId = data.toString();
+    emit recommendedToolActivated(toolId);
   }
 }
 
