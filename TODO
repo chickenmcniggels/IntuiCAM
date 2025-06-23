@@ -52,6 +52,6 @@ TODO (Bugs)
 
   * ~~Checkboxes: Internal Threading, Internal Boring, Parting/Grooving, External Threading, Longitudinal Turning, Facing, Chamfering.~~ ✅ **COMPLETED**
 
-* **Reorder tabs** in the Edit-Tool dialog so that *Tool Information* is the left-most tab.
+* ~~**Reorder tabs** in the Edit-Tool dialog so that *Tool Information* is the left-most tab.~~ ✅ **COMPLETED**
 
-* **Remove Tool Offset settings** (not needed now).
+* ~~**Remove Tool Offset settings** (not needed now).~~ ✅ **COMPLETED**

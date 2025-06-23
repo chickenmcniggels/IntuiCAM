@@ -161,16 +161,16 @@ void ToolManagementDialog::createToolEditPanel() {
     m_toolEditTabs = new QTabWidget();
     
     // Create the individual tabs
+    m_toolInfoTab = createToolInfoTab();
     m_insertTab = createInsertPropertiesTab();
     m_holderTab = createHolderPropertiesTab();
     m_cuttingDataTab = createCuttingDataTab();
-    m_toolInfoTab = createToolInfoTab();
     
     // Add tabs to the tab widget
+    m_toolEditTabs->addTab(m_toolInfoTab, "Tool Information");
     m_toolEditTabs->addTab(m_insertTab, "Insert Properties");
     m_toolEditTabs->addTab(m_holderTab, "Tool Holder");
     m_toolEditTabs->addTab(m_cuttingDataTab, "Cutting Data");
-    m_toolEditTabs->addTab(m_toolInfoTab, "Tool Information");
     
     m_toolEditLayout->addWidget(m_toolEditTabs);
     
@@ -1165,36 +1165,6 @@ QWidget* ToolManagementDialog::createToolInfoTab() {
     
     m_toolInfoLayout->addRow(machineGroup);
     
-    // Tool Offsets Group
-    auto offsetsGroup = new QGroupBox("Tool Offsets");
-    auto offsetsLayout = new QFormLayout(offsetsGroup);
-    
-    m_toolOffsetXSpin = new QDoubleSpinBox();
-    m_toolOffsetXSpin->setRange(-500.0, 500.0);
-    m_toolOffsetXSpin->setDecimals(4);
-    m_toolOffsetXSpin->setSuffix(" mm");
-    offsetsLayout->addRow("X Offset:", m_toolOffsetXSpin);
-    
-    m_toolOffsetZSpin = new QDoubleSpinBox();
-    m_toolOffsetZSpin->setRange(-500.0, 500.0);
-    m_toolOffsetZSpin->setDecimals(4);
-    m_toolOffsetZSpin->setSuffix(" mm");
-    offsetsLayout->addRow("Z Offset:", m_toolOffsetZSpin);
-    
-    m_toolLengthOffsetSpin = new QDoubleSpinBox();
-    m_toolLengthOffsetSpin->setRange(-500.0, 500.0);
-    m_toolLengthOffsetSpin->setDecimals(4);
-    m_toolLengthOffsetSpin->setSuffix(" mm");
-    offsetsLayout->addRow("Length Offset:", m_toolLengthOffsetSpin);
-    
-    m_toolRadiusOffsetSpin = new QDoubleSpinBox();
-    m_toolRadiusOffsetSpin->setRange(-50.0, 50.0);
-    m_toolRadiusOffsetSpin->setDecimals(4);
-    m_toolRadiusOffsetSpin->setSuffix(" mm");
-    offsetsLayout->addRow("Radius Offset:", m_toolRadiusOffsetSpin);
-    
-    m_toolInfoLayout->addRow(offsetsGroup);
-    
     // Notes and Additional Information Group
     auto notesGroup = new QGroupBox("Notes and Additional Information");
     auto notesLayout = new QVBoxLayout(notesGroup);
@@ -1235,6 +1205,37 @@ QWidget* ToolManagementDialog::createToolInfoTab() {
     capLayout->addRow("Chamfering:", m_chamferingCheck);
     
     m_toolInfoLayout->addRow(capabilitiesGroup);
+    
+    // Tool Offsets Group (hidden for now)
+    auto offsetsGroup = new QGroupBox("Tool Offsets");
+    auto offsetsLayout = new QFormLayout(offsetsGroup);
+    
+    m_toolOffsetXSpin = new QDoubleSpinBox();
+    m_toolOffsetXSpin->setRange(-500.0, 500.0);
+    m_toolOffsetXSpin->setDecimals(4);
+    m_toolOffsetXSpin->setSuffix(" mm");
+    offsetsLayout->addRow("X Offset:", m_toolOffsetXSpin);
+    
+    m_toolOffsetZSpin = new QDoubleSpinBox();
+    m_toolOffsetZSpin->setRange(-500.0, 500.0);
+    m_toolOffsetZSpin->setDecimals(4);
+    m_toolOffsetZSpin->setSuffix(" mm");
+    offsetsLayout->addRow("Z Offset:", m_toolOffsetZSpin);
+    
+    m_toolLengthOffsetSpin = new QDoubleSpinBox();
+    m_toolLengthOffsetSpin->setRange(-500.0, 500.0);
+    m_toolLengthOffsetSpin->setDecimals(4);
+    m_toolLengthOffsetSpin->setSuffix(" mm");
+    offsetsLayout->addRow("Length Offset:", m_toolLengthOffsetSpin);
+    
+    m_toolRadiusOffsetSpin = new QDoubleSpinBox();
+    m_toolRadiusOffsetSpin->setRange(-50.0, 50.0);
+    m_toolRadiusOffsetSpin->setDecimals(4);
+    m_toolRadiusOffsetSpin->setSuffix(" mm");
+    offsetsLayout->addRow("Radius Offset:", m_toolRadiusOffsetSpin);
+    
+    // Do NOT add offsetsGroup to m_toolInfoLayout to hide it from UI
+    // m_toolInfoLayout->addRow(offsetsGroup);
     
     return widget;
 }
