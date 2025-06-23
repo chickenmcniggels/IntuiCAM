@@ -230,6 +230,7 @@ private:
     void setupFormToolDefaults();
     void setupHolderDefaults();
     void setupCuttingDataDefaults(IntuiCAM::Toolpath::ToolType toolType);
+    void setupCapabilitiesForToolType(IntuiCAM::Toolpath::ToolType toolType);
     
     // Tool assembly persistence
     QString getToolAssemblyDatabasePath() const;
@@ -372,9 +373,6 @@ private:
     QDoubleSpinBox* m_insertSetbackSpin;
     QDoubleSpinBox* m_sideAngleSpin;
     QDoubleSpinBox* m_backAngleSpin;
-    QCheckBox* m_isInternalCheck;
-    QCheckBox* m_isGroovingCheck;
-    QCheckBox* m_isThreadingCheck;
     
     // Cutting Data Tab Components
     QFormLayout* m_cuttingDataLayout;
@@ -411,6 +409,15 @@ private:
     QDoubleSpinBox* m_toolOffsetZSpin;
     QDoubleSpinBox* m_toolLengthOffsetSpin;
     QDoubleSpinBox* m_toolRadiusOffsetSpin;
+    
+    // Tool Capabilities (moved from holder tab)
+    QCheckBox* m_internalThreadingCheck;
+    QCheckBox* m_internalBoringCheck;
+    QCheckBox* m_partingGroovingCheck;
+    QCheckBox* m_externalThreadingCheck;
+    QCheckBox* m_longitudinalTurningCheck;
+    QCheckBox* m_facingCheck;
+    QCheckBox* m_chamferingCheck;
     
     // Data members
     IntuiCAM::Toolpath::ToolAssembly m_currentToolAssembly;

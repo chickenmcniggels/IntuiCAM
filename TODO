@@ -18,3 +18,40 @@ TODO (Bugs)
 - adding an insert or holder iso code should automatically extraxt all information encoded in it and update the parameters. Changing a generated parameter automatically removes the iso code from the text box
 - Toolpath generation pipeline should take actual tool parameters into account
 - In addition to the generated toolpaths, the extracted 2d profile should also be dispalyed in the viewer and be managed by the visibility menu
+
+
+
+* Edit **default tool set** that is auto-loaded on first database init and can always be restored.
+
+  * Right-hand tool: internal metric threading
+  * Right-hand tool: internal boring
+  * Right-hand tool: parting / grooving
+  * Right-hand tool: external metric threading
+  * Left-hand tool: longitudinal turning
+  * Right-hand tool: longitudinal turning / facing / chamfering
+  * Right-hand tool: longitudinal turning
+  * Right-hand tool: facing / chamfering
+  * Neutral tool: longitudinal turning
+
+* Add **empirically derived cutting data** for each default tool for: Brass, Steel, Aluminum, Delrin, Cast Iron.
+
+  * Sync these materials with the global material list in the Setup tab.
+  * Only show a tool in “Available Tools” if it has data for the currently selected material.
+
+* **Cutting Data UI logic**
+
+  * If “Constant Surface Speed” = ON → hide *Spindle RPM*, show *Surface Speed*.
+  * If “Constant Surface Speed” = OFF → hide *Surface Speed*, show *Spindle RPM*.
+
+* **Feed Control UI logic**
+
+  * If “Feed per Revolution” = ON → show FeedRate, Lead-In, Lead-Out in *mm/rev*.
+  * If OFF → show them in *mm/min*.
+
+* ~~**Move capabilities** from Toolholder tab to Tool Information tab; capabilities apply to the whole tool (holder + insert).~~ ✅ **COMPLETED**
+
+  * ~~Checkboxes: Internal Threading, Internal Boring, Parting/Grooving, External Threading, Longitudinal Turning, Facing, Chamfering.~~ ✅ **COMPLETED**
+
+* **Reorder tabs** in the Edit-Tool dialog so that *Tool Information* is the left-most tab.
+
+* **Remove Tool Offset settings** (not needed now).
