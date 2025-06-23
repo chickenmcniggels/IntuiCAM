@@ -1,5 +1,4 @@
 #include "toolmanagementdialog.h"
-#include "materialmanager.h"
 
 #include <QApplication>
 #include <QDateTime>
@@ -42,9 +41,7 @@
 using namespace IntuiCAM::Toolpath;
 
 // Constructor for editing an existing tool
-ToolManagementDialog::ToolManagementDialog(const QString& toolId,
-                                           MaterialManager* materialManager,
-                                           QWidget *parent)
+ToolManagementDialog::ToolManagementDialog(const QString& toolId, QWidget *parent)
     : QDialog(parent)
     , m_mainLayout(nullptr)
     , m_contentLayout(nullptr)
@@ -65,9 +62,6 @@ ToolManagementDialog::ToolManagementDialog(const QString& toolId,
     , m_autoSaveTimer(new QTimer(this))
     , m_autoSaveEnabled(true)
     , m_toolManager(nullptr)
-    , m_materialManager(materialManager)
-    , m_materialToolBox(nullptr)
-    , m_materialToolBox(nullptr)
 {
     // Load tool data first to get the correct tool type
     if (loadToolAssemblyFromDatabase(toolId)) {
@@ -90,9 +84,7 @@ ToolManagementDialog::ToolManagementDialog(const QString& toolId,
 }
 
 // Constructor for creating a new tool
-ToolManagementDialog::ToolManagementDialog(ToolType toolType,
-                                           MaterialManager* materialManager,
-                                           QWidget *parent)
+ToolManagementDialog::ToolManagementDialog(ToolType toolType, QWidget *parent)
     : QDialog(parent)
     , m_mainLayout(nullptr)
     , m_contentLayout(nullptr)
@@ -113,7 +105,6 @@ ToolManagementDialog::ToolManagementDialog(ToolType toolType,
     , m_autoSaveTimer(new QTimer(this))
     , m_autoSaveEnabled(true)
     , m_toolManager(nullptr)
-    , m_materialManager(materialManager)
 {
     setupUI();
     setupAutoSave();
@@ -771,7 +762,6 @@ void ToolManagementDialog::updateToolAssemblyFromFields() {
     // Always update holder and cutting data
     updateHolderDataFromFields();
     updateCuttingDataFromFields();
-    updateMaterialCuttingDataFromFields();
     updateToolInfoFromFields();
 }
 
@@ -856,7 +846,6 @@ void ToolManagementDialog::loadToolParametersIntoFields(const ToolAssembly& asse
     
     // Load cutting data
     loadCuttingDataParameters(assembly.cuttingData);
-    loadMaterialCuttingData(assembly);
     
     // Load holder parameters
     if (assembly.holder) {
@@ -1135,16 +1124,7 @@ QWidget* ToolManagementDialog::createCuttingDataTab() {
     coolantLayout->addRow("Coolant Flow:", m_coolantFlowSpin);
     
     m_cuttingDataLayout->addRow(coolantGroup);
-
-    // Material specific parameters
-    m_materialToolBox = new QToolBox();
-    m_cuttingDataLayout->addRow(m_materialToolBox);
-    createMaterialCuttingSections();
-    if (m_materialManager) {
-        connect(m_materialManager, &MaterialManager::materialAdded,
-                this, &ToolManagementDialog::onMaterialAdded);
-    }
-
+    
     return widget;
 }
 
@@ -2175,26 +2155,6 @@ void ToolManagementDialog::loadCuttingDataParameters(const CuttingData& cuttingD
     onFeedPerRevolutionToggled(cuttingData.feedPerRevolution);
 }
 
-void ToolManagementDialog::loadMaterialCuttingData(const ToolAssembly& assembly) {
-    if (!m_materialManager) {
-        return;
-    }
-    QStringList materials = m_materialManager->getAllMaterialNames();
-    for (const QString& mat : materials) {
-        if (!m_materialWidgets.contains(mat)) continue;
-        const auto& widgets = m_materialWidgets[mat];
-        auto it = assembly.materialCuttingData.find(mat.toStdString());
-        if (it != assembly.materialCuttingData.end()) {
-            widgets.enable->setChecked(it->second.enabled);
-            widgets.speed->setValue(it->second.data.surfaceSpeed);
-            widgets.feed->setValue(it->second.data.cuttingFeedrate);
-            widgets.depth->setValue(it->second.data.maxDepthOfCut);
-        } else {
-            widgets.enable->setChecked(false);
-        }
-    }
-}
-
 // Parameter updating methods - sync UI changes back to data
 void ToolManagementDialog::updateGeneralTurningInsertFromFields() {
     if (!m_currentToolAssembly.turningInsert) {
@@ -2443,63 +2403,6 @@ void ToolManagementDialog::updateCuttingDataFromFields() {
     if (m_coolantFlowSpin) {
         m_currentToolAssembly.cuttingData.coolantFlow = m_coolantFlowSpin->value();
     }
-}
-
-void ToolManagementDialog::updateMaterialCuttingDataFromFields() {
-    if (!m_materialManager) {
-        return;
-    }
-    QStringList materials = m_materialManager->getAllMaterialNames();
-    for (const QString& mat : materials) {
-        if (!m_materialWidgets.contains(mat)) continue;
-        const auto& widgets = m_materialWidgets[mat];
-        MaterialCuttingData mdata;
-        mdata.enabled = widgets.enable->isChecked();
-        mdata.data.surfaceSpeed = widgets.speed->value();
-        mdata.data.cuttingFeedrate = widgets.feed->value();
-        mdata.data.maxDepthOfCut = widgets.depth->value();
-        m_currentToolAssembly.materialCuttingData[mat.toStdString()] = mdata;
-    }
-}
-
-void ToolManagementDialog::createMaterialCuttingSections() {
-    if (!m_materialManager) {
-        return;
-    }
-    QStringList materials = m_materialManager->getAllMaterialNames();
-    for (const QString& mat : materials) {
-        addMaterialCuttingSection(mat);
-    }
-}
-
-void ToolManagementDialog::addMaterialCuttingSection(const QString& materialName) {
-    if (m_materialWidgets.contains(materialName)) {
-        return;
-    }
-    QWidget* page = new QWidget();
-    QFormLayout* layout = new QFormLayout(page);
-    MaterialWidgetSet widgets;
-    widgets.enable = new QCheckBox("Enable");
-    widgets.speed = new QDoubleSpinBox();
-    widgets.speed->setRange(0.0, 10000.0);
-    widgets.speed->setSuffix(" m/min");
-    widgets.feed = new QDoubleSpinBox();
-    widgets.feed->setRange(0.0, 10.0);
-    widgets.feed->setDecimals(3);
-    widgets.feed->setSuffix(" mm/rev");
-    widgets.depth = new QDoubleSpinBox();
-    widgets.depth->setRange(0.0, 10.0);
-    widgets.depth->setSuffix(" mm");
-    layout->addRow(widgets.enable);
-    layout->addRow("Surface Speed:", widgets.speed);
-    layout->addRow("Feed Rate:", widgets.feed);
-    layout->addRow("Depth of Cut:", widgets.depth);
-    m_materialToolBox->addItem(page, materialName);
-    m_materialWidgets.insert(materialName, widgets);
-}
-
-void ToolManagementDialog::onMaterialAdded(const QString& materialName) {
-    addMaterialCuttingSection(materialName);
 }
 
 void ToolManagementDialog::createGeneralTurningPanel() {
@@ -3100,14 +3003,6 @@ QJsonObject ToolManagementDialog::toolAssemblyToJson(const ToolAssembly& assembl
     
     // Cutting data
     json["cuttingData"] = cuttingDataToJson(assembly.cuttingData);
-
-    QJsonObject matObj;
-    for (const auto& pair : assembly.materialCuttingData) {
-        QJsonObject dataJson = cuttingDataToJson(pair.second.data);
-        dataJson["enabled"] = pair.second.enabled;
-        matObj[QString::fromStdString(pair.first)] = dataJson;
-    }
-    json["materialCuttingData"] = matObj;
     
     // Inserts based on tool type
     if (assembly.turningInsert) {
@@ -3174,16 +3069,6 @@ ToolAssembly ToolManagementDialog::toolAssemblyFromJson(const QJsonObject& json)
     // Cutting data
     if (json.contains("cuttingData")) {
         assembly.cuttingData = cuttingDataFromJson(json["cuttingData"].toObject());
-    }
-    if (json.contains("materialCuttingData")) {
-        QJsonObject matObj = json["materialCuttingData"].toObject();
-        for (auto it = matObj.constBegin(); it != matObj.constEnd(); ++it) {
-            QJsonObject dataObj = it.value().toObject();
-            MaterialCuttingData mdata;
-            mdata.enabled = dataObj["enabled"].toBool(true);
-            mdata.data = cuttingDataFromJson(dataObj);
-            assembly.materialCuttingData[it.key().toStdString()] = mdata;
-        }
     }
     
     // Inserts based on what's available

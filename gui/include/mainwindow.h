@@ -77,8 +77,6 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-    IntuiCAM::GUI::MaterialManager* materialManager() const { return m_materialManager; }
-
 private slots:
     void newProject();
     void openProject();

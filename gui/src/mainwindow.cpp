@@ -359,7 +359,7 @@ void MainWindow::setupConnections()
         connect(m_toolManagementTab, &ToolManagementTab::toolDoubleClicked,
                 this, [this](const QString& toolId) {
                     // Create a new dialog for editing this specific tool
-                    auto dialog = new ToolManagementDialog(toolId, m_materialManager, this);
+                    auto dialog = new ToolManagementDialog(toolId, this);
                     
                     // Connect to handle tool saves
                     connect(dialog, &ToolManagementDialog::toolSaved,
