@@ -1119,6 +1119,13 @@ void SetupConfigurationPanel::updateToolRecommendations() {
       {"chamfering", {ToolType::FormTool, ToolType::TurningInsert}},
       {"parting", {ToolType::PartingTool}}};
 
+  // Map operations to capability keywords used in the tool database
+  const QMap<QString, QStringList> opCapabilities = {
+      {"contouring", {"facing", "roughing", "finishing"}},
+      {"threading", {"threading"}},
+      {"chamfering", {"chamfering", "facing"}},
+      {"parting", {"parting"}}};
+
   QSet<QString> recommendedToolIds;
 
   for (const QString &operation : operations) {
@@ -1134,6 +1141,21 @@ void SetupConfigurationPanel::updateToolRecommendations() {
           continue;
 
         CuttingTool tool = m_toolManager->getTool(id);
+        // Check that the tool is compatible with the selected material
+        if (!tool.capabilities.suitableMaterials.contains(materialName))
+          continue;
+
+        // Check that the tool supports this operation
+        bool opMatch = false;
+        for (const QString &cap : opCapabilities.value(operation)) {
+          if (tool.capabilities.supportedOperations.contains(cap)) {
+            opMatch = true;
+            break;
+          }
+        }
+        if (!opMatch)
+          continue;
+
         QString itemText = QString("%1").arg(tool.name);
 
         QListWidgetItem *item = new QListWidgetItem(itemText);
