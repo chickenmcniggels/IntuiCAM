@@ -517,6 +517,9 @@ void ToolManagementTab::onToolListDoubleClicked() {
 void ToolManagementTab::onToolListContextMenuRequested(const QPoint& pos) {
     auto item = m_toolTreeWidget->itemAt(pos);
     if (item) {
+        // Ensure the clicked item becomes the current selection so that
+        // subsequent actions operate on the correct tool id
+        m_toolTreeWidget->setCurrentItem(item);
         QString toolId = item->data(COL_NAME, Qt::UserRole).toString();
         bool isActive = (item->text(COL_STATUS) == "Active");
         
