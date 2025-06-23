@@ -137,7 +137,8 @@ The workspace management system exemplifies the application's modular architectu
   * **NEW**: Continuous update support via `setContinuousUpdate()`
   * **NEW**: Robust context management preventing black screen issues
     (uses `Qt::AA_ShareOpenGLContexts` so viewer widgets keep their resources
-    even when other widgets are activated)
+    even when other widgets are activated and disables thread affinity checks
+    with `Qt::AA_DontCheckOpenGLContextThreadAffinity`)
   * Emits `viewerInitialized()` signal for controller coordination
   * No business logic - focused solely on 3D rendering
 
