@@ -15,6 +15,8 @@ set(GUI_SOURCES
     src/partloadingpanel.cpp
     src/setupconfigurationpanel.cpp
     src/materialmanager.cpp
+    src/materialadditiondialog.cpp
+    src/materialspecificcuttingdatawidget.cpp
     src/toolmanager.cpp
     src/toolmanagementdialog.cpp
     src/toolmanagementtab.cpp
@@ -32,6 +34,8 @@ set(GUI_HEADERS
     include/partloadingpanel.h
     include/setupconfigurationpanel.h
     include/materialmanager.h
+    include/materialadditiondialog.h
+    include/materialspecificcuttingdatawidget.h
     include/toolmanager.h
     include/toolmanagementdialog.h
     include/toolmanagementtab.h

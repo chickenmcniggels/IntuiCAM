@@ -37,16 +37,28 @@ TODO (Bugs)
 *  **Empirically derived cutting data** will be determined for each default tool for: Brass, Steel, Aluminum, Delrin, Cast Iron. Use good estimates for now.
 
   * Sync these materials with the global material list in the Setup tab.
-  * Only show a tool in “Available Tools” if it has data for the currently selected material. This means that the material has to be enabled for the tool
+  * Only show a tool in "Available Tools" if it has data for the currently selected material. This means that the material has to be enabled for the tool
+
+* ~~**Material-Specific Cutting Data System**~~ ✅ **COMPLETED**
+
+  * ~~Implement material-specific cutting data settings for each tool~~ ✅ **COMPLETED**
+  * ~~Dynamically create cutting parameter sub-menu for each material in the material database~~ ✅ **COMPLETED**
+  * ~~Automatically add cutting parameter menu for newly added materials (clean, non-cluttered UI)~~ ✅ **COMPLETED**
+  * ~~Enable/disable individual materials per tool~~ ✅ **COMPLETED**
+  * ~~Rework database structure to support material-specific cutting data~~ ✅ **COMPLETED**
+  * ~~Adjust database dynamically for added/deleted materials~~ ✅ **COMPLETED**
+  * ~~Filter available tools window to only show tools with enabled materials matching current selection~~ ✅ **COMPLETED**
+  * ~~Add "Add Material" button next to material selection with corresponding dialog linked to material database~~ ✅ **COMPLETED**
+  * ~~Fix persistence layer to save/load material-specific settings~~ ✅ **COMPLETED**
 
 * ~~**Cutting Data UI logic**~~
 
-  ~~* If “Constant Surface Speed” = ON → hide *Spindle RPM*, show *Surface Speed*.~~
-  ~~* If “Constant Surface Speed” = OFF → hide *Surface Speed*, show *Spindle RPM*.~~ ✅ **COMPLETED**
+  ~~* If "Constant Surface Speed" = ON → hide *Spindle RPM*, show *Surface Speed*.~~
+  ~~* If "Constant Surface Speed" = OFF → hide *Surface Speed*, show *Spindle RPM*.~~ ✅ **COMPLETED**
 
 * ~~**Feed Control UI logic**~~
 
-  ~~* If “Feed per Revolution” = ON → show FeedRate, Lead-In, Lead-Out in *mm/rev*.~~
+  ~~* If "Feed per Revolution" = ON → show FeedRate, Lead-In, Lead-Out in *mm/rev*.~~
   ~~* If OFF → show them in *mm/min*.~~ ✅ **COMPLETED**
 
 * ~~**Move capabilities** from Toolholder tab to Tool Information tab; capabilities apply to the whole tool (holder + insert).~~ ✅ **COMPLETED**

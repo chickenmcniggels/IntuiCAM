@@ -1,5 +1,6 @@
 ﻿#include "toolmanagementtab.h"
 #include "toolmanagementdialog.h"
+#include "mainwindow.h"
 #include "IntuiCAM/Toolpath/ToolTypes.h"
 
 #include <QHeaderView>
@@ -624,6 +625,12 @@ void ToolManagementTab::addNewTool() {
     
     auto dialog = new ToolManagementDialog(IntuiCAM::Toolpath::ToolType::GENERAL_TURNING, this);
     
+    // Get MaterialManager from parent and set it on the dialog
+    auto mainWindow = qobject_cast<MainWindow*>(window());
+    if (mainWindow && mainWindow->getMaterialManager()) {
+        dialog->setMaterialManager(mainWindow->getMaterialManager());
+    }
+    
     // Connect signals to handle new tool creation
     connect(dialog, &ToolManagementDialog::toolSaved,
             this, [this](const QString& toolId) {
@@ -800,6 +807,12 @@ void ToolManagementTab::editSelectedTool() {
     }
     
     auto dialog = new ToolManagementDialog(toolId, this);
+    
+    // Get MaterialManager from parent and set it on the dialog
+    auto mainWindow = qobject_cast<MainWindow*>(window());
+    if (mainWindow && mainWindow->getMaterialManager()) {
+        dialog->setMaterialManager(mainWindow->getMaterialManager());
+    }
     
     // Connect signals
     connect(dialog, &ToolManagementDialog::toolSaved,
@@ -2124,6 +2137,12 @@ void ToolManagementTab::onToolPropertiesAction() {
     QString toolId = getSelectedToolId();
     if (!toolId.isEmpty()) {
         auto dialog = new ToolManagementDialog(toolId, this);
+        
+        // Get MaterialManager from parent and set it on the dialog
+        auto mainWindow = qobject_cast<MainWindow*>(window());
+        if (mainWindow && mainWindow->getMaterialManager()) {
+            dialog->setMaterialManager(mainWindow->getMaterialManager());
+        }
         
         // Connect save signal to refresh list
         connect(dialog, &ToolManagementDialog::toolSaved,

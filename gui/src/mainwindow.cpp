@@ -361,6 +361,11 @@ void MainWindow::setupConnections()
                     // Create a new dialog for editing this specific tool
                     auto dialog = new ToolManagementDialog(toolId, this);
                     
+                    // Set the material manager for the dialog
+                    if (m_materialManager) {
+                        dialog->setMaterialManager(m_materialManager);
+                    }
+                    
                     // Connect to handle tool saves
                     connect(dialog, &ToolManagementDialog::toolSaved,
                             m_toolManagementTab, &ToolManagementTab::onToolModified);

@@ -62,6 +62,7 @@ ToolManagementDialog::ToolManagementDialog(const QString& toolId, QWidget *paren
     , m_autoSaveTimer(new QTimer(this))
     , m_autoSaveEnabled(true)
     , m_toolManager(nullptr)
+    , m_materialManager(nullptr)
 {
     // Load tool data first to get the correct tool type
     if (loadToolAssemblyFromDatabase(toolId)) {
@@ -105,6 +106,7 @@ ToolManagementDialog::ToolManagementDialog(ToolType toolType, QWidget *parent)
     , m_autoSaveTimer(new QTimer(this))
     , m_autoSaveEnabled(true)
     , m_toolManager(nullptr)
+    , m_materialManager(nullptr)
 {
     setupUI();
     setupAutoSave();
@@ -507,57 +509,7 @@ void ToolManagementDialog::connectParameterSignals() {
         connect(m_chamferingCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onToolInfoChanged);
     }
     
-    // Cutting Data Parameters
-    if (m_constantSurfaceSpeedCheck) {
-        connect(m_constantSurfaceSpeedCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onCuttingDataChanged);
-        connect(m_constantSurfaceSpeedCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onConstantSurfaceSpeedToggled);
-    }
-    if (m_surfaceSpeedSpin) {
-        connect(m_surfaceSpeedSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
-    }
-    if (m_spindleRPMSpin) {
-        connect(m_spindleRPMSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
-    }
-    if (m_feedPerRevolutionCheck) {
-        connect(m_feedPerRevolutionCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onCuttingDataChanged);
-        connect(m_feedPerRevolutionCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onFeedPerRevolutionToggled);
-    }
-    if (m_cuttingFeedrateSpin) {
-        connect(m_cuttingFeedrateSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
-    }
-    if (m_leadInFeedrateSpin) {
-        connect(m_leadInFeedrateSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
-    }
-    if (m_leadOutFeedrateSpin) {
-        connect(m_leadOutFeedrateSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
-    }
-    if (m_maxDepthOfCutSpin) {
-        connect(m_maxDepthOfCutSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
-    }
-    if (m_maxFeedrateSpin) {
-        connect(m_maxFeedrateSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
-    }
-    if (m_minSurfaceSpeedSpin) {
-        connect(m_minSurfaceSpeedSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
-    }
-    if (m_maxSurfaceSpeedSpin) {
-        connect(m_maxSurfaceSpeedSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
-    }
-    if (m_floodCoolantCheck) {
-        connect(m_floodCoolantCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onCuttingDataChanged);
-    }
-    if (m_mistCoolantCheck) {
-        connect(m_mistCoolantCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onCuttingDataChanged);
-    }
-    if (m_preferredCoolantCombo) {
-        connect(m_preferredCoolantCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ToolManagementDialog::onCuttingDataChanged);
-    }
-    if (m_coolantPressureSpin) {
-        connect(m_coolantPressureSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
-    }
-    if (m_coolantFlowSpin) {
-        connect(m_coolantFlowSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
-    }
+    // Material-specific cutting data widget is already connected in createCuttingDataTab()
     
     // Tool Info Parameters
     if (m_toolNameEdit) {
@@ -1012,118 +964,24 @@ QWidget* ToolManagementDialog::createHolderPropertiesTab() {
 
 QWidget* ToolManagementDialog::createCuttingDataTab() {
     auto widget = new QWidget();
-    m_cuttingDataLayout = new QFormLayout(widget);
+    auto layout = new QVBoxLayout(widget);
+    layout->setContentsMargins(0, 0, 0, 0);
     
-    // Speed Control Group
-    auto speedGroup = new QGroupBox("Speed Control");
-    auto speedLayout = new QFormLayout(speedGroup);
+    // Create the material-specific cutting data widget
+    m_materialSpecificCuttingDataWidget = new IntuiCAM::GUI::MaterialSpecificCuttingDataWidget(widget);
     
-    m_constantSurfaceSpeedCheck = new QCheckBox();
-    speedLayout->addRow("Constant Surface Speed (CSS):", m_constantSurfaceSpeedCheck);
+    // Set the material manager if available
+    if (m_materialManager) {
+        m_materialSpecificCuttingDataWidget->setMaterialManager(m_materialManager);
+    }
     
-    m_surfaceSpeedSpin = new QDoubleSpinBox();
-    m_surfaceSpeedSpin->setRange(0.0, 10000.0);
-    m_surfaceSpeedSpin->setDecimals(1);
-    m_surfaceSpeedSpin->setSuffix(" m/min");
-    speedLayout->addRow("Surface Speed:", m_surfaceSpeedSpin);
+    // Connect signals to handle cutting data changes
+    connect(m_materialSpecificCuttingDataWidget, &IntuiCAM::GUI::MaterialSpecificCuttingDataWidget::cuttingDataChanged,
+            this, &ToolManagementDialog::onCuttingDataChanged);
+    connect(m_materialSpecificCuttingDataWidget, &IntuiCAM::GUI::MaterialSpecificCuttingDataWidget::materialEnabledChanged,
+            this, &ToolManagementDialog::onCuttingDataChanged);
     
-    m_spindleRPMSpin = new QDoubleSpinBox();
-    m_spindleRPMSpin->setRange(0.0, 10000.0);
-    m_spindleRPMSpin->setDecimals(0);
-    m_spindleRPMSpin->setSuffix(" RPM");
-    speedLayout->addRow("Spindle RPM:", m_spindleRPMSpin);
-    
-    m_cuttingDataLayout->addRow(speedGroup);
-    
-    // Feed Control Group
-    auto feedGroup = new QGroupBox("Feed Control");
-    auto feedLayout = new QFormLayout(feedGroup);
-    
-    m_feedPerRevolutionCheck = new QCheckBox();
-    feedLayout->addRow("Feed per Revolution:", m_feedPerRevolutionCheck);
-    
-    m_cuttingFeedrateSpin = new QDoubleSpinBox();
-    m_cuttingFeedrateSpin->setRange(0.0, 10.0);
-    m_cuttingFeedrateSpin->setDecimals(3);
-    m_cuttingFeedrateSpin->setSuffix(" mm/rev");
-    feedLayout->addRow("Cutting Feedrate:", m_cuttingFeedrateSpin);
-    
-    m_leadInFeedrateSpin = new QDoubleSpinBox();
-    m_leadInFeedrateSpin->setRange(0.0, 10.0);
-    m_leadInFeedrateSpin->setDecimals(3);
-    m_leadInFeedrateSpin->setSuffix(" mm/rev");
-    feedLayout->addRow("Lead-in Feedrate:", m_leadInFeedrateSpin);
-    
-    m_leadOutFeedrateSpin = new QDoubleSpinBox();
-    m_leadOutFeedrateSpin->setRange(0.0, 10.0);
-    m_leadOutFeedrateSpin->setDecimals(3);
-    m_leadOutFeedrateSpin->setSuffix(" mm/rev");
-    feedLayout->addRow("Lead-out Feedrate:", m_leadOutFeedrateSpin);
-    
-    m_cuttingDataLayout->addRow(feedGroup);
-    
-    // Cutting Limits Group
-    auto limitsGroup = new QGroupBox("Cutting Limits");
-    auto limitsLayout = new QFormLayout(limitsGroup);
-    
-    m_maxDepthOfCutSpin = new QDoubleSpinBox();
-    m_maxDepthOfCutSpin->setRange(0.0, 50.0);
-    m_maxDepthOfCutSpin->setDecimals(3);
-    m_maxDepthOfCutSpin->setSuffix(" mm");
-    limitsLayout->addRow("Max Depth of Cut:", m_maxDepthOfCutSpin);
-    
-    m_maxFeedrateSpin = new QDoubleSpinBox();
-    m_maxFeedrateSpin->setRange(0.0, 1000.0);
-    m_maxFeedrateSpin->setDecimals(1);
-    m_maxFeedrateSpin->setSuffix(" mm/min");
-    limitsLayout->addRow("Max Feedrate:", m_maxFeedrateSpin);
-    
-    m_minSurfaceSpeedSpin = new QDoubleSpinBox();
-    m_minSurfaceSpeedSpin->setRange(0.0, 10000.0);
-    m_minSurfaceSpeedSpin->setDecimals(1);
-    m_minSurfaceSpeedSpin->setSuffix(" m/min");
-    limitsLayout->addRow("Min Surface Speed:", m_minSurfaceSpeedSpin);
-    
-    m_maxSurfaceSpeedSpin = new QDoubleSpinBox();
-    m_maxSurfaceSpeedSpin->setRange(0.0, 10000.0);
-    m_maxSurfaceSpeedSpin->setDecimals(1);
-    m_maxSurfaceSpeedSpin->setSuffix(" m/min");
-    limitsLayout->addRow("Max Surface Speed:", m_maxSurfaceSpeedSpin);
-    
-    m_cuttingDataLayout->addRow(limitsGroup);
-    
-    // Coolant Control Group
-    auto coolantGroup = new QGroupBox("Coolant Control");
-    auto coolantLayout = new QFormLayout(coolantGroup);
-    
-    m_floodCoolantCheck = new QCheckBox();
-    coolantLayout->addRow("Flood Coolant:", m_floodCoolantCheck);
-    
-    m_mistCoolantCheck = new QCheckBox();
-    coolantLayout->addRow("Mist Coolant:", m_mistCoolantCheck);
-    
-    m_preferredCoolantCombo = new QComboBox();
-    m_preferredCoolantCombo->addItem("None", static_cast<int>(CoolantType::NONE));
-    m_preferredCoolantCombo->addItem("Mist", static_cast<int>(CoolantType::MIST));
-    m_preferredCoolantCombo->addItem("Flood", static_cast<int>(CoolantType::FLOOD));
-    m_preferredCoolantCombo->addItem("High Pressure", static_cast<int>(CoolantType::HIGH_PRESSURE));
-    m_preferredCoolantCombo->addItem("Internal (Through Tool)", static_cast<int>(CoolantType::INTERNAL));
-    m_preferredCoolantCombo->addItem("Air Blast", static_cast<int>(CoolantType::AIR_BLAST));
-    coolantLayout->addRow("Preferred Coolant:", m_preferredCoolantCombo);
-    
-    m_coolantPressureSpin = new QDoubleSpinBox();
-    m_coolantPressureSpin->setRange(0.0, 200.0);
-    m_coolantPressureSpin->setDecimals(1);
-    m_coolantPressureSpin->setSuffix(" bar");
-    coolantLayout->addRow("Coolant Pressure:", m_coolantPressureSpin);
-    
-    m_coolantFlowSpin = new QDoubleSpinBox();
-    m_coolantFlowSpin->setRange(0.0, 100.0);
-    m_coolantFlowSpin->setDecimals(1);
-    m_coolantFlowSpin->setSuffix(" L/min");
-    coolantLayout->addRow("Coolant Flow:", m_coolantFlowSpin);
-    
-    m_cuttingDataLayout->addRow(coolantGroup);
+    layout->addWidget(m_materialSpecificCuttingDataWidget);
     
     return widget;
 }
@@ -1430,45 +1288,7 @@ void ToolManagementDialog::onISOCodeChanged() {
 }
 
 void ToolManagementDialog::onConstantSurfaceSpeedToggled(bool enabled) {
-    if (!m_surfaceSpeedSpin || !m_spindleRPMSpin) {
-        return;
-    }
-    
-    // If Constant Surface Speed is ON → hide Spindle RPM, show Surface Speed
-    // If Constant Surface Speed is OFF → hide Surface Speed, show Spindle RPM
-    m_surfaceSpeedSpin->setVisible(enabled);
-    m_spindleRPMSpin->setVisible(!enabled);
-    
-    // Find and update the corresponding labels
-    // We need to search through the speed group's form layout
-    auto speedGroup = m_surfaceSpeedSpin->parentWidget();
-    while (speedGroup && !speedGroup->objectName().contains("Speed") && speedGroup->parentWidget()) {
-        speedGroup = speedGroup->parentWidget();
-    }
-    
-    if (speedGroup) {
-        auto speedLayout = speedGroup->findChild<QFormLayout*>();
-        if (speedLayout) {
-            // Find the surface speed and spindle RPM rows
-            for (int i = 0; i < speedLayout->rowCount(); ++i) {
-                auto item = speedLayout->itemAt(i, QFormLayout::FieldRole);
-                if (item && item->widget()) {
-                    if (item->widget() == m_surfaceSpeedSpin) {
-                        auto labelItem = speedLayout->itemAt(i, QFormLayout::LabelRole);
-                        if (labelItem && labelItem->widget()) {
-                            labelItem->widget()->setVisible(enabled);
-                        }
-                    } else if (item->widget() == m_spindleRPMSpin) {
-                        auto labelItem = speedLayout->itemAt(i, QFormLayout::LabelRole);
-                        if (labelItem && labelItem->widget()) {
-                            labelItem->widget()->setVisible(!enabled);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
+    // This functionality is now handled by the MaterialSpecificCuttingDataWidget
     markAsModified();
 }
 
@@ -1766,44 +1586,8 @@ QString ToolManagementDialog::formatToolType(ToolType toolType) {
 }
 
 void ToolManagementDialog::updateFeedRateUnits(bool feedPerRevolution) {
-    QString unitSuffix = feedPerRevolution ? " mm/rev" : " mm/min";
-    
-    // Update cutting feedrate
-    if (m_cuttingFeedrateSpin) {
-        m_cuttingFeedrateSpin->setSuffix(unitSuffix);
-        // Adjust ranges if needed - typically mm/rev values are much smaller
-        if (feedPerRevolution) {
-            m_cuttingFeedrateSpin->setRange(0.0, 10.0);
-            m_cuttingFeedrateSpin->setDecimals(3);
-        } else {
-            m_cuttingFeedrateSpin->setRange(0.0, 1000.0);
-            m_cuttingFeedrateSpin->setDecimals(1);
-        }
-    }
-    
-    // Update lead-in feedrate
-    if (m_leadInFeedrateSpin) {
-        m_leadInFeedrateSpin->setSuffix(unitSuffix);
-        if (feedPerRevolution) {
-            m_leadInFeedrateSpin->setRange(0.0, 10.0);
-            m_leadInFeedrateSpin->setDecimals(3);
-        } else {
-            m_leadInFeedrateSpin->setRange(0.0, 1000.0);
-            m_leadInFeedrateSpin->setDecimals(1);
-        }
-    }
-    
-    // Update lead-out feedrate
-    if (m_leadOutFeedrateSpin) {
-        m_leadOutFeedrateSpin->setSuffix(unitSuffix);
-        if (feedPerRevolution) {
-            m_leadOutFeedrateSpin->setRange(0.0, 10.0);
-            m_leadOutFeedrateSpin->setDecimals(3);
-        } else {
-            m_leadOutFeedrateSpin->setRange(0.0, 1000.0);
-            m_leadOutFeedrateSpin->setDecimals(1);
-        }
-    }
+    // This functionality is now handled by the MaterialSpecificCuttingDataWidget
+    Q_UNUSED(feedPerRevolution);
 }
 
 // Helper method to initialize tool assembly for a specific type
@@ -2101,58 +1885,10 @@ void ToolManagementDialog::loadHolderParameters(const ToolHolder& holder) {
 }
 
 void ToolManagementDialog::loadCuttingDataParameters(const CuttingData& cuttingData) {
-    if (m_constantSurfaceSpeedCheck) {
-        m_constantSurfaceSpeedCheck->setChecked(cuttingData.constantSurfaceSpeed);
+    // Load cutting data into the material-specific cutting data widget
+    if (m_materialSpecificCuttingDataWidget) {
+        m_materialSpecificCuttingDataWidget->loadCuttingData(cuttingData);
     }
-    if (m_surfaceSpeedSpin) {
-        m_surfaceSpeedSpin->setValue(cuttingData.surfaceSpeed);
-    }
-    if (m_spindleRPMSpin) {
-        m_spindleRPMSpin->setValue(cuttingData.spindleRPM);
-    }
-    if (m_feedPerRevolutionCheck) {
-        m_feedPerRevolutionCheck->setChecked(cuttingData.feedPerRevolution);
-    }
-    if (m_cuttingFeedrateSpin) {
-        m_cuttingFeedrateSpin->setValue(cuttingData.cuttingFeedrate);
-    }
-    if (m_leadInFeedrateSpin) {
-        m_leadInFeedrateSpin->setValue(cuttingData.leadInFeedrate);
-    }
-    if (m_leadOutFeedrateSpin) {
-        m_leadOutFeedrateSpin->setValue(cuttingData.leadOutFeedrate);
-    }
-    if (m_maxDepthOfCutSpin) {
-        m_maxDepthOfCutSpin->setValue(cuttingData.maxDepthOfCut);
-    }
-    if (m_maxFeedrateSpin) {
-        m_maxFeedrateSpin->setValue(cuttingData.maxFeedrate);
-    }
-    if (m_minSurfaceSpeedSpin) {
-        m_minSurfaceSpeedSpin->setValue(cuttingData.minSurfaceSpeed);
-    }
-    if (m_maxSurfaceSpeedSpin) {
-        m_maxSurfaceSpeedSpin->setValue(cuttingData.maxSurfaceSpeed);
-    }
-    if (m_floodCoolantCheck) {
-        m_floodCoolantCheck->setChecked(cuttingData.floodCoolant);
-    }
-    if (m_mistCoolantCheck) {
-        m_mistCoolantCheck->setChecked(cuttingData.mistCoolant);
-    }
-    if (m_preferredCoolantCombo) {
-        setComboBoxByValue(m_preferredCoolantCombo, static_cast<int>(cuttingData.preferredCoolant));
-    }
-    if (m_coolantPressureSpin) {
-        m_coolantPressureSpin->setValue(cuttingData.coolantPressure);
-    }
-    if (m_coolantFlowSpin) {
-        m_coolantFlowSpin->setValue(cuttingData.coolantFlow);
-    }
-    
-    // Apply UI logic based on current settings
-    onConstantSurfaceSpeedToggled(cuttingData.constantSurfaceSpeed);
-    onFeedPerRevolutionToggled(cuttingData.feedPerRevolution);
 }
 
 // Parameter updating methods - sync UI changes back to data
@@ -2355,53 +2091,9 @@ void ToolManagementDialog::updateHolderDataFromFields() {
 }
 
 void ToolManagementDialog::updateCuttingDataFromFields() {
-    if (m_constantSurfaceSpeedCheck) {
-        m_currentToolAssembly.cuttingData.constantSurfaceSpeed = m_constantSurfaceSpeedCheck->isChecked();
-    }
-    if (m_surfaceSpeedSpin) {
-        m_currentToolAssembly.cuttingData.surfaceSpeed = m_surfaceSpeedSpin->value();
-    }
-    if (m_spindleRPMSpin) {
-        m_currentToolAssembly.cuttingData.spindleRPM = m_spindleRPMSpin->value();
-    }
-    if (m_feedPerRevolutionCheck) {
-        m_currentToolAssembly.cuttingData.feedPerRevolution = m_feedPerRevolutionCheck->isChecked();
-    }
-    if (m_cuttingFeedrateSpin) {
-        m_currentToolAssembly.cuttingData.cuttingFeedrate = m_cuttingFeedrateSpin->value();
-    }
-    if (m_leadInFeedrateSpin) {
-        m_currentToolAssembly.cuttingData.leadInFeedrate = m_leadInFeedrateSpin->value();
-    }
-    if (m_leadOutFeedrateSpin) {
-        m_currentToolAssembly.cuttingData.leadOutFeedrate = m_leadOutFeedrateSpin->value();
-    }
-    if (m_maxDepthOfCutSpin) {
-        m_currentToolAssembly.cuttingData.maxDepthOfCut = m_maxDepthOfCutSpin->value();
-    }
-    if (m_maxFeedrateSpin) {
-        m_currentToolAssembly.cuttingData.maxFeedrate = m_maxFeedrateSpin->value();
-    }
-    if (m_minSurfaceSpeedSpin) {
-        m_currentToolAssembly.cuttingData.minSurfaceSpeed = m_minSurfaceSpeedSpin->value();
-    }
-    if (m_maxSurfaceSpeedSpin) {
-        m_currentToolAssembly.cuttingData.maxSurfaceSpeed = m_maxSurfaceSpeedSpin->value();
-    }
-    if (m_floodCoolantCheck) {
-        m_currentToolAssembly.cuttingData.floodCoolant = m_floodCoolantCheck->isChecked();
-    }
-    if (m_mistCoolantCheck) {
-        m_currentToolAssembly.cuttingData.mistCoolant = m_mistCoolantCheck->isChecked();
-    }
-    if (m_preferredCoolantCombo) {
-        m_currentToolAssembly.cuttingData.preferredCoolant = static_cast<CoolantType>(m_preferredCoolantCombo->currentData().toInt());
-    }
-    if (m_coolantPressureSpin) {
-        m_currentToolAssembly.cuttingData.coolantPressure = m_coolantPressureSpin->value();
-    }
-    if (m_coolantFlowSpin) {
-        m_currentToolAssembly.cuttingData.coolantFlow = m_coolantFlowSpin->value();
+    // Get cutting data from the material-specific cutting data widget
+    if (m_materialSpecificCuttingDataWidget) {
+        m_currentToolAssembly.cuttingData = m_materialSpecificCuttingDataWidget->getCuttingData();
     }
 }
 
@@ -2767,6 +2459,17 @@ void ToolManagementDialog::createGroovingPanel() {
 
 void ToolManagementDialog::setToolManager(IntuiCAM::GUI::ToolManager* toolManager) {
     m_toolManager = toolManager;
+}
+
+void ToolManagementDialog::setMaterialManager(IntuiCAM::GUI::MaterialManager* materialManager) {
+    m_materialManager = materialManager;
+    if (m_materialSpecificCuttingDataWidget) {
+        m_materialSpecificCuttingDataWidget->setMaterialManager(materialManager);
+        // After the material manager is set and tabs are refreshed, reload the current
+        // tool's cutting data so that the enabled/disabled state and parameters for
+        // each material are correctly populated in the tabs.
+        m_materialSpecificCuttingDataWidget->loadCuttingData(m_currentToolAssembly.cuttingData);
+    }
 }
 
 QString ToolManagementDialog::getToolAssemblyDatabasePath() const {
@@ -3339,6 +3042,7 @@ ToolHolder ToolManagementDialog::toolHolderFromJson(const QJsonObject& json) con
 QJsonObject ToolManagementDialog::cuttingDataToJson(const CuttingData& cuttingData) const {
     QJsonObject json;
     
+    // Legacy/default cutting data fields (for backward compatibility)
     json["constantSurfaceSpeed"] = cuttingData.constantSurfaceSpeed;
     json["surfaceSpeed"] = cuttingData.surfaceSpeed;
     json["spindleRPM"] = cuttingData.spindleRPM;
@@ -3359,12 +3063,51 @@ QJsonObject ToolManagementDialog::cuttingDataToJson(const CuttingData& cuttingDa
     json["coolantPressure"] = cuttingData.coolantPressure;
     json["coolantFlow"] = cuttingData.coolantFlow;
     
+    // Material-specific cutting data settings
+    QJsonObject materialSettings;
+    for (const auto& materialPair : cuttingData.materialSettings) {
+        const std::string& materialName = materialPair.first;
+        const MaterialSpecificCuttingData& materialData = materialPair.second;
+        
+        QJsonObject materialJson;
+        materialJson["materialName"] = QString::fromStdString(materialData.materialName);
+        materialJson["enabled"] = materialData.enabled;
+        
+        // Speed control
+        materialJson["constantSurfaceSpeed"] = materialData.constantSurfaceSpeed;
+        materialJson["surfaceSpeed"] = materialData.surfaceSpeed;
+        materialJson["spindleRPM"] = materialData.spindleRPM;
+        
+        // Feed control
+        materialJson["feedPerRevolution"] = materialData.feedPerRevolution;
+        materialJson["cuttingFeedrate"] = materialData.cuttingFeedrate;
+        materialJson["leadInFeedrate"] = materialData.leadInFeedrate;
+        materialJson["leadOutFeedrate"] = materialData.leadOutFeedrate;
+        
+        // Cutting limits
+        materialJson["maxDepthOfCut"] = materialData.maxDepthOfCut;
+        materialJson["maxFeedrate"] = materialData.maxFeedrate;
+        materialJson["minSurfaceSpeed"] = materialData.minSurfaceSpeed;
+        materialJson["maxSurfaceSpeed"] = materialData.maxSurfaceSpeed;
+        
+        // Coolant
+        materialJson["floodCoolant"] = materialData.floodCoolant;
+        materialJson["mistCoolant"] = materialData.mistCoolant;
+        materialJson["preferredCoolant"] = static_cast<int>(materialData.preferredCoolant);
+        materialJson["coolantPressure"] = materialData.coolantPressure;
+        materialJson["coolantFlow"] = materialData.coolantFlow;
+        
+        materialSettings[QString::fromStdString(materialName)] = materialJson;
+    }
+    json["materialSettings"] = materialSettings;
+    
     return json;
 }
 
 CuttingData ToolManagementDialog::cuttingDataFromJson(const QJsonObject& json) const {
     CuttingData cuttingData;
     
+    // Legacy/default cutting data fields (for backward compatibility)
     cuttingData.constantSurfaceSpeed = json["constantSurfaceSpeed"].toBool();
     cuttingData.surfaceSpeed = json["surfaceSpeed"].toDouble();
     cuttingData.spindleRPM = json["spindleRPM"].toDouble();
@@ -3384,6 +3127,46 @@ CuttingData ToolManagementDialog::cuttingDataFromJson(const QJsonObject& json) c
     cuttingData.preferredCoolant = static_cast<CoolantType>(json["preferredCoolant"].toInt());
     cuttingData.coolantPressure = json["coolantPressure"].toDouble();
     cuttingData.coolantFlow = json["coolantFlow"].toDouble();
+    
+    // Load material-specific cutting data settings
+    if (json.contains("materialSettings")) {
+        QJsonObject materialSettings = json["materialSettings"].toObject();
+        
+        for (auto it = materialSettings.begin(); it != materialSettings.end(); ++it) {
+            const QString& materialName = it.key();
+            const QJsonObject& materialJson = it.value().toObject();
+            
+            MaterialSpecificCuttingData materialData;
+            materialData.materialName = materialJson["materialName"].toString().toStdString();
+            materialData.enabled = materialJson["enabled"].toBool();
+            
+            // Speed control
+            materialData.constantSurfaceSpeed = materialJson["constantSurfaceSpeed"].toBool();
+            materialData.surfaceSpeed = materialJson["surfaceSpeed"].toDouble();
+            materialData.spindleRPM = materialJson["spindleRPM"].toDouble();
+            
+            // Feed control
+            materialData.feedPerRevolution = materialJson["feedPerRevolution"].toBool();
+            materialData.cuttingFeedrate = materialJson["cuttingFeedrate"].toDouble();
+            materialData.leadInFeedrate = materialJson["leadInFeedrate"].toDouble();
+            materialData.leadOutFeedrate = materialJson["leadOutFeedrate"].toDouble();
+            
+            // Cutting limits
+            materialData.maxDepthOfCut = materialJson["maxDepthOfCut"].toDouble();
+            materialData.maxFeedrate = materialJson["maxFeedrate"].toDouble();
+            materialData.minSurfaceSpeed = materialJson["minSurfaceSpeed"].toDouble();
+            materialData.maxSurfaceSpeed = materialJson["maxSurfaceSpeed"].toDouble();
+            
+            // Coolant
+            materialData.floodCoolant = materialJson["floodCoolant"].toBool();
+            materialData.mistCoolant = materialJson["mistCoolant"].toBool();
+            materialData.preferredCoolant = static_cast<CoolantType>(materialJson["preferredCoolant"].toInt());
+            materialData.coolantPressure = materialJson["coolantPressure"].toDouble();
+            materialData.coolantFlow = materialJson["coolantFlow"].toDouble();
+            
+            cuttingData.materialSettings[materialName.toStdString()] = materialData;
+        }
+    }
     
     return cuttingData;
 }

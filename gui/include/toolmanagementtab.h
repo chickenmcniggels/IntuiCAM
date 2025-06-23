@@ -24,6 +24,7 @@
 
 // Forward declarations
 class ToolManagementDialog;
+class MainWindow;
 
 namespace IntuiCAM {
 namespace Toolpath {

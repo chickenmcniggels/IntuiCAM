@@ -309,7 +309,57 @@ struct ToolHolder {
 // Cutting Data Structures
 // ============================================================================
 
+// Material-specific cutting data for a single material
+struct MaterialSpecificCuttingData {
+    std::string materialName;        // Name of the material (linked to MaterialManager)
+    bool enabled;                    // Whether this material is enabled for this tool
+    
+    // Speed control
+    bool constantSurfaceSpeed;       // true for CSS, false for RPM control
+    double surfaceSpeed;             // m/min - when CSS enabled
+    double spindleRPM;               // RPM - when CSS disabled
+    
+    // Feed control  
+    bool feedPerRevolution;          // true for mm/rev, false for mm/min
+    double cuttingFeedrate;          // mm/rev or mm/min
+    double leadInFeedrate;           // mm/rev or mm/min
+    double leadOutFeedrate;          // mm/rev or mm/min
+    
+    // Cutting limits
+    double maxDepthOfCut;            // mm - maximum radial/axial depth
+    double maxFeedrate;              // mm/min - absolute maximum
+    double minSurfaceSpeed;          // m/min - minimum for tool life
+    double maxSurfaceSpeed;          // m/min - maximum for tool life
+    
+    // Coolant
+    bool floodCoolant;               // Flood coolant enabled
+    bool mistCoolant;                // Mist coolant enabled
+    CoolantType preferredCoolant;
+    double coolantPressure;          // bar - for high pressure coolant
+    double coolantFlow;              // L/min
+    
+    MaterialSpecificCuttingData() 
+        : enabled(false), constantSurfaceSpeed(true), surfaceSpeed(200), spindleRPM(1000),
+          feedPerRevolution(true), cuttingFeedrate(0.2), leadInFeedrate(0.1),
+          leadOutFeedrate(0.1), maxDepthOfCut(2.0), maxFeedrate(1000),
+          minSurfaceSpeed(50), maxSurfaceSpeed(500), floodCoolant(false),
+          mistCoolant(false), preferredCoolant(CoolantType::NONE), 
+          coolantPressure(0), coolantFlow(0) {}
+          
+    MaterialSpecificCuttingData(const std::string& material)
+        : materialName(material), enabled(true), constantSurfaceSpeed(true), surfaceSpeed(200), spindleRPM(1000),
+          feedPerRevolution(true), cuttingFeedrate(0.2), leadInFeedrate(0.1),
+          leadOutFeedrate(0.1), maxDepthOfCut(2.0), maxFeedrate(1000),
+          minSurfaceSpeed(50), maxSurfaceSpeed(500), floodCoolant(false),
+          mistCoolant(false), preferredCoolant(CoolantType::NONE), 
+          coolantPressure(0), coolantFlow(0) {}
+};
+
 struct CuttingData {
+    // Material-specific cutting data
+    std::map<std::string, MaterialSpecificCuttingData> materialSettings;
+    
+    // Default/fallback cutting data (for backward compatibility)
     // Speed control
     bool constantSurfaceSpeed;   // true for CSS, false for RPM control
     double surfaceSpeed;         // m/min - when CSS enabled
@@ -334,6 +384,64 @@ struct CuttingData {
     CoolantType coolantType;     // Alternative name for preferred coolant
     double coolantPressure;      // bar - for high pressure coolant
     double coolantFlow;          // L/min
+    
+    // Helper methods for material-specific data
+    bool hasMaterialSettings(const std::string& materialName) const {
+        return materialSettings.find(materialName) != materialSettings.end();
+    }
+    
+    MaterialSpecificCuttingData getMaterialSettings(const std::string& materialName) const {
+        auto it = materialSettings.find(materialName);
+        if (it != materialSettings.end()) {
+            return it->second;
+        }
+        // Return default settings converted to material-specific format
+        MaterialSpecificCuttingData defaultSettings(materialName);
+        defaultSettings.constantSurfaceSpeed = constantSurfaceSpeed;
+        defaultSettings.surfaceSpeed = surfaceSpeed;
+        defaultSettings.spindleRPM = spindleRPM;
+        defaultSettings.feedPerRevolution = feedPerRevolution;
+        defaultSettings.cuttingFeedrate = cuttingFeedrate;
+        defaultSettings.leadInFeedrate = leadInFeedrate;
+        defaultSettings.leadOutFeedrate = leadOutFeedrate;
+        defaultSettings.maxDepthOfCut = maxDepthOfCut;
+        defaultSettings.maxFeedrate = maxFeedrate;
+        defaultSettings.minSurfaceSpeed = minSurfaceSpeed;
+        defaultSettings.maxSurfaceSpeed = maxSurfaceSpeed;
+        defaultSettings.floodCoolant = floodCoolant;
+        defaultSettings.mistCoolant = mistCoolant;
+        defaultSettings.preferredCoolant = preferredCoolant;
+        defaultSettings.coolantPressure = coolantPressure;
+        defaultSettings.coolantFlow = coolantFlow;
+        defaultSettings.enabled = false; // Default to disabled for new materials
+        return defaultSettings;
+    }
+    
+    void setMaterialSettings(const std::string& materialName, const MaterialSpecificCuttingData& settings) {
+        materialSettings[materialName] = settings;
+    }
+    
+    void removeMaterialSettings(const std::string& materialName) {
+        materialSettings.erase(materialName);
+    }
+    
+    std::vector<std::string> getEnabledMaterials() const {
+        std::vector<std::string> enabled;
+        for (const auto& pair : materialSettings) {
+            if (pair.second.enabled) {
+                enabled.push_back(pair.first);
+            }
+        }
+        return enabled;
+    }
+    
+    std::vector<std::string> getAllConfiguredMaterials() const {
+        std::vector<std::string> materials;
+        for (const auto& pair : materialSettings) {
+            materials.push_back(pair.first);
+        }
+        return materials;
+    }
     
     CuttingData() : constantSurfaceSpeed(true), surfaceSpeed(200), spindleRPM(1000),
                    feedPerRevolution(true), cuttingFeedrate(0.2), leadInFeedrate(0.1),

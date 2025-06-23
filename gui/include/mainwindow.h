@@ -76,6 +76,9 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    
+    // Getters for managers
+    IntuiCAM::GUI::MaterialManager* getMaterialManager() const { return m_materialManager; }
 
 private slots:
     void newProject();

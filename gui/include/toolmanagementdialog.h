@@ -39,6 +39,8 @@
 
 // Project includes
 #include "opengl3dwidget.h"
+#include "materialspecificcuttingdatawidget.h"
+#include "materialmanager.h"
 #include "IntuiCAM/Toolpath/ToolTypes.h"
 
 namespace IntuiCAM {
@@ -96,6 +98,9 @@ public:
     
     // Set the tool manager for persistence
     void setToolManager(IntuiCAM::GUI::ToolManager* toolManager);
+    
+    // Set the material manager for material-specific cutting data
+    void setMaterialManager(IntuiCAM::GUI::MaterialManager* materialManager);
 
 signals:
     void toolSaved(const QString& toolId);
@@ -381,24 +386,8 @@ private:
     QDoubleSpinBox* m_sideAngleSpin;
     QDoubleSpinBox* m_backAngleSpin;
     
-    // Cutting Data Tab Components
-    QFormLayout* m_cuttingDataLayout;
-    QCheckBox* m_constantSurfaceSpeedCheck;
-    QDoubleSpinBox* m_surfaceSpeedSpin;
-    QDoubleSpinBox* m_spindleRPMSpin;
-    QCheckBox* m_feedPerRevolutionCheck;
-    QDoubleSpinBox* m_cuttingFeedrateSpin;
-    QDoubleSpinBox* m_leadInFeedrateSpin;
-    QDoubleSpinBox* m_leadOutFeedrateSpin;
-    QDoubleSpinBox* m_maxDepthOfCutSpin;
-    QDoubleSpinBox* m_maxFeedrateSpin;
-    QDoubleSpinBox* m_minSurfaceSpeedSpin;
-    QDoubleSpinBox* m_maxSurfaceSpeedSpin;
-    QCheckBox* m_floodCoolantCheck;
-    QCheckBox* m_mistCoolantCheck;
-    QComboBox* m_preferredCoolantCombo;
-    QDoubleSpinBox* m_coolantPressureSpin;
-    QDoubleSpinBox* m_coolantFlowSpin;
+    // Material-Specific Cutting Data Tab Components
+    IntuiCAM::GUI::MaterialSpecificCuttingDataWidget* m_materialSpecificCuttingDataWidget;
     
     // Tool Info Tab Components
     QFormLayout* m_toolInfoLayout;
@@ -445,6 +434,9 @@ private:
     
     // Tool manager reference for broader integration
     IntuiCAM::GUI::ToolManager* m_toolManager;
+    
+    // Material manager reference for material-specific cutting data
+    IntuiCAM::GUI::MaterialManager* m_materialManager;
     
     // Tool geometry objects
     Handle(AIS_Shape) m_currentInsertShape;
