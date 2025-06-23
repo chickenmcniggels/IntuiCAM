@@ -184,6 +184,10 @@ private:
     void loadToolParametersIntoFields(const IntuiCAM::Toolpath::ToolAssembly& assembly);
     void updateToolAssemblyFromFields();
     
+    // Tool ID generation
+    QString getToolTypePrefix(IntuiCAM::Toolpath::ToolType toolType) const;
+    QString generateUniqueToolId(const QString& prefix) const;
+    
     // Validation
     bool validateCurrentTool();
     bool validateISOCode(const QString& isoCode);

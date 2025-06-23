@@ -26,6 +26,7 @@
 #include <QStandardPaths>
 #include <QDir>
 #include <QFile>
+#include <QSet>
 
 #include "toolmanager.h"
 #include "opengl3dwidget.h"
@@ -614,8 +615,10 @@ void ToolManagementDialog::initializeNewTool(ToolType toolType) {
     m_currentToolAssembly.toolType = toolType;
     m_currentToolAssembly.isActive = true;
     
-    // Generate a temporary ID for new tools
-    m_currentToolId = QString("NEW_%1").arg(QDateTime::currentMSecsSinceEpoch());
+    // Generate a proper unique ID for new tools based on tool type and timestamp
+    QString typePrefix = getToolTypePrefix(toolType);
+    QString uniqueId = generateUniqueToolId(typePrefix);
+    m_currentToolId = uniqueId;
     m_currentToolAssembly.id = m_currentToolId.toStdString();
     m_currentToolAssembly.name = QString("New %1 Tool").arg(formatToolType(toolType)).toStdString();
     
@@ -624,6 +627,63 @@ void ToolManagementDialog::initializeNewTool(ToolType toolType) {
     
     // Update UI based on tool type
     updateToolTypeSpecificUI();
+}
+
+QString ToolManagementDialog::getToolTypePrefix(ToolType toolType) const {
+    switch (toolType) {
+        case ToolType::GENERAL_TURNING: return "GT";
+        case ToolType::THREADING: return "TH";
+        case ToolType::GROOVING: return "GR"; 
+        case ToolType::PARTING: return "PT";
+        case ToolType::BORING: return "BR";
+        case ToolType::FORM_TOOL: return "FT";
+        case ToolType::LIVE_TOOLING: return "LT";
+        default: return "CT"; // Custom Tool
+    }
+}
+
+QString ToolManagementDialog::generateUniqueToolId(const QString& prefix) const {
+    // Load existing database to check for existing IDs
+    QString dbPath = getToolAssemblyDatabasePath();
+    QSet<QString> existingIds;
+    
+    QFile file(dbPath);
+    if (file.open(QIODevice::ReadOnly)) {
+        QByteArray data = file.readAll();
+        file.close();
+        
+        QJsonParseError error;
+        QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+        if (error.error == QJsonParseError::NoError && doc.isObject()) {
+            QJsonObject database = doc.object();
+            QJsonArray toolsArray = database["tools"].toArray();
+            
+            for (const QJsonValue& toolValue : toolsArray) {
+                QJsonObject toolObj = toolValue.toObject();
+                existingIds.insert(toolObj["id"].toString());
+            }
+        }
+    }
+    
+    // Generate unique ID with format: PREFIX_YYYYMMDD_NNN (e.g., GT_20241215_001)
+    QString dateStr = QDateTime::currentDateTime().toString("yyyyMMdd");
+    QString baseId = QString("%1_%2").arg(prefix, dateStr);
+    
+    // Find next available sequence number
+    int sequence = 1;
+    QString candidateId;
+    do {
+        candidateId = QString("%1_%2").arg(baseId).arg(sequence, 3, 10, QChar('0'));
+        sequence++;
+    } while (existingIds.contains(candidateId) && sequence <= 999);
+    
+    if (sequence > 999) {
+        // Fallback to timestamp-based ID if we've exhausted sequence numbers
+        candidateId = QString("%1_%2_%3").arg(prefix, dateStr).arg(QDateTime::currentMSecsSinceEpoch() % 100000);
+    }
+    
+    qDebug() << "Generated unique tool ID:" << candidateId;
+    return candidateId;
 }
 
 bool ToolManagementDialog::validateCurrentTool() {
@@ -2531,41 +2591,91 @@ bool ToolManagementDialog::saveToolAssemblyToDatabase() {
         database["tools"] = QJsonArray();
     }
     
+    // For new tools, ensure we have a proper unique ID before saving
+    if (m_isNewTool) {
+        // Double-check uniqueness before saving
+        QString originalId = m_currentToolId;
+        QString typePrefix = getToolTypePrefix(m_currentToolType);
+        QString uniqueId = generateUniqueToolId(typePrefix);
+        
+        if (originalId != uniqueId) {
+            qDebug() << "Updating tool ID from" << originalId << "to" << uniqueId << "for uniqueness";
+            m_currentToolId = uniqueId;
+            m_currentToolAssembly.id = m_currentToolId.toStdString();
+        }
+    }
+    
     // Convert current tool assembly to JSON
     QJsonObject toolJson = toolAssemblyToJson(m_currentToolAssembly);
     
     // Update or add tool in database
     QJsonArray toolsArray = database["tools"].toArray();
     bool toolFound = false;
+    QString toolIdToSave = QString::fromStdString(m_currentToolAssembly.id);
     
-    for (int i = 0; i < toolsArray.size(); ++i) {
-        QJsonObject existingTool = toolsArray[i].toObject();
-        if (existingTool["id"].toString() == QString::fromStdString(m_currentToolAssembly.id)) {
-            toolsArray[i] = toolJson;
-            toolFound = true;
-            break;
+    // For existing tools, find and update
+    if (!m_isNewTool) {
+        for (int i = 0; i < toolsArray.size(); ++i) {
+            QJsonObject existingTool = toolsArray[i].toObject();
+            if (existingTool["id"].toString() == toolIdToSave) {
+                toolsArray[i] = toolJson;
+                toolFound = true;
+                qDebug() << "Updated existing tool in database:" << toolIdToSave;
+                break;
+            }
         }
-    }
-    
-    if (!toolFound) {
+        
+        if (!toolFound) {
+            qWarning() << "Existing tool not found in database for update:" << toolIdToSave;
+            // For safety, treat as new tool
+            toolsArray.append(toolJson);
+            qDebug() << "Added as new tool since existing tool not found:" << toolIdToSave;
+        }
+    } else {
+        // For new tools, verify uniqueness and append
+        for (int i = 0; i < toolsArray.size(); ++i) {
+            QJsonObject existingTool = toolsArray[i].toObject();
+            if (existingTool["id"].toString() == toolIdToSave) {
+                qWarning() << "ID collision detected for new tool:" << toolIdToSave;
+                // Generate a completely new unique ID to avoid collision
+                QString newUniqueId = QString("%1_%2").arg(getToolTypePrefix(m_currentToolType))
+                                                     .arg(QDateTime::currentMSecsSinceEpoch());
+                m_currentToolId = newUniqueId;
+                m_currentToolAssembly.id = m_currentToolId.toStdString();
+                toolJson = toolAssemblyToJson(m_currentToolAssembly);
+                qDebug() << "Generated new ID to avoid collision:" << newUniqueId;
+                break;
+            }
+        }
+        
+        // Add new tool to the end of the array
         toolsArray.append(toolJson);
+        qDebug() << "Added new tool to database:" << QString::fromStdString(m_currentToolAssembly.id) 
+                 << "Total tools:" << toolsArray.size();
     }
     
     database["tools"] = toolsArray;
     database["version"] = "1.0";
     database["lastModified"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    database["toolCount"] = toolsArray.size();
     
-    // Save database
+    // Save database with error checking
     QJsonDocument doc(database);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         qWarning() << "Failed to open tool assembly database for writing:" << dbPath;
         return false;
     }
     
-    file.write(doc.toJson());
+    qint64 bytesWritten = file.write(doc.toJson());
     file.close();
     
-    qDebug() << "Saved tool assembly to database:" << QString::fromStdString(m_currentToolAssembly.id);
+    if (bytesWritten == -1) {
+        qWarning() << "Failed to write tool data to database";
+        return false;
+    }
+    
+    qDebug() << "Successfully saved tool assembly to database:" << QString::fromStdString(m_currentToolAssembly.id);
+    qDebug() << "Database now contains" << toolsArray.size() << "tools";
     return true;
 }
 

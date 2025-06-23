@@ -625,9 +625,20 @@ void ToolManagementTab::addNewTool() {
     connect(dialog, &ToolManagementDialog::toolSaved,
             this, [this](const QString& toolId) {
                 qDebug() << "Tool saved signal received for:" << toolId;
-                refreshToolList();
-                selectTool(toolId); // Select the newly added tool
-                emit toolAdded(toolId);
+                // Verify the tool was actually added to the database
+                if (verifyToolInDatabase(toolId)) {
+                    refreshToolList();
+                    selectTool(toolId); // Select the newly added tool
+                    emit toolAdded(toolId);
+                    
+                    // Show success message
+                    QMessageBox::information(this, "Tool Added", 
+                        QString("Tool '%1' has been successfully added to the library.").arg(toolId));
+                } else {
+                    qWarning() << "Tool was not properly saved to database:" << toolId;
+                    QMessageBox::warning(this, "Save Error", 
+                        QString("Tool '%1' was not properly saved to the database. Please try again.").arg(toolId));
+                }
             });
     
     // Connect error handling
@@ -647,6 +658,46 @@ void ToolManagementTab::addNewTool() {
     }
     
     dialog->deleteLater();
+}
+
+bool ToolManagementTab::verifyToolInDatabase(const QString& toolId) {
+    QString databasePath = getToolAssemblyDatabasePath();
+    QFile dbFile(databasePath);
+    
+    if (!dbFile.open(QIODevice::ReadOnly)) {
+        qWarning() << "Failed to open database for verification:" << databasePath;
+        return false;
+    }
+
+    QByteArray data = dbFile.readAll();
+    dbFile.close();
+
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error != QJsonParseError::NoError) {
+        qWarning() << "Failed to parse database JSON during verification:" << error.errorString();
+        return false;
+    }
+
+    if (!doc.isObject()) {
+        qWarning() << "Database is not a valid JSON object during verification";
+        return false;
+    }
+
+    QJsonObject rootObj = doc.object();
+    QJsonArray toolsArray = rootObj["tools"].toArray();
+    
+    // Check if the tool exists in the database
+    for (const QJsonValue& toolValue : toolsArray) {
+        QJsonObject toolObj = toolValue.toObject();
+        if (toolObj["id"].toString() == toolId) {
+            qDebug() << "Verified tool exists in database:" << toolId;
+            return true;
+        }
+    }
+
+    qWarning() << "Tool not found in database during verification:" << toolId;
+    return false;
 }
 
 void ToolManagementTab::editSelectedTool() {
@@ -690,61 +741,117 @@ void ToolManagementTab::deleteSelectedTool() {
     QString toolId = getSelectedToolId();
     if (!toolId.isEmpty()) {
         auto reply = QMessageBox::question(this, "Delete Tool",
-            QString("Are you sure you want to delete tool '%1'?").arg(toolId),
+            QString("Are you sure you want to delete tool '%1'?\n\nThis action cannot be undone.").arg(toolId),
             QMessageBox::Yes | QMessageBox::No);
         
         if (reply == QMessageBox::Yes) {
-            // Remove tool from the tree widget
-            auto selectedItems = m_toolTreeWidget->selectedItems();
-            if (!selectedItems.isEmpty()) {
-                auto item = selectedItems.first();
-                int index = m_toolTreeWidget->indexOfTopLevelItem(item);
-                if (index >= 0) {
-                    delete m_toolTreeWidget->takeTopLevelItem(index);
-                }
-            }
-
-            // Remove tool from the persistent database
+            bool deletionSuccessful = false;
+            
+            // Remove tool from the persistent database first
             QString databasePath = getToolAssemblyDatabasePath();
-            QFile dbFile(databasePath);
-            if (dbFile.open(QIODevice::ReadOnly)) {
-                QByteArray data = dbFile.readAll();
-                dbFile.close();
-
-                QJsonParseError error;
-                QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-                if (error.error == QJsonParseError::NoError && doc.isObject()) {
-                    QJsonObject rootObj = doc.object();
-                    QJsonArray toolsArray = rootObj["tools"].toArray();
-                    QJsonArray newArray;
-                    for (const QJsonValue &val : toolsArray) {
-                        QJsonObject obj = val.toObject();
-                        if (obj["id"].toString() != toolId) {
-                            newArray.append(obj);
-                        }
-                    }
-                    rootObj["tools"] = newArray;
-                    dbFile.setFileName(databasePath);
-                    if (dbFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-                        dbFile.write(QJsonDocument(rootObj).toJson());
-                        dbFile.close();
+            if (deleteToolFromDatabase(toolId, databasePath)) {
+                // Only remove from UI if database deletion was successful
+                auto selectedItems = m_toolTreeWidget->selectedItems();
+                if (!selectedItems.isEmpty()) {
+                    auto item = selectedItems.first();
+                    int index = m_toolTreeWidget->indexOfTopLevelItem(item);
+                    if (index >= 0) {
+                        delete m_toolTreeWidget->takeTopLevelItem(index);
+                        deletionSuccessful = true;
                     }
                 }
             }
 
-            // Clear tool details display
-            clearToolInfo();
-            
-            // Update button states
-            m_editToolButton->setEnabled(false);
-            m_deleteToolButton->setEnabled(false);
-            m_duplicateToolButton->setEnabled(false);
-            
-            emit toolDeleted(toolId);
-            updateToolCounts();
-            emit toolLibraryChanged();
+            if (deletionSuccessful) {
+                // Clear tool details display
+                clearToolInfo();
+                
+                // Update button states
+                m_editToolButton->setEnabled(false);
+                m_deleteToolButton->setEnabled(false);
+                m_duplicateToolButton->setEnabled(false);
+                
+                emit toolDeleted(toolId);
+                updateToolCounts();
+                emit toolLibraryChanged();
+                
+                // Show success message
+                QMessageBox::information(this, "Tool Deleted", 
+                    QString("Tool '%1' has been successfully deleted from the library.").arg(toolId));
+            } else {
+                QMessageBox::warning(this, "Deletion Failed", 
+                    QString("Failed to delete tool '%1' from the database. Please try again.").arg(toolId));
+            }
         }
     }
+}
+
+bool ToolManagementTab::deleteToolFromDatabase(const QString& toolId, const QString& databasePath) {
+    QFile dbFile(databasePath);
+    if (!dbFile.open(QIODevice::ReadOnly)) {
+        qWarning() << "Failed to open database for reading:" << databasePath;
+        return false;
+    }
+
+    QByteArray data = dbFile.readAll();
+    dbFile.close();
+
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error != QJsonParseError::NoError) {
+        qWarning() << "Failed to parse database JSON:" << error.errorString();
+        return false;
+    }
+
+    if (!doc.isObject()) {
+        qWarning() << "Database is not a valid JSON object";
+        return false;
+    }
+
+    QJsonObject rootObj = doc.object();
+    QJsonArray toolsArray = rootObj["tools"].toArray();
+    QJsonArray newArray;
+    bool toolFound = false;
+    
+    // Filter out the tool to be deleted
+    for (const QJsonValue &val : toolsArray) {
+        QJsonObject obj = val.toObject();
+        if (obj["id"].toString() == toolId) {
+            toolFound = true;
+            qDebug() << "Found tool to delete:" << toolId;
+            // Don't add this tool to the new array (effectively deleting it)
+        } else {
+            newArray.append(obj);
+        }
+    }
+
+    if (!toolFound) {
+        qWarning() << "Tool not found in database:" << toolId;
+        return false;
+    }
+
+    // Update the database with the new array
+    rootObj["tools"] = newArray;
+    rootObj["lastModified"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    
+    // Write back to database
+    if (!dbFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        qWarning() << "Failed to open database for writing:" << databasePath;
+        return false;
+    }
+
+    QJsonDocument newDoc(rootObj);
+    qint64 bytesWritten = dbFile.write(newDoc.toJson());
+    dbFile.close();
+
+    if (bytesWritten == -1) {
+        qWarning() << "Failed to write to database";
+        return false;
+    }
+
+    qDebug() << "Successfully deleted tool from database:" << toolId;
+    qDebug() << "Database now contains" << newArray.size() << "tools";
+    return true;
 }
 
 void ToolManagementTab::duplicateSelectedTool() {

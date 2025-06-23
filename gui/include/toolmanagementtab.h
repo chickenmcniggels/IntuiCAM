@@ -145,6 +145,10 @@ private:
     QString getToolStatusText(bool isActive) const;
     QString getToolAssemblyDatabasePath() const;
     
+    // Database operations
+    bool deleteToolFromDatabase(const QString& toolId, const QString& databasePath);
+    bool verifyToolInDatabase(const QString& toolId);
+    
     // UI Components - Main Layout
     QVBoxLayout* m_mainLayout;
     QSplitter* m_mainSplitter;
