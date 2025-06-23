@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QCoreApplication>
 #include <QDebug>
 #include <QStandardPaths>
 #include <QDir>
@@ -9,6 +10,11 @@
 
 int main(int argc, char *argv[])
 {
+    // Enable OpenGL context sharing between QOpenGLWidgets.
+    // This prevents the 3D viewers from being unloaded and turning black when
+    // another widget gains focus or is shown.
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+
     QApplication app(argc, argv);
     
     // CRITICAL: Set global OpenGL surface format BEFORE creating OpenGL widgets
