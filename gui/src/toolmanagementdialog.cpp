@@ -161,16 +161,16 @@ void ToolManagementDialog::createToolEditPanel() {
     m_toolEditTabs = new QTabWidget();
     
     // Create the individual tabs
+    m_toolInfoTab = createToolInfoTab();
     m_insertTab = createInsertPropertiesTab();
     m_holderTab = createHolderPropertiesTab();
     m_cuttingDataTab = createCuttingDataTab();
-    m_toolInfoTab = createToolInfoTab();
     
     // Add tabs to the tab widget
+    m_toolEditTabs->addTab(m_toolInfoTab, "Tool Information");
     m_toolEditTabs->addTab(m_insertTab, "Insert Properties");
     m_toolEditTabs->addTab(m_holderTab, "Tool Holder");
     m_toolEditTabs->addTab(m_cuttingDataTab, "Cutting Data");
-    m_toolEditTabs->addTab(m_toolInfoTab, "Tool Information");
     
     m_toolEditLayout->addWidget(m_toolEditTabs);
     
@@ -483,19 +483,34 @@ void ToolManagementDialog::connectParameterSignals() {
     if (m_backAngleSpin) {
         connect(m_backAngleSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onHolderParameterChanged);
     }
-    if (m_isInternalCheck) {
-        connect(m_isInternalCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onHolderParameterChanged);
+    
+    // Tool Capabilities Parameters (moved to Tool Info tab)
+    if (m_internalThreadingCheck) {
+        connect(m_internalThreadingCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onToolInfoChanged);
     }
-    if (m_isGroovingCheck) {
-        connect(m_isGroovingCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onHolderParameterChanged);
+    if (m_internalBoringCheck) {
+        connect(m_internalBoringCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onToolInfoChanged);
     }
-    if (m_isThreadingCheck) {
-        connect(m_isThreadingCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onHolderParameterChanged);
+    if (m_partingGroovingCheck) {
+        connect(m_partingGroovingCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onToolInfoChanged);
+    }
+    if (m_externalThreadingCheck) {
+        connect(m_externalThreadingCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onToolInfoChanged);
+    }
+    if (m_longitudinalTurningCheck) {
+        connect(m_longitudinalTurningCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onToolInfoChanged);
+    }
+    if (m_facingCheck) {
+        connect(m_facingCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onToolInfoChanged);
+    }
+    if (m_chamferingCheck) {
+        connect(m_chamferingCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onToolInfoChanged);
     }
     
     // Cutting Data Parameters
     if (m_constantSurfaceSpeedCheck) {
         connect(m_constantSurfaceSpeedCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onCuttingDataChanged);
+        connect(m_constantSurfaceSpeedCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onConstantSurfaceSpeedToggled);
     }
     if (m_surfaceSpeedSpin) {
         connect(m_surfaceSpeedSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
@@ -505,6 +520,7 @@ void ToolManagementDialog::connectParameterSignals() {
     }
     if (m_feedPerRevolutionCheck) {
         connect(m_feedPerRevolutionCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onCuttingDataChanged);
+        connect(m_feedPerRevolutionCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onFeedPerRevolutionToggled);
     }
     if (m_cuttingFeedrateSpin) {
         connect(m_cuttingFeedrateSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
@@ -805,6 +821,29 @@ void ToolManagementDialog::loadToolParametersIntoFields(const ToolAssembly& asse
         m_notesEdit->setPlainText(QString::fromStdString(assembly.notes));
     }
     
+    // Load tool capabilities
+    if (m_internalThreadingCheck) {
+        m_internalThreadingCheck->setChecked(assembly.internalThreading);
+    }
+    if (m_internalBoringCheck) {
+        m_internalBoringCheck->setChecked(assembly.internalBoring);
+    }
+    if (m_partingGroovingCheck) {
+        m_partingGroovingCheck->setChecked(assembly.partingGrooving);
+    }
+    if (m_externalThreadingCheck) {
+        m_externalThreadingCheck->setChecked(assembly.externalThreading);
+    }
+    if (m_longitudinalTurningCheck) {
+        m_longitudinalTurningCheck->setChecked(assembly.longitudinalTurning);
+    }
+    if (m_facingCheck) {
+        m_facingCheck->setChecked(assembly.facing);
+    }
+    if (m_chamferingCheck) {
+        m_chamferingCheck->setChecked(assembly.chamfering);
+    }
+    
     // Load cutting data
     loadCuttingDataParameters(assembly.cuttingData);
     
@@ -967,21 +1006,6 @@ QWidget* ToolManagementDialog::createHolderPropertiesTab() {
     seatLayout->addRow("Back Angle:", m_backAngleSpin);
     
     m_holderLayout->addRow(seatGroup);
-    
-    // Holder Capabilities Group
-    auto capabilitiesGroup = new QGroupBox("Holder Capabilities");
-    auto capLayout = new QFormLayout(capabilitiesGroup);
-    
-    m_isInternalCheck = new QCheckBox();
-    capLayout->addRow("Internal Operations:", m_isInternalCheck);
-    
-    m_isGroovingCheck = new QCheckBox();
-    capLayout->addRow("Grooving Operations:", m_isGroovingCheck);
-    
-    m_isThreadingCheck = new QCheckBox();
-    capLayout->addRow("Threading Operations:", m_isThreadingCheck);
-    
-    m_holderLayout->addRow(capabilitiesGroup);
     
     return widget;
 }
@@ -1157,7 +1181,48 @@ QWidget* ToolManagementDialog::createToolInfoTab() {
     
     m_toolInfoLayout->addRow(machineGroup);
     
-    // Tool Offsets Group
+    // Notes and Additional Information Group
+    auto notesGroup = new QGroupBox("Notes and Additional Information");
+    auto notesLayout = new QVBoxLayout(notesGroup);
+    
+    auto notesLabel = new QLabel("Notes:");
+    notesLayout->addWidget(notesLabel);
+    
+    m_notesEdit = new QTextEdit();
+    m_notesEdit->setMaximumHeight(100);
+    m_notesEdit->setPlaceholderText("Enter any additional notes about this tool...");
+    notesLayout->addWidget(m_notesEdit);
+    
+    m_toolInfoLayout->addRow(notesGroup);
+    
+    // Tool Capabilities Group (moved from Tool Holder tab)
+    auto capabilitiesGroup = new QGroupBox("Tool Capabilities");
+    auto capLayout = new QFormLayout(capabilitiesGroup);
+    
+    m_internalThreadingCheck = new QCheckBox();
+    capLayout->addRow("Internal Threading:", m_internalThreadingCheck);
+    
+    m_internalBoringCheck = new QCheckBox();
+    capLayout->addRow("Internal Boring:", m_internalBoringCheck);
+    
+    m_partingGroovingCheck = new QCheckBox();
+    capLayout->addRow("Parting/Grooving:", m_partingGroovingCheck);
+    
+    m_externalThreadingCheck = new QCheckBox();
+    capLayout->addRow("External Threading:", m_externalThreadingCheck);
+    
+    m_longitudinalTurningCheck = new QCheckBox();
+    capLayout->addRow("Longitudinal Turning:", m_longitudinalTurningCheck);
+    
+    m_facingCheck = new QCheckBox();
+    capLayout->addRow("Facing:", m_facingCheck);
+    
+    m_chamferingCheck = new QCheckBox();
+    capLayout->addRow("Chamfering:", m_chamferingCheck);
+    
+    m_toolInfoLayout->addRow(capabilitiesGroup);
+    
+    // Tool Offsets Group (hidden for now)
     auto offsetsGroup = new QGroupBox("Tool Offsets");
     auto offsetsLayout = new QFormLayout(offsetsGroup);
     
@@ -1185,21 +1250,8 @@ QWidget* ToolManagementDialog::createToolInfoTab() {
     m_toolRadiusOffsetSpin->setSuffix(" mm");
     offsetsLayout->addRow("Radius Offset:", m_toolRadiusOffsetSpin);
     
-    m_toolInfoLayout->addRow(offsetsGroup);
-    
-    // Notes and Additional Information Group
-    auto notesGroup = new QGroupBox("Notes and Additional Information");
-    auto notesLayout = new QVBoxLayout(notesGroup);
-    
-    auto notesLabel = new QLabel("Notes:");
-    notesLayout->addWidget(notesLabel);
-    
-    m_notesEdit = new QTextEdit();
-    m_notesEdit->setMaximumHeight(100);
-    m_notesEdit->setPlaceholderText("Enter any additional notes about this tool...");
-    notesLayout->addWidget(m_notesEdit);
-    
-    m_toolInfoLayout->addRow(notesGroup);
+    // Do NOT add offsetsGroup to m_toolInfoLayout to hide it from UI
+    // m_toolInfoLayout->addRow(offsetsGroup);
     
     return widget;
 }
@@ -1375,6 +1427,55 @@ void ToolManagementDialog::onToolNameEdited(const QString& text) {
 void ToolManagementDialog::onISOCodeChanged() {
     markAsModified();
     // TODO: Validate ISO code format
+}
+
+void ToolManagementDialog::onConstantSurfaceSpeedToggled(bool enabled) {
+    if (!m_surfaceSpeedSpin || !m_spindleRPMSpin) {
+        return;
+    }
+    
+    // If Constant Surface Speed is ON → hide Spindle RPM, show Surface Speed
+    // If Constant Surface Speed is OFF → hide Surface Speed, show Spindle RPM
+    m_surfaceSpeedSpin->setVisible(enabled);
+    m_spindleRPMSpin->setVisible(!enabled);
+    
+    // Find and update the corresponding labels
+    // We need to search through the speed group's form layout
+    auto speedGroup = m_surfaceSpeedSpin->parentWidget();
+    while (speedGroup && !speedGroup->objectName().contains("Speed") && speedGroup->parentWidget()) {
+        speedGroup = speedGroup->parentWidget();
+    }
+    
+    if (speedGroup) {
+        auto speedLayout = speedGroup->findChild<QFormLayout*>();
+        if (speedLayout) {
+            // Find the surface speed and spindle RPM rows
+            for (int i = 0; i < speedLayout->rowCount(); ++i) {
+                auto item = speedLayout->itemAt(i, QFormLayout::FieldRole);
+                if (item && item->widget()) {
+                    if (item->widget() == m_surfaceSpeedSpin) {
+                        auto labelItem = speedLayout->itemAt(i, QFormLayout::LabelRole);
+                        if (labelItem && labelItem->widget()) {
+                            labelItem->widget()->setVisible(enabled);
+                        }
+                    } else if (item->widget() == m_spindleRPMSpin) {
+                        auto labelItem = speedLayout->itemAt(i, QFormLayout::LabelRole);
+                        if (labelItem && labelItem->widget()) {
+                            labelItem->widget()->setVisible(!enabled);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    markAsModified();
+}
+
+void ToolManagementDialog::onFeedPerRevolutionToggled(bool enabled) {
+    // Update units for feed rate controls
+    updateFeedRateUnits(enabled);
+    markAsModified();
 }
 
 void ToolManagementDialog::onVisualizationModeChanged(int mode) {
@@ -1631,6 +1732,9 @@ void ToolManagementDialog::setupDefaultToolParameters(ToolType toolType) {
             break;
     }
     
+    // Set up tool capabilities based on tool type  
+    setupCapabilitiesForToolType(toolType);
+    
     // Always setup holder defaults
     setupHolderDefaults();
     setupCuttingDataDefaults(toolType);
@@ -1658,6 +1762,47 @@ QString ToolManagementDialog::formatToolType(ToolType toolType) {
         case ToolType::FORM_TOOL: return "Form Tool";
         case ToolType::LIVE_TOOLING: return "Live Tooling";
         default: return "Unknown";
+    }
+}
+
+void ToolManagementDialog::updateFeedRateUnits(bool feedPerRevolution) {
+    QString unitSuffix = feedPerRevolution ? " mm/rev" : " mm/min";
+    
+    // Update cutting feedrate
+    if (m_cuttingFeedrateSpin) {
+        m_cuttingFeedrateSpin->setSuffix(unitSuffix);
+        // Adjust ranges if needed - typically mm/rev values are much smaller
+        if (feedPerRevolution) {
+            m_cuttingFeedrateSpin->setRange(0.0, 10.0);
+            m_cuttingFeedrateSpin->setDecimals(3);
+        } else {
+            m_cuttingFeedrateSpin->setRange(0.0, 1000.0);
+            m_cuttingFeedrateSpin->setDecimals(1);
+        }
+    }
+    
+    // Update lead-in feedrate
+    if (m_leadInFeedrateSpin) {
+        m_leadInFeedrateSpin->setSuffix(unitSuffix);
+        if (feedPerRevolution) {
+            m_leadInFeedrateSpin->setRange(0.0, 10.0);
+            m_leadInFeedrateSpin->setDecimals(3);
+        } else {
+            m_leadInFeedrateSpin->setRange(0.0, 1000.0);
+            m_leadInFeedrateSpin->setDecimals(1);
+        }
+    }
+    
+    // Update lead-out feedrate
+    if (m_leadOutFeedrateSpin) {
+        m_leadOutFeedrateSpin->setSuffix(unitSuffix);
+        if (feedPerRevolution) {
+            m_leadOutFeedrateSpin->setRange(0.0, 10.0);
+            m_leadOutFeedrateSpin->setDecimals(3);
+        } else {
+            m_leadOutFeedrateSpin->setRange(0.0, 1000.0);
+            m_leadOutFeedrateSpin->setDecimals(1);
+        }
     }
 }
 
@@ -1754,6 +1899,29 @@ void ToolManagementDialog::updateToolInfoFromFields() {
     }
     if (m_notesEdit) {
         m_currentToolAssembly.notes = m_notesEdit->toPlainText().toStdString();
+    }
+    
+    // Update tool capabilities
+    if (m_internalThreadingCheck) {
+        m_currentToolAssembly.internalThreading = m_internalThreadingCheck->isChecked();
+    }
+    if (m_internalBoringCheck) {
+        m_currentToolAssembly.internalBoring = m_internalBoringCheck->isChecked();
+    }
+    if (m_partingGroovingCheck) {
+        m_currentToolAssembly.partingGrooving = m_partingGroovingCheck->isChecked();
+    }
+    if (m_externalThreadingCheck) {
+        m_currentToolAssembly.externalThreading = m_externalThreadingCheck->isChecked();
+    }
+    if (m_longitudinalTurningCheck) {
+        m_currentToolAssembly.longitudinalTurning = m_longitudinalTurningCheck->isChecked();
+    }
+    if (m_facingCheck) {
+        m_currentToolAssembly.facing = m_facingCheck->isChecked();
+    }
+    if (m_chamferingCheck) {
+        m_currentToolAssembly.chamfering = m_chamferingCheck->isChecked();
     }
 }
 
@@ -1930,15 +2098,6 @@ void ToolManagementDialog::loadHolderParameters(const ToolHolder& holder) {
     if (m_backAngleSpin) {
         m_backAngleSpin->setValue(holder.backAngle);
     }
-    if (m_isInternalCheck) {
-        m_isInternalCheck->setChecked(holder.isInternal);
-    }
-    if (m_isGroovingCheck) {
-        m_isGroovingCheck->setChecked(holder.isGrooving);
-    }
-    if (m_isThreadingCheck) {
-        m_isThreadingCheck->setChecked(holder.isThreading);
-    }
 }
 
 void ToolManagementDialog::loadCuttingDataParameters(const CuttingData& cuttingData) {
@@ -1990,6 +2149,10 @@ void ToolManagementDialog::loadCuttingDataParameters(const CuttingData& cuttingD
     if (m_coolantFlowSpin) {
         m_coolantFlowSpin->setValue(cuttingData.coolantFlow);
     }
+    
+    // Apply UI logic based on current settings
+    onConstantSurfaceSpeedToggled(cuttingData.constantSurfaceSpeed);
+    onFeedPerRevolutionToggled(cuttingData.feedPerRevolution);
 }
 
 // Parameter updating methods - sync UI changes back to data
@@ -2188,15 +2351,6 @@ void ToolManagementDialog::updateHolderDataFromFields() {
     }
     if (m_backAngleSpin) {
         holder.backAngle = m_backAngleSpin->value();
-    }
-    if (m_isInternalCheck) {
-        holder.isInternal = m_isInternalCheck->isChecked();
-    }
-    if (m_isGroovingCheck) {
-        holder.isGrooving = m_isGroovingCheck->isChecked();
-    }
-    if (m_isThreadingCheck) {
-        holder.isThreading = m_isThreadingCheck->isChecked();
     }
 }
 
@@ -2827,6 +2981,15 @@ QJsonObject ToolManagementDialog::toolAssemblyToJson(const ToolAssembly& assembl
     json["turretPosition"] = assembly.turretPosition;
     json["isActive"] = assembly.isActive;
     
+    // Tool capabilities
+    json["internalThreading"] = assembly.internalThreading;
+    json["internalBoring"] = assembly.internalBoring;
+    json["partingGrooving"] = assembly.partingGrooving;
+    json["externalThreading"] = assembly.externalThreading;
+    json["longitudinalTurning"] = assembly.longitudinalTurning;
+    json["facing"] = assembly.facing;
+    json["chamfering"] = assembly.chamfering;
+    
     // Tool life management
     json["expectedLifeMinutes"] = assembly.expectedLifeMinutes;
     json["usageMinutes"] = assembly.usageMinutes;
@@ -2882,6 +3045,15 @@ ToolAssembly ToolManagementDialog::toolAssemblyFromJson(const QJsonObject& json)
     assembly.toolNumber = json["toolNumber"].toString().toStdString();
     assembly.turretPosition = json["turretPosition"].toInt();
     assembly.isActive = json["isActive"].toBool();
+    
+    // Tool capabilities
+    assembly.internalThreading = json["internalThreading"].toBool(false);
+    assembly.internalBoring = json["internalBoring"].toBool(false);
+    assembly.partingGrooving = json["partingGrooving"].toBool(false);
+    assembly.externalThreading = json["externalThreading"].toBool(false);
+    assembly.longitudinalTurning = json["longitudinalTurning"].toBool(true);
+    assembly.facing = json["facing"].toBool(true);
+    assembly.chamfering = json["chamfering"].toBool(false);
     
     // Tool life management
     assembly.expectedLifeMinutes = json["expectedLifeMinutes"].toDouble();
@@ -3124,10 +3296,6 @@ QJsonObject ToolManagementDialog::toolHolderToJson(const ToolHolder& holder) con
     json["sideAngle"] = holder.sideAngle;
     json["backAngle"] = holder.backAngle;
     
-    json["isInternal"] = holder.isInternal;
-    json["isGrooving"] = holder.isGrooving;
-    json["isThreading"] = holder.isThreading;
-    
     json["name"] = QString::fromStdString(holder.name);
     json["vendor"] = QString::fromStdString(holder.vendor);
     json["productId"] = QString::fromStdString(holder.productId);
@@ -3157,10 +3325,6 @@ ToolHolder ToolManagementDialog::toolHolderFromJson(const QJsonObject& json) con
     holder.insertSetback = json["insertSetback"].toDouble();
     holder.sideAngle = json["sideAngle"].toDouble();
     holder.backAngle = json["backAngle"].toDouble();
-    
-    holder.isInternal = json["isInternal"].toBool();
-    holder.isGrooving = json["isGrooving"].toBool();
-    holder.isThreading = json["isThreading"].toBool();
     
     holder.name = json["name"].toString().toStdString();
     holder.vendor = json["vendor"].toString().toStdString();
@@ -3480,6 +3644,87 @@ void ToolManagementDialog::setupHolderDefaults() {
     holder.productLink = "";
     holder.notes = "Standard 20x20mm right-hand turning holder";
     holder.isActive = true;
+}
+
+void ToolManagementDialog::setupCapabilitiesForToolType(ToolType toolType) {
+    // Set default capabilities based on tool type
+    switch (toolType) {
+        case ToolType::GENERAL_TURNING:
+            m_currentToolAssembly.internalThreading = false;
+            m_currentToolAssembly.internalBoring = false;
+            m_currentToolAssembly.partingGrooving = false;
+            m_currentToolAssembly.externalThreading = false;
+            m_currentToolAssembly.longitudinalTurning = true;
+            m_currentToolAssembly.facing = true;
+            m_currentToolAssembly.chamfering = true;
+            break;
+        case ToolType::BORING:
+            m_currentToolAssembly.internalThreading = false;
+            m_currentToolAssembly.internalBoring = true;
+            m_currentToolAssembly.partingGrooving = false;
+            m_currentToolAssembly.externalThreading = false;
+            m_currentToolAssembly.longitudinalTurning = true;
+            m_currentToolAssembly.facing = false;
+            m_currentToolAssembly.chamfering = true;
+            break;
+        case ToolType::THREADING:
+            m_currentToolAssembly.internalThreading = true;
+            m_currentToolAssembly.internalBoring = false;
+            m_currentToolAssembly.partingGrooving = false;
+            m_currentToolAssembly.externalThreading = true;
+            m_currentToolAssembly.longitudinalTurning = false;
+            m_currentToolAssembly.facing = false;
+            m_currentToolAssembly.chamfering = false;
+            break;
+        case ToolType::GROOVING:
+            m_currentToolAssembly.internalThreading = false;
+            m_currentToolAssembly.internalBoring = false;
+            m_currentToolAssembly.partingGrooving = true;
+            m_currentToolAssembly.externalThreading = false;
+            m_currentToolAssembly.longitudinalTurning = false;
+            m_currentToolAssembly.facing = false;
+            m_currentToolAssembly.chamfering = false;
+            break;
+        case ToolType::PARTING:
+            m_currentToolAssembly.internalThreading = false;
+            m_currentToolAssembly.internalBoring = false;
+            m_currentToolAssembly.partingGrooving = true;
+            m_currentToolAssembly.externalThreading = false;
+            m_currentToolAssembly.longitudinalTurning = false;
+            m_currentToolAssembly.facing = false;
+            m_currentToolAssembly.chamfering = false;
+            break;
+        case ToolType::FORM_TOOL:
+            // Form tools can have custom capabilities - enable all by default
+            m_currentToolAssembly.internalThreading = true;
+            m_currentToolAssembly.internalBoring = true;
+            m_currentToolAssembly.partingGrooving = true;
+            m_currentToolAssembly.externalThreading = true;
+            m_currentToolAssembly.longitudinalTurning = true;
+            m_currentToolAssembly.facing = true;
+            m_currentToolAssembly.chamfering = true;
+            break;
+        case ToolType::LIVE_TOOLING:
+            // Live tooling capabilities depend on specific tooling
+            m_currentToolAssembly.internalThreading = false;
+            m_currentToolAssembly.internalBoring = true;
+            m_currentToolAssembly.partingGrooving = false;
+            m_currentToolAssembly.externalThreading = false;
+            m_currentToolAssembly.longitudinalTurning = false;
+            m_currentToolAssembly.facing = true;
+            m_currentToolAssembly.chamfering = false;
+            break;
+        default:
+            // Default: basic turning capabilities
+            m_currentToolAssembly.internalThreading = false;
+            m_currentToolAssembly.internalBoring = false;
+            m_currentToolAssembly.partingGrooving = false;
+            m_currentToolAssembly.externalThreading = false;
+            m_currentToolAssembly.longitudinalTurning = true;
+            m_currentToolAssembly.facing = true;
+            m_currentToolAssembly.chamfering = false;
+            break;
+    }
 }
 
 void ToolManagementDialog::setupCuttingDataDefaults(ToolType toolType) {

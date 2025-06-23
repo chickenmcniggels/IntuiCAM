@@ -387,6 +387,15 @@ struct ToolAssembly {
     int turretPosition;          // Physical turret position
     bool isActive;               // Tool is available for use
     
+    // Tool capabilities (moved from ToolHolder to apply to entire tool assembly)
+    bool internalThreading;      // Can perform internal threading operations
+    bool internalBoring;         // Can perform internal boring operations  
+    bool partingGrooving;        // Can perform parting/grooving operations
+    bool externalThreading;      // Can perform external threading operations
+    bool longitudinalTurning;    // Can perform longitudinal turning operations
+    bool facing;                 // Can perform facing operations
+    bool chamfering;             // Can perform chamfering operations
+    
     // Tool life management
     double expectedLifeMinutes;  // Expected tool life in minutes
     double usageMinutes;         // Accumulated usage time
@@ -405,6 +414,11 @@ struct ToolAssembly {
           toolLengthOffset(0), toolRadiusOffset(0),
           turretPosition(1), isActive(true),
           expectedLifeMinutes(480), usageMinutes(0), cycleCount(0) {}
+    ToolAssembly() : toolType(ToolType::GENERAL_TURNING), toolOffset_X(0), toolOffset_Z(0),
+                    toolLengthOffset(0), toolRadiusOffset(0), turretPosition(1), isActive(true),
+                    internalThreading(false), internalBoring(false), partingGrooving(false),
+                    externalThreading(false), longitudinalTurning(true), facing(true), chamfering(false),
+                    expectedLifeMinutes(480), usageMinutes(0), cycleCount(0) {}
 };
 
 // ============================================================================
