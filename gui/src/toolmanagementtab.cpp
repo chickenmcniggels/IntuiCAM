@@ -649,6 +649,16 @@ void ToolManagementTab::addNewTool() {
                         QString("Tool '%1' was not properly saved to the database. Please try again.").arg(toolId));
                 }
             });
+    connect(dialog, &ToolManagementDialog::toolNameChanged,
+            this, [this](const QString& id, const QString& name) {
+                for (int i = 0; i < m_toolTreeWidget->topLevelItemCount(); ++i) {
+                    auto item = m_toolTreeWidget->topLevelItem(i);
+                    if (item->data(COL_NAME, Qt::UserRole).toString() == id) {
+                        item->setText(COL_NAME, name);
+                        break;
+                    }
+                }
+            });
     
     // Connect error handling
     connect(dialog, &ToolManagementDialog::errorOccurred,
@@ -798,6 +808,16 @@ void ToolManagementTab::editSelectedTool() {
                 refreshToolList();
                 selectTool(modifiedToolId); // Re-select the modified tool
                 emit toolModified(modifiedToolId);
+            });
+    connect(dialog, &ToolManagementDialog::toolNameChanged,
+            this, [this](const QString& id, const QString& name) {
+                for (int i = 0; i < m_toolTreeWidget->topLevelItemCount(); ++i) {
+                    auto item = m_toolTreeWidget->topLevelItem(i);
+                    if (item->data(COL_NAME, Qt::UserRole).toString() == id) {
+                        item->setText(COL_NAME, name);
+                        break;
+                    }
+                }
             });
     
     // Connect error handling
@@ -2109,6 +2129,16 @@ void ToolManagementTab::onToolPropertiesAction() {
         connect(dialog, &ToolManagementDialog::toolSaved,
                 this, [this](const QString&) {
                     refreshToolList();
+                });
+        connect(dialog, &ToolManagementDialog::toolNameChanged,
+                this, [this](const QString& id, const QString& name) {
+                    for (int i = 0; i < m_toolTreeWidget->topLevelItemCount(); ++i) {
+                        auto item = m_toolTreeWidget->topLevelItem(i);
+                        if (item->data(COL_NAME, Qt::UserRole).toString() == id) {
+                            item->setText(COL_NAME, name);
+                            break;
+                        }
+                    }
                 });
         
         dialog->exec();
