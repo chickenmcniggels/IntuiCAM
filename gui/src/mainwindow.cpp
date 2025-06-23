@@ -250,12 +250,15 @@ void MainWindow::createCentralWidget()
     m_setupTab = createSetupTab();
     m_simulationTab = createSimulationTab();
     m_machineTab = createMachineTab();
+
+    // Tool management tab uses the previously created m_toolManagementTab
     
     // Add tabs to tab widget
     m_tabWidget->addTab(m_homeTab, "Home");
     m_tabWidget->addTab(m_setupTab, "Setup");
     m_tabWidget->addTab(m_simulationTab, "Simulation");
     m_tabWidget->addTab(m_machineTab, "Machine");
+    m_tabWidget->addTab(m_toolManagementTab, "Tool Management");
     
     // Output window (shared across all tabs)
     m_outputWindow = new QTextEdit;
@@ -646,6 +649,7 @@ void MainWindow::onTabChanged(int index)
         case 1: tabName = "Setup"; break;
         case 2: tabName = "Simulation"; break;
         case 3: tabName = "Machine"; break;
+        case 4: tabName = "Tool Management"; break;
         default: tabName = "Unknown"; break;
     }
     
@@ -1037,16 +1041,7 @@ QWidget* MainWindow::createSimulationTab()
 QWidget* MainWindow::createMachineTab()
 {
     QWidget* machineWidget = new QWidget;
-    QVBoxLayout* mainLayout = new QVBoxLayout(machineWidget);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->setSpacing(0);
-    
-    // Create tabbed interface for machine functionality
-    QTabWidget* machineTabWidget = new QTabWidget;
-    
-    // ========== Machine Control Tab ==========
-    QWidget* controlTabWidget = new QWidget;
-    QHBoxLayout* controlTabLayout = new QHBoxLayout(controlTabWidget);
+    QHBoxLayout* controlTabLayout = new QHBoxLayout(machineWidget);
     controlTabLayout->setContentsMargins(0, 0, 0, 0);
     
     // Left panel - machine controls
@@ -1157,19 +1152,6 @@ QWidget* MainWindow::createMachineTab()
     
     controlTabLayout->addWidget(m_machineControlPanel);
     controlTabLayout->addWidget(m_machineFeedWidget, 1);
-    
-    // ========== Tool Management Tab ==========
-    // Use the actual ToolManagementTab widget that provides full functionality
-    // including tool editing, filtering, library management, and parameter synchronization
-    
-    // Add tabs to the machine tab widget
-    machineTabWidget->addTab(controlTabWidget, "🔧 Machine Control");
-    machineTabWidget->addTab(m_toolManagementTab, "🔨 Tool Management");
-    
-    // Set default tab
-    machineTabWidget->setCurrentIndex(0);
-    
-    mainLayout->addWidget(machineTabWidget);
     
     return machineWidget;
 }
