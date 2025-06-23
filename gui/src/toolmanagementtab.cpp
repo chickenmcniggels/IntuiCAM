@@ -425,7 +425,8 @@ void ToolManagementTab::populateToolList() {
         QJsonObject toolObj = toolValue.toObject();
         
         auto item = new QTreeWidgetItem(m_toolTreeWidget);
-        item->setText(COL_NAME, QString::fromStdString(toolObj["name"].toString().toStdString()));
+        item->setText(COL_NAME, toolObj["name"].toString());
+        item->setData(COL_NAME, Qt::UserRole, toolObj.value("id").toString());
         item->setText(COL_TYPE, formatToolType(static_cast<IntuiCAM::Toolpath::ToolType>(toolObj["toolType"].toInt())));
         item->setText(COL_TOOL_NUMBER, toolObj["toolNumber"].toString());
         item->setText(COL_TURRET_POS, QString::number(toolObj["turretPosition"].toInt()));
@@ -497,7 +498,7 @@ void ToolManagementTab::onToolListSelectionChanged() {
     m_duplicateToolButton->setEnabled(hasSelection);
     
     if (hasSelection) {
-        QString toolId = currentItem->text(COL_NAME);
+        QString toolId = currentItem->data(COL_NAME, Qt::UserRole).toString();
         displayToolInfo(toolId);
         emit toolSelected(toolId);
     } else {
@@ -508,7 +509,7 @@ void ToolManagementTab::onToolListSelectionChanged() {
 void ToolManagementTab::onToolListDoubleClicked() {
     auto currentItem = m_toolTreeWidget->currentItem();
     if (currentItem) {
-        QString toolId = currentItem->text(COL_NAME);
+        QString toolId = currentItem->data(COL_NAME, Qt::UserRole).toString();
         emit toolDoubleClicked(toolId);
     }
 }
@@ -516,7 +517,7 @@ void ToolManagementTab::onToolListDoubleClicked() {
 void ToolManagementTab::onToolListContextMenuRequested(const QPoint& pos) {
     auto item = m_toolTreeWidget->itemAt(pos);
     if (item) {
-        QString toolId = item->text(COL_NAME);
+        QString toolId = item->data(COL_NAME, Qt::UserRole).toString();
         bool isActive = (item->text(COL_STATUS) == "Active");
         
         // Create context menu
@@ -607,7 +608,7 @@ void ToolManagementTab::refreshToolList() {
 void ToolManagementTab::selectTool(const QString& toolId) {
     for (int i = 0; i < m_toolTreeWidget->topLevelItemCount(); ++i) {
         auto item = m_toolTreeWidget->topLevelItem(i);
-        if (item->text(COL_NAME) == toolId) {
+        if (item->data(COL_NAME, Qt::UserRole).toString() == toolId) {
             m_toolTreeWidget->setCurrentItem(item);
             break;
         }
@@ -722,7 +723,7 @@ void ToolManagementTab::duplicateSelectedTool() {
         QTreeWidgetItem* originalItem = nullptr;
         for (int i = 0; i < m_toolTreeWidget->topLevelItemCount(); ++i) {
             auto item = m_toolTreeWidget->topLevelItem(i);
-            if (item->text(COL_NAME) == toolId) {
+            if (item->data(COL_NAME, Qt::UserRole).toString() == toolId) {
                 originalItem = item;
                 break;
             }
@@ -732,6 +733,7 @@ void ToolManagementTab::duplicateSelectedTool() {
             // Create duplicate with modified name
             QTreeWidgetItem* duplicateItem = new QTreeWidgetItem(m_toolTreeWidget);
             duplicateItem->setText(COL_NAME, originalItem->text(COL_NAME) + " Copy");
+            duplicateItem->setData(COL_NAME, Qt::UserRole, toolId + "_copy");
             duplicateItem->setText(COL_TYPE, originalItem->text(COL_TYPE));
             duplicateItem->setText(COL_TOOL_NUMBER, "T99"); // Temporary tool number
             duplicateItem->setText(COL_TURRET_POS, "99");
@@ -743,7 +745,7 @@ void ToolManagementTab::duplicateSelectedTool() {
             // Select the new item
             m_toolTreeWidget->setCurrentItem(duplicateItem);
             
-            emit toolAdded(duplicateItem->text(COL_NAME));
+            emit toolAdded(duplicateItem->data(COL_NAME, Qt::UserRole).toString());
             updateToolCounts();
             emit toolLibraryChanged();
             
@@ -779,6 +781,7 @@ void ToolManagementTab::importToolLibrary() {
                     // Create new tree widget item
                     QTreeWidgetItem* item = new QTreeWidgetItem(m_toolTreeWidget);
                     item->setText(COL_NAME, toolObj["name"].toString());
+                    item->setData(COL_NAME, Qt::UserRole, toolObj.value("id").toString());
                     item->setText(COL_TYPE, toolObj["type"].toString());
                     item->setText(COL_TOOL_NUMBER, toolObj["toolNumber"].toString("T00"));
                     item->setText(COL_TURRET_POS, QString::number(toolObj["turretPosition"].toInt(99)));
@@ -829,6 +832,7 @@ void ToolManagementTab::exportToolLibrary() {
             QTreeWidgetItem* item = m_toolTreeWidget->topLevelItem(i);
             
             QJsonObject toolObj;
+            toolObj["id"] = item->data(COL_NAME, Qt::UserRole).toString();
             toolObj["name"] = item->text(COL_NAME);
             toolObj["type"] = item->text(COL_TYPE);
             toolObj["toolNumber"] = item->text(COL_TOOL_NUMBER);
@@ -1706,17 +1710,14 @@ void ToolManagementTab::applyFilters() {
 
 QString ToolManagementTab::getSelectedToolId() const {
     auto currentItem = m_toolTreeWidget->currentItem();
-    return currentItem ? currentItem->text(COL_NAME) : QString();
+    return currentItem ? currentItem->data(COL_NAME, Qt::UserRole).toString() : QString();
 }
 
 void ToolManagementTab::displayToolInfo(const QString& toolId) {
-    // Update tool details display
-    m_toolNameValue->setText(toolId);
-    
-    // Find the tool item
     for (int i = 0; i < m_toolTreeWidget->topLevelItemCount(); ++i) {
         auto item = m_toolTreeWidget->topLevelItem(i);
-        if (item->text(COL_NAME) == toolId) {
+        if (item->data(COL_NAME, Qt::UserRole).toString() == toolId) {
+            m_toolNameValue->setText(item->text(COL_NAME));
             m_toolTypeValue->setText(item->text(COL_TYPE));
             m_toolNumberValue->setText(item->text(COL_TOOL_NUMBER));
             m_turretPositionValue->setText(item->text(COL_TURRET_POS));
@@ -1943,7 +1944,7 @@ void ToolManagementTab::updateToolListItem(const QString& toolId) {
 void ToolManagementTab::removeToolListItem(const QString& toolId) {
     for (int i = 0; i < m_toolTreeWidget->topLevelItemCount(); ++i) {
         auto item = m_toolTreeWidget->topLevelItem(i);
-        if (item->text(COL_NAME) == toolId) {
+        if (item->data(COL_NAME, Qt::UserRole).toString() == toolId) {
             delete m_toolTreeWidget->takeTopLevelItem(i);
             break;
         }
@@ -1954,7 +1955,7 @@ QStringList ToolManagementTab::getSelectedToolIds() const {
     QStringList toolIds;
     auto selectedItems = m_toolTreeWidget->selectedItems();
     for (auto item : selectedItems) {
-        toolIds << item->text(COL_NAME);
+        toolIds << item->data(COL_NAME, Qt::UserRole).toString();
     }
     return toolIds;
 }
