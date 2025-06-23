@@ -339,15 +339,8 @@ struct CuttingData {
                    feedPerRevolution(true), cuttingFeedrate(0.2), leadInFeedrate(0.1),
                    leadOutFeedrate(0.1), maxDepthOfCut(2.0), maxFeedrate(1000),
                    minSurfaceSpeed(50), maxSurfaceSpeed(500), floodCoolant(false),
-                   mistCoolant(false), preferredCoolant(CoolantType::NONE),
+                   mistCoolant(false), preferredCoolant(CoolantType::NONE), 
                    coolantPressure(0), coolantFlow(0) {}
-};
-
-// Cutting data specific to a workpiece material
-struct MaterialCuttingData {
-    bool enabled;
-    CuttingData data;
-    MaterialCuttingData() : enabled(true) {}
 };
 
 // ============================================================================
@@ -414,7 +407,6 @@ struct ToolAssembly {
     // User properties
     std::string notes;
     std::map<std::string, std::string> customProperties; // Extensible properties
-    std::map<std::string, MaterialCuttingData> materialCuttingData; // Per-material data
     
     ToolAssembly()
         : toolType(ToolType::GENERAL_TURNING),

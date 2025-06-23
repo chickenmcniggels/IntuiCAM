@@ -1,8 +1,6 @@
 ﻿#include "toolmanagementtab.h"
 #include "toolmanagementdialog.h"
 #include "IntuiCAM/Toolpath/ToolTypes.h"
-#include "mainwindow.h"
-#include "materialmanager.h"
 
 #include <QHeaderView>
 #include <QMessageBox>
@@ -624,11 +622,7 @@ void ToolManagementTab::addNewTool() {
     // Clean up any existing tools with empty IDs before adding new tool
     cleanupEmptyIdTools();
     
-    MaterialManager* mm = nullptr;
-    if (auto mw = qobject_cast<MainWindow*>(parent())) {
-        mm = mw->materialManager();
-    }
-    auto dialog = new ToolManagementDialog(IntuiCAM::Toolpath::ToolType::GENERAL_TURNING, mm, this);
+    auto dialog = new ToolManagementDialog(IntuiCAM::Toolpath::ToolType::GENERAL_TURNING, this);
     
     // Connect signals to handle new tool creation
     connect(dialog, &ToolManagementDialog::toolSaved,
@@ -805,11 +799,7 @@ void ToolManagementTab::editSelectedTool() {
         }
     }
     
-    MaterialManager* mm = nullptr;
-    if (auto mw = qobject_cast<MainWindow*>(parent())) {
-        mm = mw->materialManager();
-    }
-    auto dialog = new ToolManagementDialog(toolId, mm, this);
+    auto dialog = new ToolManagementDialog(toolId, this);
     
     // Connect signals
     connect(dialog, &ToolManagementDialog::toolSaved,
@@ -2133,11 +2123,7 @@ void ToolManagementTab::onToolPropertiesAction() {
     // Open a properties dialog for the selected tool
     QString toolId = getSelectedToolId();
     if (!toolId.isEmpty()) {
-        MaterialManager* mm = nullptr;
-        if (auto mw = qobject_cast<MainWindow*>(parent())) {
-            mm = mw->materialManager();
-        }
-        auto dialog = new ToolManagementDialog(toolId, mm, this);
+        auto dialog = new ToolManagementDialog(toolId, this);
         
         // Connect save signal to refresh list
         connect(dialog, &ToolManagementDialog::toolSaved,

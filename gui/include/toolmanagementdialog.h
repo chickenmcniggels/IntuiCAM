@@ -18,7 +18,6 @@
 #include <QFormLayout>
 #include <QTimer>
 #include <QSlider>
-#include <QToolBox>
 #include <QJsonObject>
 
 // OpenCASCADE includes
@@ -67,7 +66,6 @@ namespace Toolpath {
 namespace IntuiCAM {
     namespace GUI {
         class ToolManager;
-        class MaterialManager;
     }
 }
 
@@ -79,13 +77,10 @@ class ToolManagementDialog : public QDialog
 
 public:
     // Constructor for editing an existing tool
-    explicit ToolManagementDialog(const QString& toolId,
-                                  MaterialManager* materialManager,
-                                  QWidget *parent = nullptr);
+    explicit ToolManagementDialog(const QString& toolId, QWidget *parent = nullptr);
     
     // Constructor for creating a new tool
-    explicit ToolManagementDialog(IntuiCAM::Toolpath::ToolType toolType = IntuiCAM::Toolpath::ToolType::GENERAL_TURNING,
-                                  MaterialManager* materialManager = nullptr,
+    explicit ToolManagementDialog(IntuiCAM::Toolpath::ToolType toolType = IntuiCAM::Toolpath::ToolType::GENERAL_TURNING, 
                                   QWidget *parent = nullptr);
     
     ~ToolManagementDialog();
@@ -126,7 +121,6 @@ private slots:
     // UI logic change slots
     void onConstantSurfaceSpeedToggled(bool enabled);
     void onFeedPerRevolutionToggled(bool enabled);
-    void onMaterialAdded(const QString& materialName);
     
     // 3D visualization slots
     void onVisualizationModeChanged(int mode);
@@ -170,10 +164,6 @@ private:
     void createHolderPanel();
     void createCuttingDataPanel();
     void createToolInfoPanel();
-    void createMaterialCuttingSections();
-    void addMaterialCuttingSection(const QString& materialName);
-    void loadMaterialCuttingData(const IntuiCAM::Toolpath::ToolAssembly& assembly);
-    void updateMaterialCuttingDataFromFields();
     
     // 3D Visualization methods
     void setup3DViewer();
@@ -455,17 +445,6 @@ private:
     
     // Tool manager reference for broader integration
     IntuiCAM::GUI::ToolManager* m_toolManager;
-    IntuiCAM::GUI::MaterialManager* m_materialManager;
-
-    struct MaterialWidgetSet {
-        QCheckBox* enable;
-        QDoubleSpinBox* speed;
-        QDoubleSpinBox* feed;
-        QDoubleSpinBox* depth;
-    };
-
-    QToolBox* m_materialToolBox;
-    QMap<QString, MaterialWidgetSet> m_materialWidgets;
     
     // Tool geometry objects
     Handle(AIS_Shape) m_currentInsertShape;
