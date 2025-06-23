@@ -2,7 +2,6 @@ TODO (Bugs)
 - move away from naually copying .dll files to build directory
 - fix flickering 3d Viewer
 - apply a stylesheet
-- calculate raw material with user specified facing allowance
 - update documentation to include all changes 
 - correctly apply the transformations of the generated toolpath to be synced with the parts transformation along the z axis
 - change the initial viewer orientation to correspond to the standard lathe orientation
