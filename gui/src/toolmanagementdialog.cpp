@@ -510,6 +510,7 @@ void ToolManagementDialog::connectParameterSignals() {
     // Cutting Data Parameters
     if (m_constantSurfaceSpeedCheck) {
         connect(m_constantSurfaceSpeedCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onCuttingDataChanged);
+        connect(m_constantSurfaceSpeedCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onConstantSurfaceSpeedToggled);
     }
     if (m_surfaceSpeedSpin) {
         connect(m_surfaceSpeedSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
@@ -519,6 +520,7 @@ void ToolManagementDialog::connectParameterSignals() {
     }
     if (m_feedPerRevolutionCheck) {
         connect(m_feedPerRevolutionCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onCuttingDataChanged);
+        connect(m_feedPerRevolutionCheck, &QCheckBox::toggled, this, &ToolManagementDialog::onFeedPerRevolutionToggled);
     }
     if (m_cuttingFeedrateSpin) {
         connect(m_cuttingFeedrateSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ToolManagementDialog::onCuttingDataChanged);
@@ -1405,6 +1407,55 @@ void ToolManagementDialog::onISOCodeChanged() {
     // TODO: Validate ISO code format
 }
 
+void ToolManagementDialog::onConstantSurfaceSpeedToggled(bool enabled) {
+    if (!m_surfaceSpeedSpin || !m_spindleRPMSpin) {
+        return;
+    }
+    
+    // If Constant Surface Speed is ON → hide Spindle RPM, show Surface Speed
+    // If Constant Surface Speed is OFF → hide Surface Speed, show Spindle RPM
+    m_surfaceSpeedSpin->setVisible(enabled);
+    m_spindleRPMSpin->setVisible(!enabled);
+    
+    // Find and update the corresponding labels
+    // We need to search through the speed group's form layout
+    auto speedGroup = m_surfaceSpeedSpin->parentWidget();
+    while (speedGroup && !speedGroup->objectName().contains("Speed") && speedGroup->parentWidget()) {
+        speedGroup = speedGroup->parentWidget();
+    }
+    
+    if (speedGroup) {
+        auto speedLayout = speedGroup->findChild<QFormLayout*>();
+        if (speedLayout) {
+            // Find the surface speed and spindle RPM rows
+            for (int i = 0; i < speedLayout->rowCount(); ++i) {
+                auto item = speedLayout->itemAt(i, QFormLayout::FieldRole);
+                if (item && item->widget()) {
+                    if (item->widget() == m_surfaceSpeedSpin) {
+                        auto labelItem = speedLayout->itemAt(i, QFormLayout::LabelRole);
+                        if (labelItem && labelItem->widget()) {
+                            labelItem->widget()->setVisible(enabled);
+                        }
+                    } else if (item->widget() == m_spindleRPMSpin) {
+                        auto labelItem = speedLayout->itemAt(i, QFormLayout::LabelRole);
+                        if (labelItem && labelItem->widget()) {
+                            labelItem->widget()->setVisible(!enabled);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    markAsModified();
+}
+
+void ToolManagementDialog::onFeedPerRevolutionToggled(bool enabled) {
+    // Update units for feed rate controls
+    updateFeedRateUnits(enabled);
+    markAsModified();
+}
+
 void ToolManagementDialog::onVisualizationModeChanged(int mode) {
     m_currentVisualizationMode = mode;
     updateVisualizationMode(mode);
@@ -1689,6 +1740,47 @@ QString ToolManagementDialog::formatToolType(ToolType toolType) {
         case ToolType::FORM_TOOL: return "Form Tool";
         case ToolType::LIVE_TOOLING: return "Live Tooling";
         default: return "Unknown";
+    }
+}
+
+void ToolManagementDialog::updateFeedRateUnits(bool feedPerRevolution) {
+    QString unitSuffix = feedPerRevolution ? " mm/rev" : " mm/min";
+    
+    // Update cutting feedrate
+    if (m_cuttingFeedrateSpin) {
+        m_cuttingFeedrateSpin->setSuffix(unitSuffix);
+        // Adjust ranges if needed - typically mm/rev values are much smaller
+        if (feedPerRevolution) {
+            m_cuttingFeedrateSpin->setRange(0.0, 10.0);
+            m_cuttingFeedrateSpin->setDecimals(3);
+        } else {
+            m_cuttingFeedrateSpin->setRange(0.0, 1000.0);
+            m_cuttingFeedrateSpin->setDecimals(1);
+        }
+    }
+    
+    // Update lead-in feedrate
+    if (m_leadInFeedrateSpin) {
+        m_leadInFeedrateSpin->setSuffix(unitSuffix);
+        if (feedPerRevolution) {
+            m_leadInFeedrateSpin->setRange(0.0, 10.0);
+            m_leadInFeedrateSpin->setDecimals(3);
+        } else {
+            m_leadInFeedrateSpin->setRange(0.0, 1000.0);
+            m_leadInFeedrateSpin->setDecimals(1);
+        }
+    }
+    
+    // Update lead-out feedrate
+    if (m_leadOutFeedrateSpin) {
+        m_leadOutFeedrateSpin->setSuffix(unitSuffix);
+        if (feedPerRevolution) {
+            m_leadOutFeedrateSpin->setRange(0.0, 10.0);
+            m_leadOutFeedrateSpin->setDecimals(3);
+        } else {
+            m_leadOutFeedrateSpin->setRange(0.0, 1000.0);
+            m_leadOutFeedrateSpin->setDecimals(1);
+        }
     }
 }
 
@@ -2020,6 +2112,10 @@ void ToolManagementDialog::loadCuttingDataParameters(const CuttingData& cuttingD
     if (m_coolantFlowSpin) {
         m_coolantFlowSpin->setValue(cuttingData.coolantFlow);
     }
+    
+    // Apply UI logic based on current settings
+    onConstantSurfaceSpeedToggled(cuttingData.constantSurfaceSpeed);
+    onFeedPerRevolutionToggled(cuttingData.feedPerRevolution);
 }
 
 // Parameter updating methods - sync UI changes back to data

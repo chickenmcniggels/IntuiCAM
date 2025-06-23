@@ -116,6 +116,10 @@ private slots:
     void onToolInfoChanged();
     void onISOCodeChanged();
     
+    // UI logic change slots
+    void onConstantSurfaceSpeedToggled(bool enabled);
+    void onFeedPerRevolutionToggled(bool enabled);
+    
     // 3D visualization slots
     void onVisualizationModeChanged(int mode);
     void updateToolVisualization();
@@ -197,6 +201,7 @@ private:
     void setComboBoxByValue(QComboBox* comboBox, int value);
     void clearAllParameterFields();
     QString formatToolType(IntuiCAM::Toolpath::ToolType toolType);
+    void updateFeedRateUnits(bool feedPerRevolution);
     
     // Tool parameter loading methods
     void loadGeneralTurningInsertParameters(const IntuiCAM::Toolpath::GeneralTurningInsert& insert);

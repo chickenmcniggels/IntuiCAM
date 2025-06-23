@@ -10,8 +10,8 @@ TODO (Bugs)
 - switch the current chuck, loaded as a step file to a proper occt chuck implementation, allowing the jaws to adapt to the current raw material diameter
 
 
--* Tool Name in tool library not linked to name parameter in tool editor dialog
--* Tool Manager should be moved up one tab view to where its next to the machine tab not inside of the machine tab. 
+- * Tool Name in tool library not linked to name parameter in tool editor dialog
+- * Tool Manager should be moved up one tab view to where its next to the machine tab not inside of the machine tab. 
 - Tool 3d preview in dialog should replace the view controls with a view cube and the standard mouse controls
 - if a tool is generated without a name, it cannot be deleted. Ensure a tool is only saved once a name is entered
 -* the recommended tool lists in all operation tabs should be linked to the actual tool list of the application thats maintained by the tool manager
@@ -33,20 +33,20 @@ TODO (Bugs)
   * Right-hand tool: facing / chamfering
   * Neutral tool: longitudinal turning
 
-* Add **empirically derived cutting data** for each default tool for: Brass, Steel, Aluminum, Delrin, Cast Iron.
+*  **Empirically derived cutting data** will be determined for each default tool for: Brass, Steel, Aluminum, Delrin, Cast Iron. Use good estimates for now.
 
   * Sync these materials with the global material list in the Setup tab.
-  * Only show a tool in “Available Tools” if it has data for the currently selected material.
+  * Only show a tool in “Available Tools” if it has data for the currently selected material. This means that the material has to be enabled for the tool
 
-* **Cutting Data UI logic**
+* ~~**Cutting Data UI logic**~~
 
-  * If “Constant Surface Speed” = ON → hide *Spindle RPM*, show *Surface Speed*.
-  * If “Constant Surface Speed” = OFF → hide *Surface Speed*, show *Spindle RPM*.
+  ~~* If “Constant Surface Speed” = ON → hide *Spindle RPM*, show *Surface Speed*.~~
+  ~~* If “Constant Surface Speed” = OFF → hide *Surface Speed*, show *Spindle RPM*.~~ ✅ **COMPLETED**
 
-* **Feed Control UI logic**
+* ~~**Feed Control UI logic**~~
 
-  * If “Feed per Revolution” = ON → show FeedRate, Lead-In, Lead-Out in *mm/rev*.
-  * If OFF → show them in *mm/min*.
+  ~~* If “Feed per Revolution” = ON → show FeedRate, Lead-In, Lead-Out in *mm/rev*.~~
+  ~~* If OFF → show them in *mm/min*.~~ ✅ **COMPLETED**
 
 * ~~**Move capabilities** from Toolholder tab to Tool Information tab; capabilities apply to the whole tool (holder + insert).~~ ✅ **COMPLETED**
 
