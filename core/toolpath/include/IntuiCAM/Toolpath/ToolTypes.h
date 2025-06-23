@@ -413,12 +413,9 @@ struct ToolAssembly {
           toolOffset_X(0), toolOffset_Z(0),
           toolLengthOffset(0), toolRadiusOffset(0),
           turretPosition(1), isActive(true),
+          internalThreading(false), internalBoring(false), partingGrooving(false),
+          externalThreading(false), longitudinalTurning(true), facing(true), chamfering(false),
           expectedLifeMinutes(480), usageMinutes(0), cycleCount(0) {}
-    ToolAssembly() : toolType(ToolType::GENERAL_TURNING), toolOffset_X(0), toolOffset_Z(0),
-                    toolLengthOffset(0), toolRadiusOffset(0), turretPosition(1), isActive(true),
-                    internalThreading(false), internalBoring(false), partingGrooving(false),
-                    externalThreading(false), longitudinalTurning(true), facing(true), chamfering(false),
-                    expectedLifeMinutes(480), usageMinutes(0), cycleCount(0) {}
 };
 
 // ============================================================================
