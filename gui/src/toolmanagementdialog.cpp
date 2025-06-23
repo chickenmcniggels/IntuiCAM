@@ -2557,7 +2557,7 @@ bool ToolManagementDialog::saveToolAssemblyToDatabase() {
     
     // Save database
     QJsonDocument doc(database);
-    if (!file.open(QIODevice::WriteOnly)) {
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         qWarning() << "Failed to open tool assembly database for writing:" << dbPath;
         return false;
     }
