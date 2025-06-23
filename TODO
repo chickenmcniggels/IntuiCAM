@@ -10,7 +10,7 @@ TODO (Bugs)
 - switch the current chuck, loaded as a step file to a proper occt chuck implementation, allowing the jaws to adapt to the current raw material diameter
 
 
--* Tool Name in tool library not linked to name parameter in tool editor dialog
+ -* ~~Tool Name in tool library not linked to name parameter in tool editor dialog~~
 -* Tool Manager should be moved up one tab view to where its next to the machine tab not inside of the machine tab. 
 - Tool 3d preview in dialog should replace the view controls with a view cube and the standard mouse controls
 - if a tool is generated without a name, it cannot be deleted. Ensure a tool is only saved once a name is entered

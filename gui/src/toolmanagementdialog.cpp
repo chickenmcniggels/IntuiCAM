@@ -546,6 +546,7 @@ void ToolManagementDialog::connectParameterSignals() {
     // Tool Info Parameters
     if (m_toolNameEdit) {
         connect(m_toolNameEdit, &QLineEdit::textChanged, this, &ToolManagementDialog::onToolInfoChanged);
+        connect(m_toolNameEdit, &QLineEdit::textChanged, this, &ToolManagementDialog::onToolNameEdited);
     }
     if (m_vendorEdit) {
         connect(m_vendorEdit, &QLineEdit::textChanged, this, &ToolManagementDialog::onToolInfoChanged);
@@ -763,6 +764,21 @@ void ToolManagementDialog::loadToolParametersIntoFields(const ToolAssembly& asse
     // Load tool information
     if (m_toolNameEdit) {
         m_toolNameEdit->setText(QString::fromStdString(assembly.name));
+    }
+    if (m_vendorEdit) {
+        m_vendorEdit->setText(QString::fromStdString(assembly.vendor));
+    }
+    if (m_manufacturerEdit) {
+        m_manufacturerEdit->setText(QString::fromStdString(assembly.manufacturer));
+    }
+    if (m_partNumberEdit) {
+        m_partNumberEdit->setText(QString::fromStdString(assembly.partNumber));
+    }
+    if (m_productIdEdit) {
+        m_productIdEdit->setText(QString::fromStdString(assembly.productId));
+    }
+    if (m_productLinkEdit) {
+        m_productLinkEdit->setText(QString::fromStdString(assembly.productLink));
     }
     if (m_toolNumberEdit) {
         m_toolNumberEdit->setText(QString::fromStdString(assembly.toolNumber));
@@ -1351,6 +1367,11 @@ void ToolManagementDialog::onToolInfoChanged() {
     markAsModified();
 }
 
+void ToolManagementDialog::onToolNameEdited(const QString& text) {
+    m_currentToolAssembly.name = text.toStdString();
+    emit toolNameChanged(m_currentToolId, text);
+}
+
 void ToolManagementDialog::onISOCodeChanged() {
     markAsModified();
     // TODO: Validate ISO code format
@@ -1694,6 +1715,21 @@ void ToolManagementDialog::initializeToolAssemblyForType(ToolType toolType) {
 void ToolManagementDialog::updateToolInfoFromFields() {
     if (m_toolNameEdit) {
         m_currentToolAssembly.name = m_toolNameEdit->text().toStdString();
+    }
+    if (m_vendorEdit) {
+        m_currentToolAssembly.vendor = m_vendorEdit->text().toStdString();
+    }
+    if (m_manufacturerEdit) {
+        m_currentToolAssembly.manufacturer = m_manufacturerEdit->text().toStdString();
+    }
+    if (m_partNumberEdit) {
+        m_currentToolAssembly.partNumber = m_partNumberEdit->text().toStdString();
+    }
+    if (m_productIdEdit) {
+        m_currentToolAssembly.productId = m_productIdEdit->text().toStdString();
+    }
+    if (m_productLinkEdit) {
+        m_currentToolAssembly.productLink = m_productLinkEdit->text().toStdString();
     }
     if (m_toolNumberEdit) {
         m_currentToolAssembly.toolNumber = m_toolNumberEdit->text().toStdString();
@@ -2774,6 +2810,10 @@ QJsonObject ToolManagementDialog::toolAssemblyToJson(const ToolAssembly& assembl
     json["id"] = QString::fromStdString(assembly.id);
     json["name"] = QString::fromStdString(assembly.name);
     json["manufacturer"] = QString::fromStdString(assembly.manufacturer);
+    json["vendor"] = QString::fromStdString(assembly.vendor);
+    json["partNumber"] = QString::fromStdString(assembly.partNumber);
+    json["productId"] = QString::fromStdString(assembly.productId);
+    json["productLink"] = QString::fromStdString(assembly.productLink);
     json["toolType"] = static_cast<int>(assembly.toolType);
     
     // Tool positioning
@@ -2826,6 +2866,10 @@ ToolAssembly ToolManagementDialog::toolAssemblyFromJson(const QJsonObject& json)
     assembly.id = json["id"].toString().toStdString();
     assembly.name = json["name"].toString().toStdString();
     assembly.manufacturer = json["manufacturer"].toString().toStdString();
+    assembly.vendor = json["vendor"].toString().toStdString();
+    assembly.partNumber = json["partNumber"].toString().toStdString();
+    assembly.productId = json["productId"].toString().toStdString();
+    assembly.productLink = json["productLink"].toString().toStdString();
     assembly.toolType = static_cast<ToolType>(json["toolType"].toInt());
     
     // Tool positioning

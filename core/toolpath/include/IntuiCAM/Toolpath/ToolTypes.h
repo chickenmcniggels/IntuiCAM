@@ -361,6 +361,10 @@ struct ToolAssembly {
     std::string id;                  // Unique tool assembly ID
     std::string name;                // User-defined name
     std::string manufacturer;        // Tool manufacturer/vendor
+    std::string vendor;              // Supplier or brand
+    std::string partNumber;          // Manufacturer part number
+    std::string productId;           // Catalog or internal product ID
+    std::string productLink;         // Link to online catalog page
     ToolType toolType;
     
     // Component references (only one set will be used based on type)
@@ -395,9 +399,12 @@ struct ToolAssembly {
     std::string notes;
     std::map<std::string, std::string> customProperties; // Extensible properties
     
-    ToolAssembly() : toolType(ToolType::GENERAL_TURNING), toolOffset_X(0), toolOffset_Z(0),
-                    toolLengthOffset(0), toolRadiusOffset(0), turretPosition(1), isActive(true),
-                    expectedLifeMinutes(480), usageMinutes(0), cycleCount(0) {}
+    ToolAssembly()
+        : toolType(ToolType::GENERAL_TURNING),
+          toolOffset_X(0), toolOffset_Z(0),
+          toolLengthOffset(0), toolRadiusOffset(0),
+          turretPosition(1), isActive(true),
+          expectedLifeMinutes(480), usageMinutes(0), cycleCount(0) {}
 };
 
 // ============================================================================

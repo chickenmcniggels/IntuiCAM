@@ -100,6 +100,7 @@ public:
 signals:
     void toolSaved(const QString& toolId);
     void errorOccurred(const QString& message);
+    void toolNameChanged(const QString& toolId, const QString& newName);
     
     // 3D visualization signals
     void tool3DVisualizationChanged(const QString& toolId);
@@ -114,6 +115,7 @@ private slots:
     void onHolderParameterChanged();
     void onCuttingDataChanged();
     void onToolInfoChanged();
+    void onToolNameEdited(const QString& text);
     void onISOCodeChanged();
     
     // 3D visualization slots
