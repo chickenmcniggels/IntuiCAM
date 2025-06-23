@@ -14,10 +14,6 @@ int main(int argc, char *argv[])
     // This prevents the 3D viewers from being unloaded and turning black when
     // another widget gains focus or is shown.
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
-    // Relax thread affinity checks to keep the shared context valid even when
-    // dialogs or secondary windows create their own OpenGL widgets.
-    // This further reduces the chance of the viewers going black.
-    QCoreApplication::setAttribute(Qt::AA_DontCheckOpenGLContextThreadAffinity);
 
     QApplication app(argc, argv);
     
