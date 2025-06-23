@@ -148,6 +148,7 @@ private:
     // Database operations
     bool deleteToolFromDatabase(const QString& toolId, const QString& databasePath);
     bool verifyToolInDatabase(const QString& toolId);
+    void cleanupEmptyIdTools();
     
     // UI Components - Main Layout
     QVBoxLayout* m_mainLayout;

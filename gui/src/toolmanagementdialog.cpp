@@ -280,15 +280,23 @@ void ToolManagementDialog::saveCurrentTool() {
     updateToolAssemblyFromFields();
     
     // Save to database/file system
+    bool wasNewTool = m_isNewTool;
     if (saveToolAssemblyToDatabase()) {
         qDebug() << "Successfully saved tool:" << m_currentToolId;
         
         m_dataModified = false;
         
-        // Update window title to remove unsaved indicator
+        // Update window title to remove unsaved indicator and reflect new state
         QString currentTitle = windowTitle();
         if (currentTitle.endsWith(" *")) {
-            setWindowTitle(currentTitle.left(currentTitle.length() - 2));
+            currentTitle = currentTitle.left(currentTitle.length() - 2);
+        }
+        
+        // If this was a new tool that just got saved, update the title to show it's now editing
+        if (wasNewTool && !m_isNewTool) {
+            setWindowTitle(QString("Edit Tool: %1").arg(m_currentToolId));
+        } else {
+            setWindowTitle(currentTitle);
         }
         
         emit toolSaved(m_currentToolId);
@@ -660,7 +668,10 @@ QString ToolManagementDialog::generateUniqueToolId(const QString& prefix) const 
             
             for (const QJsonValue& toolValue : toolsArray) {
                 QJsonObject toolObj = toolValue.toObject();
-                existingIds.insert(toolObj["id"].toString());
+                QString existingId = toolObj["id"].toString();
+                if (!existingId.isEmpty()) {  // Skip empty IDs
+                    existingIds.insert(existingId);
+                }
             }
         }
     }
@@ -679,10 +690,18 @@ QString ToolManagementDialog::generateUniqueToolId(const QString& prefix) const 
     
     if (sequence > 999) {
         // Fallback to timestamp-based ID if we've exhausted sequence numbers
-        candidateId = QString("%1_%2_%3").arg(prefix, dateStr).arg(QDateTime::currentMSecsSinceEpoch() % 100000);
+        qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
+        candidateId = QString("%1_%2").arg(prefix).arg(timestamp);
+        
+        // Ensure this fallback ID is also unique
+        while (existingIds.contains(candidateId)) {
+            timestamp++;
+            candidateId = QString("%1_%2").arg(prefix).arg(timestamp);
+        }
     }
     
     qDebug() << "Generated unique tool ID:" << candidateId;
+    qDebug() << "Checked against" << existingIds.size() << "existing IDs";
     return candidateId;
 }
 
@@ -2593,16 +2612,36 @@ bool ToolManagementDialog::saveToolAssemblyToDatabase() {
     
     // For new tools, ensure we have a proper unique ID before saving
     if (m_isNewTool) {
-        // Double-check uniqueness before saving
         QString originalId = m_currentToolId;
         QString typePrefix = getToolTypePrefix(m_currentToolType);
-        QString uniqueId = generateUniqueToolId(typePrefix);
         
-        if (originalId != uniqueId) {
-            qDebug() << "Updating tool ID from" << originalId << "to" << uniqueId << "for uniqueness";
+        // Only generate a new ID if we don't have a valid one yet
+        // This prevents regenerating IDs during auto-save of existing new tools
+        bool needsNewId = originalId.isEmpty() || 
+                         originalId.startsWith("NEW_") || 
+                         originalId.startsWith("TEMP_") ||
+                         originalId.contains("_undefined");
+        
+        if (needsNewId) {
+            // Generate a fresh unique ID for truly new tools
+            QString uniqueId = generateUniqueToolId(typePrefix);
+            
+            // Ensure we never save with an empty ID
+            if (uniqueId.isEmpty()) {
+                qWarning() << "Generated ID is empty, using fallback";
+                uniqueId = QString("%1_%2").arg(typePrefix).arg(QDateTime::currentMSecsSinceEpoch());
+            }
+            
+            qDebug() << "Generating new tool ID from" << originalId << "to" << uniqueId;
             m_currentToolId = uniqueId;
             m_currentToolAssembly.id = m_currentToolId.toStdString();
+        } else {
+            // Keep the existing valid ID for this new tool
+            qDebug() << "Preserving existing valid ID for new tool:" << originalId;
+            m_currentToolAssembly.id = m_currentToolId.toStdString();
         }
+        
+        qDebug() << "Final tool ID for new tool:" << m_currentToolId;
     }
     
     // Convert current tool assembly to JSON
@@ -2672,6 +2711,12 @@ bool ToolManagementDialog::saveToolAssemblyToDatabase() {
     if (bytesWritten == -1) {
         qWarning() << "Failed to write tool data to database";
         return false;
+    }
+    
+    // After successfully saving a new tool for the first time, it's no longer "new"
+    if (m_isNewTool) {
+        m_isNewTool = false;
+        qDebug() << "Tool is no longer considered 'new' after first successful save:" << QString::fromStdString(m_currentToolAssembly.id);
     }
     
     qDebug() << "Successfully saved tool assembly to database:" << QString::fromStdString(m_currentToolAssembly.id);

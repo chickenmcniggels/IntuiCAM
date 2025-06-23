@@ -7,6 +7,7 @@ TODO (Bugs)
 - correctly apply the transformations of the generated toolpath to be synced with the parts transformation along the z axis
 - change the initial viewer orientation to correspond to the standard lathe orientation
 - select part orientation axis from 3d view is not working correctly. If the slection mode is enabled and something thats not a valid geometry is clicked, it should exit selection mode
+- switch the current chuck, loaded as a step file to a proper occt chuck implementation, allowing the jaws to adapt to the current raw material diameter
 
 
 -* Tool Name in tool library not linked to name parameter in tool editor dialog
@@ -15,5 +16,5 @@ TODO (Bugs)
 - if a tool is generated without a name, it cannot be deleted. Ensure a tool is only saved once a name is entered
 -* the recommended tool lists in all operation tabs should be linked to the actual tool list of the application thats maintained by the tool manager
 - adding an insert or holder iso code should automatically extraxt all information encoded in it and update the parameters. Changing a generated parameter automatically removes the iso code from the text box
-- Toolpath generation pipeline should take actual tools into account
+- Toolpath generation pipeline should take actual tool parameters into account
 - In addition to the generated toolpaths, the extracted 2d profile should also be dispalyed in the viewer and be managed by the visibility menu

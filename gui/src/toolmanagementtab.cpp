@@ -619,21 +619,30 @@ void ToolManagementTab::selectTool(const QString& toolId) {
 }
 
 void ToolManagementTab::addNewTool() {
+    // Clean up any existing tools with empty IDs before adding new tool
+    cleanupEmptyIdTools();
+    
     auto dialog = new ToolManagementDialog(IntuiCAM::Toolpath::ToolType::GENERAL_TURNING, this);
     
     // Connect signals to handle new tool creation
     connect(dialog, &ToolManagementDialog::toolSaved,
             this, [this](const QString& toolId) {
                 qDebug() << "Tool saved signal received for:" << toolId;
+                
+                // Check for empty ID
+                if (toolId.isEmpty()) {
+                    qWarning() << "Received empty tool ID from save operation";
+                    QMessageBox::warning(this, "Save Error", 
+                        "Tool was saved with an empty ID. This tool may not be manageable. Please delete it and create a new one.");
+                    refreshToolList();
+                    return;
+                }
+                
                 // Verify the tool was actually added to the database
                 if (verifyToolInDatabase(toolId)) {
                     refreshToolList();
                     selectTool(toolId); // Select the newly added tool
                     emit toolAdded(toolId);
-                    
-                    // Show success message
-                    QMessageBox::information(this, "Tool Added", 
-                        QString("Tool '%1' has been successfully added to the library.").arg(toolId));
                 } else {
                     qWarning() << "Tool was not properly saved to database:" << toolId;
                     QMessageBox::warning(this, "Save Error", 
@@ -658,6 +667,59 @@ void ToolManagementTab::addNewTool() {
     }
     
     dialog->deleteLater();
+}
+
+void ToolManagementTab::cleanupEmptyIdTools() {
+    QString databasePath = getToolAssemblyDatabasePath();
+    QFile dbFile(databasePath);
+    
+    if (!dbFile.open(QIODevice::ReadOnly)) {
+        qDebug() << "Cannot open database for cleanup";
+        return;
+    }
+
+    QByteArray data = dbFile.readAll();
+    dbFile.close();
+
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error != QJsonParseError::NoError || !doc.isObject()) {
+        qDebug() << "Cannot parse database for cleanup";
+        return;
+    }
+
+    QJsonObject rootObj = doc.object();
+    QJsonArray toolsArray = rootObj["tools"].toArray();
+    QJsonArray cleanedArray;
+    bool foundEmptyIds = false;
+    
+    // Remove tools with empty IDs and assign new IDs to any that should be kept
+    for (int i = 0; i < toolsArray.size(); ++i) {
+        QJsonObject toolObj = toolsArray[i].toObject();
+        QString currentId = toolObj["id"].toString();
+        
+        if (currentId.isEmpty()) {
+            foundEmptyIds = true;
+            qDebug() << "Found tool with empty ID, removing:" << toolObj["name"].toString();
+            // Don't add to cleaned array (effectively deleting it)
+        } else {
+            cleanedArray.append(toolObj);
+        }
+    }
+    
+    if (foundEmptyIds) {
+        // Update the database
+        rootObj["tools"] = cleanedArray;
+        rootObj["lastModified"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+        rootObj["toolCount"] = cleanedArray.size();
+        
+        if (dbFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            QJsonDocument newDoc(rootObj);
+            dbFile.write(newDoc.toJson());
+            dbFile.close();
+            qDebug() << "Cleaned up tools with empty IDs from database";
+        }
+    }
 }
 
 bool ToolManagementTab::verifyToolInDatabase(const QString& toolId) {
@@ -702,39 +764,59 @@ bool ToolManagementTab::verifyToolInDatabase(const QString& toolId) {
 
 void ToolManagementTab::editSelectedTool() {
     QString toolId = getSelectedToolId();
-    if (!toolId.isEmpty()) {
-        auto dialog = new ToolManagementDialog(toolId, this);
-        
-        // Connect signals
-        connect(dialog, &ToolManagementDialog::toolSaved,
-                this, [this](const QString& modifiedToolId) {
-                    qDebug() << "Tool saved signal received for:" << modifiedToolId;
-                    refreshToolList();
-                    selectTool(modifiedToolId); // Re-select the modified tool
-                    emit toolModified(modifiedToolId);
-                });
-        
-        // Connect error handling
-        connect(dialog, &ToolManagementDialog::errorOccurred,
-                this, [this](const QString& error) {
-                    QMessageBox::warning(this, "Tool Management Error", error);
-                    emit errorOccurred(error);
-                });
-        
-        // Show dialog and handle result
-        int result = dialog->exec();
-        if (result == QDialog::Accepted) {
-            qDebug() << "Tool edit dialog accepted, refreshing tool list";
-            refreshToolList();
-            updateToolCounts();
-            emit toolLibraryChanged();
+    
+    // Handle special case of tools with empty IDs
+    if (toolId.isEmpty()) {
+        auto selectedItems = m_toolTreeWidget->selectedItems();
+        if (!selectedItems.isEmpty()) {
+            auto item = selectedItems.first();
+            QString toolName = item->text(COL_NAME);
+            
+            auto reply = QMessageBox::question(this, "Edit Tool with Empty ID",
+                QString("Tool '%1' has an empty ID and cannot be edited safely.\n\n"
+                       "Would you like to delete this tool instead?\n\n"
+                       "You can then create a new tool with proper settings.").arg(toolName),
+                QMessageBox::Yes | QMessageBox::No);
+            
+            if (reply == QMessageBox::Yes) {
+                deleteSelectedTool();
+            }
+            return;
+        } else {
+            QMessageBox::information(this, "No Tool Selected", 
+                "Please select a tool to edit from the list.");
+            return;
         }
-        
-        dialog->deleteLater();
-    } else {
-        QMessageBox::information(this, "No Tool Selected", 
-            "Please select a tool to edit from the list.");
     }
+    
+    auto dialog = new ToolManagementDialog(toolId, this);
+    
+    // Connect signals
+    connect(dialog, &ToolManagementDialog::toolSaved,
+            this, [this](const QString& modifiedToolId) {
+                qDebug() << "Tool saved signal received for:" << modifiedToolId;
+                refreshToolList();
+                selectTool(modifiedToolId); // Re-select the modified tool
+                emit toolModified(modifiedToolId);
+            });
+    
+    // Connect error handling
+    connect(dialog, &ToolManagementDialog::errorOccurred,
+            this, [this](const QString& error) {
+                QMessageBox::warning(this, "Tool Management Error", error);
+                emit errorOccurred(error);
+            });
+    
+    // Show dialog and handle result
+    int result = dialog->exec();
+    if (result == QDialog::Accepted) {
+        qDebug() << "Tool edit dialog accepted, refreshing tool list";
+        refreshToolList();
+        updateToolCounts();
+        emit toolLibraryChanged();
+    }
+    
+    dialog->deleteLater();
 }
 
 void ToolManagementTab::deleteSelectedTool() {
@@ -812,13 +894,27 @@ bool ToolManagementTab::deleteToolFromDatabase(const QString& toolId, const QStr
     QJsonArray toolsArray = rootObj["tools"].toArray();
     QJsonArray newArray;
     bool toolFound = false;
+    int deletedToolIndex = -1;
     
     // Filter out the tool to be deleted
-    for (const QJsonValue &val : toolsArray) {
-        QJsonObject obj = val.toObject();
-        if (obj["id"].toString() == toolId) {
+    for (int i = 0; i < toolsArray.size(); ++i) {
+        QJsonObject obj = toolsArray[i].toObject();
+        QString currentId = obj["id"].toString();
+        
+        // Handle different deletion cases
+        bool shouldDelete = false;
+        if (toolId.isEmpty() && currentId.isEmpty()) {
+            // Both are empty - delete the first empty ID tool found
+            shouldDelete = true;
+        } else if (!toolId.isEmpty() && currentId == toolId) {
+            // Normal case - exact ID match
+            shouldDelete = true;
+        }
+        
+        if (shouldDelete && !toolFound) {
             toolFound = true;
-            qDebug() << "Found tool to delete:" << toolId;
+            deletedToolIndex = i;
+            qDebug() << "Found tool to delete at index" << i << "with ID:" << (currentId.isEmpty() ? "<empty>" : currentId);
             // Don't add this tool to the new array (effectively deleting it)
         } else {
             newArray.append(obj);
@@ -826,13 +922,36 @@ bool ToolManagementTab::deleteToolFromDatabase(const QString& toolId, const QStr
     }
 
     if (!toolFound) {
-        qWarning() << "Tool not found in database:" << toolId;
-        return false;
+        qWarning() << "Tool not found in database:" << (toolId.isEmpty() ? "<empty ID>" : toolId);
+        
+        // If looking for empty ID tool, try to find and delete any tool with empty ID
+        if (toolId.isEmpty()) {
+            for (int i = 0; i < toolsArray.size(); ++i) {
+                QJsonObject obj = toolsArray[i].toObject();
+                if (obj["id"].toString().isEmpty()) {
+                    // Found a tool with empty ID, delete it
+                    newArray = QJsonArray(); // Reset the array
+                    for (int j = 0; j < toolsArray.size(); ++j) {
+                        if (j != i) {
+                            newArray.append(toolsArray[j]);
+                        }
+                    }
+                    toolFound = true;
+                    qDebug() << "Deleted tool with empty ID at index:" << i;
+                    break;
+                }
+            }
+        }
+        
+        if (!toolFound) {
+            return false;
+        }
     }
 
     // Update the database with the new array
     rootObj["tools"] = newArray;
     rootObj["lastModified"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    rootObj["toolCount"] = newArray.size();
     
     // Write back to database
     if (!dbFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
@@ -849,7 +968,7 @@ bool ToolManagementTab::deleteToolFromDatabase(const QString& toolId, const QStr
         return false;
     }
 
-    qDebug() << "Successfully deleted tool from database:" << toolId;
+    qDebug() << "Successfully deleted tool from database:" << (toolId.isEmpty() ? "<empty ID>" : toolId);
     qDebug() << "Database now contains" << newArray.size() << "tools";
     return true;
 }
