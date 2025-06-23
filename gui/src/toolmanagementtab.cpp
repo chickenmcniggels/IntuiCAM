@@ -703,7 +703,35 @@ void ToolManagementTab::deleteSelectedTool() {
                     delete m_toolTreeWidget->takeTopLevelItem(index);
                 }
             }
-            
+
+            // Remove tool from the persistent database
+            QString databasePath = getToolAssemblyDatabasePath();
+            QFile dbFile(databasePath);
+            if (dbFile.open(QIODevice::ReadOnly)) {
+                QByteArray data = dbFile.readAll();
+                dbFile.close();
+
+                QJsonParseError error;
+                QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+                if (error.error == QJsonParseError::NoError && doc.isObject()) {
+                    QJsonObject rootObj = doc.object();
+                    QJsonArray toolsArray = rootObj["tools"].toArray();
+                    QJsonArray newArray;
+                    for (const QJsonValue &val : toolsArray) {
+                        QJsonObject obj = val.toObject();
+                        if (obj["id"].toString() != toolId) {
+                            newArray.append(obj);
+                        }
+                    }
+                    rootObj["tools"] = newArray;
+                    dbFile.setFileName(databasePath);
+                    if (dbFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+                        dbFile.write(QJsonDocument(rootObj).toJson());
+                        dbFile.close();
+                    }
+                }
+            }
+
             // Clear tool details display
             clearToolInfo();
             
