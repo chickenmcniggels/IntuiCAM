@@ -386,7 +386,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
 
   contourLayout->addWidget(m_qualityGroup);
 
-  QGroupBox *contourToolsGroup = new QGroupBox("Recommended Tools");
+  QGroupBox *contourToolsGroup = new QGroupBox("Available Tools");
   QVBoxLayout *contourToolsLayout = new QVBoxLayout(contourToolsGroup);
   QListWidget *contourToolsList = new QListWidget();
   contourToolsLayout->addWidget(contourToolsList);
@@ -471,7 +471,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   threadFaceBtnLayout->addStretch();
   threadingLayout->addLayout(threadFaceBtnLayout);
 
-  QGroupBox *threadingToolsGroup = new QGroupBox("Recommended Tools");
+  QGroupBox *threadingToolsGroup = new QGroupBox("Available Tools");
   QVBoxLayout *threadingToolsLayout = new QVBoxLayout(threadingToolsGroup);
   QListWidget *threadingToolsList = new QListWidget();
   threadingToolsLayout->addWidget(threadingToolsList);
@@ -551,7 +551,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   diamLeaveLayout->addStretch();
   chamferLayout->addLayout(diamLeaveLayout);
 
-  QGroupBox *chamferToolsGroup = new QGroupBox("Recommended Tools");
+  QGroupBox *chamferToolsGroup = new QGroupBox("Available Tools");
   QVBoxLayout *chamferToolsLayout = new QVBoxLayout(chamferToolsGroup);
   QListWidget *chamferToolsList = new QListWidget();
   chamferToolsLayout->addWidget(chamferToolsList);
@@ -589,7 +589,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   partCoolLayout->addStretch();
   partLayout->addLayout(partCoolLayout);
 
-  QGroupBox *partingToolsGroup = new QGroupBox("Recommended Tools");
+  QGroupBox *partingToolsGroup = new QGroupBox("Available Tools");
   QVBoxLayout *partingToolsLayout = new QVBoxLayout(partingToolsGroup);
   QListWidget *partingToolsList = new QListWidget();
   partingToolsLayout->addWidget(partingToolsList);
@@ -711,7 +711,7 @@ void SetupConfigurationPanel::setupConnections() {
             &SetupConfigurationPanel::onOperationToggled);
   }
 
-  // Connect recommended tool list interactions
+  // Connect available tool list interactions
   for (auto list : m_operationToolLists) {
     if (list) {
       connect(list, &QListWidget::itemDoubleClicked, this,
@@ -1100,7 +1100,7 @@ void SetupConfigurationPanel::updateToolRecommendations() {
     break;
   }
 
-  // Get tool recommendations for each enabled operation
+  // Determine enabled operations
   QStringList operations;
   if (isOperationEnabled("Contouring"))
     operations.append("contouring");
@@ -1111,40 +1111,36 @@ void SetupConfigurationPanel::updateToolRecommendations() {
   if (isOperationEnabled("Parting"))
     operations.append("parting");
 
+  // Map operations to tool types
+  const QMap<QString, QList<ToolType>> opToolTypes = {
+      {"contouring", {ToolType::TurningInsert, ToolType::BoringBar,
+                       ToolType::FacingTool}},
+      {"threading", {ToolType::ThreadingTool}},
+      {"chamfering", {ToolType::FormTool, ToolType::TurningInsert}},
+      {"parting", {ToolType::PartingTool}}};
+
   QSet<QString> recommendedToolIds;
 
   for (const QString &operation : operations) {
-    auto recommendations = m_toolManager->recommendTools(
-        operation, materialName, workpieceDiameter, surfaceFinish);
+    QListWidget *targetList = m_operationToolLists.value(operation);
+    if (!targetList)
+      continue;
 
-    // Add top 2 recommendations for each operation
-    int count = 0;
-    for (const auto &rec : recommendations) {
-      if (count >= 2)
-        break;
-      if (!recommendedToolIds.contains(rec.toolId)) {
-        recommendedToolIds.insert(rec.toolId);
+    const QList<ToolType> types = opToolTypes.value(operation);
+    for (ToolType type : types) {
+      QStringList ids = m_toolManager->getToolsByType(type);
+      for (const QString &id : ids) {
+        if (recommendedToolIds.contains(id))
+          continue;
 
-        CuttingTool tool = m_toolManager->getTool(rec.toolId);
-        QString itemText = QString("%1 - %2 (%3)")
-                               .arg(tool.name)
-                               .arg(operation)
-                               .arg(rec.suitabilityScore, 0, 'f', 2);
+        CuttingTool tool = m_toolManager->getTool(id);
+        QString itemText = QString("%1").arg(tool.name);
 
         QListWidgetItem *item = new QListWidgetItem(itemText);
-        item->setData(Qt::UserRole, QVariant(rec.toolId));
-        item->setToolTip(
-            QString("Tool: %1\nOperation: %2\nSuitability: %3\nReason: %4")
-                .arg(tool.name)
-                .arg(operation)
-                .arg(rec.suitabilityScore, 0, 'f', 2)
-                .arg(rec.reason));
+        item->setData(Qt::UserRole, QVariant(id));
+        targetList->addItem(item);
 
-        QListWidget *targetList = m_operationToolLists.value(operation);
-        if (targetList) {
-          targetList->addItem(item);
-        }
-        count++;
+        recommendedToolIds.insert(id);
       }
     }
   }
