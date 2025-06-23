@@ -667,6 +667,18 @@ void MainWindow::onTabChanged(int index)
     if (m_outputWindow) {
         m_outputWindow->append(QString("Switched to %1 tab").arg(tabName));
     }
+
+    // Keep the 3D viewer's OpenGL context active while the Setup tab is open
+    // to prevent it from unloading and turning black when other widgets gain
+    // focus. Continuous updates ensure the framebuffer stays valid.
+    if (m_3dViewer) {
+        if (index == 1) {
+            m_3dViewer->setContinuousUpdate(true);
+            m_3dViewer->update();
+        } else {
+            m_3dViewer->setContinuousUpdate(false);
+        }
+    }
 }
 
 void MainWindow::simulateToolpaths() {
