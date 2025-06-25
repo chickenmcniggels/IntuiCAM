@@ -184,7 +184,11 @@ private:
   QVBoxLayout *m_mainLayout;
   QWidget *m_partTab;
   QTabWidget *m_operationsTabWidget;
-  QWidget *m_contouringTab;
+  QWidget *m_facingTab;
+  QWidget *m_roughingTab;
+  QWidget *m_finishingTab;
+  QWidget *m_leftCleanupTab;
+  QWidget *m_neutralCleanupTab;
   QWidget *m_threadingTab;
   QWidget *m_chamferingTab;
   QWidget *m_partingTab;
@@ -233,23 +237,22 @@ private:
   QDoubleSpinBox *m_partingWidthSpin;
 
   // Advanced cutting parameter widgets
-  // Contouring advanced groups
-  QGroupBox *m_contourAdvancedGroup;
-  QGroupBox *m_contourFacingGroup;
-  QGroupBox *m_contourRoughGroup;
-  QGroupBox *m_contourFinishGroup;
-  QDoubleSpinBox *m_contourFacingDepthSpin;
-  QDoubleSpinBox *m_contourFacingFeedSpin;
-  QDoubleSpinBox *m_contourFacingSpeedSpin;
-  QCheckBox *m_contourFacingCssCheck;
-  QDoubleSpinBox *m_contourRoughDepthSpin;
-  QDoubleSpinBox *m_contourRoughFeedSpin;
-  QDoubleSpinBox *m_contourRoughSpeedSpin;
-  QCheckBox *m_contourRoughCssCheck;
-  QDoubleSpinBox *m_contourFinishDepthSpin;
-  QDoubleSpinBox *m_contourFinishFeedSpin;
-  QDoubleSpinBox *m_contourFinishSpeedSpin;
-  QCheckBox *m_contourFinishCssCheck;
+  // Operation advanced groups
+  QGroupBox *m_facingAdvancedGroup;
+  QGroupBox *m_roughingAdvancedGroup;
+  QGroupBox *m_finishingAdvancedGroup;
+  QDoubleSpinBox *m_facingDepthSpin;
+  QDoubleSpinBox *m_facingFeedSpin;
+  QDoubleSpinBox *m_facingSpeedSpin;
+  QCheckBox *m_facingCssCheck;
+  QDoubleSpinBox *m_roughingDepthSpin;
+  QDoubleSpinBox *m_roughingFeedSpin;
+  QDoubleSpinBox *m_roughingSpeedSpin;
+  QCheckBox *m_roughingCssCheck;
+  QDoubleSpinBox *m_finishingDepthSpin;
+  QDoubleSpinBox *m_finishingFeedSpin;
+  QDoubleSpinBox *m_finishingSpeedSpin;
+  QCheckBox *m_finishingCssCheck;
 
   // Legacy flat advanced members kept for compatibility
   QDoubleSpinBox *m_contourDepthSpin;
@@ -295,7 +298,11 @@ private:
   // Legacy placeholders to preserve binary compatibility
   QGroupBox *m_operationsGroup;
   QVBoxLayout *m_operationsLayout;
-  QCheckBox *m_contouringEnabledCheck;
+  QCheckBox *m_facingEnabledCheck;
+  QCheckBox *m_roughingEnabledCheck;
+  QCheckBox *m_finishingEnabledCheck;
+  QCheckBox *m_leftCleanupEnabledCheck;
+  QCheckBox *m_neutralCleanupEnabledCheck;
   QCheckBox *m_threadingEnabledCheck;
   QCheckBox *m_chamferingEnabledCheck;
   QDoubleSpinBox *m_chamferSizeSpin;

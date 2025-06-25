@@ -868,7 +868,7 @@ bool WorkspaceController::generateToolpaths()
         
         // Add a contouring operation as an example
         IntuiCAM::Toolpath::ToolpathGenerationPipeline::EnabledOperation contouringOp;
-        contouringOp.operationType = "Contouring";
+        contouringOp.operationType = "Facing";
         contouringOp.enabled = true;
         
         // Set some default parameters using the correct structure

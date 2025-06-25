@@ -1493,8 +1493,20 @@ void MainWindow::handleGenerateToolpaths()
     // Step 2: Get enabled operations from setup panel
     QStringList enabledOperations;
     if (m_setupConfigPanel) {
-        if (m_setupConfigPanel->isOperationEnabled("Contouring")) {
-            enabledOperations << "Contouring";
+        if (m_setupConfigPanel->isOperationEnabled("Facing")) {
+            enabledOperations << "Facing";
+        }
+        if (m_setupConfigPanel->isOperationEnabled("Roughing")) {
+            enabledOperations << "Roughing";
+        }
+        if (m_setupConfigPanel->isOperationEnabled("Finishing")) {
+            enabledOperations << "Finishing";
+        }
+        if (m_setupConfigPanel->isOperationEnabled("LH Cleanup")) {
+            enabledOperations << "LH Cleanup";
+        }
+        if (m_setupConfigPanel->isOperationEnabled("Neutral Cleanup")) {
+            enabledOperations << "Neutral Cleanup";
         }
         if (m_setupConfigPanel->isOperationEnabled("Threading")) {
             enabledOperations << "Threading";
@@ -1532,7 +1544,8 @@ void MainWindow::handleGenerateToolpaths()
             op.enabled = true;
             
             // Fill operation parameters based on setup panel values
-            if (opName == "Contouring") {
+            if (opName == "Facing" || opName == "Roughing" || opName == "Finishing" ||
+                opName == "LH Cleanup" || opName == "Neutral Cleanup") {
                 op.numericParams["facingAllowance"] = m_setupConfigPanel ? m_setupConfigPanel->getFacingAllowance() : 0.5;
                 op.numericParams["roughingAllowance"] = m_setupConfigPanel ? m_setupConfigPanel->getRoughingAllowance() : 0.2;
                 op.numericParams["finishingAllowance"] = m_setupConfigPanel ? m_setupConfigPanel->getFinishingAllowance() : 0.05;
