@@ -1634,11 +1634,6 @@ void SetupConfigurationPanel::updateAdvancedMode() {
 }
 
 void SetupConfigurationPanel::updateOperationAdvancedSettings(const QString& operation, bool advancedMode) {
-  // Check if this operation is enabled
-  if (!isOperationEnabled(operation)) {
-    return;
-  }
-  
   // Get the advanced group for this operation
   QGroupBox* advancedGroup = nullptr;
   if (operation == "facing") {
@@ -1651,38 +1646,41 @@ void SetupConfigurationPanel::updateOperationAdvancedSettings(const QString& ope
   } else if (operation == "parting") {
     advancedGroup = m_partingAdvancedGroup;
   }
-  
+
   if (!advancedGroup) {
     return;
   }
-  
-  if (advancedMode) {
-    // Show the advanced group
-    advancedGroup->setVisible(true);
-    
-    // Check if a tool is selected for this operation
-    bool toolSelected = isToolSelectedForOperation(operation);
-    
-    if (toolSelected) {
-      // Tool is selected, enable controls and load tool parameters
-      advancedGroup->setEnabled(true);
-      QString toolId = m_selectedToolsPerOperation.value(operation);
-      loadToolParametersToAdvancedSettings(toolId, operation);
-      
-      // Update the group title to show selected tool
-      if (m_toolManager) {
-        CuttingTool tool = m_toolManager->getTool(toolId);
-        advancedGroup->setTitle(QString("Advanced Cutting - %1").arg(tool.name));
-      }
-    } else {
-      // No tool selected, disable controls and show message
-      advancedGroup->setEnabled(false);
-      advancedGroup->setTitle("Advanced Cutting - Select a tool first");
-      clearAdvancedSettingsForOperation(operation);
+
+  bool opEnabled = isOperationEnabled(operation);
+
+  // If advanced mode is off or the operation itself is disabled, hide the group
+  if (!advancedMode || !opEnabled) {
+    advancedGroup->setVisible(false);
+    return;
+  }
+
+  // Show the advanced group now that both conditions are satisfied
+  advancedGroup->setVisible(true);
+
+  // Check if a tool is selected for this operation
+  bool toolSelected = isToolSelectedForOperation(operation);
+
+  if (toolSelected) {
+    // Tool is selected, enable controls and load tool parameters
+    advancedGroup->setEnabled(true);
+    QString toolId = m_selectedToolsPerOperation.value(operation);
+    loadToolParametersToAdvancedSettings(toolId, operation);
+
+    // Update the group title to show selected tool
+    if (m_toolManager) {
+      CuttingTool tool = m_toolManager->getTool(toolId);
+      advancedGroup->setTitle(QString("Advanced Cutting - %1").arg(tool.name));
     }
   } else {
-    // Hide the advanced group in simple mode
-    advancedGroup->setVisible(false);
+    // No tool selected, disable controls and show message
+    advancedGroup->setEnabled(false);
+    advancedGroup->setTitle("Advanced Cutting - Select a tool first");
+    clearAdvancedSettingsForOperation(operation);
   }
 }
 
