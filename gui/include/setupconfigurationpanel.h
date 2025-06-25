@@ -29,6 +29,10 @@ class QListWidgetItem;
 #include "materialmanager.h"
 #include "toolmanager.h"
 
+// Forward declarations for cutting parameters
+struct CuttingParameters;
+struct CuttingTool;
+
 namespace IntuiCAM {
 namespace GUI {
 
@@ -311,6 +315,17 @@ private:
   ToolManager *m_toolManager;
   QMap<QString, QListWidget *> m_operationToolLists;
 
+  // Tool selection tracking
+  QMap<QString, QString> m_selectedToolsPerOperation; // operation -> toolId
+  
+  // Methods for tool selection and parameter loading
+  void onToolSelectionChanged(const QString& operation, const QString& toolId);
+  void loadToolParametersToAdvancedSettings(const QString& toolId, const QString& operation);
+  void clearAdvancedSettingsForOperation(const QString& operation);
+  bool isToolSelectedForOperation(const QString& operation) const;
+  void updateOperationAdvancedSettings(const QString& operation, bool advancedMode);
+  void loadContouringParameters(const CuttingParameters& params, const CuttingTool& tool);
+  void loadPartingParameters(const CuttingParameters& params, const CuttingTool& tool);
 
 };
 

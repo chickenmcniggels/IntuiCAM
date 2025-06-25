@@ -1160,158 +1160,173 @@ void ToolManagementTab::exportToolLibrary() {
 
 void ToolManagementTab::loadDefaultTools() {
     auto reply = QMessageBox::question(this, "Load Default Tools",
-        "This will replace your current tool library with 5 realistic default tools. Continue?",
+        "This will replace your current tool library with 9 professional lathe tools. Continue?",
         QMessageBox::Yes | QMessageBox::No);
     
     if (reply == QMessageBox::Yes) {
-        // Create 5 comprehensive default tools with realistic parameters
+        // Create 9 comprehensive default tools with realistic parameters for all materials
         QJsonArray toolsArray;
         
-        // Tool 1: General Turning Tool - CNMG120408
+        // Tool 1: Right-hand tool: internal metric threading
         QJsonObject tool1;
-        tool1["id"] = "CNMG120408_GeneralTurn";
-        tool1["name"] = "CNMG120408 General Turning";
-        tool1["manufacturer"] = "Sandvik";
-        tool1["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
+        tool1["id"] = "RH_INTERNAL_THREADING_T01";
+        tool1["name"] = "Right-Hand Internal Threading";
+        tool1["manufacturer"] = "Iscar";
+        tool1["toolType"] = static_cast<int>(ToolType::THREADING);
         tool1["toolNumber"] = "T01";
         tool1["turretPosition"] = 1;
         tool1["isActive"] = true;
         tool1["toolOffset_X"] = 0.0;
         tool1["toolOffset_Z"] = 0.0;
         tool1["toolLengthOffset"] = 0.0;
-        tool1["toolRadiusOffset"] = 0.4;
-        tool1["expectedLifeMinutes"] = 480.0;
-        tool1["usageMinutes"] = 120.0;
-        tool1["cycleCount"] = 45;
-        tool1["notes"] = "Standard general turning tool for roughing and semi-finishing operations";
+        tool1["toolRadiusOffset"] = 0.0;
+        tool1["expectedLifeMinutes"] = 240.0;
+        tool1["usageMinutes"] = 0.0;
+        tool1["cycleCount"] = 0;
+        tool1["notes"] = "Right-hand internal metric threading tool for M8-M20 threads";
+        tool1["internalThreading"] = true;
+        tool1["externalThreading"] = false;
+        tool1["internalBoring"] = false;
+        tool1["partingGrooving"] = false;
+        tool1["longitudinalTurning"] = false;
+        tool1["facing"] = false;
+        tool1["chamfering"] = false;
         
-        // General Turning Insert
-        QJsonObject turningInsert1;
-        turningInsert1["isoCode"] = "CNMG120408";
-        turningInsert1["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
-        turningInsert1["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
-        turningInsert1["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
-        turningInsert1["sizeSpecifier"] = "12";
-        turningInsert1["inscribedCircle"] = 12.7;
-        turningInsert1["thickness"] = 4.76;
-        turningInsert1["cornerRadius"] = 0.8;
-        turningInsert1["cuttingEdgeLength"] = 12.7;
-        turningInsert1["width"] = 12.7;
-        turningInsert1["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
-        turningInsert1["substrate"] = "WC-Co";
-        turningInsert1["coating"] = "TiAlN";
-        turningInsert1["manufacturer"] = "Sandvik";
-        turningInsert1["partNumber"] = "CNMG 12 04 08-PM 4325";
-        turningInsert1["rake_angle"] = 0.0;
-        turningInsert1["inclination_angle"] = -6.0;
-        turningInsert1["name"] = "CNMG120408 Coated Carbide";
-        turningInsert1["isActive"] = true;
-        tool1["turningInsert"] = turningInsert1;
+        // Threading Insert
+        QJsonObject threadingInsert1;
+        threadingInsert1["isoCode"] = "16IR1.0ISO";
+        threadingInsert1["thickness"] = 3.18;
+        threadingInsert1["width"] = 6.0;
+        threadingInsert1["minThreadPitch"] = 0.75;
+        threadingInsert1["maxThreadPitch"] = 2.5;
+        threadingInsert1["internalThreads"] = true;
+        threadingInsert1["externalThreads"] = false;
+        threadingInsert1["threadProfile"] = static_cast<int>(ThreadProfile::METRIC);
+        threadingInsert1["threadProfileAngle"] = 60.0;
+        threadingInsert1["threadTipType"] = static_cast<int>(ThreadTipType::SHARP_POINT);
+        threadingInsert1["threadTipRadius"] = 0.0;
+        threadingInsert1["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+        threadingInsert1["manufacturer"] = "Iscar";
+        threadingInsert1["name"] = "16IR1.0ISO Internal Threading";
+        threadingInsert1["isActive"] = true;
+        tool1["threadingInsert"] = threadingInsert1;
         
         // Tool Holder
         QJsonObject holder1;
-        holder1["isoCode"] = "MCLNR2525M12";
+        holder1["isoCode"] = "SIR2020K16";
         holder1["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
-        holder1["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
-        holder1["cuttingWidth"] = 25.0;
-        holder1["headLength"] = 50.0;
+        holder1["clampingStyle"] = static_cast<int>(ClampingStyle::SCREW_CLAMP);
+        holder1["cuttingWidth"] = 16.0;
+        holder1["headLength"] = 40.0;
         holder1["overallLength"] = 150.0;
-        holder1["shankWidth"] = 25.0;
-        holder1["shankHeight"] = 25.0;
+        holder1["shankWidth"] = 20.0;
+        holder1["shankHeight"] = 20.0;
         holder1["isRoundShank"] = false;
-        holder1["insertSeatAngle"] = 95.0;
-        holder1["insertSetback"] = 2.0;
-        holder1["manufacturer"] = "Sandvik";
+        holder1["insertSeatAngle"] = 90.0;
+        holder1["insertSetback"] = 1.5;
+        holder1["manufacturer"] = "Iscar";
         tool1["holder"] = holder1;
         
-        // Cutting Data
+        // Cutting Data with material-specific settings
         QJsonObject cuttingData1;
         cuttingData1["constantSurfaceSpeed"] = true;
-        cuttingData1["surfaceSpeed"] = 250.0;
-        cuttingData1["spindleSpeed"] = 800;
+        cuttingData1["surfaceSpeed"] = 80.0;
+        cuttingData1["spindleSpeed"] = 300;
         cuttingData1["feedPerRevolution"] = true;
-        cuttingData1["cuttingFeedrate"] = 0.25;
-        cuttingData1["plungeFeedrate"] = 0.1;
-        cuttingData1["retractFeedrate"] = 5.0;
-        cuttingData1["maxDepthOfCut"] = 3.0;
+        cuttingData1["cuttingFeedrate"] = 1.25; // pitch dependent
+        cuttingData1["plungeFeedrate"] = 0.03;
+        cuttingData1["retractFeedrate"] = 1.5;
+        cuttingData1["maxDepthOfCut"] = 0.4;
         cuttingData1["coolantType"] = static_cast<int>(CoolantType::FLOOD);
         tool1["cuttingData"] = cuttingData1;
         
         toolsArray.append(tool1);
         
-        // Tool 2: Threading Tool - 16ER1.0ISO
+        // Tool 2: Right-hand tool: internal boring
         QJsonObject tool2;
-        tool2["id"] = "16ER10ISO_Threading";
-        tool2["name"] = "16ER1.0ISO Threading Tool";
-        tool2["manufacturer"] = "Iscar";
-        tool2["toolType"] = static_cast<int>(ToolType::THREADING);
+        tool2["id"] = "RH_INTERNAL_BORING_T02";
+        tool2["name"] = "Right-Hand Internal Boring";
+        tool2["manufacturer"] = "Kennametal";
+        tool2["toolType"] = static_cast<int>(ToolType::BORING);
         tool2["toolNumber"] = "T02";
         tool2["turretPosition"] = 2;
         tool2["isActive"] = true;
         tool2["toolOffset_X"] = 0.0;
         tool2["toolOffset_Z"] = 0.0;
         tool2["toolLengthOffset"] = 0.0;
-        tool2["toolRadiusOffset"] = 0.0;
-        tool2["expectedLifeMinutes"] = 240.0;
-        tool2["usageMinutes"] = 45.0;
-        tool2["cycleCount"] = 18;
-        tool2["notes"] = "Metric threading tool for M6-M24 threads";
+        tool2["toolRadiusOffset"] = 0.8;
+        tool2["expectedLifeMinutes"] = 360.0;
+        tool2["usageMinutes"] = 0.0;
+        tool2["cycleCount"] = 0;
+        tool2["notes"] = "Right-hand internal boring tool, min bore 15mm";
+        tool2["internalThreading"] = false;
+        tool2["externalThreading"] = false;
+        tool2["internalBoring"] = true;
+        tool2["partingGrooving"] = false;
+        tool2["longitudinalTurning"] = false;
+        tool2["facing"] = false;
+        tool2["chamfering"] = false;
         
-        // Threading Insert
-        QJsonObject threadingInsert2;
-        threadingInsert2["isoCode"] = "16ER1.0ISO";
-        threadingInsert2["thickness"] = 3.18;
-        threadingInsert2["width"] = 6.0;
-        threadingInsert2["minThreadPitch"] = 0.5;
-        threadingInsert2["maxThreadPitch"] = 2.0;
-        threadingInsert2["internalThreads"] = true;
-        threadingInsert2["externalThreads"] = true;
-        threadingInsert2["threadProfile"] = static_cast<int>(ThreadProfile::METRIC);
-        threadingInsert2["threadProfileAngle"] = 60.0;
-        threadingInsert2["threadTipType"] = static_cast<int>(ThreadTipType::SHARP_POINT);
-        threadingInsert2["threadTipRadius"] = 0.0;
-        threadingInsert2["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
-        threadingInsert2["manufacturer"] = "Iscar";
-        threadingInsert2["name"] = "16ER1.0ISO Threading Insert";
-        threadingInsert2["isActive"] = true;
-        tool2["threadingInsert"] = threadingInsert2;
+        // General Turning Insert (used for boring)
+        QJsonObject turningInsert2;
+        turningInsert2["isoCode"] = "CCMT09T304";
+        turningInsert2["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+        turningInsert2["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+        turningInsert2["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+        turningInsert2["sizeSpecifier"] = "09";
+        turningInsert2["inscribedCircle"] = 9.525;
+        turningInsert2["thickness"] = 3.97;
+        turningInsert2["cornerRadius"] = 0.4;
+        turningInsert2["cuttingEdgeLength"] = 9.525;
+        turningInsert2["width"] = 9.525;
+        turningInsert2["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+        turningInsert2["substrate"] = "WC-Co";
+        turningInsert2["coating"] = "TiAlN";
+        turningInsert2["manufacturer"] = "Kennametal";
+        turningInsert2["partNumber"] = "CCMT 09 T3 04-HP KC5010";
+        turningInsert2["rake_angle"] = 0.0;
+        turningInsert2["inclination_angle"] = -6.0;
+        turningInsert2["name"] = "CCMT09T304 Boring Insert";
+        turningInsert2["isActive"] = true;
+        tool2["turningInsert"] = turningInsert2;
         
-        // Tool Holder
+        // Tool Holder (Boring Bar)
         QJsonObject holder2;
-        holder2["isoCode"] = "SER2525M16";
+        holder2["isoCode"] = "S16R-SCLCR09";
         holder2["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
         holder2["clampingStyle"] = static_cast<int>(ClampingStyle::SCREW_CLAMP);
-        holder2["cuttingWidth"] = 16.0;
-        holder2["headLength"] = 40.0;
-        holder2["overallLength"] = 150.0;
-        holder2["shankWidth"] = 25.0;
-        holder2["shankHeight"] = 25.0;
-        holder2["isRoundShank"] = false;
-        holder2["insertSeatAngle"] = 90.0;
-        holder2["insertSetback"] = 1.5;
-        holder2["manufacturer"] = "Iscar";
+        holder2["cuttingWidth"] = 9.0;
+        holder2["headLength"] = 120.0;
+        holder2["overallLength"] = 200.0;
+        holder2["shankWidth"] = 16.0;
+        holder2["shankHeight"] = 16.0;
+        holder2["isRoundShank"] = true;
+        holder2["shankDiameter"] = 16.0;
+        holder2["insertSeatAngle"] = 95.0;
+        holder2["insertSetback"] = 1.0;
+        holder2["manufacturer"] = "Kennametal";
         tool2["holder"] = holder2;
         
         // Cutting Data
         QJsonObject cuttingData2;
         cuttingData2["constantSurfaceSpeed"] = true;
-        cuttingData2["surfaceSpeed"] = 120.0;
-        cuttingData2["spindleSpeed"] = 400;
+        cuttingData2["surfaceSpeed"] = 180.0;
+        cuttingData2["spindleSpeed"] = 600;
         cuttingData2["feedPerRevolution"] = true;
-        cuttingData2["cuttingFeedrate"] = 1.0; // pitch dependent
+        cuttingData2["cuttingFeedrate"] = 0.15;
         cuttingData2["plungeFeedrate"] = 0.05;
-        cuttingData2["retractFeedrate"] = 2.0;
-        cuttingData2["maxDepthOfCut"] = 0.6;
-        cuttingData2["coolantType"] = static_cast<int>(CoolantType::MIST);
+        cuttingData2["retractFeedrate"] = 3.0;
+        cuttingData2["maxDepthOfCut"] = 1.5;
+        cuttingData2["coolantType"] = static_cast<int>(CoolantType::FLOOD);
         tool2["cuttingData"] = cuttingData2;
         
         toolsArray.append(tool2);
         
-        // Tool 3: Grooving Tool - GTN3
+        // Tool 3: Right-hand tool: parting / grooving
         QJsonObject tool3;
-        tool3["id"] = "GTN3_Grooving";
-        tool3["name"] = "GTN3 Grooving Tool";
-        tool3["manufacturer"] = "Kyocera";
+        tool3["id"] = "RH_PARTING_GROOVING_T03";
+        tool3["name"] = "Right-Hand Parting / Grooving";
+        tool3["manufacturer"] = "Mitsubishi";
         tool3["toolType"] = static_cast<int>(ToolType::GROOVING);
         tool3["toolNumber"] = "T03";
         tool3["turretPosition"] = 3;
@@ -1321,192 +1336,532 @@ void ToolManagementTab::loadDefaultTools() {
         tool3["toolLengthOffset"] = 0.0;
         tool3["toolRadiusOffset"] = 0.0;
         tool3["expectedLifeMinutes"] = 180.0;
-        tool3["usageMinutes"] = 30.0;
-        tool3["cycleCount"] = 25;
-        tool3["notes"] = "3mm grooving tool for standard grooves and recesses";
+        tool3["usageMinutes"] = 0.0;
+        tool3["cycleCount"] = 0;
+        tool3["notes"] = "Right-hand 3mm parting and grooving tool";
+        tool3["internalThreading"] = false;
+        tool3["externalThreading"] = false;
+        tool3["internalBoring"] = false;
+        tool3["partingGrooving"] = true;
+        tool3["longitudinalTurning"] = false;
+        tool3["facing"] = false;
+        tool3["chamfering"] = false;
         
         // Grooving Insert
         QJsonObject groovingInsert3;
-        groovingInsert3["isoCode"] = "GTN3";
+        groovingInsert3["isoCode"] = "MGMN300";
         groovingInsert3["thickness"] = 3.0;
-        groovingInsert3["overallLength"] = 12.0;
+        groovingInsert3["overallLength"] = 15.0;
         groovingInsert3["width"] = 3.0;
-        groovingInsert3["cornerRadius"] = 0.1;
-        groovingInsert3["headLength"] = 8.0;
+        groovingInsert3["cornerRadius"] = 0.05;
+        groovingInsert3["headLength"] = 10.0;
         groovingInsert3["grooveWidth"] = 3.0;
         groovingInsert3["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
-        groovingInsert3["manufacturer"] = "Kyocera";
-        groovingInsert3["name"] = "GTN3 Grooving Insert";
+        groovingInsert3["manufacturer"] = "Mitsubishi";
+        groovingInsert3["name"] = "MGMN300 Parting/Grooving Insert";
         groovingInsert3["isActive"] = true;
         tool3["groovingInsert"] = groovingInsert3;
         
         // Tool Holder
         QJsonObject holder3;
-        holder3["isoCode"] = "MGEHR2525-3";
+        holder3["isoCode"] = "MGFHR2020-3";
         holder3["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
         holder3["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
         holder3["cuttingWidth"] = 3.0;
         holder3["headLength"] = 30.0;
         holder3["overallLength"] = 150.0;
-        holder3["shankWidth"] = 25.0;
-        holder3["shankHeight"] = 25.0;
+        holder3["shankWidth"] = 20.0;
+        holder3["shankHeight"] = 20.0;
         holder3["isRoundShank"] = false;
         holder3["insertSeatAngle"] = 90.0;
         holder3["insertSetback"] = 1.0;
-        holder3["manufacturer"] = "Kyocera";
+        holder3["manufacturer"] = "Mitsubishi";
         tool3["holder"] = holder3;
         
         // Cutting Data
         QJsonObject cuttingData3;
         cuttingData3["constantSurfaceSpeed"] = true;
-        cuttingData3["surfaceSpeed"] = 180.0;
-        cuttingData3["spindleSpeed"] = 600;
+        cuttingData3["surfaceSpeed"] = 120.0;
+        cuttingData3["spindleSpeed"] = 400;
         cuttingData3["feedPerRevolution"] = true;
-        cuttingData3["cuttingFeedrate"] = 0.05;
-        cuttingData3["plungeFeedrate"] = 0.02;
+        cuttingData3["cuttingFeedrate"] = 0.03;
+        cuttingData3["plungeFeedrate"] = 0.01;
         cuttingData3["retractFeedrate"] = 1.0;
-        cuttingData3["maxDepthOfCut"] = 3.0;
+        cuttingData3["maxDepthOfCut"] = 25.0;
         cuttingData3["coolantType"] = static_cast<int>(CoolantType::FLOOD);
         tool3["cuttingData"] = cuttingData3;
         
         toolsArray.append(tool3);
         
-        // Tool 4: Parting Tool - MGMN300
+        // Tool 4: Right-hand tool: external metric threading
         QJsonObject tool4;
-        tool4["id"] = "MGMN300_Parting";
-        tool4["name"] = "MGMN300 Parting Tool";
-        tool4["manufacturer"] = "Mitsubishi";
-        tool4["toolType"] = static_cast<int>(ToolType::PARTING);
+        tool4["id"] = "RH_EXTERNAL_THREADING_T04";
+        tool4["name"] = "Right-Hand External Threading";
+        tool4["manufacturer"] = "Sandvik";
+        tool4["toolType"] = static_cast<int>(ToolType::THREADING);
         tool4["toolNumber"] = "T04";
         tool4["turretPosition"] = 4;
-        tool4["isActive"] = false; // Start inactive for safety
+        tool4["isActive"] = true;
         tool4["toolOffset_X"] = 0.0;
         tool4["toolOffset_Z"] = 0.0;
         tool4["toolLengthOffset"] = 0.0;
         tool4["toolRadiusOffset"] = 0.0;
-        tool4["expectedLifeMinutes"] = 120.0;
+        tool4["expectedLifeMinutes"] = 240.0;
         tool4["usageMinutes"] = 0.0;
         tool4["cycleCount"] = 0;
-        tool4["notes"] = "3mm parting/cutoff tool for diameters up to 50mm";
+        tool4["notes"] = "Right-hand external metric threading tool for M6-M30 threads";
+        tool4["internalThreading"] = false;
+        tool4["externalThreading"] = true;
+        tool4["internalBoring"] = false;
+        tool4["partingGrooving"] = false;
+        tool4["longitudinalTurning"] = false;
+        tool4["facing"] = false;
+        tool4["chamfering"] = false;
         
-        // Grooving Insert (used for parting)
-        QJsonObject groovingInsert4;
-        groovingInsert4["isoCode"] = "MGMN300";
-        groovingInsert4["thickness"] = 3.0;
-        groovingInsert4["overallLength"] = 15.0;
-        groovingInsert4["width"] = 3.0;
-        groovingInsert4["cornerRadius"] = 0.05;
-        groovingInsert4["headLength"] = 10.0;
-        groovingInsert4["grooveWidth"] = 3.0;
-        groovingInsert4["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
-        groovingInsert4["manufacturer"] = "Mitsubishi";
-        groovingInsert4["name"] = "MGMN300 Parting Insert";
-        groovingInsert4["isActive"] = true;
-        tool4["groovingInsert"] = groovingInsert4;
+        // Threading Insert
+        QJsonObject threadingInsert4;
+        threadingInsert4["isoCode"] = "16ER1.5ISO";
+        threadingInsert4["thickness"] = 3.18;
+        threadingInsert4["width"] = 6.0;
+        threadingInsert4["minThreadPitch"] = 1.0;
+        threadingInsert4["maxThreadPitch"] = 3.5;
+        threadingInsert4["internalThreads"] = false;
+        threadingInsert4["externalThreads"] = true;
+        threadingInsert4["threadProfile"] = static_cast<int>(ThreadProfile::METRIC);
+        threadingInsert4["threadProfileAngle"] = 60.0;
+        threadingInsert4["threadTipType"] = static_cast<int>(ThreadTipType::SHARP_POINT);
+        threadingInsert4["threadTipRadius"] = 0.0;
+        threadingInsert4["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+        threadingInsert4["manufacturer"] = "Sandvik";
+        threadingInsert4["name"] = "16ER1.5ISO External Threading";
+        threadingInsert4["isActive"] = true;
+        tool4["threadingInsert"] = threadingInsert4;
         
         // Tool Holder
         QJsonObject holder4;
-        holder4["isoCode"] = "MGEHR2525-3";
-        holder4["handOrientation"] = static_cast<int>(HandOrientation::NEUTRAL);
-        holder4["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
-        holder4["cuttingWidth"] = 3.0;
-        holder4["headLength"] = 30.0;
+        holder4["isoCode"] = "SER2525M16";
+        holder4["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+        holder4["clampingStyle"] = static_cast<int>(ClampingStyle::SCREW_CLAMP);
+        holder4["cuttingWidth"] = 16.0;
+        holder4["headLength"] = 40.0;
         holder4["overallLength"] = 150.0;
         holder4["shankWidth"] = 25.0;
         holder4["shankHeight"] = 25.0;
         holder4["isRoundShank"] = false;
         holder4["insertSeatAngle"] = 90.0;
-        holder4["insertSetback"] = 0.5;
-        holder4["manufacturer"] = "Mitsubishi";
+        holder4["insertSetback"] = 1.5;
+        holder4["manufacturer"] = "Sandvik";
         tool4["holder"] = holder4;
         
         // Cutting Data
         QJsonObject cuttingData4;
         cuttingData4["constantSurfaceSpeed"] = true;
-        cuttingData4["surfaceSpeed"] = 120.0;
-        cuttingData4["spindleSpeed"] = 400;
+        cuttingData4["surfaceSpeed"] = 100.0;
+        cuttingData4["spindleSpeed"] = 350;
         cuttingData4["feedPerRevolution"] = true;
-        cuttingData4["cuttingFeedrate"] = 0.03;
-        cuttingData4["plungeFeedrate"] = 0.01;
-        cuttingData4["retractFeedrate"] = 1.0;
-        cuttingData4["maxDepthOfCut"] = 25.0; // for parting through
+        cuttingData4["cuttingFeedrate"] = 1.5; // pitch dependent
+        cuttingData4["plungeFeedrate"] = 0.04;
+        cuttingData4["retractFeedrate"] = 2.0;
+        cuttingData4["maxDepthOfCut"] = 0.5;
         cuttingData4["coolantType"] = static_cast<int>(CoolantType::FLOOD);
         tool4["cuttingData"] = cuttingData4;
         
         toolsArray.append(tool4);
         
-        // Tool 5: Boring Tool - CCMT09T308
+        // Tool 5: Left-hand tool: longitudinal turning
         QJsonObject tool5;
-        tool5["id"] = "CCMT09T308_Boring";
-        tool5["name"] = "CCMT09T308 Boring Tool";
-        tool5["manufacturer"] = "Kennametal";
-        tool5["toolType"] = static_cast<int>(ToolType::BORING);
+        tool5["id"] = "LH_LONGITUDINAL_TURNING_T05";
+        tool5["name"] = "Left-Hand Longitudinal Turning";
+        tool5["manufacturer"] = "Sandvik";
+        tool5["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
         tool5["toolNumber"] = "T05";
         tool5["turretPosition"] = 5;
         tool5["isActive"] = true;
         tool5["toolOffset_X"] = 0.0;
         tool5["toolOffset_Z"] = 0.0;
         tool5["toolLengthOffset"] = 0.0;
-        tool5["toolRadiusOffset"] = 0.8;
-        tool5["expectedLifeMinutes"] = 360.0;
-        tool5["usageMinutes"] = 85.0;
-        tool5["cycleCount"] = 32;
-        tool5["notes"] = "Boring bar for internal turning operations, min bore 20mm";
+        tool5["toolRadiusOffset"] = 0.4;
+        tool5["expectedLifeMinutes"] = 480.0;
+        tool5["usageMinutes"] = 0.0;
+        tool5["cycleCount"] = 0;
+        tool5["notes"] = "Left-hand longitudinal turning tool for roughing and finishing";
+        tool5["internalThreading"] = false;
+        tool5["externalThreading"] = false;
+        tool5["internalBoring"] = false;
+        tool5["partingGrooving"] = false;
+        tool5["longitudinalTurning"] = true;
+        tool5["facing"] = false;
+        tool5["chamfering"] = false;
         
-        // General Turning Insert (used for boring)
+        // General Turning Insert
         QJsonObject turningInsert5;
-        turningInsert5["isoCode"] = "CCMT09T308";
+        turningInsert5["isoCode"] = "CNMG120408";
         turningInsert5["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
         turningInsert5["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
         turningInsert5["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
-        turningInsert5["sizeSpecifier"] = "09";
-        turningInsert5["inscribedCircle"] = 9.525;
-        turningInsert5["thickness"] = 3.97;
+        turningInsert5["sizeSpecifier"] = "12";
+        turningInsert5["inscribedCircle"] = 12.7;
+        turningInsert5["thickness"] = 4.76;
         turningInsert5["cornerRadius"] = 0.8;
-        turningInsert5["cuttingEdgeLength"] = 9.525;
-        turningInsert5["width"] = 9.525;
+        turningInsert5["cuttingEdgeLength"] = 12.7;
+        turningInsert5["width"] = 12.7;
         turningInsert5["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
         turningInsert5["substrate"] = "WC-Co";
-        turningInsert5["coating"] = "TiCN+Al2O3+TiN";
-        turningInsert5["manufacturer"] = "Kennametal";
-        turningInsert5["partNumber"] = "CCMT 09 T3 08-KM KC5010";
-        turningInsert5["rake_angle"] = 7.0;
+        turningInsert5["coating"] = "TiAlN";
+        turningInsert5["manufacturer"] = "Sandvik";
+        turningInsert5["partNumber"] = "CNMG 12 04 08-PM 4325";
+        turningInsert5["rake_angle"] = 0.0;
         turningInsert5["inclination_angle"] = -6.0;
-        turningInsert5["name"] = "CCMT09T308 Positive Insert";
+        turningInsert5["name"] = "CNMG120408 Left-Hand Turning";
         turningInsert5["isActive"] = true;
         tool5["turningInsert"] = turningInsert5;
         
         // Tool Holder
         QJsonObject holder5;
-        holder5["isoCode"] = "A20R-SCLCR09";
-        holder5["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
-        holder5["clampingStyle"] = static_cast<int>(ClampingStyle::SCREW_CLAMP);
-        holder5["cuttingWidth"] = 20.0;
-        holder5["headLength"] = 35.0;
-        holder5["overallLength"] = 200.0;
-        holder5["shankWidth"] = 20.0;
-        holder5["shankHeight"] = 20.0;
-        holder5["isRoundShank"] = true;
-        holder5["shankDiameter"] = 20.0;
+        holder5["isoCode"] = "MCLNL2525M12";
+        holder5["handOrientation"] = static_cast<int>(HandOrientation::LEFT_HAND);
+        holder5["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+        holder5["cuttingWidth"] = 25.0;
+        holder5["headLength"] = 50.0;
+        holder5["overallLength"] = 150.0;
+        holder5["shankWidth"] = 25.0;
+        holder5["shankHeight"] = 25.0;
+        holder5["isRoundShank"] = false;
         holder5["insertSeatAngle"] = 95.0;
-        holder5["insertSetback"] = 1.5;
-        holder5["manufacturer"] = "Kennametal";
+        holder5["insertSetback"] = 2.0;
+        holder5["manufacturer"] = "Sandvik";
         tool5["holder"] = holder5;
         
         // Cutting Data
         QJsonObject cuttingData5;
         cuttingData5["constantSurfaceSpeed"] = true;
-        cuttingData5["surfaceSpeed"] = 200.0;
+        cuttingData5["surfaceSpeed"] = 250.0;
         cuttingData5["spindleSpeed"] = 800;
         cuttingData5["feedPerRevolution"] = true;
-        cuttingData5["cuttingFeedrate"] = 0.15;
-        cuttingData5["plungeFeedrate"] = 0.05;
-        cuttingData5["retractFeedrate"] = 3.0;
-        cuttingData5["maxDepthOfCut"] = 2.0;
+        cuttingData5["cuttingFeedrate"] = 0.25;
+        cuttingData5["plungeFeedrate"] = 0.1;
+        cuttingData5["retractFeedrate"] = 5.0;
+        cuttingData5["maxDepthOfCut"] = 3.0;
         cuttingData5["coolantType"] = static_cast<int>(CoolantType::FLOOD);
         tool5["cuttingData"] = cuttingData5;
         
         toolsArray.append(tool5);
+        
+        // Tool 6: Right-hand tool: longitudinal turning / facing / chamfering
+        QJsonObject tool6;
+        tool6["id"] = "RH_LONGIT_FACE_CHAMFER_T06";
+        tool6["name"] = "Right-Hand Longitudinal/Facing/Chamfering";
+        tool6["manufacturer"] = "Sandvik";
+        tool6["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
+        tool6["toolNumber"] = "T06";
+        tool6["turretPosition"] = 6;
+        tool6["isActive"] = true;
+        tool6["toolOffset_X"] = 0.0;
+        tool6["toolOffset_Z"] = 0.0;
+        tool6["toolLengthOffset"] = 0.0;
+        tool6["toolRadiusOffset"] = 0.4;
+        tool6["expectedLifeMinutes"] = 480.0;
+        tool6["usageMinutes"] = 0.0;
+        tool6["cycleCount"] = 0;
+        tool6["notes"] = "Multi-purpose right-hand turning, facing and chamfering tool";
+        tool6["internalThreading"] = false;
+        tool6["externalThreading"] = false;
+        tool6["internalBoring"] = false;
+        tool6["partingGrooving"] = false;
+        tool6["longitudinalTurning"] = true;
+        tool6["facing"] = true;
+        tool6["chamfering"] = true;
+        
+        // General Turning Insert
+        QJsonObject turningInsert6;
+        turningInsert6["isoCode"] = "CNMG120408";
+        turningInsert6["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+        turningInsert6["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+        turningInsert6["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+        turningInsert6["sizeSpecifier"] = "12";
+        turningInsert6["inscribedCircle"] = 12.7;
+        turningInsert6["thickness"] = 4.76;
+        turningInsert6["cornerRadius"] = 0.8;
+        turningInsert6["cuttingEdgeLength"] = 12.7;
+        turningInsert6["width"] = 12.7;
+        turningInsert6["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+        turningInsert6["substrate"] = "WC-Co";
+        turningInsert6["coating"] = "TiAlN";
+        turningInsert6["manufacturer"] = "Sandvik";
+        turningInsert6["partNumber"] = "CNMG 12 04 08-PM 4325";
+        turningInsert6["rake_angle"] = 0.0;
+        turningInsert6["inclination_angle"] = -6.0;
+        turningInsert6["name"] = "CNMG120408 Multi-Purpose";
+        turningInsert6["isActive"] = true;
+        tool6["turningInsert"] = turningInsert6;
+        
+        // Tool Holder
+        QJsonObject holder6;
+        holder6["isoCode"] = "MCLNR2525M12";
+        holder6["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+        holder6["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+        holder6["cuttingWidth"] = 25.0;
+        holder6["headLength"] = 50.0;
+        holder6["overallLength"] = 150.0;
+        holder6["shankWidth"] = 25.0;
+        holder6["shankHeight"] = 25.0;
+        holder6["isRoundShank"] = false;
+        holder6["insertSeatAngle"] = 95.0;
+        holder6["insertSetback"] = 2.0;
+        holder6["manufacturer"] = "Sandvik";
+        tool6["holder"] = holder6;
+        
+        // Cutting Data
+        QJsonObject cuttingData6;
+        cuttingData6["constantSurfaceSpeed"] = true;
+        cuttingData6["surfaceSpeed"] = 250.0;
+        cuttingData6["spindleSpeed"] = 800;
+        cuttingData6["feedPerRevolution"] = true;
+        cuttingData6["cuttingFeedrate"] = 0.25;
+        cuttingData6["plungeFeedrate"] = 0.1;
+        cuttingData6["retractFeedrate"] = 5.0;
+        cuttingData6["maxDepthOfCut"] = 3.0;
+        cuttingData6["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+        tool6["cuttingData"] = cuttingData6;
+        
+        toolsArray.append(tool6);
+        
+        // Tool 7: Right-hand tool: longitudinal turning
+        QJsonObject tool7;
+        tool7["id"] = "RH_LONGITUDINAL_TURNING_T07";
+        tool7["name"] = "Right-Hand Longitudinal Turning";
+        tool7["manufacturer"] = "Sandvik";
+        tool7["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
+        tool7["toolNumber"] = "T07";
+        tool7["turretPosition"] = 7;
+        tool7["isActive"] = true;
+        tool7["toolOffset_X"] = 0.0;
+        tool7["toolOffset_Z"] = 0.0;
+        tool7["toolLengthOffset"] = 0.0;
+        tool7["toolRadiusOffset"] = 0.4;
+        tool7["expectedLifeMinutes"] = 480.0;
+        tool7["usageMinutes"] = 0.0;
+        tool7["cycleCount"] = 0;
+        tool7["notes"] = "Right-hand longitudinal turning tool for general machining";
+        tool7["internalThreading"] = false;
+        tool7["externalThreading"] = false;
+        tool7["internalBoring"] = false;
+        tool7["partingGrooving"] = false;
+        tool7["longitudinalTurning"] = true;
+        tool7["facing"] = false;
+        tool7["chamfering"] = false;
+        
+        // General Turning Insert
+        QJsonObject turningInsert7;
+        turningInsert7["isoCode"] = "CNMG120408";
+        turningInsert7["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+        turningInsert7["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+        turningInsert7["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+        turningInsert7["sizeSpecifier"] = "12";
+        turningInsert7["inscribedCircle"] = 12.7;
+        turningInsert7["thickness"] = 4.76;
+        turningInsert7["cornerRadius"] = 0.8;
+        turningInsert7["cuttingEdgeLength"] = 12.7;
+        turningInsert7["width"] = 12.7;
+        turningInsert7["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+        turningInsert7["substrate"] = "WC-Co";
+        turningInsert7["coating"] = "TiAlN";
+        turningInsert7["manufacturer"] = "Sandvik";
+        turningInsert7["partNumber"] = "CNMG 12 04 08-PM 4325";
+        turningInsert7["rake_angle"] = 0.0;
+        turningInsert7["inclination_angle"] = -6.0;
+        turningInsert7["name"] = "CNMG120408 Right-Hand Turning";
+        turningInsert7["isActive"] = true;
+        tool7["turningInsert"] = turningInsert7;
+        
+        // Tool Holder
+        QJsonObject holder7;
+        holder7["isoCode"] = "MCLNR2525M12";
+        holder7["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+        holder7["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+        holder7["cuttingWidth"] = 25.0;
+        holder7["headLength"] = 50.0;
+        holder7["overallLength"] = 150.0;
+        holder7["shankWidth"] = 25.0;
+        holder7["shankHeight"] = 25.0;
+        holder7["isRoundShank"] = false;
+        holder7["insertSeatAngle"] = 95.0;
+        holder7["insertSetback"] = 2.0;
+        holder7["manufacturer"] = "Sandvik";
+        tool7["holder"] = holder7;
+        
+        // Cutting Data
+        QJsonObject cuttingData7;
+        cuttingData7["constantSurfaceSpeed"] = true;
+        cuttingData7["surfaceSpeed"] = 250.0;
+        cuttingData7["spindleSpeed"] = 800;
+        cuttingData7["feedPerRevolution"] = true;
+        cuttingData7["cuttingFeedrate"] = 0.25;
+        cuttingData7["plungeFeedrate"] = 0.1;
+        cuttingData7["retractFeedrate"] = 5.0;
+        cuttingData7["maxDepthOfCut"] = 3.0;
+        cuttingData7["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+        tool7["cuttingData"] = cuttingData7;
+        
+        toolsArray.append(tool7);
+        
+        // Tool 8: Right-hand tool: facing / chamfering
+        QJsonObject tool8;
+        tool8["id"] = "RH_FACING_CHAMFERING_T08";
+        tool8["name"] = "Right-Hand Facing / Chamfering";
+        tool8["manufacturer"] = "Sandvik";
+        tool8["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
+        tool8["toolNumber"] = "T08";
+        tool8["turretPosition"] = 8;
+        tool8["isActive"] = true;
+        tool8["toolOffset_X"] = 0.0;
+        tool8["toolOffset_Z"] = 0.0;
+        tool8["toolLengthOffset"] = 0.0;
+        tool8["toolRadiusOffset"] = 0.4;
+        tool8["expectedLifeMinutes"] = 360.0;
+        tool8["usageMinutes"] = 0.0;
+        tool8["cycleCount"] = 0;
+        tool8["notes"] = "Right-hand facing and chamfering tool for finishing operations";
+        tool8["internalThreading"] = false;
+        tool8["externalThreading"] = false;
+        tool8["internalBoring"] = false;
+        tool8["partingGrooving"] = false;
+        tool8["longitudinalTurning"] = false;
+        tool8["facing"] = true;
+        tool8["chamfering"] = true;
+        
+        // General Turning Insert
+        QJsonObject turningInsert8;
+        turningInsert8["isoCode"] = "CNMG120404";
+        turningInsert8["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+        turningInsert8["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+        turningInsert8["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+        turningInsert8["sizeSpecifier"] = "12";
+        turningInsert8["inscribedCircle"] = 12.7;
+        turningInsert8["thickness"] = 4.76;
+        turningInsert8["cornerRadius"] = 0.4;
+        turningInsert8["cuttingEdgeLength"] = 12.7;
+        turningInsert8["width"] = 12.7;
+        turningInsert8["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+        turningInsert8["substrate"] = "WC-Co";
+        turningInsert8["coating"] = "TiAlN";
+        turningInsert8["manufacturer"] = "Sandvik";
+        turningInsert8["partNumber"] = "CNMG 12 04 04-PM 4325";
+        turningInsert8["rake_angle"] = 0.0;
+        turningInsert8["inclination_angle"] = -6.0;
+        turningInsert8["name"] = "CNMG120404 Facing/Chamfering";
+        turningInsert8["isActive"] = true;
+        tool8["turningInsert"] = turningInsert8;
+        
+        // Tool Holder
+        QJsonObject holder8;
+        holder8["isoCode"] = "MCLNR2525M12";
+        holder8["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+        holder8["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+        holder8["cuttingWidth"] = 25.0;
+        holder8["headLength"] = 50.0;
+        holder8["overallLength"] = 150.0;
+        holder8["shankWidth"] = 25.0;
+        holder8["shankHeight"] = 25.0;
+        holder8["isRoundShank"] = false;
+        holder8["insertSeatAngle"] = 95.0;
+        holder8["insertSetback"] = 2.0;
+        holder8["manufacturer"] = "Sandvik";
+        tool8["holder"] = holder8;
+        
+        // Cutting Data
+        QJsonObject cuttingData8;
+        cuttingData8["constantSurfaceSpeed"] = true;
+        cuttingData8["surfaceSpeed"] = 220.0;
+        cuttingData8["spindleSpeed"] = 700;
+        cuttingData8["feedPerRevolution"] = true;
+        cuttingData8["cuttingFeedrate"] = 0.15;
+        cuttingData8["plungeFeedrate"] = 0.08;
+        cuttingData8["retractFeedrate"] = 4.0;
+        cuttingData8["maxDepthOfCut"] = 2.0;
+        cuttingData8["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+        tool8["cuttingData"] = cuttingData8;
+        
+        toolsArray.append(tool8);
+        
+        // Tool 9: Neutral tool: longitudinal turning
+        QJsonObject tool9;
+        tool9["id"] = "NEUTRAL_LONGITUDINAL_TURNING_T09";
+        tool9["name"] = "Neutral Longitudinal Turning";
+        tool9["manufacturer"] = "Iscar";
+        tool9["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
+        tool9["toolNumber"] = "T09";
+        tool9["turretPosition"] = 9;
+        tool9["isActive"] = true;
+        tool9["toolOffset_X"] = 0.0;
+        tool9["toolOffset_Z"] = 0.0;
+        tool9["toolLengthOffset"] = 0.0;
+        tool9["toolRadiusOffset"] = 0.4;
+        tool9["expectedLifeMinutes"] = 480.0;
+        tool9["usageMinutes"] = 0.0;
+        tool9["cycleCount"] = 0;
+        tool9["notes"] = "Neutral longitudinal turning tool for versatile machining";
+        tool9["internalThreading"] = false;
+        tool9["externalThreading"] = false;
+        tool9["internalBoring"] = false;
+        tool9["partingGrooving"] = false;
+        tool9["longitudinalTurning"] = true;
+        tool9["facing"] = false;
+        tool9["chamfering"] = false;
+        
+        // General Turning Insert
+        QJsonObject turningInsert9;
+        turningInsert9["isoCode"] = "CNMG120408";
+        turningInsert9["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+        turningInsert9["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+        turningInsert9["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+        turningInsert9["sizeSpecifier"] = "12";
+        turningInsert9["inscribedCircle"] = 12.7;
+        turningInsert9["thickness"] = 4.76;
+        turningInsert9["cornerRadius"] = 0.8;
+        turningInsert9["cuttingEdgeLength"] = 12.7;
+        turningInsert9["width"] = 12.7;
+        turningInsert9["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+        turningInsert9["substrate"] = "WC-Co";
+        turningInsert9["coating"] = "TiAlN";
+        turningInsert9["manufacturer"] = "Iscar";
+        turningInsert9["partNumber"] = "CNMG 12 04 08-IC 928";
+        turningInsert9["rake_angle"] = 0.0;
+        turningInsert9["inclination_angle"] = -6.0;
+        turningInsert9["name"] = "CNMG120408 Neutral Turning";
+        turningInsert9["isActive"] = true;
+        tool9["turningInsert"] = turningInsert9;
+        
+        // Tool Holder
+        QJsonObject holder9;
+        holder9["isoCode"] = "MCLNN2525M12";
+        holder9["handOrientation"] = static_cast<int>(HandOrientation::NEUTRAL);
+        holder9["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+        holder9["cuttingWidth"] = 25.0;
+        holder9["headLength"] = 50.0;
+        holder9["overallLength"] = 150.0;
+        holder9["shankWidth"] = 25.0;
+        holder9["shankHeight"] = 25.0;
+        holder9["isRoundShank"] = false;
+        holder9["insertSeatAngle"] = 95.0;
+        holder9["insertSetback"] = 2.0;
+        holder9["manufacturer"] = "Iscar";
+        tool9["holder"] = holder9;
+        
+        // Cutting Data
+        QJsonObject cuttingData9;
+        cuttingData9["constantSurfaceSpeed"] = true;
+        cuttingData9["surfaceSpeed"] = 250.0;
+        cuttingData9["spindleSpeed"] = 800;
+        cuttingData9["feedPerRevolution"] = true;
+        cuttingData9["cuttingFeedrate"] = 0.25;
+        cuttingData9["plungeFeedrate"] = 0.1;
+        cuttingData9["retractFeedrate"] = 5.0;
+        cuttingData9["maxDepthOfCut"] = 3.0;
+        cuttingData9["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+        tool9["cuttingData"] = cuttingData9;
+        
+        toolsArray.append(tool9);
         
         // Save to database
         QJsonObject database;
@@ -1524,18 +1879,22 @@ void ToolManagementTab::loadDefaultTools() {
             file.write(doc.toJson());
             file.close();
             
-            qDebug() << "Successfully saved 5 default tools to database:" << databasePath;
+            qDebug() << "Successfully saved 9 default tools to database:" << databasePath;
             
             // Refresh the tool list to show the new tools
             refreshToolList();
             
             QMessageBox::information(this, "Default Tools Loaded", 
-                "Successfully created and loaded 5 realistic default tools:\n\n"
-                "• CNMG120408 General Turning (T01)\n"
-                "• 16ER1.0ISO Threading Tool (T02)\n"
-                "• GTN3 Grooving Tool (T03)\n"
-                "• MGMN300 Parting Tool (T04)\n"
-                "• CCMT09T308 Boring Tool (T05)\n\n"
+                "Successfully created and loaded 9 professional lathe tools:\n\n"
+                "• Right-Hand Internal Threading (T01)\n"
+                "• Right-Hand Internal Boring (T02)\n"
+                "• Right-Hand Parting/Grooving (T03)\n"
+                "• Right-Hand External Threading (T04)\n"
+                "• Left-Hand Longitudinal Turning (T05)\n"
+                "• Right-Hand Longitudinal/Facing/Chamfering (T06)\n"
+                "• Right-Hand Longitudinal Turning (T07)\n"
+                "• Right-Hand Facing/Chamfering (T08)\n"
+                "• Neutral Longitudinal Turning (T09)\n\n"
                 "All tools include complete insert, holder, and cutting parameters.");
         } else {
             QMessageBox::warning(this, "Error", 
@@ -1589,155 +1948,170 @@ void ToolManagementTab::ensureDefaultToolsExist() {
 }
 
 void ToolManagementTab::createDefaultToolDatabase() {
-    qDebug() << "ToolManagementTab::createDefaultToolDatabase() - Creating 5 default tools";
-    // Create the same 5 default tools as in loadDefaultTools() but without user confirmation
+    qDebug() << "ToolManagementTab::createDefaultToolDatabase() - Creating 9 default tools";
+    // Create the same 9 default tools as in loadDefaultTools() but without user confirmation
     QJsonArray toolsArray;
     
-    // Tool 1: General Turning Tool - CNMG120408
+    // Tool 1: Right-hand tool: internal metric threading
     QJsonObject tool1;
-    tool1["id"] = "CNMG120408_GeneralTurn";
-    tool1["name"] = "CNMG120408 General Turning";
-    tool1["manufacturer"] = "Sandvik";
-    tool1["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
+    tool1["id"] = "RH_INTERNAL_THREADING_T01";
+    tool1["name"] = "Right-Hand Internal Threading";
+    tool1["manufacturer"] = "Iscar";
+    tool1["toolType"] = static_cast<int>(ToolType::THREADING);
     tool1["toolNumber"] = "T01";
     tool1["turretPosition"] = 1;
     tool1["isActive"] = true;
     tool1["toolOffset_X"] = 0.0;
     tool1["toolOffset_Z"] = 0.0;
     tool1["toolLengthOffset"] = 0.0;
-    tool1["toolRadiusOffset"] = 0.4;
-    tool1["expectedLifeMinutes"] = 480.0;
-    tool1["usageMinutes"] = 120.0;
-    tool1["cycleCount"] = 45;
-    tool1["notes"] = "Standard general turning tool for roughing and semi-finishing operations";
+    tool1["toolRadiusOffset"] = 0.0;
+    tool1["expectedLifeMinutes"] = 240.0;
+    tool1["usageMinutes"] = 0.0;
+    tool1["cycleCount"] = 0;
+    tool1["notes"] = "Right-hand internal metric threading tool for M8-M20 threads";
+    tool1["internalThreading"] = true;
+    tool1["externalThreading"] = false;
+    tool1["internalBoring"] = false;
+    tool1["partingGrooving"] = false;
+    tool1["longitudinalTurning"] = false;
+    tool1["facing"] = false;
+    tool1["chamfering"] = false;
     
-    // General Turning Insert
-    QJsonObject turningInsert1;
-    turningInsert1["isoCode"] = "CNMG120408";
-    turningInsert1["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
-    turningInsert1["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
-    turningInsert1["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
-    turningInsert1["sizeSpecifier"] = "12";
-    turningInsert1["inscribedCircle"] = 12.7;
-    turningInsert1["thickness"] = 4.76;
-    turningInsert1["cornerRadius"] = 0.8;
-    turningInsert1["cuttingEdgeLength"] = 12.7;
-    turningInsert1["width"] = 12.7;
-    turningInsert1["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
-    turningInsert1["substrate"] = "WC-Co";
-    turningInsert1["coating"] = "TiAlN";
-    turningInsert1["manufacturer"] = "Sandvik";
-    turningInsert1["partNumber"] = "CNMG 12 04 08-PM 4325";
-    turningInsert1["rake_angle"] = 0.0;
-    turningInsert1["inclination_angle"] = -6.0;
-    turningInsert1["name"] = "CNMG120408 Coated Carbide";
-    turningInsert1["isActive"] = true;
-    tool1["turningInsert"] = turningInsert1;
+    // Threading Insert
+    QJsonObject threadingInsert1;
+    threadingInsert1["isoCode"] = "16IR1.0ISO";
+    threadingInsert1["thickness"] = 3.18;
+    threadingInsert1["width"] = 6.0;
+    threadingInsert1["minThreadPitch"] = 0.75;
+    threadingInsert1["maxThreadPitch"] = 2.5;
+    threadingInsert1["internalThreads"] = true;
+    threadingInsert1["externalThreads"] = false;
+    threadingInsert1["threadProfile"] = static_cast<int>(ThreadProfile::METRIC);
+    threadingInsert1["threadProfileAngle"] = 60.0;
+    threadingInsert1["threadTipType"] = static_cast<int>(ThreadTipType::SHARP_POINT);
+    threadingInsert1["threadTipRadius"] = 0.0;
+    threadingInsert1["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+    threadingInsert1["manufacturer"] = "Iscar";
+    threadingInsert1["name"] = "16IR1.0ISO Internal Threading";
+    threadingInsert1["isActive"] = true;
+    tool1["threadingInsert"] = threadingInsert1;
     
     // Tool Holder
     QJsonObject holder1;
-    holder1["isoCode"] = "MCLNR2525M12";
+    holder1["isoCode"] = "SIR2020K16";
     holder1["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
-    holder1["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
-    holder1["cuttingWidth"] = 25.0;
-    holder1["headLength"] = 50.0;
+    holder1["clampingStyle"] = static_cast<int>(ClampingStyle::SCREW_CLAMP);
+    holder1["cuttingWidth"] = 16.0;
+    holder1["headLength"] = 40.0;
     holder1["overallLength"] = 150.0;
-    holder1["shankWidth"] = 25.0;
-    holder1["shankHeight"] = 25.0;
+    holder1["shankWidth"] = 20.0;
+    holder1["shankHeight"] = 20.0;
     holder1["isRoundShank"] = false;
-    holder1["insertSeatAngle"] = 95.0;
-    holder1["insertSetback"] = 2.0;
-    holder1["manufacturer"] = "Sandvik";
+    holder1["insertSeatAngle"] = 90.0;
+    holder1["insertSetback"] = 1.5;
+    holder1["manufacturer"] = "Iscar";
     tool1["holder"] = holder1;
     
     // Cutting Data
     QJsonObject cuttingData1;
     cuttingData1["constantSurfaceSpeed"] = true;
-    cuttingData1["surfaceSpeed"] = 250.0;
-    cuttingData1["spindleSpeed"] = 800;
+    cuttingData1["surfaceSpeed"] = 80.0;
+    cuttingData1["spindleSpeed"] = 300;
     cuttingData1["feedPerRevolution"] = true;
-    cuttingData1["cuttingFeedrate"] = 0.25;
-    cuttingData1["plungeFeedrate"] = 0.1;
-    cuttingData1["retractFeedrate"] = 5.0;
-    cuttingData1["maxDepthOfCut"] = 3.0;
+    cuttingData1["cuttingFeedrate"] = 1.25; // pitch dependent
+    cuttingData1["plungeFeedrate"] = 0.03;
+    cuttingData1["retractFeedrate"] = 1.5;
+    cuttingData1["maxDepthOfCut"] = 0.4;
     cuttingData1["coolantType"] = static_cast<int>(CoolantType::FLOOD);
     tool1["cuttingData"] = cuttingData1;
     
     toolsArray.append(tool1);
     
-    // Tool 2: Threading Tool - 16ER1.0ISO
+    // Tool 2: Right-hand tool: internal boring
     QJsonObject tool2;
-    tool2["id"] = "16ER10ISO_Threading";
-    tool2["name"] = "16ER1.0ISO Threading Tool";
-    tool2["manufacturer"] = "Iscar";
-    tool2["toolType"] = static_cast<int>(ToolType::THREADING);
+    tool2["id"] = "RH_INTERNAL_BORING_T02";
+    tool2["name"] = "Right-Hand Internal Boring";
+    tool2["manufacturer"] = "Kennametal";
+    tool2["toolType"] = static_cast<int>(ToolType::BORING);
     tool2["toolNumber"] = "T02";
     tool2["turretPosition"] = 2;
     tool2["isActive"] = true;
     tool2["toolOffset_X"] = 0.0;
     tool2["toolOffset_Z"] = 0.0;
     tool2["toolLengthOffset"] = 0.0;
-    tool2["toolRadiusOffset"] = 0.0;
-    tool2["expectedLifeMinutes"] = 240.0;
-    tool2["usageMinutes"] = 45.0;
-    tool2["cycleCount"] = 18;
-    tool2["notes"] = "Metric threading tool for M6-M24 threads";
+    tool2["toolRadiusOffset"] = 0.8;
+    tool2["expectedLifeMinutes"] = 360.0;
+    tool2["usageMinutes"] = 0.0;
+    tool2["cycleCount"] = 0;
+    tool2["notes"] = "Right-hand internal boring tool, min bore 15mm";
+    tool2["internalThreading"] = false;
+    tool2["externalThreading"] = false;
+    tool2["internalBoring"] = true;
+    tool2["partingGrooving"] = false;
+    tool2["longitudinalTurning"] = false;
+    tool2["facing"] = false;
+    tool2["chamfering"] = false;
     
-    // Threading Insert
-    QJsonObject threadingInsert2;
-    threadingInsert2["isoCode"] = "16ER1.0ISO";
-    threadingInsert2["thickness"] = 3.18;
-    threadingInsert2["width"] = 6.0;
-    threadingInsert2["minThreadPitch"] = 0.5;
-    threadingInsert2["maxThreadPitch"] = 2.0;
-    threadingInsert2["internalThreads"] = true;
-    threadingInsert2["externalThreads"] = true;
-    threadingInsert2["threadProfile"] = static_cast<int>(ThreadProfile::METRIC);
-    threadingInsert2["threadProfileAngle"] = 60.0;
-    threadingInsert2["threadTipType"] = static_cast<int>(ThreadTipType::SHARP_POINT);
-    threadingInsert2["threadTipRadius"] = 0.0;
-    threadingInsert2["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
-    threadingInsert2["manufacturer"] = "Iscar";
-    threadingInsert2["name"] = "16ER1.0ISO Threading Insert";
-    threadingInsert2["isActive"] = true;
-    tool2["threadingInsert"] = threadingInsert2;
+    // General Turning Insert (used for boring)
+    QJsonObject turningInsert2;
+    turningInsert2["isoCode"] = "CCMT09T304";
+    turningInsert2["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+    turningInsert2["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+    turningInsert2["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+    turningInsert2["sizeSpecifier"] = "09";
+    turningInsert2["inscribedCircle"] = 9.525;
+    turningInsert2["thickness"] = 3.97;
+    turningInsert2["cornerRadius"] = 0.4;
+    turningInsert2["cuttingEdgeLength"] = 9.525;
+    turningInsert2["width"] = 9.525;
+    turningInsert2["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+    turningInsert2["substrate"] = "WC-Co";
+    turningInsert2["coating"] = "TiAlN";
+    turningInsert2["manufacturer"] = "Kennametal";
+    turningInsert2["partNumber"] = "CCMT 09 T3 04-HP KC5010";
+    turningInsert2["rake_angle"] = 0.0;
+    turningInsert2["inclination_angle"] = -6.0;
+    turningInsert2["name"] = "CCMT09T304 Boring Insert";
+    turningInsert2["isActive"] = true;
+    tool2["turningInsert"] = turningInsert2;
     
-    // Tool Holder
+    // Tool Holder (Boring Bar)
     QJsonObject holder2;
-    holder2["isoCode"] = "SER2525M16";
+    holder2["isoCode"] = "S16R-SCLCR09";
     holder2["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
     holder2["clampingStyle"] = static_cast<int>(ClampingStyle::SCREW_CLAMP);
-    holder2["cuttingWidth"] = 16.0;
-    holder2["headLength"] = 40.0;
-    holder2["overallLength"] = 150.0;
-    holder2["shankWidth"] = 25.0;
-    holder2["shankHeight"] = 25.0;
-    holder2["isRoundShank"] = false;
-    holder2["insertSeatAngle"] = 90.0;
-    holder2["insertSetback"] = 1.5;
-    holder2["manufacturer"] = "Iscar";
+    holder2["cuttingWidth"] = 9.0;
+    holder2["headLength"] = 120.0;
+    holder2["overallLength"] = 200.0;
+    holder2["shankWidth"] = 16.0;
+    holder2["shankHeight"] = 16.0;
+    holder2["isRoundShank"] = true;
+    holder2["shankDiameter"] = 16.0;
+    holder2["insertSeatAngle"] = 95.0;
+    holder2["insertSetback"] = 1.0;
+    holder2["manufacturer"] = "Kennametal";
     tool2["holder"] = holder2;
     
     // Cutting Data
     QJsonObject cuttingData2;
     cuttingData2["constantSurfaceSpeed"] = true;
-    cuttingData2["surfaceSpeed"] = 120.0;
-    cuttingData2["spindleSpeed"] = 400;
+    cuttingData2["surfaceSpeed"] = 180.0;
+    cuttingData2["spindleSpeed"] = 600;
     cuttingData2["feedPerRevolution"] = true;
-    cuttingData2["cuttingFeedrate"] = 1.0; // pitch dependent
+    cuttingData2["cuttingFeedrate"] = 0.15;
     cuttingData2["plungeFeedrate"] = 0.05;
-    cuttingData2["retractFeedrate"] = 2.0;
-    cuttingData2["maxDepthOfCut"] = 0.6;
-    cuttingData2["coolantType"] = static_cast<int>(CoolantType::MIST);
+    cuttingData2["retractFeedrate"] = 3.0;
+    cuttingData2["maxDepthOfCut"] = 1.5;
+    cuttingData2["coolantType"] = static_cast<int>(CoolantType::FLOOD);
     tool2["cuttingData"] = cuttingData2;
     
     toolsArray.append(tool2);
     
-    // Tool 3: Grooving Tool - GTN3
+    // Tool 3: Right-hand tool: parting / grooving
     QJsonObject tool3;
-    tool3["id"] = "GTN3_Grooving";
-    tool3["name"] = "GTN3 Grooving Tool";
-    tool3["manufacturer"] = "Kyocera";
+    tool3["id"] = "RH_PARTING_GROOVING_T03";
+    tool3["name"] = "Right-Hand Parting / Grooving";
+    tool3["manufacturer"] = "Mitsubishi";
     tool3["toolType"] = static_cast<int>(ToolType::GROOVING);
     tool3["toolNumber"] = "T03";
     tool3["turretPosition"] = 3;
@@ -1747,192 +2121,532 @@ void ToolManagementTab::createDefaultToolDatabase() {
     tool3["toolLengthOffset"] = 0.0;
     tool3["toolRadiusOffset"] = 0.0;
     tool3["expectedLifeMinutes"] = 180.0;
-    tool3["usageMinutes"] = 30.0;
-    tool3["cycleCount"] = 25;
-    tool3["notes"] = "3mm grooving tool for standard grooves and recesses";
+    tool3["usageMinutes"] = 0.0;
+    tool3["cycleCount"] = 0;
+    tool3["notes"] = "Right-hand 3mm parting and grooving tool";
+    tool3["internalThreading"] = false;
+    tool3["externalThreading"] = false;
+    tool3["internalBoring"] = false;
+    tool3["partingGrooving"] = true;
+    tool3["longitudinalTurning"] = false;
+    tool3["facing"] = false;
+    tool3["chamfering"] = false;
     
     // Grooving Insert
     QJsonObject groovingInsert3;
-    groovingInsert3["isoCode"] = "GTN3";
+    groovingInsert3["isoCode"] = "MGMN300";
     groovingInsert3["thickness"] = 3.0;
-    groovingInsert3["overallLength"] = 12.0;
+    groovingInsert3["overallLength"] = 15.0;
     groovingInsert3["width"] = 3.0;
-    groovingInsert3["cornerRadius"] = 0.1;
-    groovingInsert3["headLength"] = 8.0;
+    groovingInsert3["cornerRadius"] = 0.05;
+    groovingInsert3["headLength"] = 10.0;
     groovingInsert3["grooveWidth"] = 3.0;
     groovingInsert3["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
-    groovingInsert3["manufacturer"] = "Kyocera";
-    groovingInsert3["name"] = "GTN3 Grooving Insert";
+    groovingInsert3["manufacturer"] = "Mitsubishi";
+    groovingInsert3["name"] = "MGMN300 Parting/Grooving Insert";
     groovingInsert3["isActive"] = true;
     tool3["groovingInsert"] = groovingInsert3;
     
     // Tool Holder
     QJsonObject holder3;
-    holder3["isoCode"] = "MGEHR2525-3";
+    holder3["isoCode"] = "MGFHR2020-3";
     holder3["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
     holder3["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
     holder3["cuttingWidth"] = 3.0;
     holder3["headLength"] = 30.0;
     holder3["overallLength"] = 150.0;
-    holder3["shankWidth"] = 25.0;
-    holder3["shankHeight"] = 25.0;
+    holder3["shankWidth"] = 20.0;
+    holder3["shankHeight"] = 20.0;
     holder3["isRoundShank"] = false;
     holder3["insertSeatAngle"] = 90.0;
     holder3["insertSetback"] = 1.0;
-    holder3["manufacturer"] = "Kyocera";
+    holder3["manufacturer"] = "Mitsubishi";
     tool3["holder"] = holder3;
     
     // Cutting Data
     QJsonObject cuttingData3;
     cuttingData3["constantSurfaceSpeed"] = true;
-    cuttingData3["surfaceSpeed"] = 180.0;
-    cuttingData3["spindleSpeed"] = 600;
+    cuttingData3["surfaceSpeed"] = 120.0;
+    cuttingData3["spindleSpeed"] = 400;
     cuttingData3["feedPerRevolution"] = true;
-    cuttingData3["cuttingFeedrate"] = 0.05;
-    cuttingData3["plungeFeedrate"] = 0.02;
+    cuttingData3["cuttingFeedrate"] = 0.03;
+    cuttingData3["plungeFeedrate"] = 0.01;
     cuttingData3["retractFeedrate"] = 1.0;
-    cuttingData3["maxDepthOfCut"] = 3.0;
+    cuttingData3["maxDepthOfCut"] = 25.0;
     cuttingData3["coolantType"] = static_cast<int>(CoolantType::FLOOD);
     tool3["cuttingData"] = cuttingData3;
     
     toolsArray.append(tool3);
     
-    // Tool 4: Parting Tool - MGMN300
+    // Tool 4: Right-hand tool: external metric threading
     QJsonObject tool4;
-    tool4["id"] = "MGMN300_Parting";
-    tool4["name"] = "MGMN300 Parting Tool";
-    tool4["manufacturer"] = "Mitsubishi";
-    tool4["toolType"] = static_cast<int>(ToolType::PARTING);
+    tool4["id"] = "RH_EXTERNAL_THREADING_T04";
+    tool4["name"] = "Right-Hand External Threading";
+    tool4["manufacturer"] = "Sandvik";
+    tool4["toolType"] = static_cast<int>(ToolType::THREADING);
     tool4["toolNumber"] = "T04";
     tool4["turretPosition"] = 4;
-    tool4["isActive"] = false; // Start inactive for safety
+    tool4["isActive"] = true;
     tool4["toolOffset_X"] = 0.0;
     tool4["toolOffset_Z"] = 0.0;
     tool4["toolLengthOffset"] = 0.0;
     tool4["toolRadiusOffset"] = 0.0;
-    tool4["expectedLifeMinutes"] = 120.0;
+    tool4["expectedLifeMinutes"] = 240.0;
     tool4["usageMinutes"] = 0.0;
     tool4["cycleCount"] = 0;
-    tool4["notes"] = "3mm parting/cutoff tool for diameters up to 50mm";
+    tool4["notes"] = "Right-hand external metric threading tool for M6-M30 threads";
+    tool4["internalThreading"] = false;
+    tool4["externalThreading"] = true;
+    tool4["internalBoring"] = false;
+    tool4["partingGrooving"] = false;
+    tool4["longitudinalTurning"] = false;
+    tool4["facing"] = false;
+    tool4["chamfering"] = false;
     
-    // Grooving Insert (used for parting)
-    QJsonObject groovingInsert4;
-    groovingInsert4["isoCode"] = "MGMN300";
-    groovingInsert4["thickness"] = 3.0;
-    groovingInsert4["overallLength"] = 15.0;
-    groovingInsert4["width"] = 3.0;
-    groovingInsert4["cornerRadius"] = 0.05;
-    groovingInsert4["headLength"] = 10.0;
-    groovingInsert4["grooveWidth"] = 3.0;
-    groovingInsert4["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
-    groovingInsert4["manufacturer"] = "Mitsubishi";
-    groovingInsert4["name"] = "MGMN300 Parting Insert";
-    groovingInsert4["isActive"] = true;
-    tool4["groovingInsert"] = groovingInsert4;
+    // Threading Insert
+    QJsonObject threadingInsert4;
+    threadingInsert4["isoCode"] = "16ER1.5ISO";
+    threadingInsert4["thickness"] = 3.18;
+    threadingInsert4["width"] = 6.0;
+    threadingInsert4["minThreadPitch"] = 1.0;
+    threadingInsert4["maxThreadPitch"] = 3.5;
+    threadingInsert4["internalThreads"] = false;
+    threadingInsert4["externalThreads"] = true;
+    threadingInsert4["threadProfile"] = static_cast<int>(ThreadProfile::METRIC);
+    threadingInsert4["threadProfileAngle"] = 60.0;
+    threadingInsert4["threadTipType"] = static_cast<int>(ThreadTipType::SHARP_POINT);
+    threadingInsert4["threadTipRadius"] = 0.0;
+    threadingInsert4["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+    threadingInsert4["manufacturer"] = "Sandvik";
+    threadingInsert4["name"] = "16ER1.5ISO External Threading";
+    threadingInsert4["isActive"] = true;
+    tool4["threadingInsert"] = threadingInsert4;
     
     // Tool Holder
     QJsonObject holder4;
-    holder4["isoCode"] = "MGEHR2525-3";
-    holder4["handOrientation"] = static_cast<int>(HandOrientation::NEUTRAL);
-    holder4["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
-    holder4["cuttingWidth"] = 3.0;
-    holder4["headLength"] = 30.0;
+    holder4["isoCode"] = "SER2525M16";
+    holder4["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+    holder4["clampingStyle"] = static_cast<int>(ClampingStyle::SCREW_CLAMP);
+    holder4["cuttingWidth"] = 16.0;
+    holder4["headLength"] = 40.0;
     holder4["overallLength"] = 150.0;
     holder4["shankWidth"] = 25.0;
     holder4["shankHeight"] = 25.0;
     holder4["isRoundShank"] = false;
     holder4["insertSeatAngle"] = 90.0;
-    holder4["insertSetback"] = 0.5;
-    holder4["manufacturer"] = "Mitsubishi";
+    holder4["insertSetback"] = 1.5;
+    holder4["manufacturer"] = "Sandvik";
     tool4["holder"] = holder4;
     
     // Cutting Data
     QJsonObject cuttingData4;
     cuttingData4["constantSurfaceSpeed"] = true;
-    cuttingData4["surfaceSpeed"] = 120.0;
-    cuttingData4["spindleSpeed"] = 400;
+    cuttingData4["surfaceSpeed"] = 100.0;
+    cuttingData4["spindleSpeed"] = 350;
     cuttingData4["feedPerRevolution"] = true;
-    cuttingData4["cuttingFeedrate"] = 0.03;
-    cuttingData4["plungeFeedrate"] = 0.01;
-    cuttingData4["retractFeedrate"] = 1.0;
-    cuttingData4["maxDepthOfCut"] = 25.0; // for parting through
+    cuttingData4["cuttingFeedrate"] = 1.5; // pitch dependent
+    cuttingData4["plungeFeedrate"] = 0.04;
+    cuttingData4["retractFeedrate"] = 2.0;
+    cuttingData4["maxDepthOfCut"] = 0.5;
     cuttingData4["coolantType"] = static_cast<int>(CoolantType::FLOOD);
     tool4["cuttingData"] = cuttingData4;
     
     toolsArray.append(tool4);
     
-    // Tool 5: Boring Tool - CCMT09T308
+    // Tool 5: Left-hand tool: longitudinal turning
     QJsonObject tool5;
-    tool5["id"] = "CCMT09T308_Boring";
-    tool5["name"] = "CCMT09T308 Boring Tool";
-    tool5["manufacturer"] = "Kennametal";
-    tool5["toolType"] = static_cast<int>(ToolType::BORING);
+    tool5["id"] = "LH_LONGITUDINAL_TURNING_T05";
+    tool5["name"] = "Left-Hand Longitudinal Turning";
+    tool5["manufacturer"] = "Sandvik";
+    tool5["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
     tool5["toolNumber"] = "T05";
     tool5["turretPosition"] = 5;
     tool5["isActive"] = true;
     tool5["toolOffset_X"] = 0.0;
     tool5["toolOffset_Z"] = 0.0;
     tool5["toolLengthOffset"] = 0.0;
-    tool5["toolRadiusOffset"] = 0.8;
-    tool5["expectedLifeMinutes"] = 360.0;
-    tool5["usageMinutes"] = 85.0;
-    tool5["cycleCount"] = 32;
-    tool5["notes"] = "Boring bar for internal turning operations, min bore 20mm";
+    tool5["toolRadiusOffset"] = 0.4;
+    tool5["expectedLifeMinutes"] = 480.0;
+    tool5["usageMinutes"] = 0.0;
+    tool5["cycleCount"] = 0;
+    tool5["notes"] = "Left-hand longitudinal turning tool for roughing and finishing";
+    tool5["internalThreading"] = false;
+    tool5["externalThreading"] = false;
+    tool5["internalBoring"] = false;
+    tool5["partingGrooving"] = false;
+    tool5["longitudinalTurning"] = true;
+    tool5["facing"] = false;
+    tool5["chamfering"] = false;
     
-    // General Turning Insert (used for boring)
+    // General Turning Insert
     QJsonObject turningInsert5;
-    turningInsert5["isoCode"] = "CCMT09T308";
+    turningInsert5["isoCode"] = "CNMG120408";
     turningInsert5["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
     turningInsert5["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
     turningInsert5["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
-    turningInsert5["sizeSpecifier"] = "09";
-    turningInsert5["inscribedCircle"] = 9.525;
-    turningInsert5["thickness"] = 3.97;
+    turningInsert5["sizeSpecifier"] = "12";
+    turningInsert5["inscribedCircle"] = 12.7;
+    turningInsert5["thickness"] = 4.76;
     turningInsert5["cornerRadius"] = 0.8;
-    turningInsert5["cuttingEdgeLength"] = 9.525;
-    turningInsert5["width"] = 9.525;
+    turningInsert5["cuttingEdgeLength"] = 12.7;
+    turningInsert5["width"] = 12.7;
     turningInsert5["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
     turningInsert5["substrate"] = "WC-Co";
-    turningInsert5["coating"] = "TiCN+Al2O3+TiN";
-    turningInsert5["manufacturer"] = "Kennametal";
-    turningInsert5["partNumber"] = "CCMT 09 T3 08-KM KC5010";
-    turningInsert5["rake_angle"] = 7.0;
+    turningInsert5["coating"] = "TiAlN";
+    turningInsert5["manufacturer"] = "Sandvik";
+    turningInsert5["partNumber"] = "CNMG 12 04 08-PM 4325";
+    turningInsert5["rake_angle"] = 0.0;
     turningInsert5["inclination_angle"] = -6.0;
-    turningInsert5["name"] = "CCMT09T308 Positive Insert";
+    turningInsert5["name"] = "CNMG120408 Left-Hand Turning";
     turningInsert5["isActive"] = true;
     tool5["turningInsert"] = turningInsert5;
     
     // Tool Holder
     QJsonObject holder5;
-    holder5["isoCode"] = "A20R-SCLCR09";
-    holder5["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
-    holder5["clampingStyle"] = static_cast<int>(ClampingStyle::SCREW_CLAMP);
-    holder5["cuttingWidth"] = 20.0;
-    holder5["headLength"] = 35.0;
-    holder5["overallLength"] = 200.0;
-    holder5["shankWidth"] = 20.0;
-    holder5["shankHeight"] = 20.0;
-    holder5["isRoundShank"] = true;
-    holder5["shankDiameter"] = 20.0;
+    holder5["isoCode"] = "MCLNL2525M12";
+    holder5["handOrientation"] = static_cast<int>(HandOrientation::LEFT_HAND);
+    holder5["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+    holder5["cuttingWidth"] = 25.0;
+    holder5["headLength"] = 50.0;
+    holder5["overallLength"] = 150.0;
+    holder5["shankWidth"] = 25.0;
+    holder5["shankHeight"] = 25.0;
+    holder5["isRoundShank"] = false;
     holder5["insertSeatAngle"] = 95.0;
-    holder5["insertSetback"] = 1.5;
-    holder5["manufacturer"] = "Kennametal";
+    holder5["insertSetback"] = 2.0;
+    holder5["manufacturer"] = "Sandvik";
     tool5["holder"] = holder5;
     
     // Cutting Data
     QJsonObject cuttingData5;
     cuttingData5["constantSurfaceSpeed"] = true;
-    cuttingData5["surfaceSpeed"] = 200.0;
+    cuttingData5["surfaceSpeed"] = 250.0;
     cuttingData5["spindleSpeed"] = 800;
     cuttingData5["feedPerRevolution"] = true;
-    cuttingData5["cuttingFeedrate"] = 0.15;
-    cuttingData5["plungeFeedrate"] = 0.05;
-    cuttingData5["retractFeedrate"] = 3.0;
-    cuttingData5["maxDepthOfCut"] = 2.0;
+    cuttingData5["cuttingFeedrate"] = 0.25;
+    cuttingData5["plungeFeedrate"] = 0.1;
+    cuttingData5["retractFeedrate"] = 5.0;
+    cuttingData5["maxDepthOfCut"] = 3.0;
     cuttingData5["coolantType"] = static_cast<int>(CoolantType::FLOOD);
     tool5["cuttingData"] = cuttingData5;
     
     toolsArray.append(tool5);
+    
+    // Tool 6: Right-hand tool: longitudinal turning / facing / chamfering
+    QJsonObject tool6;
+    tool6["id"] = "RH_LONGIT_FACE_CHAMFER_T06";
+    tool6["name"] = "Right-Hand Longitudinal/Facing/Chamfering";
+    tool6["manufacturer"] = "Sandvik";
+    tool6["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
+    tool6["toolNumber"] = "T06";
+    tool6["turretPosition"] = 6;
+    tool6["isActive"] = true;
+    tool6["toolOffset_X"] = 0.0;
+    tool6["toolOffset_Z"] = 0.0;
+    tool6["toolLengthOffset"] = 0.0;
+    tool6["toolRadiusOffset"] = 0.4;
+    tool6["expectedLifeMinutes"] = 480.0;
+    tool6["usageMinutes"] = 0.0;
+    tool6["cycleCount"] = 0;
+    tool6["notes"] = "Multi-purpose right-hand turning, facing and chamfering tool";
+    tool6["internalThreading"] = false;
+    tool6["externalThreading"] = false;
+    tool6["internalBoring"] = false;
+    tool6["partingGrooving"] = false;
+    tool6["longitudinalTurning"] = true;
+    tool6["facing"] = true;
+    tool6["chamfering"] = true;
+    
+    // General Turning Insert
+    QJsonObject turningInsert6;
+    turningInsert6["isoCode"] = "CNMG120408";
+    turningInsert6["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+    turningInsert6["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+    turningInsert6["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+    turningInsert6["sizeSpecifier"] = "12";
+    turningInsert6["inscribedCircle"] = 12.7;
+    turningInsert6["thickness"] = 4.76;
+    turningInsert6["cornerRadius"] = 0.8;
+    turningInsert6["cuttingEdgeLength"] = 12.7;
+    turningInsert6["width"] = 12.7;
+    turningInsert6["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+    turningInsert6["substrate"] = "WC-Co";
+    turningInsert6["coating"] = "TiAlN";
+    turningInsert6["manufacturer"] = "Sandvik";
+    turningInsert6["partNumber"] = "CNMG 12 04 08-PM 4325";
+    turningInsert6["rake_angle"] = 0.0;
+    turningInsert6["inclination_angle"] = -6.0;
+    turningInsert6["name"] = "CNMG120408 Multi-Purpose";
+    turningInsert6["isActive"] = true;
+    tool6["turningInsert"] = turningInsert6;
+    
+    // Tool Holder
+    QJsonObject holder6;
+    holder6["isoCode"] = "MCLNR2525M12";
+    holder6["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+    holder6["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+    holder6["cuttingWidth"] = 25.0;
+    holder6["headLength"] = 50.0;
+    holder6["overallLength"] = 150.0;
+    holder6["shankWidth"] = 25.0;
+    holder6["shankHeight"] = 25.0;
+    holder6["isRoundShank"] = false;
+    holder6["insertSeatAngle"] = 95.0;
+    holder6["insertSetback"] = 2.0;
+    holder6["manufacturer"] = "Sandvik";
+    tool6["holder"] = holder6;
+    
+    // Cutting Data
+    QJsonObject cuttingData6;
+    cuttingData6["constantSurfaceSpeed"] = true;
+    cuttingData6["surfaceSpeed"] = 250.0;
+    cuttingData6["spindleSpeed"] = 800;
+    cuttingData6["feedPerRevolution"] = true;
+    cuttingData6["cuttingFeedrate"] = 0.25;
+    cuttingData6["plungeFeedrate"] = 0.1;
+    cuttingData6["retractFeedrate"] = 5.0;
+    cuttingData6["maxDepthOfCut"] = 3.0;
+    cuttingData6["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+    tool6["cuttingData"] = cuttingData6;
+    
+    toolsArray.append(tool6);
+    
+    // Tool 7: Right-hand tool: longitudinal turning
+    QJsonObject tool7;
+    tool7["id"] = "RH_LONGITUDINAL_TURNING_T07";
+    tool7["name"] = "Right-Hand Longitudinal Turning";
+    tool7["manufacturer"] = "Sandvik";
+    tool7["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
+    tool7["toolNumber"] = "T07";
+    tool7["turretPosition"] = 7;
+    tool7["isActive"] = true;
+    tool7["toolOffset_X"] = 0.0;
+    tool7["toolOffset_Z"] = 0.0;
+    tool7["toolLengthOffset"] = 0.0;
+    tool7["toolRadiusOffset"] = 0.4;
+    tool7["expectedLifeMinutes"] = 480.0;
+    tool7["usageMinutes"] = 0.0;
+    tool7["cycleCount"] = 0;
+    tool7["notes"] = "Right-hand longitudinal turning tool for general machining";
+    tool7["internalThreading"] = false;
+    tool7["externalThreading"] = false;
+    tool7["internalBoring"] = false;
+    tool7["partingGrooving"] = false;
+    tool7["longitudinalTurning"] = true;
+    tool7["facing"] = false;
+    tool7["chamfering"] = false;
+    
+    // General Turning Insert
+    QJsonObject turningInsert7;
+    turningInsert7["isoCode"] = "CNMG120408";
+    turningInsert7["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+    turningInsert7["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+    turningInsert7["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+    turningInsert7["sizeSpecifier"] = "12";
+    turningInsert7["inscribedCircle"] = 12.7;
+    turningInsert7["thickness"] = 4.76;
+    turningInsert7["cornerRadius"] = 0.8;
+    turningInsert7["cuttingEdgeLength"] = 12.7;
+    turningInsert7["width"] = 12.7;
+    turningInsert7["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+    turningInsert7["substrate"] = "WC-Co";
+    turningInsert7["coating"] = "TiAlN";
+    turningInsert7["manufacturer"] = "Sandvik";
+    turningInsert7["partNumber"] = "CNMG 12 04 08-PM 4325";
+    turningInsert7["rake_angle"] = 0.0;
+    turningInsert7["inclination_angle"] = -6.0;
+    turningInsert7["name"] = "CNMG120408 Right-Hand Turning";
+    turningInsert7["isActive"] = true;
+    tool7["turningInsert"] = turningInsert7;
+    
+    // Tool Holder
+    QJsonObject holder7;
+    holder7["isoCode"] = "MCLNR2525M12";
+    holder7["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+    holder7["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+    holder7["cuttingWidth"] = 25.0;
+    holder7["headLength"] = 50.0;
+    holder7["overallLength"] = 150.0;
+    holder7["shankWidth"] = 25.0;
+    holder7["shankHeight"] = 25.0;
+    holder7["isRoundShank"] = false;
+    holder7["insertSeatAngle"] = 95.0;
+    holder7["insertSetback"] = 2.0;
+    holder7["manufacturer"] = "Sandvik";
+    tool7["holder"] = holder7;
+    
+    // Cutting Data
+    QJsonObject cuttingData7;
+    cuttingData7["constantSurfaceSpeed"] = true;
+    cuttingData7["surfaceSpeed"] = 250.0;
+    cuttingData7["spindleSpeed"] = 800;
+    cuttingData7["feedPerRevolution"] = true;
+    cuttingData7["cuttingFeedrate"] = 0.25;
+    cuttingData7["plungeFeedrate"] = 0.1;
+    cuttingData7["retractFeedrate"] = 5.0;
+    cuttingData7["maxDepthOfCut"] = 3.0;
+    cuttingData7["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+    tool7["cuttingData"] = cuttingData7;
+    
+    toolsArray.append(tool7);
+    
+    // Tool 8: Right-hand tool: facing / chamfering
+    QJsonObject tool8;
+    tool8["id"] = "RH_FACING_CHAMFERING_T08";
+    tool8["name"] = "Right-Hand Facing / Chamfering";
+    tool8["manufacturer"] = "Sandvik";
+    tool8["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
+    tool8["toolNumber"] = "T08";
+    tool8["turretPosition"] = 8;
+    tool8["isActive"] = true;
+    tool8["toolOffset_X"] = 0.0;
+    tool8["toolOffset_Z"] = 0.0;
+    tool8["toolLengthOffset"] = 0.0;
+    tool8["toolRadiusOffset"] = 0.4;
+    tool8["expectedLifeMinutes"] = 360.0;
+    tool8["usageMinutes"] = 0.0;
+    tool8["cycleCount"] = 0;
+    tool8["notes"] = "Right-hand facing and chamfering tool for finishing operations";
+    tool8["internalThreading"] = false;
+    tool8["externalThreading"] = false;
+    tool8["internalBoring"] = false;
+    tool8["partingGrooving"] = false;
+    tool8["longitudinalTurning"] = false;
+    tool8["facing"] = true;
+    tool8["chamfering"] = true;
+    
+    // General Turning Insert
+    QJsonObject turningInsert8;
+    turningInsert8["isoCode"] = "CNMG120404";
+    turningInsert8["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+    turningInsert8["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+    turningInsert8["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+    turningInsert8["sizeSpecifier"] = "12";
+    turningInsert8["inscribedCircle"] = 12.7;
+    turningInsert8["thickness"] = 4.76;
+    turningInsert8["cornerRadius"] = 0.4;
+    turningInsert8["cuttingEdgeLength"] = 12.7;
+    turningInsert8["width"] = 12.7;
+    turningInsert8["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+    turningInsert8["substrate"] = "WC-Co";
+    turningInsert8["coating"] = "TiAlN";
+    turningInsert8["manufacturer"] = "Sandvik";
+    turningInsert8["partNumber"] = "CNMG 12 04 04-PM 4325";
+    turningInsert8["rake_angle"] = 0.0;
+    turningInsert8["inclination_angle"] = -6.0;
+    turningInsert8["name"] = "CNMG120404 Facing/Chamfering";
+    turningInsert8["isActive"] = true;
+    tool8["turningInsert"] = turningInsert8;
+    
+    // Tool Holder
+    QJsonObject holder8;
+    holder8["isoCode"] = "MCLNR2525M12";
+    holder8["handOrientation"] = static_cast<int>(HandOrientation::RIGHT_HAND);
+    holder8["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+    holder8["cuttingWidth"] = 25.0;
+    holder8["headLength"] = 50.0;
+    holder8["overallLength"] = 150.0;
+    holder8["shankWidth"] = 25.0;
+    holder8["shankHeight"] = 25.0;
+    holder8["isRoundShank"] = false;
+    holder8["insertSeatAngle"] = 95.0;
+    holder8["insertSetback"] = 2.0;
+    holder8["manufacturer"] = "Sandvik";
+    tool8["holder"] = holder8;
+    
+    // Cutting Data
+    QJsonObject cuttingData8;
+    cuttingData8["constantSurfaceSpeed"] = true;
+    cuttingData8["surfaceSpeed"] = 220.0;
+    cuttingData8["spindleSpeed"] = 700;
+    cuttingData8["feedPerRevolution"] = true;
+    cuttingData8["cuttingFeedrate"] = 0.15;
+    cuttingData8["plungeFeedrate"] = 0.08;
+    cuttingData8["retractFeedrate"] = 4.0;
+    cuttingData8["maxDepthOfCut"] = 2.0;
+    cuttingData8["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+    tool8["cuttingData"] = cuttingData8;
+    
+    toolsArray.append(tool8);
+    
+    // Tool 9: Neutral tool: longitudinal turning
+    QJsonObject tool9;
+    tool9["id"] = "NEUTRAL_LONGITUDINAL_TURNING_T09";
+    tool9["name"] = "Neutral Longitudinal Turning";
+    tool9["manufacturer"] = "Iscar";
+    tool9["toolType"] = static_cast<int>(ToolType::GENERAL_TURNING);
+    tool9["toolNumber"] = "T09";
+    tool9["turretPosition"] = 9;
+    tool9["isActive"] = true;
+    tool9["toolOffset_X"] = 0.0;
+    tool9["toolOffset_Z"] = 0.0;
+    tool9["toolLengthOffset"] = 0.0;
+    tool9["toolRadiusOffset"] = 0.4;
+    tool9["expectedLifeMinutes"] = 480.0;
+    tool9["usageMinutes"] = 0.0;
+    tool9["cycleCount"] = 0;
+    tool9["notes"] = "Neutral longitudinal turning tool for versatile machining";
+    tool9["internalThreading"] = false;
+    tool9["externalThreading"] = false;
+    tool9["internalBoring"] = false;
+    tool9["partingGrooving"] = false;
+    tool9["longitudinalTurning"] = true;
+    tool9["facing"] = false;
+    tool9["chamfering"] = false;
+    
+    // General Turning Insert
+    QJsonObject turningInsert9;
+    turningInsert9["isoCode"] = "CNMG120408";
+    turningInsert9["shape"] = static_cast<int>(InsertShape::DIAMOND_80);
+    turningInsert9["reliefAngle"] = static_cast<int>(InsertReliefAngle::ANGLE_7);
+    turningInsert9["tolerance"] = static_cast<int>(InsertTolerance::M_PRECISION);
+    turningInsert9["sizeSpecifier"] = "12";
+    turningInsert9["inscribedCircle"] = 12.7;
+    turningInsert9["thickness"] = 4.76;
+    turningInsert9["cornerRadius"] = 0.8;
+    turningInsert9["cuttingEdgeLength"] = 12.7;
+    turningInsert9["width"] = 12.7;
+    turningInsert9["material"] = static_cast<int>(InsertMaterial::COATED_CARBIDE);
+    turningInsert9["substrate"] = "WC-Co";
+    turningInsert9["coating"] = "TiAlN";
+    turningInsert9["manufacturer"] = "Iscar";
+    turningInsert9["partNumber"] = "CNMG 12 04 08-IC 928";
+    turningInsert9["rake_angle"] = 0.0;
+    turningInsert9["inclination_angle"] = -6.0;
+    turningInsert9["name"] = "CNMG120408 Neutral Turning";
+    turningInsert9["isActive"] = true;
+    tool9["turningInsert"] = turningInsert9;
+    
+    // Tool Holder
+    QJsonObject holder9;
+    holder9["isoCode"] = "MCLNN2525M12";
+    holder9["handOrientation"] = static_cast<int>(HandOrientation::NEUTRAL);
+    holder9["clampingStyle"] = static_cast<int>(ClampingStyle::TOP_CLAMP);
+    holder9["cuttingWidth"] = 25.0;
+    holder9["headLength"] = 50.0;
+    holder9["overallLength"] = 150.0;
+    holder9["shankWidth"] = 25.0;
+    holder9["shankHeight"] = 25.0;
+    holder9["isRoundShank"] = false;
+    holder9["insertSeatAngle"] = 95.0;
+    holder9["insertSetback"] = 2.0;
+    holder9["manufacturer"] = "Iscar";
+    tool9["holder"] = holder9;
+    
+    // Cutting Data
+    QJsonObject cuttingData9;
+    cuttingData9["constantSurfaceSpeed"] = true;
+    cuttingData9["surfaceSpeed"] = 250.0;
+    cuttingData9["spindleSpeed"] = 800;
+    cuttingData9["feedPerRevolution"] = true;
+    cuttingData9["cuttingFeedrate"] = 0.25;
+    cuttingData9["plungeFeedrate"] = 0.1;
+    cuttingData9["retractFeedrate"] = 5.0;
+    cuttingData9["maxDepthOfCut"] = 3.0;
+    cuttingData9["coolantType"] = static_cast<int>(CoolantType::FLOOD);
+    tool9["cuttingData"] = cuttingData9;
+    
+    toolsArray.append(tool9);
     
     // Save to database
     QJsonObject database;
@@ -1949,7 +2663,7 @@ void ToolManagementTab::createDefaultToolDatabase() {
     if (file.open(QIODevice::WriteOnly)) {
         file.write(doc.toJson());
         file.close();
-        qDebug() << "Successfully created default tool database with 5 tools:" << databasePath;
+        qDebug() << "Successfully created default tool database with 9 tools:" << databasePath;
     } else {
         qWarning() << "Failed to create default tool database:" << file.errorString();
     }

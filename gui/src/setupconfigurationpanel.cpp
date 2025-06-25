@@ -267,8 +267,6 @@ void SetupConfigurationPanel::setupPartTab() {
   m_rawLengthLabel->setStyleSheet("color: #666; font-size: 11px;");
   m_materialLayout->addWidget(m_rawLengthLabel);
 
-
-
   partTabLayout->addWidget(m_materialGroup);
 
   partTabLayout->addStretch();
@@ -628,58 +626,34 @@ void SetupConfigurationPanel::setupConnections() {
           &SetupConfigurationPanel::onBrowseStepFile);
   connect(m_manualAxisButton, &QPushButton::clicked, this,
           &SetupConfigurationPanel::onManualAxisSelectionClicked);
-  connect(m_materialTypeCombo,
-          QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-          &SetupConfigurationPanel::onMaterialChanged);
-
-  // Material and tool management connections
-  connect(m_rawDiameterSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
   connect(m_autoRawDiameterButton, &QPushButton::clicked, this,
           &SetupConfigurationPanel::onAutoRawDiameterClicked);
 
-  // Part positioning connections
+  // Material combo connection
+  if (m_materialTypeCombo) {
+    connect(m_materialTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SetupConfigurationPanel::onMaterialChanged);
+  }
+
+  // Distance controls
   connect(m_distanceSlider, &QSlider::valueChanged, this, [this](int value) {
-    m_distanceSpinBox->setValue(static_cast<double>(value));
+    m_distanceSpinBox->setValue(value / 10.0);
+    emit distanceToChuckChanged(value / 10.0);
+    emit configurationChanged();
   });
-  connect(m_distanceSpinBox,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
+  connect(m_distanceSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
           [this](double value) {
-            m_distanceSlider->setValue(static_cast<int>(value));
+            m_distanceSlider->setValue(static_cast<int>(value * 10));
             emit distanceToChuckChanged(value);
             emit configurationChanged();
           });
-  connect(m_flipOrientationCheckBox, &QCheckBox::toggled, this,
+  connect(m_flipOrientationCheckBox, &QCheckBox::toggled,
           [this](bool checked) {
             emit orientationFlipped(checked);
             emit configurationChanged();
           });
 
-  // Machining tab connections
-  connect(m_facingAllowanceSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
-  connect(m_roughingAllowanceSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
-  connect(m_finishingAllowanceSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
-  connect(m_partingWidthSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
-  connect(m_chamferSizeSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
-
-  connect(m_surfaceFinishCombo,
-          QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
-  connect(m_toleranceSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-          this, &SetupConfigurationPanel::onConfigurationChanged);
-
-  // Operation controls - only connect if widgets exist
+  // Operation enable checkboxes
   if (m_contouringEnabledCheck) {
     connect(m_contouringEnabledCheck, &QCheckBox::toggled, this,
             &SetupConfigurationPanel::onOperationToggled);
@@ -687,36 +661,77 @@ void SetupConfigurationPanel::setupConnections() {
   if (m_threadingEnabledCheck) {
     connect(m_threadingEnabledCheck, &QCheckBox::toggled, this,
             &SetupConfigurationPanel::onOperationToggled);
-    connect(m_addThreadFaceButton, &QPushButton::clicked, this,
-            &SetupConfigurationPanel::onAddThreadFace);
-    connect(m_removeThreadFaceButton, &QPushButton::clicked, this,
-            &SetupConfigurationPanel::onRemoveThreadFace);
-    connect(m_threadFacesTable, &QTableWidget::itemSelectionChanged, this,
-            &SetupConfigurationPanel::onThreadFaceRowSelected);
-    connect(m_threadFacesTable, &QTableWidget::cellChanged, this,
-            &SetupConfigurationPanel::onThreadFaceCellChanged);
   }
   if (m_chamferingEnabledCheck) {
     connect(m_chamferingEnabledCheck, &QCheckBox::toggled, this,
             &SetupConfigurationPanel::onOperationToggled);
-    connect(m_addChamferFaceButton, &QPushButton::clicked, this,
-            &SetupConfigurationPanel::onAddChamferFace);
-    connect(m_removeChamferFaceButton, &QPushButton::clicked, this,
-            &SetupConfigurationPanel::onRemoveChamferFace);
-    connect(m_chamferFacesTable, &QTableWidget::itemSelectionChanged, this,
-            &SetupConfigurationPanel::onChamferFaceRowSelected);
   }
   if (m_partingEnabledCheck) {
     connect(m_partingEnabledCheck, &QCheckBox::toggled, this,
             &SetupConfigurationPanel::onOperationToggled);
   }
 
-  // Connect available tool list interactions
-  for (auto list : m_operationToolLists) {
-    if (list) {
-      connect(list, &QListWidget::itemDoubleClicked, this,
+  // Thread face management
+  if (m_addThreadFaceButton) {
+    connect(m_addThreadFaceButton, &QPushButton::clicked, this,
+            &SetupConfigurationPanel::onAddThreadFace);
+  }
+  if (m_removeThreadFaceButton) {
+    connect(m_removeThreadFaceButton, &QPushButton::clicked, this,
+            &SetupConfigurationPanel::onRemoveThreadFace);
+  }
+  if (m_threadFacesTable) {
+    connect(m_threadFacesTable, &QTableWidget::itemSelectionChanged, this,
+            &SetupConfigurationPanel::onThreadFaceRowSelected);
+    connect(m_threadFacesTable, &QTableWidget::cellChanged, this,
+            &SetupConfigurationPanel::onThreadFaceCellChanged);
+  }
+
+  // Chamfer face management
+  if (m_addChamferFaceButton) {
+    connect(m_addChamferFaceButton, &QPushButton::clicked, this,
+            &SetupConfigurationPanel::onAddChamferFace);
+  }
+  if (m_removeChamferFaceButton) {
+    connect(m_removeChamferFaceButton, &QPushButton::clicked, this,
+            &SetupConfigurationPanel::onRemoveChamferFace);
+  }
+  if (m_chamferFacesTable) {
+    connect(m_chamferFacesTable, &QTableWidget::itemSelectionChanged, this,
+            &SetupConfigurationPanel::onChamferFaceRowSelected);
+  }
+
+  // Tool selection connections for each operation
+  for (auto it = m_operationToolLists.begin(); it != m_operationToolLists.end(); ++it) {
+    const QString& operation = it.key();
+    QListWidget* toolList = it.value();
+    
+    if (toolList) {
+      // Single click selection changes
+      connect(toolList, &QListWidget::itemSelectionChanged, this, 
+              [this, operation]() {
+                QListWidget* list = m_operationToolLists.value(operation);
+                if (list && list->currentItem()) {
+                  QString toolId = list->currentItem()->data(Qt::UserRole).toString();
+                  if (!toolId.isEmpty()) {
+                    onToolSelectionChanged(operation, toolId);
+                  }
+                } else {
+                  // No tool selected, clear advanced settings for this operation
+                  clearAdvancedSettingsForOperation(operation);
+                }
+              });
+      
+      // Double click to open tool details
+      connect(toolList, &QListWidget::itemDoubleClicked, this,
               &SetupConfigurationPanel::onRecommendedToolDoubleClicked);
     }
+  }
+
+  // Advanced mode toggle
+  if (m_advancedModeCheck) {
+    connect(m_advancedModeCheck, &QCheckBox::toggled, this,
+            &SetupConfigurationPanel::updateAdvancedMode);
   }
 }
 
@@ -1061,9 +1076,11 @@ void SetupConfigurationPanel::updateMaterialProperties() {
 
 void SetupConfigurationPanel::updateToolRecommendations() {
   if (!m_toolManager) {
+    qDebug() << "updateToolRecommendations: No tool manager available";
     return;
   }
 
+  // Clear existing recommendations
   for (auto list : m_operationToolLists) {
     if (list)
       list->clear();
@@ -1071,8 +1088,11 @@ void SetupConfigurationPanel::updateToolRecommendations() {
 
   QString materialName = getSelectedMaterialName();
   if (materialName.isEmpty()) {
+    qDebug() << "updateToolRecommendations: No material selected";
     return;
   }
+
+  qDebug() << "updateToolRecommendations: Material selected:" << materialName;
 
   double workpieceDiameter = getRawDiameter();
   double surfaceFinish = 16.0; // Default medium finish
@@ -1111,6 +1131,8 @@ void SetupConfigurationPanel::updateToolRecommendations() {
   if (isOperationEnabled("Parting"))
     operations.append("parting");
 
+  qDebug() << "updateToolRecommendations: Enabled operations:" << operations;
+
   // Map operations to tool types
   const QMap<QString, QList<ToolType>> opToolTypes = {
       {"contouring", {ToolType::TurningInsert, ToolType::BoringBar,
@@ -1133,17 +1155,26 @@ void SetupConfigurationPanel::updateToolRecommendations() {
     if (!targetList)
       continue;
 
+    qDebug() << "updateToolRecommendations: Processing operation:" << operation;
+
     const QList<ToolType> types = opToolTypes.value(operation);
     for (ToolType type : types) {
       QStringList ids = m_toolManager->getToolsByType(type);
+      qDebug() << "updateToolRecommendations: Found" << ids.size() << "tools of type" << static_cast<int>(type);
+      
       for (const QString &id : ids) {
         if (recommendedToolIds.contains(id))
           continue;
 
         CuttingTool tool = m_toolManager->getTool(id);
+        qDebug() << "updateToolRecommendations: Checking tool" << id << "name:" << tool.name;
+        
         // Check that the tool is compatible with the selected material
-        if (!tool.capabilities.suitableMaterials.contains(materialName))
+        if (!tool.capabilities.suitableMaterials.contains(materialName)) {
+          qDebug() << "updateToolRecommendations: Tool" << id << "not suitable for material" << materialName;
+          qDebug() << "  Suitable materials:" << tool.capabilities.suitableMaterials;
           continue;
+        }
 
         // Check that the tool supports this operation
         bool opMatch = false;
@@ -1153,19 +1184,49 @@ void SetupConfigurationPanel::updateToolRecommendations() {
             break;
           }
         }
-        if (!opMatch)
+        if (!opMatch) {
+          qDebug() << "updateToolRecommendations: Tool" << id << "doesn't support operation" << operation;
+          qDebug() << "  Supported operations:" << tool.capabilities.supportedOperations;
+          qDebug() << "  Required capabilities:" << opCapabilities.value(operation);
           continue;
+        }
+
+        // Check if tool is active
+        if (!tool.isActive) {
+          qDebug() << "updateToolRecommendations: Tool" << id << "is inactive";
+          continue;
+        }
+
+        qDebug() << "updateToolRecommendations: Adding tool" << id << "to" << operation << "list";
 
         QString itemText = QString("%1").arg(tool.name);
 
         QListWidgetItem *item = new QListWidgetItem(itemText);
         item->setData(Qt::UserRole, QVariant(id));
+        item->setToolTip(QString("Tool ID: %1\nType: %2\nMaterial: %3")
+                         .arg(id)
+                         .arg(tool.type == ToolType::TurningInsert ? "Turning Insert" :
+                              tool.type == ToolType::FacingTool ? "Facing Tool" :
+                              tool.type == ToolType::PartingTool ? "Parting Tool" :
+                              tool.type == ToolType::BoringBar ? "Boring Bar" :
+                              tool.type == ToolType::ThreadingTool ? "Threading Tool" :
+                              tool.type == ToolType::FormTool ? "Form Tool" : "Unknown")
+                         .arg(tool.material == ToolMaterial::Carbide ? "Carbide" :
+                              tool.material == ToolMaterial::CoatedCarbide ? "Coated Carbide" :
+                              tool.material == ToolMaterial::HighSpeedSteel ? "HSS" :
+                              tool.material == ToolMaterial::Ceramic ? "Ceramic" :
+                              tool.material == ToolMaterial::CBN ? "CBN" :
+                              tool.material == ToolMaterial::PCD ? "PCD" : "Diamond"));
         targetList->addItem(item);
 
         recommendedToolIds.insert(id);
       }
     }
+    
+    qDebug() << "updateToolRecommendations: Operation" << operation << "has" << targetList->count() << "tools";
   }
+
+  qDebug() << "updateToolRecommendations: Total recommended tools:" << recommendedToolIds.size();
 
   emit toolRecommendationsUpdated(
       QStringList(recommendedToolIds.begin(), recommendedToolIds.end()));
@@ -1186,6 +1247,166 @@ void SetupConfigurationPanel::onToolSelectionRequested() {
   }
 }
 
+void SetupConfigurationPanel::onToolSelectionChanged(const QString& operation, const QString& toolId) {
+  qDebug() << "Tool selection changed for operation" << operation << "to tool" << toolId;
+  
+  // Store the selected tool for this operation
+  m_selectedToolsPerOperation[operation] = toolId;
+  
+  // Load tool parameters into advanced settings if in advanced mode
+  if (m_advancedModeCheck && m_advancedModeCheck->isChecked()) {
+    loadToolParametersToAdvancedSettings(toolId, operation);
+  }
+  
+  emit configurationChanged();
+}
+
+void SetupConfigurationPanel::loadToolParametersToAdvancedSettings(const QString& toolId, const QString& operation) {
+  if (!m_toolManager || toolId.isEmpty()) {
+    return;
+  }
+  
+  // Get the tool from the tool manager
+  CuttingTool tool = m_toolManager->getTool(toolId);
+  if (tool.name.isEmpty()) {
+    qWarning() << "Tool not found:" << toolId;
+    return;
+  }
+  
+  // Get the selected material for material-specific cutting data
+  QString materialName = getSelectedMaterialName();
+  if (materialName.isEmpty()) {
+    qWarning() << "No material selected, cannot load tool cutting data";
+    return;
+  }
+  
+  // Load material-specific cutting data from the tool
+  // This would typically come from the tool's material-specific settings
+  // For now, we'll use the tool's general capabilities and apply material-specific calculations
+  
+  // Get cutting parameters from material manager adjusted for this tool
+  double workpieceDiameter = getRawDiameter();
+  double surfaceFinish = 16.0; // Default, could get from UI
+  
+  // Apply surface finish from UI
+  SurfaceFinish finish = getSurfaceFinish();
+  switch (finish) {
+  case SurfaceFinish::Mirror_1Ra: surfaceFinish = 1.0; break;
+  case SurfaceFinish::Polish_2Ra: surfaceFinish = 2.0; break;
+  case SurfaceFinish::Smooth_4Ra: surfaceFinish = 4.0; break;
+  case SurfaceFinish::Fine_8Ra: surfaceFinish = 8.0; break;
+  case SurfaceFinish::Medium_16Ra: surfaceFinish = 16.0; break;
+  case SurfaceFinish::Rough_32Ra: surfaceFinish = 32.0; break;
+  }
+  
+  // Calculate appropriate cutting parameters for this tool and material
+  CuttingParameters params;
+  if (m_materialManager) {
+    params = m_materialManager->calculateCuttingParameters(
+        materialName, workpieceDiameter, operation.toLower(), surfaceFinish);
+  }
+  
+  // Load parameters into the appropriate advanced settings controls based on operation
+  if (operation == "contouring") {
+    loadContouringParameters(params, tool);
+  } else if (operation == "parting") {
+    loadPartingParameters(params, tool);
+  }
+  // Add other operations as needed
+  
+  qDebug() << "Loaded tool parameters for" << operation << "operation with tool" << toolId;
+}
+
+void SetupConfigurationPanel::loadContouringParameters(const CuttingParameters& params, const CuttingTool& tool) {
+  // Load facing parameters
+  if (m_contourFacingDepthSpin) {
+    m_contourFacingDepthSpin->setValue(params.depthOfCut);
+  }
+  if (m_contourFacingFeedSpin) {
+    m_contourFacingFeedSpin->setValue(params.feedRate);
+  }
+  if (m_contourFacingSpeedSpin) {
+    m_contourFacingSpeedSpin->setValue(params.spindleSpeed);
+  }
+  if (m_contourFacingCssCheck) {
+    m_contourFacingCssCheck->setChecked(params.useConstantSurfaceSpeed);
+  }
+  
+  // Load roughing parameters (typically more aggressive)
+  if (m_contourRoughDepthSpin) {
+    m_contourRoughDepthSpin->setValue(params.depthOfCut * 1.5); // More aggressive for roughing
+  }
+  if (m_contourRoughFeedSpin) {
+    m_contourRoughFeedSpin->setValue(params.feedRate * 1.2); // Faster feed for roughing
+  }
+  if (m_contourRoughSpeedSpin) {
+    m_contourRoughSpeedSpin->setValue(params.spindleSpeed * 0.8); // Slower speed for roughing
+  }
+  if (m_contourRoughCssCheck) {
+    m_contourRoughCssCheck->setChecked(params.useConstantSurfaceSpeed);
+  }
+  
+  // Load finishing parameters (more conservative)
+  if (m_contourFinishDepthSpin) {
+    m_contourFinishDepthSpin->setValue(params.depthOfCut * 0.3); // Light cuts for finishing
+  }
+  if (m_contourFinishFeedSpin) {
+    m_contourFinishFeedSpin->setValue(params.feedRate * 0.7); // Slower feed for better finish
+  }
+  if (m_contourFinishSpeedSpin) {
+    m_contourFinishSpeedSpin->setValue(params.spindleSpeed * 1.2); // Higher speed for finishing
+  }
+  if (m_contourFinishCssCheck) {
+    m_contourFinishCssCheck->setChecked(params.useConstantSurfaceSpeed);
+  }
+}
+
+void SetupConfigurationPanel::loadPartingParameters(const CuttingParameters& params, const CuttingTool& tool) {
+  // Load parting parameters (typically conservative)
+  if (m_partingDepthSpin) {
+    m_partingDepthSpin->setValue(params.depthOfCut * 0.5); // Conservative depth for parting
+  }
+  if (m_partingFeedSpin) {
+    m_partingFeedSpin->setValue(params.feedRate * 0.4); // Very slow feed for parting
+  }
+  if (m_partingSpeedSpin) {
+    m_partingSpeedSpin->setValue(params.spindleSpeed * 0.6); // Slower speed for parting
+  }
+  if (m_partingCssCheck) {
+    m_partingCssCheck->setChecked(params.useConstantSurfaceSpeed);
+  }
+}
+
+void SetupConfigurationPanel::clearAdvancedSettingsForOperation(const QString& operation) {
+  // Clear the selected tool for this operation
+  m_selectedToolsPerOperation.remove(operation);
+  
+  // Clear the advanced settings controls for this operation
+  if (operation == "contouring") {
+    // Clear contouring advanced settings
+    if (m_contourFacingDepthSpin) m_contourFacingDepthSpin->clear();
+    if (m_contourFacingFeedSpin) m_contourFacingFeedSpin->clear();
+    if (m_contourFacingSpeedSpin) m_contourFacingSpeedSpin->clear();
+    if (m_contourRoughDepthSpin) m_contourRoughDepthSpin->clear();
+    if (m_contourRoughFeedSpin) m_contourRoughFeedSpin->clear();
+    if (m_contourRoughSpeedSpin) m_contourRoughSpeedSpin->clear();
+    if (m_contourFinishDepthSpin) m_contourFinishDepthSpin->clear();
+    if (m_contourFinishFeedSpin) m_contourFinishFeedSpin->clear();
+    if (m_contourFinishSpeedSpin) m_contourFinishSpeedSpin->clear();
+  } else if (operation == "parting") {
+    // Clear parting advanced settings
+    if (m_partingDepthSpin) m_partingDepthSpin->clear();
+    if (m_partingFeedSpin) m_partingFeedSpin->clear();
+    if (m_partingSpeedSpin) m_partingSpeedSpin->clear();
+  }
+  // Add other operations as needed
+}
+
+bool SetupConfigurationPanel::isToolSelectedForOperation(const QString& operation) const {
+  return m_selectedToolsPerOperation.contains(operation) && 
+         !m_selectedToolsPerOperation.value(operation).isEmpty();
+}
+
 void SetupConfigurationPanel::onRecommendedToolDoubleClicked(QListWidgetItem *item) {
   if (!item)
     return;
@@ -1203,6 +1424,7 @@ void SetupConfigurationPanel::updateOperationControls() {
 void SetupConfigurationPanel::updateAdvancedMode() {
   bool adv = m_advancedModeCheck && m_advancedModeCheck->isChecked();
 
+  // Show/hide basic advanced controls
   if (m_roughingAllowanceLabel)
     m_roughingAllowanceLabel->setVisible(adv);
   if (m_roughingAllowanceSpin)
@@ -1215,15 +1437,12 @@ void SetupConfigurationPanel::updateAdvancedMode() {
     m_partingWidthLabel->setVisible(adv);
   if (m_partingWidthSpin)
     m_partingWidthSpin->setVisible(adv);
-  if (m_partingAdvancedGroup)
-    m_partingAdvancedGroup->setVisible(adv);
   if (m_toleranceLabel)
     m_toleranceLabel->setVisible(adv);
   if (m_toleranceSpin)
     m_toleranceSpin->setVisible(adv);
-  if (m_contourAdvancedGroup)
-    m_contourAdvancedGroup->setVisible(adv);
 
+  // Show/hide simple mode coolant controls
   if (m_contourFloodCheck)
     m_contourFloodCheck->setVisible(!adv);
   if (m_threadFloodCheck)
@@ -1233,49 +1452,57 @@ void SetupConfigurationPanel::updateAdvancedMode() {
   if (m_partFloodCheck)
     m_partFloodCheck->setVisible(!adv);
 
-  if (adv && m_materialManager) {
-    QString materialName = getSelectedMaterialName();
-    double finishVal = 16.0;
-    switch (getSurfaceFinish()) {
-    case SurfaceFinish::Mirror_1Ra:
-      finishVal = 1.0;
-      break;
-    case SurfaceFinish::Polish_2Ra:
-      finishVal = 2.0;
-      break;
-    case SurfaceFinish::Smooth_4Ra:
-      finishVal = 4.0;
-      break;
-    case SurfaceFinish::Fine_8Ra:
-      finishVal = 8.0;
-      break;
-    case SurfaceFinish::Medium_16Ra:
-      finishVal = 16.0;
-      break;
-    case SurfaceFinish::Rough_32Ra:
-      finishVal = 32.0;
-      break;
+  // Handle operation-specific advanced settings with tool selection requirement
+  updateOperationAdvancedSettings("contouring", adv);
+  updateOperationAdvancedSettings("parting", adv);
+  // Add other operations as needed
+}
+
+void SetupConfigurationPanel::updateOperationAdvancedSettings(const QString& operation, bool advancedMode) {
+  // Check if this operation is enabled
+  if (!isOperationEnabled(operation)) {
+    return;
+  }
+  
+  // Get the advanced group for this operation
+  QGroupBox* advancedGroup = nullptr;
+  if (operation == "contouring") {
+    advancedGroup = m_contourAdvancedGroup;
+  } else if (operation == "parting") {
+    advancedGroup = m_partingAdvancedGroup;
+  }
+  
+  if (!advancedGroup) {
+    return;
+  }
+  
+  if (advancedMode) {
+    // Show the advanced group
+    advancedGroup->setVisible(true);
+    
+    // Check if a tool is selected for this operation
+    bool toolSelected = isToolSelectedForOperation(operation);
+    
+    if (toolSelected) {
+      // Tool is selected, enable controls and load tool parameters
+      advancedGroup->setEnabled(true);
+      QString toolId = m_selectedToolsPerOperation.value(operation);
+      loadToolParametersToAdvancedSettings(toolId, operation);
+      
+      // Update the group title to show selected tool
+      if (m_toolManager) {
+        CuttingTool tool = m_toolManager->getTool(toolId);
+        advancedGroup->setTitle(QString("Advanced Cutting - %1").arg(tool.name));
+      }
+    } else {
+      // No tool selected, disable controls and show message
+      advancedGroup->setEnabled(false);
+      advancedGroup->setTitle("Advanced Cutting - Select a tool first");
+      clearAdvancedSettingsForOperation(operation);
     }
-    CuttingParameters cp = m_materialManager->calculateCuttingParameters(
-        materialName, 10.0, "facing", finishVal);
-    if (m_contourFacingDepthSpin)
-      m_contourFacingDepthSpin->setValue(cp.depthOfCut);
-    if (m_contourFacingFeedSpin)
-      m_contourFacingFeedSpin->setValue(cp.feedRate);
-    if (m_contourFacingSpeedSpin)
-      m_contourFacingSpeedSpin->setValue(cp.spindleSpeed);
-    if (m_contourRoughDepthSpin)
-      m_contourRoughDepthSpin->setValue(cp.depthOfCut);
-    if (m_contourRoughFeedSpin)
-      m_contourRoughFeedSpin->setValue(cp.feedRate);
-    if (m_contourRoughSpeedSpin)
-      m_contourRoughSpeedSpin->setValue(cp.spindleSpeed);
-    if (m_contourFinishDepthSpin)
-      m_contourFinishDepthSpin->setValue(cp.depthOfCut);
-    if (m_contourFinishFeedSpin)
-      m_contourFinishFeedSpin->setValue(cp.feedRate);
-    if (m_contourFinishSpeedSpin)
-      m_contourFinishSpeedSpin->setValue(cp.spindleSpeed);
+  } else {
+    // Hide the advanced group in simple mode
+    advancedGroup->setVisible(false);
   }
 }
 
