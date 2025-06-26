@@ -1139,7 +1139,10 @@ void WorkspaceController::initializeWorkCoordinateSystem(const gp_Ax1& axis) {
             
             // Calculate raw material end position
             // Raw material extends beyond the workpiece with facing allowance
-            double facingAllowance = 10.0; // From raw material manager default
+            double facingAllowance = 10.0;
+            if (m_rawMaterialManager) {
+                facingAllowance = m_rawMaterialManager->getFacingAllowance();
+            }
             double rawMaterialEnd = maxProjection + facingAllowance;
             
             // Ensure minimum extension past chuck face (Z=0)
