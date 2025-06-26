@@ -35,42 +35,53 @@ OperationTileWidget::OperationTileWidget(const QString& operationName, bool enab
 {
     // Set up colors based on operation type
     if (operationName == "Facing") {
-        m_enabledColor = QColor("#4CAF50");  // Green
+        // Bright green matching toolpath color scheme
+        m_enabledColor = QColor("#00CC33");
         m_description = "Face the front of the part";
     } else if (operationName == "Internal Features") {
         m_enabledColor = QColor("#FF9800");  // Orange
         m_description = "Drilling, boring, and internal operations";
     } else if (operationName == "Roughing") {
-        m_enabledColor = QColor("#2196F3");  // Blue
+        // External roughing - red in toolpath display
+        m_enabledColor = QColor("#E61A1A");
         m_description = "Remove bulk material quickly";
     } else if (operationName == "Finishing") {
-        m_enabledColor = QColor("#9C27B0");  // Purple
+        // External finishing - blue in toolpath display
+        m_enabledColor = QColor("#0066E6");
         m_description = "Achieve final surface finish";
     } else if (operationName == "Grooving") {
-        m_enabledColor = QColor("#607D8B");  // Blue Grey
+        // External grooving - magenta in toolpath display
+        m_enabledColor = QColor("#E600E6");
         m_description = "Cut grooves and undercuts";
     } else if (operationName == "Threading") {
-        m_enabledColor = QColor("#E91E63");  // Pink
+        // Threading - purple-blue in toolpath display
+        m_enabledColor = QColor("#8000E6");
         m_description = "Cut internal and external threads";
     } else if (operationName == "Chamfering") {
-        m_enabledColor = QColor("#795548");  // Brown
+        // Chamfering - cyan in toolpath display
+        m_enabledColor = QColor("#00E6E6");
         m_description = "Add chamfers and bevels";
     } else if (operationName == "Parting") {
-        m_enabledColor = QColor("#FF5722");  // Deep Orange
+        // Parting - orange in toolpath display
+        m_enabledColor = QColor("#FF8000");
         m_description = "Cut off the finished part";
     } else {
         // Sub-operation colors
         if (operationName == "Drilling") {
-            m_enabledColor = QColor("#FFC107");  // Amber
+            // Drilling - yellow in toolpath display
+            m_enabledColor = QColor("#E6E600");
             m_description = "Drill holes";
         } else if (operationName == "Internal Roughing") {
-            m_enabledColor = QColor("#03A9F4");  // Light Blue
+            // Internal roughing - dark red in toolpath display
+            m_enabledColor = QColor("#B3004D");
             m_description = "Rough internal features";
         } else if (operationName == "Internal Finishing") {
-            m_enabledColor = QColor("#673AB7");  // Deep Purple
+            // Internal finishing - teal in toolpath display
+            m_enabledColor = QColor("#0099B3");
             m_description = "Finish internal surfaces";
         } else if (operationName == "Internal Grooving") {
-            m_enabledColor = QColor("#455A64");  // Blue Grey Dark
+            // Internal grooving - purple in toolpath display
+            m_enabledColor = QColor("#B300B3");
             m_description = "Cut internal grooves";
         } else {
             m_enabledColor = QColor("#757575");  // Grey
