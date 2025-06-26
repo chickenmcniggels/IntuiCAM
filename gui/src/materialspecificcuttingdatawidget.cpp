@@ -47,7 +47,7 @@ void MaterialSpecificCuttingDataWidget::loadCuttingData(const IntuiCAM::Toolpath
         } else {
             // Create default settings for this material
             IntuiCAM::Toolpath::MaterialSpecificCuttingData defaultSettings(materialName.toStdString());
-            defaultSettings.enabled = false; // Default to disabled for new materials
+            defaultSettings.enabled = true; // Enable materials by default
             tab->setCuttingData(defaultSettings);
         }
     }

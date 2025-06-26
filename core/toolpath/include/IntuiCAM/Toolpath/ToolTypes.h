@@ -413,7 +413,7 @@ struct CuttingData {
         defaultSettings.preferredCoolant = preferredCoolant;
         defaultSettings.coolantPressure = coolantPressure;
         defaultSettings.coolantFlow = coolantFlow;
-        defaultSettings.enabled = false; // Default to disabled for new materials
+        defaultSettings.enabled = true; // Enable materials by default
         return defaultSettings;
     }
     
