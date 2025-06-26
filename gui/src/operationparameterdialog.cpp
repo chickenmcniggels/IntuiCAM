@@ -1,3 +1,4 @@
+#define _USE_MATH_DEFINES
 #include "operationparameterdialog.h"
 #include "setupconfigurationpanel.h"
 
@@ -5,6 +6,11 @@
 #include <QGridLayout>
 #include <QMessageBox>
 #include <QSettings>
+#include <cmath>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 // Static data initialization
 const QStringList IntuiCAM::GUI::OperationParameterDialog::TOOL_MATERIALS = {

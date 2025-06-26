@@ -119,15 +119,18 @@ std::vector<PartingOperation::PartingPosition> PartingOperation::detectPartingPo
     
     std::vector<PartingPosition> positions;
     
-    if (profile.size() < 5) {
+    // Use external profile points for parting analysis
+    const auto& points = profile.externalProfile.points;
+    
+    if (points.size() < 5) {
         return positions; // Not enough points for analysis
     }
     
     // Analyze profile for potential parting positions
-    for (size_t i = 1; i < profile.size() - 1; ++i) {
-        const auto& prevPoint = profile[i-1];
-        const auto& currentPoint = profile[i];
-        const auto& nextPoint = profile[i+1];
+    for (size_t i = 1; i < points.size() - 1; ++i) {
+        const auto& prevPoint = points[i-1];
+        const auto& currentPoint = points[i];
+        const auto& nextPoint = points[i+1];
         
         PartingPosition position;
         position.zPosition = currentPoint.x;
@@ -173,8 +176,8 @@ std::vector<PartingOperation::PartingPosition> PartingOperation::detectPartingPo
         
         // Consider accessibility (avoid internal features)
         bool isAccessible = true;
-        for (size_t j = i; j < profile.size(); ++j) {
-            if (profile[j].z < currentPoint.z - 0.5) {
+        for (size_t j = i; j < points.size(); ++j) {
+            if (points[j].z < currentPoint.z - 0.5) {
                 isAccessible = false;
                 break;
             }

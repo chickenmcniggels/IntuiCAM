@@ -15,6 +15,7 @@ namespace Geometry {
 class GeometricEntity;
 class Part;
 class Mesh;
+struct Matrix4x4;
 
 // Basic geometric primitives
 struct Point3D {
@@ -22,6 +23,9 @@ struct Point3D {
     
     Point3D() : x(0), y(0), z(0) {}
     Point3D(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
+    
+    // Transform point by matrix
+    Point3D transform(const Matrix4x4& mat) const;
 };
 
 struct Vector3D {
@@ -32,6 +36,9 @@ struct Vector3D {
     
     Vector3D normalized() const;
     double magnitude() const;
+    
+    // Transform vector by matrix (direction only, no translation)
+    Vector3D transform(const Matrix4x4& mat) const;
 };
 
 struct Matrix4x4 {
@@ -41,6 +48,12 @@ struct Matrix4x4 {
     static Matrix4x4 identity();
     static Matrix4x4 translation(const Vector3D& t);
     static Matrix4x4 rotation(const Vector3D& axis, double angle);
+    
+    // Matrix operations
+    Matrix4x4 operator*(const Matrix4x4& other) const;
+    Matrix4x4 inverse() const;
+    Point3D transformPoint(const Point3D& point) const;
+    Vector3D transformVector(const Vector3D& vector) const;
 };
 
 struct BoundingBox {
@@ -60,6 +73,57 @@ struct Point2D {
     double z; // axial position
     Point2D() : x(0.0), z(0.0) {}
     Point2D(double x_, double z_) : x(x_), z(z_) {}
+};
+
+// Work Coordinate System for lathe operations
+class WorkCoordinateSystem {
+public:
+    enum class Type {
+        Global,     // Global viewer coordinate system
+        WorkG54,    // Work coordinate system (G54) - origin at raw material end
+        Machine     // Machine coordinate system
+    };
+    
+private:
+    Type type_;
+    Point3D origin_;          // Origin of this coordinate system in global coordinates
+    Vector3D xAxis_;          // X-axis direction (radial in lathe)
+    Vector3D yAxis_;          // Y-axis direction (unused in 2D lathe operations)
+    Vector3D zAxis_;          // Z-axis direction (spindle axis in lathe)
+    Matrix4x4 toGlobal_;      // Transform from this CS to global
+    Matrix4x4 fromGlobal_;    // Transform from global to this CS
+    
+public:
+    WorkCoordinateSystem(Type type = Type::Global);
+    
+    // Setup methods
+    void setOrigin(const Point3D& origin);
+    void setAxes(const Vector3D& xAxis, const Vector3D& yAxis, const Vector3D& zAxis);
+    void setFromLatheMaterial(const Point3D& rawMaterialEnd, const Vector3D& spindleAxis);
+    
+    // Coordinate transformations
+    Point3D toGlobal(const Point3D& localPoint) const;
+    Point3D fromGlobal(const Point3D& globalPoint) const;
+    Vector3D toGlobal(const Vector3D& localVector) const;
+    Vector3D fromGlobal(const Vector3D& globalVector) const;
+    
+    // Matrix access
+    const Matrix4x4& getToGlobalMatrix() const { return toGlobal_; }
+    const Matrix4x4& getFromGlobalMatrix() const { return fromGlobal_; }
+    
+    // Properties
+    Type getType() const { return type_; }
+    const Point3D& getOrigin() const { return origin_; }
+    const Vector3D& getXAxis() const { return xAxis_; }
+    const Vector3D& getYAxis() const { return yAxis_; }
+    const Vector3D& getZAxis() const { return zAxis_; }
+    
+    // Lathe-specific convenience methods
+    Point2D globalToLathe(const Point3D& globalPoint) const;  // Convert to (X=radius, Z=axial)
+    Point3D latheToGlobal(const Point2D& lathePoint) const;   // Convert from (X=radius, Z=axial)
+    
+private:
+    void updateTransformMatrices();
 };
 
 // Base class for all geometric objects

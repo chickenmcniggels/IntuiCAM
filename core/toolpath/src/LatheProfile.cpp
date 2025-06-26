@@ -4,10 +4,10 @@
 namespace IntuiCAM {
 namespace Toolpath {
 
-LatheProfile::Profile2D LatheProfile::extract(const IntuiCAM::Geometry::Part& part,
-                                               int numSections,
-                                               double extraMargin) {
-    Profile2D profile;
+LatheProfile::SimpleProfile2D LatheProfile::extract(const IntuiCAM::Geometry::Part& part,
+                                                     int numSections,
+                                                     double extraMargin) {
+    SimpleProfile2D profile;
     
     // Get part bounding box for analysis
     auto bbox = part.getBoundingBox();

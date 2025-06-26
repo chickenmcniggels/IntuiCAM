@@ -58,7 +58,39 @@ LatheProfile::Profile2D ProfileExtractor::extractProfile(
     std::vector<ProfilePoint> enhancedProfile = extractEnhancedProfile(partGeometry, params);
     
     // Convert to simple profile format
-    return convertToSimpleProfile(enhancedProfile);
+    LatheProfile::Profile2D profile = convertToSimpleProfile(enhancedProfile);
+    
+    // If no profile was extracted, create a simple rectangular profile as fallback
+    if (profile.externalProfile.points.empty() && profile.internalProfile.points.empty()) {
+        std::cout << "ProfileExtractor: No profile extracted, creating fallback rectangular profile" << std::endl;
+        
+        // Create a simple external profile based on bounding box
+        Bnd_Box bbox;
+        BRepBndLib::Add(partGeometry, bbox);
+        
+        if (!bbox.IsVoid()) {
+            double xmin, ymin, zmin, xmax, ymax, zmax;
+            bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+            
+            // Create a simple rectangular profile
+            double maxRadius = std::max(std::abs(ymax), std::abs(ymin));
+            double length = xmax - xmin;
+            
+            if (maxRadius > 0.1 && length > 0.1) { // Reasonable minimum size
+                profile.externalProfile.points = {
+                    IntuiCAM::Geometry::Point2D{xmin, maxRadius},
+                    IntuiCAM::Geometry::Point2D{xmax, maxRadius},
+                    IntuiCAM::Geometry::Point2D{xmax, 0.0},
+                    IntuiCAM::Geometry::Point2D{xmin, 0.0}
+                };
+                
+                std::cout << "ProfileExtractor: Created fallback profile with radius " << maxRadius 
+                          << " and length " << length << std::endl;
+            }
+        }
+    }
+    
+    return profile;
 }
 
 std::vector<ProfileExtractor::ProfilePoint> ProfileExtractor::extractEnhancedProfile(
@@ -456,12 +488,12 @@ LatheProfile::Profile2D ProfileExtractor::optimizeProfile(
     
     LatheProfile::Profile2D profile;
     
-    // Convert gp_Pnt2d to IntuiCAM::Geometry::Point2D
+    // Convert gp_Pnt2d to IntuiCAM::Geometry::Point2D and add to external profile
     for (const auto& point : optimizedPoints) {
         IntuiCAM::Geometry::Point2D profilePoint;
-        profilePoint.x = point.X(); // Z coordinate
-        profilePoint.z = point.Y(); // Radius coordinate
-        profile.push_back(profilePoint);
+        profilePoint.x = point.Y(); // Radius coordinate (Y in gp_Pnt2d)
+        profilePoint.z = point.X(); // Axial coordinate (X in gp_Pnt2d)
+        profile.externalProfile.points.push_back(profilePoint);
     }
     
     return profile;
@@ -531,11 +563,21 @@ LatheProfile::Profile2D ProfileExtractor::convertToSimpleProfile(
     
     LatheProfile::Profile2D profile;
     
+    std::cout << "ProfileExtractor: Converting " << enhancedProfile.size() << " enhanced profile points" << std::endl;
+    
     for (const auto& point : enhancedProfile) {
         IntuiCAM::Geometry::Point2D profilePoint;
-        profilePoint.x = point.position.X(); // Z coordinate
-        profilePoint.z = point.position.Y(); // Radius coordinate
-        profile.push_back(profilePoint);
+        profilePoint.x = point.position.Y(); // Radius coordinate (Y in gp_Pnt2d)
+        profilePoint.z = point.position.X(); // Axial coordinate (X in gp_Pnt2d)
+        
+        if (point.featureType == FeatureType::External) {
+            profile.externalProfile.points.push_back(profilePoint);
+        } else if (point.featureType == FeatureType::Internal) {
+            profile.internalProfile.points.push_back(profilePoint);
+        } else {
+            // Default to external profile for unknown types
+            profile.externalProfile.points.push_back(profilePoint);
+        }
     }
     
     return profile;

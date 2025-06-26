@@ -250,41 +250,109 @@ void ToolpathDisplayObject::clearHighlights() {
 }
 
 void ToolpathDisplayObject::computeWireframePresentation(const Handle(Prs3d_Presentation)& presentation) {
-    if (!toolpath_) return;
-    
-    const auto& moves = toolpath_->getMoves();
-    size_t maxMoves = static_cast<size_t>(progress_ * moves.size());
-    
-    if (maxMoves == 0) return;
-    
-    // Create line array for efficient rendering
-    Handle(Graphic3d_ArrayOfSegments) segments = new Graphic3d_ArrayOfSegments(static_cast<Standard_Integer>(maxMoves * 2));
-    
-    for (size_t i = 0; i < maxMoves; ++i) {
-        const auto& move = moves[i];
-        
-        // Skip non-visible move types
-        if ((move.type == ToolpathMoveType::Rapid && !settings_.showRapidMoves) ||
-            (move.type != ToolpathMoveType::Rapid && !settings_.showFeedMoves)) {
-            continue;
-        }
-        
-        gp_Pnt startPnt(move.startPoint.x, move.startPoint.y, move.startPoint.z);
-        gp_Pnt endPnt(move.endPoint.x, move.endPoint.y, move.endPoint.z);
-        
-        Quantity_Color color = getColorForMove(move, i);
-        
-        segments->AddVertex(startPnt, color);
-        segments->AddVertex(endPnt, color);
+    if (!toolpath_) {
+        return;
     }
     
-    // Set line width based on move type
-    Handle(Graphic3d_AspectLine3d) lineAspect = new Graphic3d_AspectLine3d();
-    lineAspect->SetWidth(settings_.lineWidth);
+    const auto& moves = toolpath_->getMovements();
+    size_t maxMoves = static_cast<size_t>(progress_ * moves.size());
     
-    Handle(Graphic3d_Group) group = presentation->NewGroup();
-    group->SetPrimitivesAspect(lineAspect);
-    group->AddPrimitiveArray(segments);
+    if (maxMoves == 0) {
+        return;
+    }
+    
+    // Group moves by type for different visual representation
+    std::vector<std::pair<gp_Pnt, gp_Pnt>> rapidMoves, feedMoves, cuttingMoves;
+    
+    for (size_t i = 1; i < maxMoves; ++i) {
+        const auto& prevMove = moves[i-1];
+        const auto& currentMove = moves[i];
+        
+        // CORRECTED COORDINATE SYSTEM TRANSFORMATION FOR LATHE OPERATIONS
+        // Toolpath coordinates: Point3D(axial, 0, radius) - work coordinates
+        // Display coordinates: Point3D(radius, 0, axial) - for XZ plane display
+        gp_Pnt startPnt(prevMove.position.z, 0.0, prevMove.position.x);      // (radius, 0, axial)
+        gp_Pnt endPnt(currentMove.position.z, 0.0, currentMove.position.x);  // (radius, 0, axial)
+        
+        // Ensure Y=0 to constrain to XZ plane for lathe operations
+        startPnt.SetY(0.0);
+        endPnt.SetY(0.0);
+        
+        // Group by movement type for different visualization
+        switch (currentMove.type) {
+            case MovementType::Rapid:
+                rapidMoves.emplace_back(startPnt, endPnt);
+                break;
+            case MovementType::Linear:
+                if (currentMove.feedRate > 0) {
+                    cuttingMoves.emplace_back(startPnt, endPnt);
+                } else {
+                    feedMoves.emplace_back(startPnt, endPnt);
+                }
+                break;
+            case MovementType::CircularCW:
+            case MovementType::CircularCCW:
+                cuttingMoves.emplace_back(startPnt, endPnt);
+                break;
+            default:
+                feedMoves.emplace_back(startPnt, endPnt);
+                break;
+        }
+    }
+    
+    // Draw rapid moves (thin, dashed lines)
+    if (!rapidMoves.empty() && settings_.showRapidMoves) {
+        Handle(Graphic3d_ArrayOfSegments) rapidArray = new Graphic3d_ArrayOfSegments(
+            static_cast<Standard_Integer>(rapidMoves.size() * 2));
+        
+        for (const auto& move : rapidMoves) {
+            rapidArray->AddVertex(move.first);
+            rapidArray->AddVertex(move.second);
+        }
+        
+        Handle(Graphic3d_Group) rapidGroup = presentation->NewGroup();
+        Handle(Graphic3d_AspectLine3d) rapidAspect = new Graphic3d_AspectLine3d(
+            Quantity_Color(0.7, 0.7, 0.7, Quantity_TOC_RGB), // Gray
+            Aspect_TOL_DASH, 1.0);
+        rapidGroup->SetGroupPrimitivesAspect(rapidAspect);
+        rapidGroup->AddPrimitiveArray(rapidArray);
+    }
+    
+    // Draw feed moves (medium thickness, solid lines)
+    if (!feedMoves.empty()) {
+        Handle(Graphic3d_ArrayOfSegments) feedArray = new Graphic3d_ArrayOfSegments(
+            static_cast<Standard_Integer>(feedMoves.size() * 2));
+        
+        for (const auto& move : feedMoves) {
+            feedArray->AddVertex(move.first);
+            feedArray->AddVertex(move.second);
+        }
+        
+        Handle(Graphic3d_Group) feedGroup = presentation->NewGroup();
+        Handle(Graphic3d_AspectLine3d) feedAspect = new Graphic3d_AspectLine3d(
+            Quantity_Color(0.0, 0.6, 0.9, Quantity_TOC_RGB), // Blue
+            Aspect_TOL_SOLID, settings_.lineWidth);
+        feedGroup->SetGroupPrimitivesAspect(feedAspect);
+        feedGroup->AddPrimitiveArray(feedArray);
+    }
+    
+    // Draw cutting moves (thick, solid lines)
+    if (!cuttingMoves.empty()) {
+        Handle(Graphic3d_ArrayOfSegments) cuttingArray = new Graphic3d_ArrayOfSegments(
+            static_cast<Standard_Integer>(cuttingMoves.size() * 2));
+        
+        for (const auto& move : cuttingMoves) {
+            cuttingArray->AddVertex(move.first);
+            cuttingArray->AddVertex(move.second);
+        }
+        
+        Handle(Graphic3d_Group) cuttingGroup = presentation->NewGroup();
+        Handle(Graphic3d_AspectLine3d) cuttingAspect = new Graphic3d_AspectLine3d(
+            Quantity_Color(0.9, 0.1, 0.1, Quantity_TOC_RGB), // Red
+            Aspect_TOL_SOLID, settings_.lineWidth * 1.5);
+        cuttingGroup->SetGroupPrimitivesAspect(cuttingAspect);
+        cuttingGroup->AddPrimitiveArray(cuttingArray);
+    }
 }
 
 void ToolpathDisplayObject::computeShadedPresentation(const Handle(Prs3d_Presentation)& presentation) {
@@ -399,9 +467,36 @@ Quantity_Color ToolpathDisplayObject::getDepthBasedColor(double z, double minZ, 
 }
 
 Quantity_Color ToolpathDisplayObject::getOperationTypeColor(const Movement& move) const {
-    // This would need operation type information in the move
-    // For now, use move type
-    return getDefaultColor(move);
+    // Professional CAM color scheme based on operation types
+    switch (move.operationType) {
+        case OperationType::Facing:
+            return Quantity_Color(0.0, 0.8, 0.2, Quantity_TOC_RGB);     // Bright Green - establishing reference
+        case OperationType::ExternalRoughing:
+            return Quantity_Color(0.9, 0.1, 0.1, Quantity_TOC_RGB);     // Red - heavy material removal
+        case OperationType::InternalRoughing:
+            return Quantity_Color(0.7, 0.0, 0.3, Quantity_TOC_RGB);     // Dark Red - internal material removal
+        case OperationType::ExternalFinishing:
+            return Quantity_Color(0.0, 0.4, 0.9, Quantity_TOC_RGB);     // Blue - precision finishing
+        case OperationType::InternalFinishing:
+            return Quantity_Color(0.0, 0.6, 0.7, Quantity_TOC_RGB);     // Teal - internal precision finishing
+        case OperationType::Drilling:
+            return Quantity_Color(0.9, 0.9, 0.0, Quantity_TOC_RGB);     // Yellow - hole making
+        case OperationType::Boring:
+            return Quantity_Color(0.8, 0.8, 0.2, Quantity_TOC_RGB);     // Olive - hole enlarging
+        case OperationType::ExternalGrooving:
+            return Quantity_Color(0.9, 0.0, 0.9, Quantity_TOC_RGB);     // Magenta - external groove
+        case OperationType::InternalGrooving:
+            return Quantity_Color(0.7, 0.0, 0.7, Quantity_TOC_RGB);     // Purple - internal groove
+        case OperationType::Chamfering:
+            return Quantity_Color(0.0, 0.9, 0.9, Quantity_TOC_RGB);     // Cyan - edge breaking
+        case OperationType::Threading:
+            return Quantity_Color(0.5, 0.0, 0.9, Quantity_TOC_RGB);     // Purple-Blue - thread cutting
+        case OperationType::Parting:
+            return Quantity_Color(1.0, 0.5, 0.0, Quantity_TOC_RGB);     // Orange - part separation
+        case OperationType::Unknown:
+        default:
+            return getDefaultColor(move);                                // Fall back to move type color
+    }
 }
 
 TopoDS_Shape ToolpathDisplayObject::createLineShape(const gp_Pnt& start, const gp_Pnt& end) const {

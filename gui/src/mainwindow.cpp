@@ -110,8 +110,15 @@ MainWindow::MainWindow(QWidget *parent)
     , m_showRawMaterialAction(nullptr)
     , m_showToolpathsAction(nullptr)
     , m_showPartAction(nullptr)
-    , m_defaultChuckFilePath("C:/Users/nikla/Downloads/three_jaw_chuck.step")
+    , m_showProfilesAction(nullptr)  // Initialize profile visibility action
+    , m_defaultChuckFilePath("assets/models/three_jaw_chuck.step")
 {
+    // Initialize GUI state
+    m_defaultChuckFilePath = "assets/models/three_jaw_chuck.step";
+    
+    // Initialize timer
+    m_toolpathRegenerationTimer = nullptr;
+    
     // Create business logic components
     m_workspaceController = new WorkspaceController(this);
     m_stepLoader = new StepLoader();
@@ -431,6 +438,10 @@ void MainWindow::setupWorkspaceConnections()
                     this, &MainWindow::handleManualAxisSelected);
             connect(m_workspaceController, &WorkspaceController::errorOccurred,
                     this, &MainWindow::handleWorkspaceError);
+            
+            // Connect workpiece position changes to regenerate toolpaths
+            connect(m_workspaceController, &WorkspaceController::workpiecePositionChanged,
+                    this, &MainWindow::handleWorkpiecePositionChanged);
             
             // Connect raw material creation for length updates
             if (m_workspaceController->getRawMaterialManager()) {
@@ -932,12 +943,18 @@ QWidget* MainWindow::createSetupTab()
     
     rightLayout->addWidget(operationFrame);
     
-    // Add to main splitter
+    // Create toolpath legend widget
+    m_toolpathLegendWidget = new ToolpathLegendWidget();
+    m_toolpathLegendWidget->setMaximumWidth(250);
+    m_toolpathLegendWidget->setMinimumHeight(300);
+    
+    // Add to main splitter (left panel, viewer, legend)
     m_mainSplitter->addWidget(m_setupConfigPanel);
     m_mainSplitter->addWidget(rightWidget);
+    m_mainSplitter->addWidget(m_toolpathLegendWidget);
     
-    // Set splitter sizes (left panel 30%, viewport 70%)
-    m_mainSplitter->setSizes({350, 850});
+    // Set splitter sizes (left panel 30%, viewport 60%, legend 10%)
+    m_mainSplitter->setSizes({350, 700, 250});
     
     setupLayout->addWidget(m_mainSplitter);
     
@@ -1224,6 +1241,9 @@ void MainWindow::createViewModeOverlayButton(QWidget *parent)
     m_showPartAction = m_visibilityMenu->addAction("Show Part");
     m_showPartAction->setCheckable(true);
     m_showPartAction->setChecked(true);
+    m_showProfilesAction = m_visibilityMenu->addAction("Show Profiles");  // Add profile visibility action
+    m_showProfilesAction->setCheckable(true);
+    m_showProfilesAction->setChecked(true);
     m_visibilityButton->setMenu(m_visibilityMenu);
 
     // Style the button to be semi-transparent and visually appealing
@@ -1274,6 +1294,7 @@ void MainWindow::createViewModeOverlayButton(QWidget *parent)
     connect(m_showRawMaterialAction, &QAction::toggled, this, &MainWindow::handleShowRawMaterialToggled);
     connect(m_showToolpathsAction, &QAction::toggled, this, &MainWindow::handleShowToolpathsToggled);
     connect(m_showPartAction, &QAction::toggled, this, &MainWindow::handleShowPartToggled);
+    connect(m_showProfilesAction, &QAction::toggled, this, &MainWindow::handleShowProfilesToggled);  // Connect profile visibility
 
     // Connect to view mode changes to update button text
     connect(m_3dViewer, &OpenGL3DWidget::viewModeChanged, this, &MainWindow::updateViewModeOverlayButton);
@@ -1638,14 +1659,56 @@ void MainWindow::handleGenerateToolpaths()
                 m_outputWindow->append("=== Toolpath Generation Completed ===");
             }
             
+            // Get workpiece transformation to match toolpath positions with part position
+            gp_Trsf workpieceTransform;
+            if (m_workspaceController && m_workspaceController->getWorkpieceManager()) {
+                workpieceTransform = m_workspaceController->getWorkpieceManager()->getCurrentTransformation();
+                if (m_outputWindow) {
+                    gp_XYZ translation = workpieceTransform.TranslationPart();
+                    m_outputWindow->append(QString("Applying workpiece transformation - Translation: (%1, %2, %3)")
+                                         .arg(translation.X(), 0, 'f', 2)
+                                         .arg(translation.Y(), 0, 'f', 2)
+                                         .arg(translation.Z(), 0, 'f', 2));
+                    
+                    // Add rotation matrix logging to debug rotation issues
+                    gp_Mat rotationMatrix = workpieceTransform.HVectorialPart();
+                    m_outputWindow->append(QString("Rotation matrix: [%1 %2 %3] [%4 %5 %6] [%7 %8 %9]")
+                                         .arg(rotationMatrix.Value(1,1), 0, 'f', 3)
+                                         .arg(rotationMatrix.Value(1,2), 0, 'f', 3)
+                                         .arg(rotationMatrix.Value(1,3), 0, 'f', 3)
+                                         .arg(rotationMatrix.Value(2,1), 0, 'f', 3)
+                                         .arg(rotationMatrix.Value(2,2), 0, 'f', 3)
+                                         .arg(rotationMatrix.Value(2,3), 0, 'f', 3)
+                                         .arg(rotationMatrix.Value(3,1), 0, 'f', 3)
+                                         .arg(rotationMatrix.Value(3,2), 0, 'f', 3)
+                                         .arg(rotationMatrix.Value(3,3), 0, 'f', 3));
+                    
+                    m_outputWindow->append(QString("Transformation form: %1").arg(static_cast<int>(workpieceTransform.Form())));
+                }
+            }
+            
+            // Create display objects with workpiece transformation
+            auto transformedDisplayObjects = pipeline.createToolpathDisplayObjects(result.timeline, workpieceTransform);
+            
             // Display toolpaths in 3D viewer
             if (m_3dViewer) {
-                for (const auto& displayObj : result.toolpathDisplayObjects) {
+                for (const auto& displayObj : transformedDisplayObjects) {
                     if (!displayObj.IsNull()) {
                         m_3dViewer->getContext()->Display(displayObj, Standard_False);
                     }
                 }
                 m_3dViewer->update();
+                
+                // Update legend widget with generated operation types
+                if (m_toolpathLegendWidget) {
+                    std::vector<IntuiCAM::Toolpath::OperationType> generatedOperations;
+                    for (const auto& toolpath : result.timeline) {
+                        if (toolpath) {
+                            generatedOperations.push_back(toolpath->getOperationType());
+                        }
+                    }
+                    m_toolpathLegendWidget->updateLegendForOperations(generatedOperations);
+                }
             }
         } else {
             statusBar()->showMessage(QString("Toolpath generation failed: %1").arg(QString::fromStdString(result.errorMessage)), 5000);
@@ -1868,6 +1931,18 @@ void MainWindow::handleShowPartToggled(bool checked)
             if (m_outputWindow) {
                 m_outputWindow->append(QString("Part visibility toggled: %1").arg(checked ? "Visible" : "Hidden"));
             }
+        }
+    }
+}
+
+void MainWindow::handleShowProfilesToggled(bool checked)
+{
+    if (m_workspaceController) {
+        m_workspaceController->setProfileVisible(checked);
+        statusBar()->showMessage(QString("Profiles %1").arg(checked ? "shown" : "hidden"), 2000);
+        
+        if (m_outputWindow) {
+            m_outputWindow->append(QString("Profile visibility toggled: %1").arg(checked ? "Visible" : "Hidden"));
         }
     }
 }
@@ -2098,6 +2173,17 @@ void MainWindow::handlePartLoadingDistanceChanged(double distance)
     if (m_outputWindow) {
         m_outputWindow->append(QString("Part distance to chuck updated: %1mm").arg(distance, 0, 'f', 1));
     }
+    
+    // Actually update the workpiece position in the workspace controller
+    if (m_workspaceController && m_workspaceController->isInitialized()) {
+        bool success = m_workspaceController->updateDistanceToChuck(distance);
+        if (!success) {
+            statusBar()->showMessage(QString("Failed to update workpiece position"), 3000);
+            if (m_outputWindow) {
+                m_outputWindow->append("Failed to update workpiece position");
+            }
+        }
+    }
 }
 
 void MainWindow::handlePartLoadingDiameterChanged(double diameter)
@@ -2106,6 +2192,57 @@ void MainWindow::handlePartLoadingDiameterChanged(double diameter)
     if (m_outputWindow) {
         m_outputWindow->append(QString("Part loading diameter updated: %1mm").arg(diameter, 0, 'f', 1));
     }
+}
+
+void MainWindow::handleWorkpiecePositionChanged(double distance)
+{
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Workpiece position changed to %1mm").arg(distance, 0, 'f', 1));
+    }
+    
+    // Don't regenerate toolpaths immediately - this causes slider lag
+    // Instead, use a timer to debounce the regeneration
+    if (m_toolpathRegenerationTimer) {
+        m_toolpathRegenerationTimer->stop();
+    } else {
+        m_toolpathRegenerationTimer = new QTimer(this);
+        m_toolpathRegenerationTimer->setSingleShot(true);
+        connect(m_toolpathRegenerationTimer, &QTimer::timeout, this, [this]() {
+            if (m_outputWindow) {
+                m_outputWindow->append("Regenerating toolpaths after position change...");
+            }
+            
+            // Clear existing toolpaths from display
+            if (m_3dViewer && m_3dViewer->getContext()) {
+                // Find and remove toolpath display objects
+                AIS_ListOfInteractive allObjects;
+                m_3dViewer->getContext()->DisplayedObjects(allObjects);
+                
+                for (AIS_ListOfInteractive::Iterator it(allObjects); it.More(); it.Next()) {
+                    Handle(AIS_InteractiveObject) obj = it.Value();
+                    // Check if this is a toolpath object
+                    if (!obj.IsNull() && obj->DynamicType()->Name() == std::string("AIS_Shape")) {
+                        Handle(AIS_Shape) shapeObj = Handle(AIS_Shape)::DownCast(obj);
+                        if (!shapeObj.IsNull()) {
+                            TopoDS_Shape shape = shapeObj->Shape();
+                            if (!shape.IsNull() && (shape.ShapeType() == TopAbs_EDGE || shape.ShapeType() == TopAbs_WIRE)) {
+                                m_3dViewer->getContext()->Remove(shapeObj, Standard_False);
+                            }
+                        }
+                    }
+                }
+                m_3dViewer->update();
+            }
+            
+            // Regenerate toolpaths if we have operations enabled
+            if (m_setupConfigPanel) {
+                handleGenerateToolpaths();
+            }
+        });
+    }
+    
+    // Start or restart the timer - regenerate toolpaths 500ms after the last position change
+    m_toolpathRegenerationTimer->start(500);
 }
 
 // Operation tile handlers

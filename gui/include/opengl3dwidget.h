@@ -39,6 +39,9 @@
 #include <Prs3d_LineAspect.hxx>
 #include <AIS_InteractiveObject.hxx>
 
+// IntuiCAM toolpath includes for visibility management
+#include <IntuiCAM/Toolpath/ToolpathDisplayObject.h>
+
 // Qt includes for the overlay button
 #include <QPushButton>
 

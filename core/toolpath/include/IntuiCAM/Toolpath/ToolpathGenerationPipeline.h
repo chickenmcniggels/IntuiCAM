@@ -210,10 +210,15 @@ private:
         const std::string& toolData,
         bool chamferEdges);
 
+public:
+    // Public helper methods for toolpath display 
+    std::vector<Handle(AIS_InteractiveObject)> createToolpathDisplayObjects(
+        const std::vector<std::unique_ptr<Toolpath>>& toolpaths,
+        const gp_Trsf& workpieceTransform = gp_Trsf());
+
+private:
     // Helper methods
     void reportProgress(double progress, const std::string& status, const PipelineResult& result);
-    std::vector<Handle(AIS_InteractiveObject)> createToolpathDisplayObjects(
-        const std::vector<std::unique_ptr<Toolpath>>& toolpaths);
 
     // State management
     std::atomic<bool> m_isGenerating{false};

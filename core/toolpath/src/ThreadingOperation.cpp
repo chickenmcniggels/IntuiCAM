@@ -84,7 +84,10 @@ std::vector<ThreadingOperation::ThreadFeature> ThreadingOperation::detectThreadF
     
     std::vector<ThreadFeature> features;
     
-    if (profile.size() < 10) {
+    // Use external profile points for thread detection
+    const auto& points = profile.externalProfile.points;
+    
+    if (points.size() < 10) {
         return features; // Not enough points for thread detection
     }
     
@@ -92,8 +95,8 @@ std::vector<ThreadingOperation::ThreadFeature> ThreadingOperation::detectThreadF
     const double minThreadLength = params.pitch * 3; // Minimum 3 pitches
     const double radiusTolerance = 0.1; // mm
     
-    for (size_t i = 0; i < profile.size() - 1; ++i) {
-        const auto& point = profile[i];
+    for (size_t i = 0; i < points.size() - 1; ++i) {
+        const auto& point = points[i];
         
         // Look for periodic variations that might indicate threads
         std::vector<double> localRadii;
@@ -101,8 +104,8 @@ std::vector<ThreadingOperation::ThreadFeature> ThreadingOperation::detectThreadF
         
         // Collect points in a window around current point
         double windowSize = std::max(minThreadLength, params.pitch * 5);
-        for (size_t j = 0; j < profile.size(); ++j) {
-            const auto& testPoint = profile[j];
+        for (size_t j = 0; j < points.size(); ++j) {
+            const auto& testPoint = points[j];
             if (std::abs(testPoint.x - point.x) <= windowSize) {
                 localRadii.push_back(testPoint.z);
                 localZ.push_back(testPoint.x);

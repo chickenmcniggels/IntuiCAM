@@ -22,6 +22,7 @@ set(GUI_SOURCES
     src/toolmanagementdialog.cpp
     src/toolmanagementtab.cpp
     src/operationparameterdialog.cpp
+    src/toolpathlegendwidget.cpp
 )
 
 set(GUI_HEADERS
@@ -42,6 +43,7 @@ set(GUI_HEADERS
     include/toolmanagementdialog.h
     include/toolmanagementtab.h
     include/operationparameterdialog.h
+    include/toolpathlegendwidget.h
 )
 
 set(GUI_UI_FILES

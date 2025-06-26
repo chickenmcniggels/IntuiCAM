@@ -2,12 +2,16 @@
 
 set(CORE_TOOLPATH_LIB_NAME intuicam_core_toolpath)
 
-# Explicitly list all source files
+# Explicitly list all source files - including new pipeline-based operations
 set(CORE_TOOLPATH_SOURCES
     "src/Types.cpp"
     "src/ToolTypes.cpp"
     "src/Operations.cpp"
     "src/FacingOperation.cpp"
+    "src/DrillingOperation.cpp"
+    "src/InternalRoughingOperation.cpp"
+    "src/ExternalRoughingOperation.cpp"
+    "src/ChamferingOperation.cpp"
     "src/RoughingOperation.cpp"
     "src/FinishingOperation.cpp"
     "src/PartingOperation.cpp"
@@ -25,6 +29,10 @@ set(CORE_TOOLPATH_SOURCES
     "include/IntuiCAM/Toolpath/ToolTypes.h"
     "include/IntuiCAM/Toolpath/Operations.h"
     "include/IntuiCAM/Toolpath/FacingOperation.h"
+    "include/IntuiCAM/Toolpath/DrillingOperation.h"
+    "include/IntuiCAM/Toolpath/InternalRoughingOperation.h"
+    "include/IntuiCAM/Toolpath/ExternalRoughingOperation.h"
+    "include/IntuiCAM/Toolpath/ChamferingOperation.h"
     "include/IntuiCAM/Toolpath/RoughingOperation.h"
     "include/IntuiCAM/Toolpath/FinishingOperation.h"
     "include/IntuiCAM/Toolpath/PartingOperation.h"

@@ -2,6 +2,7 @@
 #include <IntuiCAM/Geometry/Types.h>
 #include <memory>
 #include <sstream>
+#include <cmath>
 
 namespace IntuiCAM {
 namespace Toolpath {
@@ -14,26 +15,35 @@ FacingOperation::FacingOperation(const std::string& name, std::shared_ptr<Tool> 
 std::string FacingOperation::validateParameters(const Parameters& params) {
     std::ostringstream errors;
     
-    // Validate diameter constraints
-    if (params.startDiameter <= 0.0) {
-        errors << "Start diameter must be positive. ";
+    // Validate position constraints
+    if (params.startPosition <= params.endPosition) {
+        errors << "Start position must be greater than end position. ";
     }
     
-    if (params.endDiameter < 0.0) {
-        errors << "End diameter cannot be negative. ";
+    // Validate radius constraints
+    if (params.startRadius <= 0.0) {
+        errors << "Start radius must be positive. ";
     }
     
-    if (params.startDiameter <= params.endDiameter) {
-        errors << "Start diameter must be greater than end diameter. ";
+    if (params.endRadius < 0.0) {
+        errors << "End radius cannot be negative. ";
     }
     
-    // Validate stepover
+    if (params.startRadius <= params.endRadius) {
+        errors << "Start radius must be greater than end radius. ";
+    }
+    
+    // Validate cutting parameters
+    if (params.depthOfCut <= 0.0) {
+        errors << "Depth of cut must be positive. ";
+    }
+    
     if (params.stepover <= 0.0) {
         errors << "Stepover must be positive. ";
     }
     
-    if (params.stepover > (params.startDiameter - params.endDiameter) / 2.0) {
-        errors << "Stepover too large for diameter range. ";
+    if (params.stepover > (params.startRadius - params.endRadius)) {
+        errors << "Stepover too large for radius range. ";
     }
     
     // Validate stock allowance
@@ -41,51 +51,120 @@ std::string FacingOperation::validateParameters(const Parameters& params) {
         errors << "Stock allowance cannot be negative. ";
     }
     
-    if (params.stockAllowance > 5.0) {
-        errors << "Stock allowance seems excessive (>5mm). ";
+    if (params.stockAllowance > abs(params.startPosition - params.endPosition)) {
+        errors << "Stock allowance exceeds facing depth. ";
+    }
+    
+    // Validate feed rates
+    if (params.feedRate <= 0.0) {
+        errors << "Feed rate must be positive. ";
+    }
+    
+    if (params.finishingFeedRate <= 0.0) {
+        errors << "Finishing feed rate must be positive. ";
+    }
+    
+    // Validate spindle speed
+    if (params.spindleSpeed <= 0.0) {
+        errors << "Spindle speed must be positive. ";
     }
     
     return errors.str();
 }
 
 std::unique_ptr<Toolpath> FacingOperation::generateToolpath(const Geometry::Part& part) {
-    // Create a basic facing toolpath
+    // Determine facing strategy based on material removal
+    double facingAllowance = abs(params_.startPosition - params_.endPosition);
+    
+    if (facingAllowance > params_.depthOfCut) {
+        return generateMultiPassFacing();
+    } else {
+        return generateSinglePassFacing();
+    }
+}
+
+std::unique_ptr<Toolpath> FacingOperation::generateMultiPassFacing() {
     auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
     
-    // Get part bounding box for basic facing
-    auto bbox = part.getBoundingBox();
+    double safeZ = params_.startPosition + params_.safetyHeight;
+    double facingAllowance = abs(params_.startPosition - params_.endPosition);
     
-    // Calculate facing parameters
-    double currentRadius = params_.startDiameter / 2.0;
-    double endRadius = params_.endDiameter / 2.0;
-    double safeZ = bbox.max.z + 5.0; // 5mm clearance
-    double faceZ = bbox.max.z;
+    // Calculate number of roughing passes
+    int roughingPasses = static_cast<int>(std::floor((facingAllowance - params_.stockAllowance) / params_.depthOfCut));
     
-    // Safety rapid to start position
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, currentRadius));
+    // Rapid to safe position
+    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, params_.startRadius + 5.0));
     
-    // Generate facing passes
-    while (currentRadius > endRadius) {
-        // Rapid to cutting position
-        toolpath->addRapidMove(Geometry::Point3D(faceZ + 1.0, 0.0, currentRadius));
-        
-        // Feed to face
-        toolpath->addLinearMove(Geometry::Point3D(faceZ, 0.0, currentRadius), 100.0);
-        
-        // Face across
-        double nextRadius = std::max(endRadius, currentRadius - params_.stepover);
-        toolpath->addLinearMove(Geometry::Point3D(faceZ, 0.0, nextRadius), 100.0);
-        
-        // Retract
-        toolpath->addRapidMove(Geometry::Point3D(faceZ + 1.0, 0.0, nextRadius));
-        
-        currentRadius = nextRadius;
+    // Roughing passes
+    for (int i = 0; i < roughingPasses; i++) {
+        double currentZ = params_.startPosition - (i * params_.depthOfCut);
+        addFacingPass(toolpath.get(), currentZ, params_.feedRate);
+    }
+    
+    // Final roughing pass to leave stock allowance
+    if (params_.stockAllowance > 0.0) {
+        double roughingFinalZ = params_.endPosition + params_.stockAllowance;
+        addFacingPass(toolpath.get(), roughingFinalZ, params_.feedRate);
+    }
+    
+    // Finishing pass
+    if (params_.enableFinishingPass && !params_.roughingOnly) {
+        addFacingPass(toolpath.get(), params_.endPosition, params_.finishingFeedRate);
     }
     
     // Return to safe position
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, endRadius));
+    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, params_.endRadius));
     
     return toolpath;
+}
+
+std::unique_ptr<Toolpath> FacingOperation::generateSinglePassFacing() {
+    auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+    
+    double safeZ = params_.startPosition + params_.safetyHeight;
+    
+    // Rapid to safe position
+    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, params_.startRadius + 5.0));
+    
+    // Single facing pass
+    addFacingPass(toolpath.get(), params_.endPosition, params_.feedRate);
+    
+    // Return to safe position
+    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, params_.endRadius));
+    
+    return toolpath;
+}
+
+void FacingOperation::addFacingPass(Toolpath* toolpath, double zPosition, double feedRate) {
+    double currentRadius = params_.startRadius;
+    double endRadius = params_.endRadius;
+    
+    // Face from outside to center - CORRECTED LATHE COORDINATE SYSTEM
+    // Point3D(axial_position, 0, radius) where axial is along spindle axis
+    while (currentRadius > endRadius) {
+        // Rapid to cutting position - approach from safe distance above the work surface
+        toolpath->addRapidMove(Geometry::Point3D(zPosition + 1.0, 0.0, currentRadius), 
+                              OperationType::Facing, "Rapid to facing position");
+        
+        // Feed to face surface - maintain Y=0 for lathe constraint
+        toolpath->addLinearMove(Geometry::Point3D(zPosition, 0.0, currentRadius), feedRate, 
+                               OperationType::Facing, "Feed to face surface");
+        
+        // Calculate next radius
+        double nextRadius = std::max(endRadius, currentRadius - params_.stepover);
+        
+        // Face across to next radius - cutting move across face (reducing radius)
+        toolpath->addLinearMove(Geometry::Point3D(zPosition, 0.0, nextRadius), feedRate,
+                               OperationType::Facing, "Face to radius " + std::to_string(nextRadius));
+        
+        // Retract slightly for next pass - stay in XZ plane
+        if (nextRadius > endRadius) {
+            toolpath->addRapidMove(Geometry::Point3D(zPosition + 0.5, 0.0, nextRadius),
+                                  OperationType::Facing, "Retract for next pass");
+        }
+        
+        currentRadius = nextRadius;
+    }
 }
 
 bool FacingOperation::validate() const {

@@ -958,19 +958,26 @@ void OpenGL3DWidget::setToolpathsVisible(bool visible)
     if (!m_context.IsNull()) {
         try {
             // Find all toolpath objects in the context and update their visibility
-            // Toolpath objects would typically be identified by their type or naming convention
             AIS_ListOfInteractive allObjects;
             m_context->DisplayedObjects(allObjects);
             
             for (AIS_ListOfInteractive::Iterator anIter(allObjects); anIter.More(); anIter.Next()) {
                 Handle(AIS_InteractiveObject) obj = anIter.Value();
                 if (!obj.IsNull()) {
-                    // For now, we'll update all objects - in a full implementation,
-                    // you would check if the object is a toolpath based on its type or attributes
-                    if (visible) {
-                        m_context->SetDisplayMode(obj, 1, Standard_False); // 1 = shaded mode
-                    } else {
-                        m_context->Erase(obj, Standard_False);
+                    // Check if this is a toolpath display object
+                    Handle(IntuiCAM::Toolpath::ToolpathDisplayObject) toolpathObj = 
+                        Handle(IntuiCAM::Toolpath::ToolpathDisplayObject)::DownCast(obj);
+                    
+                    if (!toolpathObj.IsNull()) {
+                        if (visible) {
+                            if (!m_context->IsDisplayed(toolpathObj)) {
+                                m_context->Display(toolpathObj, Standard_False);
+                            }
+                        } else {
+                            if (m_context->IsDisplayed(toolpathObj)) {
+                                m_context->Erase(toolpathObj, Standard_False);
+                            }
+                        }
                     }
                 }
             }
@@ -995,19 +1002,26 @@ void OpenGL3DWidget::setProfilesVisible(bool visible)
     if (!m_context.IsNull()) {
         try {
             // Find all profile objects in the context and update their visibility
-            // Profile objects would typically be identified by their type or naming convention
             AIS_ListOfInteractive allObjects;
             m_context->DisplayedObjects(allObjects);
             
             for (AIS_ListOfInteractive::Iterator anIter(allObjects); anIter.More(); anIter.Next()) {
                 Handle(AIS_InteractiveObject) obj = anIter.Value();
                 if (!obj.IsNull()) {
-                    // For now, we'll update all objects - in a full implementation,
-                    // you would check if the object is a profile based on its type or attributes
-                    if (visible) {
-                        m_context->SetDisplayMode(obj, 0, Standard_False); // 0 = wireframe mode
-                    } else {
-                        m_context->Erase(obj, Standard_False);
+                    // Check if this is a profile display object
+                    Handle(IntuiCAM::Toolpath::ProfileDisplayObject) profileObj = 
+                        Handle(IntuiCAM::Toolpath::ProfileDisplayObject)::DownCast(obj);
+                    
+                    if (!profileObj.IsNull()) {
+                        if (visible) {
+                            if (!m_context->IsDisplayed(profileObj)) {
+                                m_context->Display(profileObj, Standard_False);
+                            }
+                        } else {
+                            if (m_context->IsDisplayed(profileObj)) {
+                                m_context->Erase(profileObj, Standard_False);
+                            }
+                        }
                     }
                 }
             }

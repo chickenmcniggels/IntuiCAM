@@ -17,6 +17,7 @@
 #include <QPushButton>
 #include <QToolButton>
 #include <QMenu>
+#include <QTimer>
 
 // OpenCASCADE includes
 #include <gp_Ax1.hxx>
@@ -52,6 +53,7 @@ namespace GUI {
 // Include CylinderInfo definition
 #include "workpiecemanager.h"
 #include "operationtilewidget.h"
+#include "toolpathlegendwidget.h"
 
 // Include ViewMode enum
 enum class ViewMode;  // Forward declaration
@@ -104,6 +106,7 @@ private slots:
     // Part loading panel handlers (legacy)
     void handlePartLoadingDistanceChanged(double distance);
     void handlePartLoadingDiameterChanged(double diameter);
+    void handleWorkpiecePositionChanged(double distance);
     void handlePartLoadingOrientationFlipped(bool flipped);
     void handlePartLoadingCylinderChanged(int index);
     void handlePartLoadingManualSelection();
@@ -144,6 +147,7 @@ private slots:
     void handleShowRawMaterialToggled(bool checked);
     void handleShowToolpathsToggled(bool checked);
     void handleShowPartToggled(bool checked);
+    void handleShowProfilesToggled(bool checked);
 
 private:
     void createMenus();
@@ -209,6 +213,9 @@ private:
     // Operation Tile System
     IntuiCAM::GUI::OperationTileContainer *m_operationTileContainer;
     
+    // Toolpath Legend Widget
+    ToolpathLegendWidget *m_toolpathLegendWidget;
+    
     // Tool Management Components
     class ToolManagementTab *m_toolManagementTab;
 
@@ -239,12 +246,16 @@ private:
     QAction *m_showRawMaterialAction;
     QAction *m_showToolpathsAction;
     QAction *m_showPartAction;
+    QAction *m_showProfilesAction;
     QString m_defaultChuckFilePath;
+
+    // Timer for debouncing toolpath regeneration
+    QTimer* m_toolpathRegenerationTimer;
 
 private:
     void createViewModeOverlayButton(QWidget* parent);
     void updateViewModeOverlayButton();
-        void initializeWorkspace();
+    void initializeWorkspace();
     
     void highlightThreadCandidateFaces();
     void clearThreadCandidateHighlights();
