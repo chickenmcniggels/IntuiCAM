@@ -32,6 +32,8 @@ OperationTileWidget::OperationTileWidget(const QString& operationName, bool enab
     , m_contextMenu(nullptr)
     , m_selectToolAction(nullptr)
     , m_toggleAction(nullptr)
+    , m_defaultIconSize(32)
+    , m_highlightedIconSize(40)
 {
     // Set up colors based on operation type
     if (operationName == "Facing") {
@@ -147,8 +149,9 @@ void OperationTileWidget::setupUI()
     // Icon corresponding to the operation
     m_iconLabel = new QLabel();
     m_iconLabel->setAlignment(Qt::AlignCenter);
-    m_iconLabel->setFixedSize(32, 32);
-    m_iconLabel->setStyleSheet("QLabel { border: 1px solid #ccc; border-radius: 16px; background-color: white; }");
+    m_iconLabel->setFixedSize(m_defaultIconSize, m_defaultIconSize);
+    m_iconLabel->setStyleSheet(QString("QLabel { border: 1px solid #ccc; border-radius: %1px; background-color: white; }")
+                                  .arg(m_defaultIconSize / 2));
 
     QString iconText;
     if (m_operationName == "Facing") {
@@ -181,6 +184,7 @@ void OperationTileWidget::setupUI()
 
     m_iconLabel->setText(iconText);
     m_mainLayout->addWidget(m_iconLabel);
+    updateIconSize();
     
     // Operation name
     m_nameLabel = new QLabel(m_operationName);
@@ -317,6 +321,7 @@ void OperationTileWidget::setSelected(bool selected)
 
     m_selected = selected;
     updateColors();
+    updateIconSize();
 
     // Simply repaint to reflect the new border color
     update();
@@ -365,6 +370,17 @@ void OperationTileWidget::setBackgroundColor(const QColor& color)
 {
     m_backgroundColor = color;
     update();
+}
+
+void OperationTileWidget::updateIconSize()
+{
+    if (!m_iconLabel)
+        return;
+
+    int size = (m_isHovered || m_selected) ? m_highlightedIconSize : m_defaultIconSize;
+    m_iconLabel->setFixedSize(size, size);
+    m_iconLabel->setStyleSheet(QString("QLabel { border: 1px solid #ccc; border-radius: %1px; background-color: white; }")
+                                  .arg(size / 2));
 }
 
 QSize OperationTileWidget::sizeHint() const
@@ -432,6 +448,7 @@ void OperationTileWidget::enterEvent(QEnterEvent* event)
 {
     m_isHovered = true;
     updateColors();
+    updateIconSize();
     
     // Show description tooltip
     if (!m_description.isEmpty()) {
@@ -445,6 +462,7 @@ void OperationTileWidget::leaveEvent(QEvent* event)
 {
     m_isHovered = false;
     updateColors();
+    updateIconSize();
     QFrame::leaveEvent(event);
 }
 
