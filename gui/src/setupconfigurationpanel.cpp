@@ -69,6 +69,17 @@ SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     , m_partingTab(nullptr)
     , m_materialManager(nullptr)
     , m_toolManager(nullptr)
+
+    , m_facingParamsGroup(nullptr)
+    , m_facingParamsLayout(nullptr)
+    , m_internalRoughingParamsGroup(nullptr)
+    , m_internalRoughingParamsLayout(nullptr)
+    , m_internalFinishingParamsGroup(nullptr)
+    , m_internalFinishingParamsLayout(nullptr)
+    , m_finishingParamsGroup(nullptr)
+    , m_finishingParamsLayout(nullptr)
+    , m_partingParamsGroup(nullptr)
+    , m_partingParamsLayout(nullptr)
     
     , m_facingEnabledCheck(nullptr)
     , m_roughingEnabledCheck(nullptr)
@@ -339,9 +350,10 @@ void SetupConfigurationPanel::setupMachiningTab() {
   facingEnableLayout->addStretch();
   facingLayout->addLayout(facingEnableLayout);
 
-  m_machiningParamsGroup = new QGroupBox("Machining Parameters");
-  m_machiningParamsLayout = new QVBoxLayout(m_machiningParamsGroup);
-  m_machiningParamsLayout->setSpacing(8);
+  // Facing machining parameters
+  m_facingParamsGroup = new QGroupBox("Machining Parameters");
+  m_facingParamsLayout = new QVBoxLayout(m_facingParamsGroup);
+  m_facingParamsLayout->setSpacing(8);
 
   // Facing allowance
   m_facingAllowanceLayout = new QHBoxLayout();
@@ -356,7 +368,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   m_facingAllowanceLayout->addWidget(m_facingAllowanceLabel);
   m_facingAllowanceLayout->addWidget(m_facingAllowanceSpin);
   m_facingAllowanceLayout->addStretch();
-  m_machiningParamsLayout->addLayout(m_facingAllowanceLayout);
+  m_facingParamsLayout->addLayout(m_facingAllowanceLayout);
 
   // Roughing allowance
   m_roughingAllowanceLayout = new QHBoxLayout();
@@ -371,7 +383,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   m_roughingAllowanceLayout->addWidget(m_roughingAllowanceLabel);
   m_roughingAllowanceLayout->addWidget(m_roughingAllowanceSpin);
   m_roughingAllowanceLayout->addStretch();
-  m_machiningParamsLayout->addLayout(m_roughingAllowanceLayout);
+  m_facingParamsLayout->addLayout(m_roughingAllowanceLayout);
 
   // Finishing allowance
   m_finishingAllowanceLayout = new QHBoxLayout();
@@ -386,64 +398,11 @@ void SetupConfigurationPanel::setupMachiningTab() {
   m_finishingAllowanceLayout->addWidget(m_finishingAllowanceLabel);
   m_finishingAllowanceLayout->addWidget(m_finishingAllowanceSpin);
   m_finishingAllowanceLayout->addStretch();
-  m_machiningParamsLayout->addLayout(m_finishingAllowanceLayout);
+  m_facingParamsLayout->addLayout(m_finishingAllowanceLayout);
 
-  // New pipeline-specific parameters
-  // Largest drill size
-  QHBoxLayout *largestDrillLayout = new QHBoxLayout();
-  QLabel *largestDrillLabel = new QLabel("Largest Drill Size:");
-  largestDrillLabel->setMinimumWidth(140);
-  m_largestDrillSizeSpin = new QDoubleSpinBox();
-  m_largestDrillSizeSpin->setRange(1.0, 50.0);
-  m_largestDrillSizeSpin->setValue(12.0);
-  m_largestDrillSizeSpin->setSuffix(" mm");
-  m_largestDrillSizeSpin->setDecimals(1);
-  m_largestDrillSizeSpin->setToolTip("Diameters larger than this will be bored instead of drilled");
-  largestDrillLayout->addWidget(largestDrillLabel);
-  largestDrillLayout->addWidget(m_largestDrillSizeSpin);
-  largestDrillLayout->addStretch();
-  m_machiningParamsLayout->addLayout(largestDrillLayout);
+  // New pipeline-specific parameters will be placed in their respective panels
 
-  // Internal finishing passes
-  QHBoxLayout *intFinishPassesLayout = new QHBoxLayout();
-  QLabel *intFinishPassesLabel = new QLabel("Internal Finish Passes:");
-  intFinishPassesLabel->setMinimumWidth(140);
-  m_internalFinishingPassesSpin = new QSpinBox();
-  m_internalFinishingPassesSpin->setRange(1, 10);
-  m_internalFinishingPassesSpin->setValue(2);
-  m_internalFinishingPassesSpin->setToolTip("Number of finishing passes for internal features");
-  intFinishPassesLayout->addWidget(intFinishPassesLabel);
-  intFinishPassesLayout->addWidget(m_internalFinishingPassesSpin);
-  intFinishPassesLayout->addStretch();
-  m_machiningParamsLayout->addLayout(intFinishPassesLayout);
-
-  // External finishing passes
-  QHBoxLayout *extFinishPassesLayout = new QHBoxLayout();
-  QLabel *extFinishPassesLabel = new QLabel("External Finish Passes:");
-  extFinishPassesLabel->setMinimumWidth(140);
-  m_externalFinishingPassesSpin = new QSpinBox();
-  m_externalFinishingPassesSpin->setRange(1, 10);
-  m_externalFinishingPassesSpin->setValue(2);
-  m_externalFinishingPassesSpin->setToolTip("Number of finishing passes for external features");
-  extFinishPassesLayout->addWidget(extFinishPassesLabel);
-  extFinishPassesLayout->addWidget(m_externalFinishingPassesSpin);
-  extFinishPassesLayout->addStretch();
-  m_machiningParamsLayout->addLayout(extFinishPassesLayout);
-
-  // Parting allowance
-  QHBoxLayout *partingAllowanceLayout = new QHBoxLayout();
-  QLabel *partingAllowanceLabel = new QLabel("Parting Allowance:");
-  partingAllowanceLabel->setMinimumWidth(140);
-  m_partingAllowanceSpin = new QDoubleSpinBox();
-  m_partingAllowanceSpin->setRange(0.0, 10.0);
-  m_partingAllowanceSpin->setValue(0.0);
-  m_partingAllowanceSpin->setSuffix(" mm");
-  m_partingAllowanceSpin->setDecimals(2);
-  m_partingAllowanceSpin->setToolTip("Additional stock to leave during parting operation");
-  partingAllowanceLayout->addWidget(partingAllowanceLabel);
-  partingAllowanceLayout->addWidget(m_partingAllowanceSpin);
-  partingAllowanceLayout->addStretch();
-  m_machiningParamsLayout->addLayout(partingAllowanceLayout);
+  // Internal finishing and other parameters moved to dedicated groups
 
   // Operation enablement section (hidden as it's now handled by tiles)
   QGroupBox *operationEnablementGroup = new QGroupBox("Operation Enablement");
@@ -493,7 +452,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   operationRowsLayout->addLayout(rightColumnLayout);
   operationEnablementLayout->addLayout(operationRowsLayout);
   
-  m_machiningParamsLayout->addWidget(operationEnablementGroup);
+  m_facingParamsLayout->addWidget(operationEnablementGroup);
 
   // Flood coolant simple toggle
   QHBoxLayout *coolLayout = new QHBoxLayout();
@@ -501,9 +460,9 @@ void SetupConfigurationPanel::setupMachiningTab() {
   m_contourFloodCheck->setChecked(true);
   coolLayout->addWidget(m_contourFloodCheck);
   coolLayout->addStretch();
-  m_machiningParamsLayout->addLayout(coolLayout);
+  m_facingParamsLayout->addLayout(coolLayout);
 
-  facingLayout->addWidget(m_machiningParamsGroup);
+  facingLayout->addWidget(m_facingParamsGroup);
 
   // Quality Group
   m_qualityGroup = new QGroupBox("Quality Settings");
@@ -598,6 +557,24 @@ void SetupConfigurationPanel::setupMachiningTab() {
   roughEnableLayout->addStretch();
   roughLayout->addLayout(roughEnableLayout);
 
+  // Internal Roughing Machining Parameters
+  m_internalRoughingParamsGroup = new QGroupBox("Internal Roughing Parameters");
+  m_internalRoughingParamsLayout = new QVBoxLayout(m_internalRoughingParamsGroup);
+  QHBoxLayout *largestDrillLayout = new QHBoxLayout();
+  QLabel *largestDrillLabel = new QLabel("Largest Drill Size:");
+  largestDrillLabel->setMinimumWidth(140);
+  m_largestDrillSizeSpin = new QDoubleSpinBox();
+  m_largestDrillSizeSpin->setRange(1.0, 50.0);
+  m_largestDrillSizeSpin->setValue(12.0);
+  m_largestDrillSizeSpin->setSuffix(" mm");
+  m_largestDrillSizeSpin->setDecimals(1);
+  m_largestDrillSizeSpin->setToolTip("Diameters larger than this will be bored instead of drilled");
+  largestDrillLayout->addWidget(largestDrillLabel);
+  largestDrillLayout->addWidget(m_largestDrillSizeSpin);
+  largestDrillLayout->addStretch();
+  m_internalRoughingParamsLayout->addLayout(largestDrillLayout);
+  roughLayout->addWidget(m_internalRoughingParamsGroup);
+
   QGroupBox *roughToolsGroup = new QGroupBox("Available Tools");
   QVBoxLayout *roughToolsLayout = new QVBoxLayout(roughToolsGroup);
   QListWidget *roughToolsList = new QListWidget();
@@ -623,6 +600,38 @@ void SetupConfigurationPanel::setupMachiningTab() {
   finishEnableLayout->addWidget(m_finishingEnabledCheck);
   finishEnableLayout->addStretch();
   finishLayout->addLayout(finishEnableLayout);
+
+  // Internal Finishing Parameters
+  m_internalFinishingParamsGroup = new QGroupBox("Internal Finishing Parameters");
+  m_internalFinishingParamsLayout = new QVBoxLayout(m_internalFinishingParamsGroup);
+  QHBoxLayout *intFinishPassesLayout = new QHBoxLayout();
+  QLabel *intFinishPassesLabel = new QLabel("Internal Finish Passes:");
+  intFinishPassesLabel->setMinimumWidth(140);
+  m_internalFinishingPassesSpin = new QSpinBox();
+  m_internalFinishingPassesSpin->setRange(1, 10);
+  m_internalFinishingPassesSpin->setValue(2);
+  m_internalFinishingPassesSpin->setToolTip("Number of finishing passes for internal features");
+  intFinishPassesLayout->addWidget(intFinishPassesLabel);
+  intFinishPassesLayout->addWidget(m_internalFinishingPassesSpin);
+  intFinishPassesLayout->addStretch();
+  m_internalFinishingParamsLayout->addLayout(intFinishPassesLayout);
+  finishLayout->addWidget(m_internalFinishingParamsGroup);
+
+  // External Finishing Parameters
+  m_finishingParamsGroup = new QGroupBox("Finishing Parameters");
+  m_finishingParamsLayout = new QVBoxLayout(m_finishingParamsGroup);
+  QHBoxLayout *extFinishPassesLayout = new QHBoxLayout();
+  QLabel *extFinishPassesLabel = new QLabel("External Finish Passes:");
+  extFinishPassesLabel->setMinimumWidth(140);
+  m_externalFinishingPassesSpin = new QSpinBox();
+  m_externalFinishingPassesSpin->setRange(1, 10);
+  m_externalFinishingPassesSpin->setValue(2);
+  m_externalFinishingPassesSpin->setToolTip("Number of finishing passes for external features");
+  extFinishPassesLayout->addWidget(extFinishPassesLabel);
+  extFinishPassesLayout->addWidget(m_externalFinishingPassesSpin);
+  extFinishPassesLayout->addStretch();
+  m_finishingParamsLayout->addLayout(extFinishPassesLayout);
+  finishLayout->addWidget(m_finishingParamsGroup);
 
   QGroupBox *finishToolsGroup = new QGroupBox("Available Tools");
   QVBoxLayout *finishToolsLayout = new QVBoxLayout(finishToolsGroup);
@@ -810,6 +819,23 @@ void SetupConfigurationPanel::setupMachiningTab() {
   partEnableLayout->addWidget(m_partingEnabledCheck);
   partEnableLayout->addStretch();
   partLayout->addLayout(partEnableLayout);
+
+  m_partingParamsGroup = new QGroupBox("Parting Parameters");
+  m_partingParamsLayout = new QVBoxLayout(m_partingParamsGroup);
+  QHBoxLayout *partingAllowanceLayout = new QHBoxLayout();
+  QLabel *partingAllowanceLabel = new QLabel("Parting Allowance:");
+  partingAllowanceLabel->setMinimumWidth(140);
+  m_partingAllowanceSpin = new QDoubleSpinBox();
+  m_partingAllowanceSpin->setRange(0.0, 10.0);
+  m_partingAllowanceSpin->setValue(0.0);
+  m_partingAllowanceSpin->setSuffix(" mm");
+  m_partingAllowanceSpin->setDecimals(2);
+  m_partingAllowanceSpin->setToolTip("Additional stock to leave during parting operation");
+  partingAllowanceLayout->addWidget(partingAllowanceLabel);
+  partingAllowanceLayout->addWidget(m_partingAllowanceSpin);
+  partingAllowanceLayout->addStretch();
+  m_partingParamsLayout->addLayout(partingAllowanceLayout);
+  partLayout->addWidget(m_partingParamsGroup);
   m_partingWidthLayout = new QHBoxLayout();
   m_partingWidthLabel = new QLabel("Parting Width:");
   m_partingWidthLabel->setMinimumWidth(140);
@@ -1094,8 +1120,16 @@ void SetupConfigurationPanel::applyTabStyling() {
 
   m_partSetupGroup->setStyleSheet(groupBoxStyle.arg("#2196F3", "33, 150, 243"));
   m_materialGroup->setStyleSheet(groupBoxStyle.arg("#4CAF50", "76, 175, 80"));
-  m_machiningParamsGroup->setStyleSheet(
-      groupBoxStyle.arg("#f44336", "244, 67, 54"));
+  if (m_facingParamsGroup)
+    m_facingParamsGroup->setStyleSheet(groupBoxStyle.arg("#f44336", "244, 67, 54"));
+  if (m_internalRoughingParamsGroup)
+    m_internalRoughingParamsGroup->setStyleSheet(groupBoxStyle.arg("#f44336", "244, 67, 54"));
+  if (m_internalFinishingParamsGroup)
+    m_internalFinishingParamsGroup->setStyleSheet(groupBoxStyle.arg("#f44336", "244, 67, 54"));
+  if (m_finishingParamsGroup)
+    m_finishingParamsGroup->setStyleSheet(groupBoxStyle.arg("#f44336", "244, 67, 54"));
+  if (m_partingParamsGroup)
+    m_partingParamsGroup->setStyleSheet(groupBoxStyle.arg("#f44336", "244, 67, 54"));
   m_qualityGroup->setStyleSheet(groupBoxStyle.arg("#607D8B", "96, 125, 139"));
 }
 
