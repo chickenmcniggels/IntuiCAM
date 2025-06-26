@@ -457,7 +457,10 @@ bool WorkspaceController::updateDistanceToChuck(double distance)
                 recalculateRawMaterial(-1.0); // Use current diameter
                 qDebug() << "WorkspaceController: Recalculated raw material for new position";
             }
-            
+
+            // Update profile display to keep it aligned with the workpiece
+            updateProfileDisplay();
+
             // Make sure toolpaths are properly transformed
             qDebug() << "WorkspaceController: Emitting workpiecePositionChanged signal for toolpath updates";
             emit workpiecePositionChanged(distance);
