@@ -448,16 +448,7 @@ void OperationTileContainer::setupUI()
         "Parting"
     };
     
-    // Enable operations that should be active by default.  The internal
-    // features tile needs to reflect the default configuration where
-    // machining internal geometry is turned on, so include it here.
-    QStringList defaultEnabled = {
-        "Facing",
-        "Internal Features",
-        "Roughing",
-        "Finishing",
-        "Parting"
-    };
+    QStringList defaultEnabled = {"Facing", "Roughing", "Finishing", "Parting"};
     
     for (const QString& operation : operations) {
         bool enabled = defaultEnabled.contains(operation);
