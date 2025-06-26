@@ -92,10 +92,11 @@ void ToolpathDisplayObject::ComputeSelection(const Handle(SelectMgr_Selection)& 
     for (size_t i = 0; i < moves.size() && i < static_cast<size_t>(progress_ * moves.size()); ++i) {
         const auto& move = moves[i];
         
-        // Apply the same coordinate transformation as in other methods
-        // Transform: work(axial, 0, radius) -> display(radius, 0, axial)
-        gp_Pnt startPnt(move.startPoint.z, 0.0, move.startPoint.x);  // (radius, 0, axial)
-        gp_Pnt endPnt(move.endPoint.z, 0.0, move.endPoint.x);        // (radius, 0, axial)
+        // Apply the same coordinate transformation as in the 2D profile
+        // Toolpath coordinates are stored as (radius, 0, axial) where X is radial
+        // and Z is axial.  Display directly in the viewer's XZ plane.
+        gp_Pnt startPnt(move.startPoint.x, 0.0, move.startPoint.z);  // (radius, 0, axial)
+        gp_Pnt endPnt(move.endPoint.x, 0.0, move.endPoint.z);        // (radius, 0, axial)
         
         // Ensure Y=0 to constrain to XZ plane for lathe operations
         startPnt.SetY(0.0);
@@ -275,13 +276,11 @@ void ToolpathDisplayObject::computeWireframePresentation(const Handle(Prs3d_Pres
         const auto& currentMove = moves[i];
         
         // COORDINATE SYSTEM TRANSFORMATION FOR LATHE OPERATIONS
-        // Toolpath Movement coordinates: Point3D(axial, 0, radius) - work coordinates  
-        // The toolpath is generated in work coordinates where X=axial, Z=radius
-        // However, for display in XZ plane, we need to map this to display coordinates
-        // We use the standard lathe coordinate mapping: display X=radius, display Z=axial
-        // So we transform: work(axial, 0, radius) -> display(radius, 0, axial)
-        gp_Pnt startPnt(prevMove.position.z, 0.0, prevMove.position.x);      // (radius, 0, axial)
-        gp_Pnt endPnt(currentMove.position.z, 0.0, currentMove.position.x);  // (radius, 0, axial)
+        // Toolpath coordinates already follow the (radius, 0, axial) convention
+        // matching the 2D profile (X = radius, Z = axial). Display them directly
+        // in the viewer's XZ plane.
+        gp_Pnt startPnt(prevMove.position.x, 0.0, prevMove.position.z);      // (radius, 0, axial)
+        gp_Pnt endPnt(currentMove.position.x, 0.0, currentMove.position.z);  // (radius, 0, axial)
         
         // Ensure Y=0 to constrain to XZ plane for lathe operations
         startPnt.SetY(0.0);
@@ -402,10 +401,10 @@ void ToolpathDisplayObject::computeMoveTypePresentation(const Handle(Prs3d_Prese
             continue;
         }
         
-        // Apply the same coordinate transformation as in computeWireframePresentation
-        // Transform: work(axial, 0, radius) -> display(radius, 0, axial)
-        gp_Pnt startPnt(move.startPoint.z, 0.0, move.startPoint.x);  // (radius, 0, axial)
-        gp_Pnt endPnt(move.endPoint.z, 0.0, move.endPoint.x);        // (radius, 0, axial)
+        // Apply the same coordinate transformation as the 2D profile
+        // Toolpath points are defined with X as radius and Z as axial
+        gp_Pnt startPnt(move.startPoint.x, 0.0, move.startPoint.z);  // (radius, 0, axial)
+        gp_Pnt endPnt(move.endPoint.x, 0.0, move.endPoint.z);        // (radius, 0, axial)
         
         // Ensure Y=0 to constrain to XZ plane for lathe operations
         startPnt.SetY(0.0);
