@@ -965,18 +965,12 @@ QWidget* MainWindow::createSetupTab()
     
     rightLayout->addWidget(operationFrame);
     
-    // Create toolpath legend widget
-    m_toolpathLegendWidget = new ToolpathLegendWidget();
-    m_toolpathLegendWidget->setMaximumWidth(250);
-    m_toolpathLegendWidget->setMinimumHeight(300);
-    
-    // Add to main splitter (left panel, viewer, legend)
+    // Add setup panel and viewer to main splitter
     m_mainSplitter->addWidget(m_setupConfigPanel);
     m_mainSplitter->addWidget(rightWidget);
-    m_mainSplitter->addWidget(m_toolpathLegendWidget);
-    
-    // Set splitter sizes (left panel 30%, viewport 60%, legend 10%)
-    m_mainSplitter->setSizes({350, 700, 250});
+
+    // Set splitter sizes (left panel 30%, viewport 70%)
+    m_mainSplitter->setSizes({350, 800});
     
     setupLayout->addWidget(m_mainSplitter);
     
@@ -1308,16 +1302,6 @@ void MainWindow::handleGenerateToolpaths()
                 }
                 m_3dViewer->update();
                 
-                // Update legend widget with generated operation types
-                if (m_toolpathLegendWidget) {
-                    std::vector<IntuiCAM::Toolpath::OperationType> generatedOperations;
-                    for (const auto& toolpath : result.timeline) {
-                        if (toolpath) {
-                            generatedOperations.push_back(toolpath->getOperationType());
-                        }
-                    }
-                    m_toolpathLegendWidget->updateLegendForOperations(generatedOperations);
-                }
             }
         } else {
             statusBar()->showMessage(QString("Toolpath generation failed: %1").arg(QString::fromStdString(result.errorMessage)), 5000);
