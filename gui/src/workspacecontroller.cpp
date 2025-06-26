@@ -464,7 +464,8 @@ bool WorkspaceController::updateDistanceToChuck(double distance)
             qDebug() << "WorkspaceController: Workpiece positioned at" << distance << "mm from chuck";
             
             // Debounce raw material/profile updates to avoid slider lag
-            m_materialUpdateTimer->start(250); // restart timer
+            // Use a short delay so interactive sliders remain responsive
+            m_materialUpdateTimer->start(100); // restart timer with small delay
 
             // Make sure toolpaths are properly transformed
             qDebug() << "WorkspaceController: Emitting workpiecePositionChanged signal for toolpath updates";
