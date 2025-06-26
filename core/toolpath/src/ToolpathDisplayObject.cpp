@@ -92,8 +92,14 @@ void ToolpathDisplayObject::ComputeSelection(const Handle(SelectMgr_Selection)& 
     for (size_t i = 0; i < moves.size() && i < static_cast<size_t>(progress_ * moves.size()); ++i) {
         const auto& move = moves[i];
         
-        gp_Pnt startPnt(move.startPoint.x, move.startPoint.y, move.startPoint.z);
-        gp_Pnt endPnt(move.endPoint.x, move.endPoint.y, move.endPoint.z);
+        // Apply the same coordinate transformation as in other methods
+        // Transform: work(axial, 0, radius) -> display(radius, 0, axial)
+        gp_Pnt startPnt(move.startPoint.z, 0.0, move.startPoint.x);  // (radius, 0, axial)
+        gp_Pnt endPnt(move.endPoint.z, 0.0, move.endPoint.x);        // (radius, 0, axial)
+        
+        // Ensure Y=0 to constrain to XZ plane for lathe operations
+        startPnt.SetY(0.0);
+        endPnt.SetY(0.0);
         
         Handle(Select3D_SensitiveSegment) segment = new Select3D_SensitiveSegment(owner, startPnt, endPnt);
         theSelection->Add(segment);
@@ -268,9 +274,12 @@ void ToolpathDisplayObject::computeWireframePresentation(const Handle(Prs3d_Pres
         const auto& prevMove = moves[i-1];
         const auto& currentMove = moves[i];
         
-        // CORRECTED COORDINATE SYSTEM TRANSFORMATION FOR LATHE OPERATIONS
-        // Toolpath coordinates: Point3D(axial, 0, radius) - work coordinates
-        // Display coordinates: Point3D(radius, 0, axial) - for XZ plane display
+        // COORDINATE SYSTEM TRANSFORMATION FOR LATHE OPERATIONS
+        // Toolpath Movement coordinates: Point3D(axial, 0, radius) - work coordinates  
+        // The toolpath is generated in work coordinates where X=axial, Z=radius
+        // However, for display in XZ plane, we need to map this to display coordinates
+        // We use the standard lathe coordinate mapping: display X=radius, display Z=axial
+        // So we transform: work(axial, 0, radius) -> display(radius, 0, axial)
         gp_Pnt startPnt(prevMove.position.z, 0.0, prevMove.position.x);      // (radius, 0, axial)
         gp_Pnt endPnt(currentMove.position.z, 0.0, currentMove.position.x);  // (radius, 0, axial)
         
@@ -393,8 +402,14 @@ void ToolpathDisplayObject::computeMoveTypePresentation(const Handle(Prs3d_Prese
             continue;
         }
         
-        gp_Pnt startPnt(move.startPoint.x, move.startPoint.y, move.startPoint.z);
-        gp_Pnt endPnt(move.endPoint.x, move.endPoint.y, move.endPoint.z);
+        // Apply the same coordinate transformation as in computeWireframePresentation
+        // Transform: work(axial, 0, radius) -> display(radius, 0, axial)
+        gp_Pnt startPnt(move.startPoint.z, 0.0, move.startPoint.x);  // (radius, 0, axial)
+        gp_Pnt endPnt(move.endPoint.z, 0.0, move.endPoint.x);        // (radius, 0, axial)
+        
+        // Ensure Y=0 to constrain to XZ plane for lathe operations
+        startPnt.SetY(0.0);
+        endPnt.SetY(0.0);
         
         Quantity_Color color = getColorForMove(move, i);
         
