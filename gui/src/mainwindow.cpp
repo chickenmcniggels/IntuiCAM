@@ -1922,38 +1922,61 @@ void MainWindow::handleOperationTileExpandedChanged(const QString& operationName
 
 QString MainWindow::getDefaultToolForOperation(const QString& operationName) const
 {
-    if (!m_toolManager) return QString();
-    
-    // Get all available tools and find the first suitable one for each operation
-    QStringList allTools = m_toolManager->getAllToolIds();
-    
-    for (const QString& toolId : allTools) {
-        IntuiCAM::GUI::CuttingTool tool = m_toolManager->getTool(toolId);
-        
-        // Match operation to appropriate tool types
-        if (operationName == "Facing" && tool.type == IntuiCAM::GUI::ToolType::TurningInsert) {
-            return tool.name;
-        } else if (operationName == "Roughing" && tool.type == IntuiCAM::GUI::ToolType::TurningInsert) {
-            return tool.name;
-        } else if (operationName == "Finishing" && tool.type == IntuiCAM::GUI::ToolType::TurningInsert) {
-            return tool.name;
-        } else if (operationName == "Parting" && tool.type == IntuiCAM::GUI::ToolType::PartingTool) {
-            return tool.name;
-        } else if (operationName == "Threading" && tool.type == IntuiCAM::GUI::ToolType::ThreadingTool) {
-            return tool.name;
-        } else if (operationName == "Grooving" && tool.type == IntuiCAM::GUI::ToolType::FormTool) {
-            return tool.name;  // Use FormTool for grooving operations
-        } else if (operationName == "Drilling" && tool.type == IntuiCAM::GUI::ToolType::BoringBar) {
-            return tool.name;  // Use BoringBar for drilling operations
-        }
+    if (!m_toolManager || !m_setupConfigPanel)
+        return QString();
+
+    QString materialName = m_setupConfigPanel->getSelectedMaterialName();
+    if (materialName.isEmpty())
+        return QString();
+
+    const QMap<QString, QList<IntuiCAM::GUI::ToolType>> opToolTypes = {
+        {"Facing", {IntuiCAM::GUI::ToolType::TurningInsert, IntuiCAM::GUI::ToolType::FacingTool}},
+        {"Roughing", {IntuiCAM::GUI::ToolType::TurningInsert}},
+        {"Finishing", {IntuiCAM::GUI::ToolType::TurningInsert}},
+        {"LH Cleanup", {IntuiCAM::GUI::ToolType::TurningInsert}},
+        {"Neutral Cleanup", {IntuiCAM::GUI::ToolType::TurningInsert}},
+        {"Threading", {IntuiCAM::GUI::ToolType::ThreadingTool}},
+        {"Chamfering", {IntuiCAM::GUI::ToolType::FormTool, IntuiCAM::GUI::ToolType::TurningInsert}},
+        {"Parting", {IntuiCAM::GUI::ToolType::PartingTool}}
+    };
+
+    const QMap<QString, QStringList> opCapabilities = {
+        {"Facing", {"facing"}},
+        {"Roughing", {"roughing"}},
+        {"Finishing", {"finishing"}},
+        {"LH Cleanup", {"finishing"}},
+        {"Neutral Cleanup", {"finishing"}},
+        {"Threading", {"threading"}},
+        {"Chamfering", {"chamfering", "facing"}},
+        {"Parting", {"parting"}}
+    };
+
+    QList<IntuiCAM::GUI::ToolType> types = opToolTypes.value(operationName);
+    QStringList toolIds;
+    for (IntuiCAM::GUI::ToolType t : types) {
+        toolIds.append(m_toolManager->getToolsByType(t));
     }
-    
-    // Fallback to first available tool
-    if (!allTools.isEmpty()) {
-        IntuiCAM::GUI::CuttingTool tool = m_toolManager->getTool(allTools.first());
+
+    for (const QString& id : toolIds) {
+        IntuiCAM::GUI::CuttingTool tool = m_toolManager->getTool(id);
+        if (!tool.isActive)
+            continue;
+        if (!tool.capabilities.suitableMaterials.contains(materialName))
+            continue;
+
+        bool opMatch = false;
+        for (const QString& cap : opCapabilities.value(operationName)) {
+            if (tool.capabilities.supportedOperations.contains(cap)) {
+                opMatch = true;
+                break;
+            }
+        }
+        if (!opMatch)
+            continue;
+
         return tool.name;
     }
-    
+
     return QString();
 }
 
