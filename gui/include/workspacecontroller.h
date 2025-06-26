@@ -2,6 +2,7 @@
 #define WORKSPACECONTROLLER_H
 
 #include <QObject>
+#include <QTimer>
 #include <QString>
 #include <QVector>
 
@@ -350,6 +351,9 @@ private:
     IntuiCAM::Toolpath::LatheProfile::Profile2D m_extractedProfile;
     Handle(AIS_InteractiveObject) m_profileDisplayObject;
     bool m_profileVisible;
+
+    // Timer for debouncing raw material/profile updates when position changes
+    QTimer* m_materialUpdateTimer { nullptr };
     
     /**
      * @brief Set up signal connections between managers
