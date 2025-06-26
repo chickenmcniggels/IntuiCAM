@@ -254,13 +254,17 @@ void SetupConfigurationPanel::setupPartTab() {
   m_distanceLabel = new QLabel("Distance to Chuck:");
   m_distanceLabel->setMinimumWidth(120);
   m_distanceSlider = new QSlider(Qt::Horizontal);
-  m_distanceSlider->setRange(0, 100);
-  m_distanceSlider->setValue(25);
+  // Use 0.1mm resolution for fine control but allow larger positioning range
+  m_distanceSlider->setRange(0, 5000); // 0-500mm range
+  m_distanceSlider->setSingleStep(10);  // 1mm per scroll step
+  m_distanceSlider->setPageStep(50);    // 5mm per page step
+  m_distanceSlider->setValue(250);      // Default 25mm
   m_distanceSpinBox = new QDoubleSpinBox();
-  m_distanceSpinBox->setRange(0.0, 100.0);
+  m_distanceSpinBox->setRange(0.0, 500.0);
   m_distanceSpinBox->setValue(25.0);
   m_distanceSpinBox->setSuffix(" mm");
   m_distanceSpinBox->setDecimals(1);
+  m_distanceSpinBox->setSingleStep(1.0);
   m_distanceSpinBox->setMaximumWidth(80);
 
   m_distanceLayout->addWidget(m_distanceLabel);
@@ -1184,7 +1188,7 @@ void SetupConfigurationPanel::setRawDiameter(double diameter) {
 }
 
 void SetupConfigurationPanel::setDistanceToChuck(double distance) {
-  m_distanceSlider->setValue(static_cast<int>(distance));
+  m_distanceSlider->setValue(static_cast<int>(distance * 10));
   m_distanceSpinBox->setValue(distance);
 }
 
