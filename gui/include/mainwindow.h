@@ -53,7 +53,6 @@ namespace GUI {
 // Include CylinderInfo definition
 #include "workpiecemanager.h"
 #include "operationtilewidget.h"
-#include "toolpathlegendwidget.h"
 
 // Include ViewMode enum
 enum class ViewMode;  // Forward declaration
@@ -213,8 +212,6 @@ private:
     // Operation Tile System
     IntuiCAM::GUI::OperationTileContainer *m_operationTileContainer;
     
-    // Toolpath Legend Widget
-    ToolpathLegendWidget *m_toolpathLegendWidget;
     
     // Tool Management Components
     class ToolManagementTab *m_toolManagementTab;
