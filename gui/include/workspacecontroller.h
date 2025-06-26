@@ -22,10 +22,21 @@
 #include <gp_Circ.hxx>
 #include <Precision.hxx>
 
+// IntuiCAM includes
+#include <IntuiCAM/Toolpath/ToolpathGenerationPipeline.h>
+#include <IntuiCAM/Toolpath/Types.h>
+#include <IntuiCAM/Toolpath/OperationParameterManager.h>
+#include <IntuiCAM/Toolpath/Operations.h>
+#include <IntuiCAM/Toolpath/ProfileExtractor.h>
+#include <IntuiCAM/Toolpath/LatheProfile.h>
+#include <IntuiCAM/Geometry/Types.h>
+
 // Forward declarations
 class ChuckManager;
 class WorkpieceManager;
 class RawMaterialManager;
+class WorkspaceCoordinateManager;
+class OpenGL3DWidget;
 namespace IntuiCAM { namespace Geometry { class IStepLoader; } }
 using IStepLoader = IntuiCAM::Geometry::IStepLoader;
 
@@ -175,6 +186,7 @@ public:
     ChuckManager* getChuckManager() const { return m_chuckManager; }
     WorkpieceManager* getWorkpieceManager() const { return m_workpieceManager; }
     RawMaterialManager* getRawMaterialManager() const { return m_rawMaterialManager; }
+    WorkspaceCoordinateManager* getCoordinateManager() const { return m_coordinateManager; }
 
     /**
      * @brief Check if there is a part shape loaded
@@ -192,6 +204,36 @@ public:
      * @brief Redisplay all scene objects (chuck, workpieces, raw material). Used after a global context clear.
      */
     void redisplayAll();
+
+    /**
+     * @brief Generate toolpaths for enabled operations using the current part geometry
+     * @return True if toolpath generation was successful
+     */
+    bool generateToolpaths();
+
+    /**
+     * @brief Extract and display the 2D profile from the current workpiece
+     * @return True if profile extraction and display was successful
+     */
+    bool extractAndDisplayProfile();
+
+    /**
+     * @brief Update profile visibility in the 3D viewer
+     * @param visible True to show profiles, false to hide
+     */
+    void setProfileVisible(bool visible);
+
+    /**
+     * @brief Check if profile is currently visible
+     * @return True if profile is visible
+     */
+    bool isProfileVisible() const;
+
+    /**
+     * @brief Get the extracted profile data
+     * @return The extracted profile, or empty profile if not available
+     */
+    IntuiCAM::Toolpath::LatheProfile::Profile2D getExtractedProfile() const;
 
 signals:
     /**
@@ -291,6 +333,7 @@ private:
     ChuckManager* m_chuckManager;
     WorkpieceManager* m_workpieceManager;
     RawMaterialManager* m_rawMaterialManager;
+    WorkspaceCoordinateManager* m_coordinateManager;
     
     // Dependencies
     Handle(AIS_InteractiveContext) m_context;
@@ -302,6 +345,11 @@ private:
 
     // Remember last requested distance-to-chuck so that flips and reloads can reapply it
     double m_lastDistanceToChuck { 0.0 };
+
+    // Profile management
+    IntuiCAM::Toolpath::LatheProfile::Profile2D m_extractedProfile;
+    Handle(AIS_InteractiveObject) m_profileDisplayObject;
+    bool m_profileVisible;
     
     /**
      * @brief Set up signal connections between managers
@@ -334,6 +382,109 @@ private:
      * @return True if recalculation was successful
      */
     bool recalculateRawMaterial(double diameter = 0.0);
+    
+    /**
+     * @brief Initialize work coordinate system based on raw material positioning
+     * @param axis The spindle axis for the coordinate system
+     */
+    void initializeWorkCoordinateSystem(const gp_Ax1& axis);
+
+    /**
+     * @brief Create profile display object from extracted 2D profile
+     * @param profile The 2D profile to visualize
+     * @return AIS object for the profile display
+     */
+    Handle(AIS_InteractiveObject) createProfileDisplayObject(const IntuiCAM::Toolpath::LatheProfile::Profile2D& profile);
+
+    /**
+     * @brief Update profile display when workpiece transforms
+     */
+    void updateProfileDisplay();
+
+    /**
+     * @brief Clear profile display from viewer
+     */
+    void clearProfileDisplay();
+};
+
+/**
+ * @brief Manages work coordinate system transformations for lathe operations
+ * 
+ * This class implements a proper work coordinate system where:
+ * - Origin (0,0,0) is positioned at the end of the raw material
+ * - Z-axis is the spindle/rotational axis
+ * - X-axis is radial (lathe X coordinate)  
+ * - Toolpaths are generated in work coordinates and transformed for display
+ */
+class WorkspaceCoordinateManager : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit WorkspaceCoordinateManager(QObject *parent = nullptr);
+    
+    /**
+     * @brief Initialize the work coordinate system from raw material and spindle axis
+     * @param rawMaterialEnd Global position of the raw material end (work origin)
+     * @param spindleAxis Direction of the spindle axis (Z-axis in work coordinates)
+     */
+    void initializeWorkCoordinates(const IntuiCAM::Geometry::Point3D& rawMaterialEnd, 
+                                   const IntuiCAM::Geometry::Vector3D& spindleAxis);
+    
+    /**
+     * @brief Get the work coordinate system
+     */
+    const IntuiCAM::Geometry::WorkCoordinateSystem& getWorkCoordinateSystem() const;
+    
+    /**
+     * @brief Convert global coordinates to work coordinates
+     */
+    IntuiCAM::Geometry::Point3D globalToWork(const IntuiCAM::Geometry::Point3D& globalPoint) const;
+    
+    /**
+     * @brief Convert work coordinates to global coordinates
+     */
+    IntuiCAM::Geometry::Point3D workToGlobal(const IntuiCAM::Geometry::Point3D& workPoint) const;
+    
+    /**
+     * @brief Convert global coordinates to lathe coordinates (X=radius, Z=axial)
+     */
+    IntuiCAM::Geometry::Point2D globalToLathe(const IntuiCAM::Geometry::Point3D& globalPoint) const;
+    
+    /**
+     * @brief Convert lathe coordinates to global coordinates
+     */
+    IntuiCAM::Geometry::Point3D latheToGlobal(const IntuiCAM::Geometry::Point2D& lathePoint) const;
+    
+    /**
+     * @brief Update work coordinate origin (e.g., when raw material position changes)
+     */
+    void updateWorkOrigin(const IntuiCAM::Geometry::Point3D& newOrigin);
+    
+    /**
+     * @brief Get transformation matrix from work coordinates to global coordinates
+     */
+    const IntuiCAM::Geometry::Matrix4x4& getWorkToGlobalMatrix() const;
+    
+    /**
+     * @brief Get transformation matrix from global coordinates to work coordinates  
+     */
+    const IntuiCAM::Geometry::Matrix4x4& getGlobalToWorkMatrix() const;
+    
+    /**
+     * @brief Check if work coordinate system is initialized
+     */
+    bool isInitialized() const { return initialized_; }
+    
+signals:
+    /**
+     * @brief Emitted when work coordinate system changes
+     */
+    void workCoordinateSystemChanged();
+
+private:
+    IntuiCAM::Geometry::WorkCoordinateSystem workCoordinateSystem_;
+    bool initialized_;
 };
 
 #endif // WORKSPACECONTROLLER_H 

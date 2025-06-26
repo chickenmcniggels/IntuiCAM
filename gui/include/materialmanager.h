@@ -46,12 +46,13 @@ struct CuttingParameters {
     double depthOfCut;        // mm
     double stepover;          // mm
     bool climbMilling;        // true for climb, false for conventional
+    bool useConstantSurfaceSpeed; // true for CSS mode, false for constant RPM
     QString coolantType;      // "None", "Flood", "Mist", "Air"
     
     CuttingParameters()
         : surfaceSpeed(0.0), spindleSpeed(0.0), feedRate(0.0)
         , depthOfCut(0.0), stepover(0.0), climbMilling(true)
-        , coolantType("None") {}
+        , useConstantSurfaceSpeed(false), coolantType("None") {}
 };
 
 enum class MaterialCategory {

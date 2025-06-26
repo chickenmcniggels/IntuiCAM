@@ -1,70 +1,88 @@
 #include <IntuiCAM/Toolpath/FinishingOperation.h>
-#include <cmath>
-#include <IntuiCAM/Toolpath/LatheProfile.h>
-#include <algorithm>
+#include <IntuiCAM/Geometry/Types.h>
+#include <memory>
+#include <sstream>
 
 namespace IntuiCAM {
 namespace Toolpath {
 
 FinishingOperation::FinishingOperation(const std::string& name, std::shared_ptr<Tool> tool)
     : Operation(Operation::Type::Finishing, name, tool) {
+    // Initialize with default parameters
+}
+
+std::string FinishingOperation::validateParameters(const Parameters& params) {
+    std::ostringstream errors;
+    
+    // Validate diameter constraints
+    if (params.targetDiameter <= 0.0) {
+        errors << "Target diameter must be positive. ";
+    }
+    
+    // Validate Z coordinates
+    if (params.startZ <= params.endZ) {
+        errors << "Start Z must be greater than end Z (cutting downward). ";
+    }
+    
+    // Validate surface speed
+    if (params.surfaceSpeed <= 0.0) {
+        errors << "Surface speed must be positive. ";
+    }
+    
+    if (params.surfaceSpeed > 500.0) {
+        errors << "Surface speed seems excessive (>500 m/min). ";
+    }
+    
+    // Validate feed rate
+    if (params.feedRate <= 0.0) {
+        errors << "Feed rate must be positive. ";
+    }
+    
+    if (params.feedRate > 1.0) {
+        errors << "Feed rate seems excessive (>1.0 mm/rev). ";
+    }
+    
+    return errors.str();
 }
 
 std::unique_ptr<Toolpath> FinishingOperation::generateToolpath(const Geometry::Part& part) {
-    auto toolpath = std::make_unique<Toolpath>(name_, tool_);
-
-    // Extract lathe profile (r,z pairs)
-    auto profile = LatheProfile::extract(part, 150 /*numSections*/);
-
-    // Fallback to legacy behaviour if extraction failed
-    if (profile.size() < 2) {
-        double radius = params_.targetDiameter / 2.0;
-        toolpath->addRapidMove(Geometry::Point3D(radius + 5.0, 0, params_.startZ + 5.0));
-        toolpath->addRapidMove(Geometry::Point3D(radius, 0, params_.startZ + 2.0));
-        toolpath->addLinearMove(Geometry::Point3D(radius, 0, params_.startZ), params_.feedRate);
-        toolpath->addLinearMove(Geometry::Point3D(radius, 0, params_.endZ), params_.feedRate);
-        toolpath->addRapidMove(Geometry::Point3D(radius, 0, params_.endZ - 2.0));
-        toolpath->addRapidMove(Geometry::Point3D(radius + 10.0, 0, params_.endZ - 2.0));
-        return toolpath;
-    }
-
-    // Ensure profile sorted by Z ascending
-    std::sort(profile.begin(), profile.end(), [](const Geometry::Point2D& a, const Geometry::Point2D& b){return a.z < b.z;});
-
-    // Determine safe clearance radius
-    double maxRadius = 0.0;
-    for (const auto& p : profile) maxRadius = std::max(maxRadius, p.x);
-    const double clearance = 5.0; // mm radial clearance
-
-    const double safeRadius = maxRadius + clearance;
-
-    // Rapid above first point
-    const double firstZ = profile.front().z;
-    toolpath->addRapidMove(Geometry::Point3D(safeRadius, 0, firstZ + 5.0));
-    toolpath->addRapidMove(Geometry::Point3D(profile.front().x + 1.0 /*approach*/, 0, firstZ + 2.0));
-
-    // Plunge to cutting position
-    toolpath->addLinearMove(Geometry::Point3D(profile.front().x, 0, firstZ), params_.feedRate);
-
-    // Follow the profile
-    for (size_t i = 1; i < profile.size(); ++i) {
-        const auto& pt = profile[i];
-        toolpath->addLinearMove(Geometry::Point3D(pt.x, 0, pt.z), params_.feedRate);
-    }
-
-    // Retract at the end of profile
-    const double lastZ = profile.back().z;
-    toolpath->addRapidMove(Geometry::Point3D(profile.back().x + 2.0, 0, lastZ + 2.0));
-    toolpath->addRapidMove(Geometry::Point3D(safeRadius, 0, lastZ + 5.0));
-
+    // Create a basic finishing toolpath
+    auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+    
+    // Get part bounding box for basic finishing
+    auto bbox = part.getBoundingBox();
+    
+    // Calculate finishing parameters
+    double targetRadius = params_.targetDiameter / 2.0;
+    double currentZ = params_.startZ;
+    double endZ = params_.endZ;
+    double safeZ = params_.startZ + 5.0; // 5mm clearance
+    
+    // Safety rapid to start position
+    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, targetRadius));
+    
+    // Rapid to cutting position
+    toolpath->addRapidMove(Geometry::Point3D(currentZ + 1.0, 0.0, targetRadius));
+    
+    // Feed to cutting depth
+    toolpath->addLinearMove(Geometry::Point3D(currentZ, 0.0, targetRadius), params_.feedRate * 60.0);
+    
+    // Finish down to end Z in single pass
+    toolpath->addLinearMove(Geometry::Point3D(endZ, 0.0, targetRadius), params_.feedRate * 60.0);
+    
+    // Retract
+    toolpath->addRapidMove(Geometry::Point3D(endZ - 1.0, 0.0, targetRadius));
+    
+    // Return to safe position
+    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, targetRadius));
+    
     return toolpath;
 }
 
 bool FinishingOperation::validate() const {
-    return params_.targetDiameter > 0.0 && 
-           params_.startZ > params_.endZ && 
-           params_.feedRate > 0.0;
+    std::string error = validateParameters(params_);
+    return error.empty();
 }
 
 } // namespace Toolpath
-} // namespace IntuiCAM 
+} // namespace IntuiCAM

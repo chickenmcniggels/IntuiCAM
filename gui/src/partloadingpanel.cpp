@@ -125,13 +125,15 @@ void PartLoadingPanel::setupPositioningGroup()
 
     // Slider and spinbox in horizontal layout
     m_distanceSlider = new QSlider(Qt::Horizontal);
-    m_distanceSlider->setRange(0, 100); // 0-100mm range
+    m_distanceSlider->setRange(0, 500); // 0-500mm range
+    m_distanceSlider->setSingleStep(2); // faster scroll increments
+    m_distanceSlider->setPageStep(20);  // larger jumps with page keys
     m_distanceSlider->setValue(25); // Default 25mm
     m_distanceSlider->setTickPosition(QSlider::TicksBelow);
-    m_distanceSlider->setTickInterval(10);
+    m_distanceSlider->setTickInterval(20);
 
     m_distanceSpinBox = new QDoubleSpinBox();
-    m_distanceSpinBox->setRange(0.0, 100.0);
+    m_distanceSpinBox->setRange(0.0, 500.0);
     m_distanceSpinBox->setValue(25.0);
     m_distanceSpinBox->setSuffix(" mm");
     m_distanceSpinBox->setDecimals(1);

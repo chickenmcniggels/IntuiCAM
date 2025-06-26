@@ -91,6 +91,20 @@ should be requested via `update()` when triggered from outside
 `paintGL()`. This prevents the framebuffer from being cleared and avoids the
 black screen.
 
+In addition, all `QOpenGLWidget` instances now share a single OpenGL context by
+setting the application attribute `Qt::AA_ShareOpenGLContexts` before the
+`QApplication` is created. Sharing the context ensures that the viewer widgets
+retain their resources even when other widgets gain focus or are shown, so the
+3D view does not turn black. The application also disables OpenGL context
+thread affinity checks via `Qt::AA_DontCheckOpenGLContextThreadAffinity` so
+temporary dialogs creating OpenGL widgets do not invalidate the shared
+context.
+
+To further guard against the viewer being unloaded when other widgets gain
+focus, the main window now enables **continuous updates** whenever the
+Setup tab is active. This keeps the framebuffer alive and eliminates the
+occasional black screen when interacting with dialogs or side panels.
+
 ```cpp
 void OpenGL3DWidget::updateView()
 {

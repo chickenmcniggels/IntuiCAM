@@ -23,10 +23,15 @@
 
 // Forward declarations
 class QListWidget;
+class QListWidgetItem;
 
 // Include manager headers
 #include "materialmanager.h"
 #include "toolmanager.h"
+
+// Forward declarations for cutting parameters
+struct CuttingParameters;
+struct CuttingTool;
 
 namespace IntuiCAM {
 namespace GUI {
@@ -98,6 +103,24 @@ public:
   bool isOperationEnabled(const QString &operationName) const;
   OperationConfig getOperationConfig(const QString &operationName) const;
 
+  // New pipeline-specific getters
+  double getLargestDrillSize() const;
+  int getInternalFinishingPasses() const;
+  int getExternalFinishingPasses() const;
+  double getPartingAllowance() const;
+  bool isDrillingEnabled() const;
+  bool isInternalRoughingEnabled() const;
+  bool isExternalRoughingEnabled() const;
+  bool isInternalFinishingEnabled() const;
+  bool isExternalFinishingEnabled() const;
+  bool isInternalGroovingEnabled() const;
+  bool isExternalGroovingEnabled() const;
+  bool isMachineInternalFeaturesEnabled() const;
+
+  // Additional pipeline parameters
+  double getRawMaterialLength() const;
+  double getPartLength() const;
+
   // Setters
   void setStepFilePath(const QString &path);
   void setMaterialType(MaterialType type);
@@ -113,6 +136,24 @@ public:
   void setTolerance(double tolerance);
   void setOperationEnabled(const QString &operationName, bool enabled);
   void updateAxisInfo(const QString &info);
+
+  // New pipeline-specific setters
+  void setLargestDrillSize(double size);
+  void setInternalFinishingPasses(int passes);
+  void setExternalFinishingPasses(int passes);
+  void setPartingAllowance(double allowance);
+  void setDrillingEnabled(bool enabled);
+  void setInternalRoughingEnabled(bool enabled);
+  void setExternalRoughingEnabled(bool enabled);
+  void setInternalFinishingEnabled(bool enabled);
+  void setExternalFinishingEnabled(bool enabled);
+  void setInternalGroovingEnabled(bool enabled);
+  void setExternalGroovingEnabled(bool enabled);
+  void setMachineInternalFeaturesEnabled(bool enabled);
+
+  // Additional pipeline parameter setters
+  void setRawMaterialLength(double length);
+  void setPartLength(double length);
 
   // Material and Tool Management
   void setMaterialManager(MaterialManager *materialManager);
@@ -139,9 +180,9 @@ signals:
   void orientationFlipped(bool flipped);
   void manualAxisSelectionRequested();
   void operationToggled(const QString &operationName, bool enabled);
-  void automaticToolpathGenerationRequested();
   void materialSelectionChanged(const QString &materialName);
   void toolRecommendationsUpdated(const QStringList &toolIds);
+  void recommendedToolActivated(const QString &toolId);
   void requestThreadFaceSelection();
   void threadFaceSelected(const TopoDS_Shape &face);
   void threadFaceDeselected();
@@ -155,6 +196,7 @@ public slots:
   void onOperationToggled();
   void onMaterialChanged();
   void onToolSelectionRequested();
+  void onRecommendedToolDoubleClicked(QListWidgetItem *item);
   void onAddThreadFace();
   void addSelectedThreadFace(const TopoDS_Shape &face);
   void onRemoveThreadFace();
@@ -177,7 +219,11 @@ private:
   QVBoxLayout *m_mainLayout;
   QWidget *m_partTab;
   QTabWidget *m_operationsTabWidget;
-  QWidget *m_contouringTab;
+  QWidget *m_facingTab;
+  QWidget *m_roughingTab;
+  QWidget *m_finishingTab;
+  QWidget *m_leftCleanupTab;
+  QWidget *m_neutralCleanupTab;
   QWidget *m_threadingTab;
   QWidget *m_chamferingTab;
   QWidget *m_partingTab;
@@ -226,23 +272,22 @@ private:
   QDoubleSpinBox *m_partingWidthSpin;
 
   // Advanced cutting parameter widgets
-  // Contouring advanced groups
-  QGroupBox *m_contourAdvancedGroup;
-  QGroupBox *m_contourFacingGroup;
-  QGroupBox *m_contourRoughGroup;
-  QGroupBox *m_contourFinishGroup;
-  QDoubleSpinBox *m_contourFacingDepthSpin;
-  QDoubleSpinBox *m_contourFacingFeedSpin;
-  QDoubleSpinBox *m_contourFacingSpeedSpin;
-  QCheckBox *m_contourFacingCssCheck;
-  QDoubleSpinBox *m_contourRoughDepthSpin;
-  QDoubleSpinBox *m_contourRoughFeedSpin;
-  QDoubleSpinBox *m_contourRoughSpeedSpin;
-  QCheckBox *m_contourRoughCssCheck;
-  QDoubleSpinBox *m_contourFinishDepthSpin;
-  QDoubleSpinBox *m_contourFinishFeedSpin;
-  QDoubleSpinBox *m_contourFinishSpeedSpin;
-  QCheckBox *m_contourFinishCssCheck;
+  // Operation advanced groups
+  QGroupBox *m_facingAdvancedGroup;
+  QGroupBox *m_roughingAdvancedGroup;
+  QGroupBox *m_finishingAdvancedGroup;
+  QDoubleSpinBox *m_facingDepthSpin;
+  QDoubleSpinBox *m_facingFeedSpin;
+  QDoubleSpinBox *m_facingSpeedSpin;
+  QCheckBox *m_facingCssCheck;
+  QDoubleSpinBox *m_roughingDepthSpin;
+  QDoubleSpinBox *m_roughingFeedSpin;
+  QDoubleSpinBox *m_roughingSpeedSpin;
+  QCheckBox *m_roughingCssCheck;
+  QDoubleSpinBox *m_finishingDepthSpin;
+  QDoubleSpinBox *m_finishingFeedSpin;
+  QDoubleSpinBox *m_finishingSpeedSpin;
+  QCheckBox *m_finishingCssCheck;
 
   // Legacy flat advanced members kept for compatibility
   QDoubleSpinBox *m_contourDepthSpin;
@@ -288,7 +333,11 @@ private:
   // Legacy placeholders to preserve binary compatibility
   QGroupBox *m_operationsGroup;
   QVBoxLayout *m_operationsLayout;
-  QCheckBox *m_contouringEnabledCheck;
+  QCheckBox *m_facingEnabledCheck;
+  QCheckBox *m_roughingEnabledCheck;
+  QCheckBox *m_finishingEnabledCheck;
+  QCheckBox *m_leftCleanupEnabledCheck;
+  QCheckBox *m_neutralCleanupEnabledCheck;
   QCheckBox *m_threadingEnabledCheck;
   QCheckBox *m_chamferingEnabledCheck;
   QDoubleSpinBox *m_chamferSizeSpin;
@@ -308,6 +357,35 @@ private:
   ToolManager *m_toolManager;
   QMap<QString, QListWidget *> m_operationToolLists;
 
+  // Tool selection tracking
+  QMap<QString, QString> m_selectedToolsPerOperation; // operation -> toolId
+  
+  // Methods for tool selection and parameter loading
+  void onToolSelectionChanged(const QString& operation, const QString& toolId);
+  void loadToolParametersToAdvancedSettings(const QString& toolId, const QString& operation);
+  void clearAdvancedSettingsForOperation(const QString& operation);
+  bool isToolSelectedForOperation(const QString& operation) const;
+  void updateOperationAdvancedSettings(const QString& operation, bool advancedMode);
+  void loadContouringParameters(const CuttingParameters& params, const CuttingTool& tool);
+  void loadPartingParameters(const CuttingParameters& params, const CuttingTool& tool);
+
+  // New pipeline-specific UI controls
+  QDoubleSpinBox *m_largestDrillSizeSpin;
+  QSpinBox *m_internalFinishingPassesSpin;
+  QSpinBox *m_externalFinishingPassesSpin;
+  QDoubleSpinBox *m_partingAllowanceSpin;
+  QCheckBox *m_drillingEnabledCheck;
+  QCheckBox *m_internalRoughingEnabledCheck;
+  QCheckBox *m_externalRoughingEnabledCheck;
+  QCheckBox *m_internalFinishingEnabledCheck;
+  QCheckBox *m_externalFinishingEnabledCheck;
+  QCheckBox *m_internalGroovingEnabledCheck;
+  QCheckBox *m_externalGroovingEnabledCheck;
+  QCheckBox *m_machineInternalFeaturesEnabledCheck;
+
+  // Additional pipeline parameter storage
+  double m_rawMaterialLength = 50.0;  // mm
+  double m_partLength = 40.0;         // mm
 
 };
 

@@ -127,6 +127,12 @@ public:
     bool removeTool(const QString& toolId);
     bool setToolActive(const QString& toolId, bool active);
 
+    // Material-specific tool filtering
+    QStringList getToolsWithEnabledMaterial(const QString& materialName) const;
+    QStringList getToolsEnabledForAnyMaterial() const;
+    bool isToolEnabledForMaterial(const QString& toolId, const QString& materialName) const;
+    QStringList getEnabledMaterialsForTool(const QString& toolId) const;
+
     // Tool recommendations
     QList<ToolRecommendation> recommendTools(
         const QString& operation,           // "facing", "roughing", "finishing", "parting"

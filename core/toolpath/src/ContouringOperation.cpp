@@ -1,12 +1,10 @@
 #include <IntuiCAM/Toolpath/ContouringOperation.h>
-#include <IntuiCAM/Toolpath/FacingOperation.h>
-#include <IntuiCAM/Toolpath/RoughingOperation.h>
-#include <IntuiCAM/Toolpath/FinishingOperation.h>
+#include <IntuiCAM/Toolpath/ProfileExtractor.h>
+#include <IntuiCAM/Toolpath/OperationParameterManager.h>
 #include <IntuiCAM/Geometry/Types.h>
+
 #include <algorithm>
 #include <cmath>
-#include <sstream>
-#include <limits>
 
 namespace IntuiCAM {
 namespace Toolpath {
@@ -14,56 +12,61 @@ namespace Toolpath {
 ContouringOperation::Result ContouringOperation::generateToolpaths(
     const IntuiCAM::Geometry::Part& part,
     std::shared_ptr<Tool> tool,
-    const Parameters& params)
-{
+    const Parameters& params) {
+    
     Result result;
     
     // Validate parameters first
     std::string validationError = validateParameters(params);
     if (!validationError.empty()) {
-        result.success = false;
         result.errorMessage = "Parameter validation failed: " + validationError;
         return result;
     }
     
+    if (!tool) {
+        result.errorMessage = "Tool is required for contouring operation";
+        return result;
+    }
+    
     try {
-        // Extract 2D profile from the part
+        // Extract 2D profile from part geometry
         result.extractedProfile = extractProfile(part, params);
-        
         if (result.extractedProfile.empty()) {
-            result.success = false;
             result.errorMessage = "Failed to extract valid profile from part geometry";
             return result;
         }
         
-        // Plan the operation sequence based on enabled operations and profile
+        // Plan operation sequence based on profile characteristics
         auto operationSequence = planOperationSequence(result.extractedProfile, params);
         
         // Generate toolpaths for each enabled operation in sequence
         for (const auto& operation : operationSequence) {
             if (operation == "facing" && params.enableFacing) {
-                result.facingToolpath = generateFacingPass(result.extractedProfile, tool, params);
+                result.facingToolpath = generateFacingPass(
+                    result.extractedProfile, tool, params);
                 if (!result.facingToolpath) {
-                    result.success = false;
                     result.errorMessage = "Failed to generate facing toolpath";
                     return result;
                 }
+                result.totalMoves += static_cast<int>(result.facingToolpath->getMovementCount());
             }
             else if (operation == "roughing" && params.enableRoughing) {
-                result.roughingToolpath = generateRoughingPass(result.extractedProfile, tool, params);
+                result.roughingToolpath = generateRoughingPass(
+                    result.extractedProfile, tool, params);
                 if (!result.roughingToolpath) {
-                    result.success = false;
                     result.errorMessage = "Failed to generate roughing toolpath";
                     return result;
                 }
+                result.totalMoves += static_cast<int>(result.roughingToolpath->getMovementCount());
             }
             else if (operation == "finishing" && params.enableFinishing) {
-                result.finishingToolpath = generateFinishingPass(result.extractedProfile, tool, params);
+                result.finishingToolpath = generateFinishingPass(
+                    result.extractedProfile, tool, params);
                 if (!result.finishingToolpath) {
-                    result.success = false;
                     result.errorMessage = "Failed to generate finishing toolpath";
                     return result;
                 }
+                result.totalMoves += static_cast<int>(result.finishingToolpath->getMovementCount());
             }
         }
         
@@ -71,17 +74,12 @@ ContouringOperation::Result ContouringOperation::generateToolpaths(
         result.estimatedTime = estimateTotalTime(result, tool);
         result.materialRemoved = calculateMaterialRemoval(result.extractedProfile, params);
         
-        // Count total moves across all toolpaths
-        result.totalMoves = 0;
-        if (result.facingToolpath) result.totalMoves += result.facingToolpath->getMovements().size();
-        if (result.roughingToolpath) result.totalMoves += result.roughingToolpath->getMovements().size();
-        if (result.finishingToolpath) result.totalMoves += result.finishingToolpath->getMovements().size();
-        
         result.success = true;
         
     } catch (const std::exception& e) {
-        result.success = false;
-        result.errorMessage = "Exception during toolpath generation: " + std::string(e.what());
+        result.errorMessage = "Exception during contouring generation: " + std::string(e.what());
+    } catch (...) {
+        result.errorMessage = "Unknown error during contouring generation";
     }
     
     return result;
@@ -89,83 +87,98 @@ ContouringOperation::Result ContouringOperation::generateToolpaths(
 
 LatheProfile::Profile2D ContouringOperation::extractProfile(
     const IntuiCAM::Geometry::Part& part,
-    const Parameters& params)
-{
-    return LatheProfile::extract(part, params.profileSections, params.profileTolerance);
+    const Parameters& params) {
+    
+    // Use ProfileExtractor for consistent profile extraction
+    ProfileExtractor::ExtractionParameters extractParams;
+    
+    // Convert ContouringOperation parameters to ProfileExtractor parameters
+    extractParams.profileTolerance = params.profileTolerance;
+    extractParams.profileSections = params.profileSections;
+    extractParams.includeInternalFeatures = true;
+    extractParams.autoDetectFeatures = true;
+    extractParams.optimizeProfile = true;
+    
+    // Get turning axis from part (this would need proper implementation)
+    // For now, assume standard Z-axis turning
+    extractParams.turningAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
+    
+    // Extract profile from part geometry
+    TopoDS_Shape partShape; // This would come from the Part object
+    return ProfileExtractor::extractProfile(partShape, extractParams);
 }
 
-std::string ContouringOperation::validateParameters(const Parameters& params)
-{
-    std::vector<std::string> errors;
-    
-    // Validate safety and clearance
+std::string ContouringOperation::validateParameters(const Parameters& params) {
     if (params.safetyHeight <= 0.0) {
-        errors.push_back("Safety height must be positive");
-    }
-    if (params.clearanceDistance <= 0.0) {
-        errors.push_back("Clearance distance must be positive");
+        return "Safety height must be positive";
     }
     
-    // Validate profile extraction parameters
+    if (params.clearanceDistance <= 0.0) {
+        return "Clearance distance must be positive";
+    }
+    
     if (params.profileTolerance <= 0.0) {
-        errors.push_back("Profile tolerance must be positive");
+        return "Profile tolerance must be positive";
     }
+    
     if (params.profileSections < 10) {
-        errors.push_back("Profile sections must be at least 10 for reasonable accuracy");
-    }
-    if (params.profileSections > 1000) {
-        errors.push_back("Profile sections should not exceed 1000 for performance reasons");
+        return "Profile sections must be at least 10";
     }
     
     // Check that at least one operation is enabled
     if (!params.enableFacing && !params.enableRoughing && !params.enableFinishing) {
-        errors.push_back("At least one operation (facing, roughing, or finishing) must be enabled");
+        return "At least one sub-operation (facing, roughing, or finishing) must be enabled";
     }
     
-    // Combine all errors into a single message
-    if (errors.empty()) {
-        return "";
+    // Validate individual operation parameters if enabled
+    if (params.enableFacing) {
+        std::string facingError = FacingOperation::validateParameters(params.facingParams);
+        if (!facingError.empty()) {
+            return "Facing parameters invalid: " + facingError;
+        }
     }
     
-    std::stringstream ss;
-    for (size_t i = 0; i < errors.size(); ++i) {
-        if (i > 0) ss << "; ";
-        ss << errors[i];
+    if (params.enableRoughing) {
+        std::string roughingError = RoughingOperation::validateParameters(params.roughingParams);
+        if (!roughingError.empty()) {
+            return "Roughing parameters invalid: " + roughingError;
+        }
     }
-    return ss.str();
+    
+    if (params.enableFinishing) {
+        std::string finishingError = FinishingOperation::validateParameters(params.finishingParams);
+        if (!finishingError.empty()) {
+            return "Finishing parameters invalid: " + finishingError;
+        }
+    }
+    
+    return ""; // Valid
 }
 
 ContouringOperation::Parameters ContouringOperation::getDefaultParameters(
     const std::string& materialType,
-    const std::string& partComplexity)
-{
-    Parameters params;
+    const std::string& partComplexity) {
     
-    // Adjust parameters based on material type (using actual parameter names)
-    if (materialType == "aluminum") {
-        // FacingOperation parameters use stepover, not feedRate in params
-        params.roughingParams.depthOfCut = 3.0;   // mm - can be more aggressive  
-        params.finishingParams.feedRate = 0.1;    // mm/rev - faster for aluminum
-    }
-    else if (materialType == "steel") {
-        params.roughingParams.depthOfCut = 2.0;   // mm - moderate cut
-        params.finishingParams.feedRate = 0.05;   // mm/rev - conservative for steel
-    }
-    else if (materialType == "stainless") {
-        params.roughingParams.depthOfCut = 1.5;   // mm - very conservative
-        params.finishingParams.feedRate = 0.03;   // mm/rev - slow for work hardening
-    }
+    Parameters params; // Start with constructor defaults
+    
+    // Get material properties for parameter adjustment
+    auto materialProps = OperationParameterManager::getMaterialProperties(materialType);
+    
+    // Store material properties for later use by tools
+    // Note: Feed rates and speeds will be set in Tool's CuttingParameters
+    // The operation parameters only contain geometric information
     
     // Adjust based on part complexity
     if (partComplexity == "simple") {
-        params.profileSections = 50;               // Fewer sections for simple parts
-        params.roughingParams.depthOfCut = 2.0;   // mm - larger cuts
+        params.profileSections = 50;
+        params.profileTolerance = 0.02;
+    } else if (partComplexity == "complex") {
+        params.profileSections = 200;
+        params.profileTolerance = 0.005;
+        params.enableFacing = true; // Always face complex parts
     }
-    else if (partComplexity == "complex") {
-        params.profileSections = 200;              // More sections for complex geometry
-        params.roughingParams.depthOfCut = 0.5;   // mm - smaller cuts for precision
-        params.finishingParams.feedRate = params.finishingParams.feedRate * 0.5; // Slower finish
-    }
+    
+    // Material-specific adjustments will be applied to tool parameters during toolpath generation
     
     return params;
 }
@@ -173,68 +186,63 @@ ContouringOperation::Parameters ContouringOperation::getDefaultParameters(
 std::unique_ptr<Toolpath> ContouringOperation::generateFacingPass(
     const LatheProfile::Profile2D& profile,
     std::shared_ptr<Tool> tool,
-    const Parameters& params)
-{
+    const Parameters& params) {
+    
     if (profile.empty()) {
         return nullptr;
     }
     
-    // Create facing operation and generate toolpath
-    FacingOperation facingOp("Facing", tool);
+    // Create facing toolpath
+    auto toolpath = std::make_unique<Toolpath>("Facing_Pass", tool);
     
-    // Find the maximum radius and front face Z position from profile
+    // Find maximum radius and face boundaries
     double maxRadius = 0.0;
-    double frontZ = profile.front().z; // Assuming profile is sorted by Z
+    double minZ = std::numeric_limits<double>::max();
+    double maxZ = std::numeric_limits<double>::lowest();
     
     for (const auto& point : profile) {
-        maxRadius = std::max(maxRadius, point.x); // x is radius in Point2D
+        maxRadius = std::max(maxRadius, point.z);
+        minZ = std::min(minZ, point.x);
+        maxZ = std::max(maxZ, point.x);
     }
     
-    // Set up facing parameters based on profile geometry
-    FacingOperation::Parameters facingParams;
-    facingParams.startDiameter = (maxRadius + params.clearanceDistance) * 2.0;
-    facingParams.endDiameter = 0.0; // Face to center
-    facingParams.stepover = 0.5;
-    facingParams.stockAllowance = 0.2;
-    facingParams.roughingOnly = false;
-    
-    facingOp.setParameters(facingParams);
-    
-    // Create a dummy part for the operation
-    auto bbox = Geometry::BoundingBox(
-        Geometry::Point3D(-maxRadius, -maxRadius, frontZ - 1),
-        Geometry::Point3D(maxRadius, maxRadius, frontZ + 1)
-    );
-    
-    // We need to create a Part object, but for now generate a basic facing toolpath
-    auto toolpath = std::make_unique<Toolpath>("Facing", tool);
-    
-    // Generate basic facing moves
+    // Generate facing passes from outside to center
     double currentRadius = maxRadius + params.clearanceDistance;
-    double endRadius = 0.0;
-    double z = frontZ;
+    double facingDepth = tool->getCuttingParameters().depthOfCut;
     
-    // Rapid to start position
-    toolpath->addRapidMove(Geometry::Point3D(currentRadius + 5.0, 0, z + 5.0));
-    toolpath->addRapidMove(Geometry::Point3D(currentRadius, 0, z + 2.0));
-    toolpath->addLinearMove(Geometry::Point3D(currentRadius, 0, z), tool->getCuttingParameters().feedRate);
+    // Rapid to start position (safe height above face)
+    gp_Pnt startPos(maxZ + params.safetyHeight, 0.0, currentRadius);
+    toolpath->addRapidMove(Geometry::Point3D(startPos.X(), startPos.Y(), startPos.Z()));
     
-    // Face from outside to center
-    while (currentRadius > endRadius) {
-        toolpath->addLinearMove(Geometry::Point3D(endRadius, 0, z), tool->getCuttingParameters().feedRate);
+    // Rapid down to clearance
+    gp_Pnt clearancePos(maxZ + params.clearanceDistance, 0.0, currentRadius);
+    toolpath->addRapidMove(Geometry::Point3D(clearancePos.X(), clearancePos.Y(), clearancePos.Z()));
+    
+    // Generate facing passes
+    while (currentRadius > 0.1) { // Stop near center
+        // Feed to face
+        gp_Pnt faceStart(maxZ, 0.0, currentRadius);
+        toolpath->addLinearMove(
+            Geometry::Point3D(faceStart.X(), faceStart.Y(), faceStart.Z()),
+            tool->getCuttingParameters().feedRate * 60.0); // Convert mm/rev to mm/min
         
-        // Retract and move to next pass
-        toolpath->addRapidMove(Geometry::Point3D(endRadius, 0, z + 2.0));
-        currentRadius -= facingParams.stepover;
+        // Face across to center (or inner radius)
+        double targetRadius = std::max(0.0, currentRadius - facingDepth);
+        gp_Pnt faceEnd(maxZ, 0.0, targetRadius);
+        toolpath->addLinearMove(
+            Geometry::Point3D(faceEnd.X(), faceEnd.Y(), faceEnd.Z()),
+            tool->getCuttingParameters().feedRate * 60.0); // Convert mm/rev to mm/min
         
-        if (currentRadius > endRadius) {
-            toolpath->addRapidMove(Geometry::Point3D(currentRadius, 0, z + 2.0));
-            toolpath->addLinearMove(Geometry::Point3D(currentRadius, 0, z), tool->getCuttingParameters().feedRate);
-        }
+        // Rapid back to clearance
+        gp_Pnt retractPos(maxZ + params.clearanceDistance, 0.0, targetRadius);
+        toolpath->addRapidMove(Geometry::Point3D(retractPos.X(), retractPos.Y(), retractPos.Z()));
+        
+        currentRadius = targetRadius;
     }
     
-    // Final retract
-    toolpath->addRapidMove(Geometry::Point3D(endRadius, 0, z + 10.0));
+    // Return to safe position
+    gp_Pnt safePos(maxZ + params.safetyHeight, 0.0, 0.0);
+    toolpath->addRapidMove(Geometry::Point3D(safePos.X(), safePos.Y(), safePos.Z()));
     
     return toolpath;
 }
@@ -242,62 +250,66 @@ std::unique_ptr<Toolpath> ContouringOperation::generateFacingPass(
 std::unique_ptr<Toolpath> ContouringOperation::generateRoughingPass(
     const LatheProfile::Profile2D& profile,
     std::shared_ptr<Tool> tool,
-    const Parameters& params)
-{
+    const Parameters& params) {
+    
     if (profile.empty()) {
         return nullptr;
     }
     
-    // Create roughing operation and generate toolpath
-    RoughingOperation roughingOp("Roughing", tool);
+    auto toolpath = std::make_unique<Toolpath>("Roughing_Pass", tool);
     
-    // Set profile bounds
-    double minZ = profile.front().z;
-    double maxZ = profile.back().z;
+    // Calculate stock allowance for finishing
+    double stockAllowance = params.enableFinishing ? 
+        tool->getCuttingParameters().depthOfCut * 0.3 : 0.0; // Light finishing allowance
+    
+    // Generate roughing passes parallel to the profile
+    double currentDepth = tool->getCuttingParameters().depthOfCut;
+    
+    // Find profile bounds
+    double minZ = profile.front().x;
+    double maxZ = profile.back().x;
     double maxRadius = 0.0;
     
     for (const auto& point : profile) {
-        maxRadius = std::max(maxRadius, point.x); // x is radius in Point2D
+        maxRadius = std::max(maxRadius, point.z);
     }
     
-    // Convert profile to roughing operation format
-    RoughingOperation::Parameters roughingParams;
-    roughingParams.startDiameter = (maxRadius + params.clearanceDistance) * 2.0;
-    roughingParams.endDiameter = 20.0; // Conservative end diameter
-    roughingParams.startZ = minZ;
-    roughingParams.endZ = maxZ;
-    roughingParams.depthOfCut = 2.0;
-    roughingParams.stockAllowance = 0.5;
+    // Start from safe position
+    gp_Pnt startPos(maxZ + params.safetyHeight, 0.0, maxRadius + params.clearanceDistance);
+    toolpath->addRapidMove(Geometry::Point3D(startPos.X(), startPos.Y(), startPos.Z()));
     
-    roughingOp.setParameters(roughingParams);
+    // Generate roughing passes from outside radius inward
+    double currentRadius = maxRadius;
     
-    // Generate basic roughing toolpath
-    auto toolpath = std::make_unique<Toolpath>("Roughing", tool);
-    
-    double currentZ = minZ;
-    double startRadius = maxRadius + params.clearanceDistance;
-    double endRadius = 10.0;
-    
-    // Rapid to start position
-    toolpath->addRapidMove(Geometry::Point3D(startRadius + 5.0, 0, currentZ + 5.0));
-    
-    while (currentZ < maxZ) {
-        // Rapid to start of cut
-        toolpath->addRapidMove(Geometry::Point3D(startRadius + 2.0, 0, currentZ + 2.0));
-        toolpath->addRapidMove(Geometry::Point3D(startRadius, 0, currentZ + 2.0));
-        toolpath->addLinearMove(Geometry::Point3D(startRadius, 0, currentZ), tool->getCuttingParameters().feedRate);
+    while (currentRadius > stockAllowance) {
+        // Rapid to start of pass
+        gp_Pnt passStart(maxZ + params.clearanceDistance, 0.0, currentRadius);
+        toolpath->addRapidMove(Geometry::Point3D(passStart.X(), passStart.Y(), passStart.Z()));
         
-        // Cut from outside to inside
-        toolpath->addLinearMove(Geometry::Point3D(endRadius, 0, currentZ), tool->getCuttingParameters().feedRate);
+        // Feed down to cutting depth
+        gp_Pnt cutStart(maxZ, 0.0, currentRadius);
+        toolpath->addLinearMove(
+            Geometry::Point3D(cutStart.X(), cutStart.Y(), cutStart.Z()),
+            tool->getCuttingParameters().feedRate * 60.0); // Convert mm/rev to mm/min
         
-        // Retract
-        toolpath->addRapidMove(Geometry::Point3D(endRadius, 0, currentZ + 2.0));
+        // Follow profile with offset for stock allowance
+        for (const auto& point : profile) {
+            double offsetRadius = point.z + stockAllowance;
+            if (offsetRadius <= currentRadius) {
+                gp_Pnt cutPoint(point.x, 0.0, offsetRadius);
+                toolpath->addLinearMove(
+                    Geometry::Point3D(cutPoint.X(), cutPoint.Y(), cutPoint.Z()),
+                    tool->getCuttingParameters().feedRate * 60.0); // Convert mm/rev to mm/min
+            }
+        }
         
-        currentZ += roughingParams.depthOfCut;
+        // Move to next pass depth
+        currentRadius -= currentDepth;
     }
     
-    // Final retract
-    toolpath->addRapidMove(Geometry::Point3D(endRadius, 0, maxZ + 10.0));
+    // Return to safe position
+    gp_Pnt endPos(maxZ + params.safetyHeight, 0.0, maxRadius + params.clearanceDistance);
+    toolpath->addRapidMove(Geometry::Point3D(endPos.X(), endPos.Y(), endPos.Z()));
     
     return toolpath;
 }
@@ -305,123 +317,128 @@ std::unique_ptr<Toolpath> ContouringOperation::generateRoughingPass(
 std::unique_ptr<Toolpath> ContouringOperation::generateFinishingPass(
     const LatheProfile::Profile2D& profile,
     std::shared_ptr<Tool> tool,
-    const Parameters& params)
-{
+    const Parameters& params) {
+    
     if (profile.empty()) {
         return nullptr;
     }
     
-    // Create finishing operation and generate toolpath
-    FinishingOperation finishingOp("Finishing", tool);
+    auto toolpath = std::make_unique<Toolpath>("Finishing_Pass", tool);
     
     // Find profile bounds
-    double minZ = profile.front().z;
-    double maxZ = profile.back().z;
+    double minZ = profile.front().x;
+    double maxZ = profile.back().x;
     double maxRadius = 0.0;
     
     for (const auto& point : profile) {
-        maxRadius = std::max(maxRadius, point.x); // x is radius in Point2D
+        maxRadius = std::max(maxRadius, point.z);
     }
     
-    // Set up finishing parameters to follow the exact profile
-    FinishingOperation::Parameters finishingParams;
-    finishingParams.targetDiameter = maxRadius * 2.0;
-    finishingParams.startZ = minZ;
-    finishingParams.endZ = maxZ;
-    finishingParams.surfaceSpeed = 150.0;
-    finishingParams.feedRate = 0.05;
+    // Start from safe position
+    gp_Pnt startPos(maxZ + params.safetyHeight, 0.0, maxRadius + params.clearanceDistance);
+    toolpath->addRapidMove(Geometry::Point3D(startPos.X(), startPos.Y(), startPos.Z()));
     
-    finishingOp.setParameters(finishingParams);
+    // Rapid to start of finishing pass
+    gp_Pnt finishStart(maxZ + params.clearanceDistance, 0.0, maxRadius);
+    toolpath->addRapidMove(Geometry::Point3D(finishStart.X(), finishStart.Y(), finishStart.Z()));
     
-    // Generate basic finishing toolpath
-    auto toolpath = std::make_unique<Toolpath>("Finishing", tool);
+    // Feed to first profile point
+    if (!profile.empty()) {
+        const auto& firstPoint = profile.front();
+        gp_Pnt firstCut(firstPoint.x, 0.0, firstPoint.z);
+        toolpath->addLinearMove(
+            Geometry::Point3D(firstCut.X(), firstCut.Y(), firstCut.Z()),
+            params.finishingParams.feedRate);
+        
+        // Follow the exact profile for finishing
+        for (size_t i = 1; i < profile.size(); ++i) {
+            const auto& point = profile[i];
+            gp_Pnt cutPoint(point.x, 0.0, point.z);
+            toolpath->addLinearMove(
+                Geometry::Point3D(cutPoint.X(), cutPoint.Y(), cutPoint.Z()),
+                params.finishingParams.feedRate);
+        }
+    }
     
-    double radius = maxRadius;
-    
-    // Rapid to start position
-    toolpath->addRapidMove(Geometry::Point3D(radius + 5.0, 0, minZ + 5.0));
-    toolpath->addRapidMove(Geometry::Point3D(radius + 2.0, 0, minZ + 2.0));
-    toolpath->addLinearMove(Geometry::Point3D(radius, 0, minZ), tool->getCuttingParameters().feedRate);
-    
-    // Single finishing pass along profile
-    toolpath->addLinearMove(Geometry::Point3D(radius, 0, maxZ), finishingParams.feedRate);
-    
-    // Final retract
-    toolpath->addRapidMove(Geometry::Point3D(radius + 5.0, 0, maxZ + 10.0));
+    // Return to safe position
+    gp_Pnt endPos(maxZ + params.safetyHeight, 0.0, maxRadius + params.clearanceDistance);
+    toolpath->addRapidMove(Geometry::Point3D(endPos.X(), endPos.Y(), endPos.Z()));
     
     return toolpath;
 }
 
 std::vector<std::string> ContouringOperation::planOperationSequence(
     const LatheProfile::Profile2D& profile,
-    const Parameters& params)
-{
+    const Parameters& params) {
+    
     std::vector<std::string> sequence;
     
-    // Optimal sequence for contouring: facing first, then roughing, then finishing
+    // Standard sequence for most parts: facing -> roughing -> finishing
     if (params.enableFacing) {
         sequence.push_back("facing");
     }
+    
     if (params.enableRoughing) {
         sequence.push_back("roughing");
     }
+    
     if (params.enableFinishing) {
         sequence.push_back("finishing");
     }
     
+    // For complex profiles, we might want to adjust the sequence
+    // This is where advanced planning logic could go
+    
     return sequence;
 }
 
-double ContouringOperation::estimateTotalTime(const Result& result, std::shared_ptr<Tool> tool)
-{
+double ContouringOperation::estimateTotalTime(const Result& result, std::shared_ptr<Tool> tool) {
     double totalTime = 0.0;
     
-    // Estimate time for each toolpath based on move count and typical feeds/speeds
     if (result.facingToolpath) {
-        // Facing typically uses higher feed rates
-        totalTime += result.facingToolpath->getMovements().size() * 0.1; // 0.1 min per move estimate
+        totalTime += result.facingToolpath->estimateMachiningTime();
     }
     
     if (result.roughingToolpath) {
-        // Roughing takes longer due to material removal
-        totalTime += result.roughingToolpath->getMovements().size() * 0.2; // 0.2 min per move estimate
+        totalTime += result.roughingToolpath->estimateMachiningTime();
     }
     
     if (result.finishingToolpath) {
-        // Finishing uses slower feeds for surface quality
-        totalTime += result.finishingToolpath->getMovements().size() * 0.15; // 0.15 min per move estimate
+        totalTime += result.finishingToolpath->estimateMachiningTime();
     }
     
-    // Add setup time
-    totalTime += 2.0; // 2 minutes setup time
+    // Add setup and positioning time (estimated 10% overhead)
+    totalTime *= 1.1;
     
     return totalTime;
 }
 
 double ContouringOperation::calculateMaterialRemoval(
     const LatheProfile::Profile2D& profile,
-    const Parameters& params)
-{
+    const Parameters& params) {
+    
     if (profile.size() < 2) {
         return 0.0;
     }
     
-    double volume = 0.0;
+    double totalVolume = 0.0;
     
-    // Calculate volume of revolution using trapezoidal rule
+    // Calculate volume using trapezoidal rule for revolution solid
     for (size_t i = 1; i < profile.size(); ++i) {
         const auto& p1 = profile[i-1];
         const auto& p2 = profile[i];
         
-        double dz = std::abs(p2.z - p1.z);
-        double avgRadius = (p1.x + p2.x) * 0.5; // x is radius in Point2D
+        double height = std::abs(p2.x - p1.x);
+        double r1 = p1.z;
+        double r2 = p2.z;
         
-        // Volume of cylindrical segment
-        volume += 3.14159265359 * avgRadius * avgRadius * dz;
+        // Volume of truncated cone segment
+        double segmentVolume = M_PI * height * (r1*r1 + r1*r2 + r2*r2) / 3.0;
+        totalVolume += segmentVolume;
     }
     
-    return volume;
+    return totalVolume;
 }
 
 } // namespace Toolpath
-} // namespace IntuiCAM 
+} // namespace IntuiCAM

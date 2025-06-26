@@ -52,7 +52,7 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_hoverHighlightEnabled(true)
     , m_currentViewMode(ViewMode::Mode3D)
     , m_stored3DScale(1.0)
-    , m_stored3DProjection(Graphic3d_Camera::Projection_Perspective)
+    , m_stored3DProjection(Graphic3d_Camera::Projection_Orthographic)
     , m_has3DCameraState(false)
     , m_lockedXZEye(0.0, -1000.0, 0.0)
     , m_lockedXZAt(0.0, 0.0, 0.0)
@@ -164,11 +164,17 @@ void OpenGL3DWidget::paintGL()
     makeCurrent(); // makeCurrent() returns void, so we can't check its return value
     
     // Additional validation to prevent black screen
+    // If the context was somehow lost while the widget was hidden, attempt to
+    // reinitialize the viewer automatically when the Setup tab is shown again.
     if (!m_isInitialized || m_view.IsNull() || m_context.IsNull()) {
-        // Clear to background color if not properly initialized
-        glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        return;
+        initializeViewer();
+
+        // Bail out if initialization failed so we don't draw garbage
+        if (!m_isInitialized) {
+            glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            return;
+        }
     }
     
     updateView();
@@ -490,7 +496,12 @@ void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
 void OpenGL3DWidget::showEvent(QShowEvent *event)
 {
     QOpenGLWidget::showEvent(event);
-    
+
+    // Reinitialize the viewer if the context was destroyed while hidden
+    if (!m_isInitialized || m_view.IsNull() || m_context.IsNull()) {
+        initializeViewer();
+    }
+
     // Request a repaint when the widget becomes visible. update() will trigger
     // paintGL() where the actual rendering occurs.
     if (m_isInitialized && !m_view.IsNull()) {
@@ -727,14 +738,14 @@ void OpenGL3DWidget::setupCamera3D()
       if (m_has3DCameraState) {
         restore3DCameraState();
       } else {
-        // Set up default 3D perspective view with Z axis horizontal
+        // Set up default 3D view with Z axis horizontal
         m_view->SetAt(0.0, 0.0, 0.0);
         m_view->SetEye(200.0, -300.0, 0.0);
         m_view->SetUp(-1.0, 0.0, 0.0);
 
-        // Explicitly set perspective projection for 3D mode
+        // Use orthographic projection for consistent visualization
         m_view->Camera()->SetProjectionType(
-            Graphic3d_Camera::Projection_Perspective);
+            Graphic3d_Camera::Projection_Orthographic);
 
         // Ensure the view shows the coordinate trihedron
         m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_GOLD, 0.08,
@@ -748,7 +759,7 @@ void OpenGL3DWidget::setupCamera3D()
         m_view->FitAll();
         m_view->Redraw();
         
-        qDebug() << "Set up 3D camera view with perspective projection";
+        qDebug() << "Set up 3D camera view with orthographic projection";
     }
     catch (const Standard_Failure& ex) {
         qDebug() << "Error setting up 3D camera:" << ex.GetMessageString();
@@ -958,19 +969,26 @@ void OpenGL3DWidget::setToolpathsVisible(bool visible)
     if (!m_context.IsNull()) {
         try {
             // Find all toolpath objects in the context and update their visibility
-            // Toolpath objects would typically be identified by their type or naming convention
             AIS_ListOfInteractive allObjects;
             m_context->DisplayedObjects(allObjects);
             
             for (AIS_ListOfInteractive::Iterator anIter(allObjects); anIter.More(); anIter.Next()) {
                 Handle(AIS_InteractiveObject) obj = anIter.Value();
                 if (!obj.IsNull()) {
-                    // For now, we'll update all objects - in a full implementation,
-                    // you would check if the object is a toolpath based on its type or attributes
-                    if (visible) {
-                        m_context->SetDisplayMode(obj, 1, Standard_False); // 1 = shaded mode
-                    } else {
-                        m_context->Erase(obj, Standard_False);
+                    // Check if this is a toolpath display object
+                    Handle(IntuiCAM::Toolpath::ToolpathDisplayObject) toolpathObj = 
+                        Handle(IntuiCAM::Toolpath::ToolpathDisplayObject)::DownCast(obj);
+                    
+                    if (!toolpathObj.IsNull()) {
+                        if (visible) {
+                            if (!m_context->IsDisplayed(toolpathObj)) {
+                                m_context->Display(toolpathObj, Standard_False);
+                            }
+                        } else {
+                            if (m_context->IsDisplayed(toolpathObj)) {
+                                m_context->Erase(toolpathObj, Standard_False);
+                            }
+                        }
                     }
                 }
             }
@@ -995,19 +1013,26 @@ void OpenGL3DWidget::setProfilesVisible(bool visible)
     if (!m_context.IsNull()) {
         try {
             // Find all profile objects in the context and update their visibility
-            // Profile objects would typically be identified by their type or naming convention
             AIS_ListOfInteractive allObjects;
             m_context->DisplayedObjects(allObjects);
             
             for (AIS_ListOfInteractive::Iterator anIter(allObjects); anIter.More(); anIter.Next()) {
                 Handle(AIS_InteractiveObject) obj = anIter.Value();
                 if (!obj.IsNull()) {
-                    // For now, we'll update all objects - in a full implementation,
-                    // you would check if the object is a profile based on its type or attributes
-                    if (visible) {
-                        m_context->SetDisplayMode(obj, 0, Standard_False); // 0 = wireframe mode
-                    } else {
-                        m_context->Erase(obj, Standard_False);
+                    // Check if this is a profile display object
+                    Handle(IntuiCAM::Toolpath::ProfileDisplayObject) profileObj = 
+                        Handle(IntuiCAM::Toolpath::ProfileDisplayObject)::DownCast(obj);
+                    
+                    if (!profileObj.IsNull()) {
+                        if (visible) {
+                            if (!m_context->IsDisplayed(profileObj)) {
+                                m_context->Display(profileObj, Standard_False);
+                            }
+                        } else {
+                            if (m_context->IsDisplayed(profileObj)) {
+                                m_context->Erase(profileObj, Standard_False);
+                            }
+                        }
                     }
                 }
             }

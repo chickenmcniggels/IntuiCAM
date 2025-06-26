@@ -17,6 +17,7 @@
 #include <QPushButton>
 #include <QToolButton>
 #include <QMenu>
+#include <QTimer>
 
 // OpenCASCADE includes
 #include <gp_Ax1.hxx>
@@ -33,9 +34,9 @@ class OpenGL3DWidget;
 class StepLoader;
 class WorkspaceController;
 class PartLoadingPanel;
-class ToolpathTimelineWidget;
-class ToolpathManager;
 class WorkpieceManager;
+class ToolManagementTab;
+class ToolManagementDialog;
 
 // Forward declarations for namespaced types
 namespace IntuiCAM {
@@ -43,7 +44,7 @@ namespace GUI {
     class SetupConfigurationPanel;
     class MaterialManager;
     class ToolManager;
-    class ToolpathGenerationController;
+    class OperationParameterDialog;
     enum class MaterialType;
     enum class SurfaceFinish;
 }
@@ -51,6 +52,8 @@ namespace GUI {
 
 // Include CylinderInfo definition
 #include "workpiecemanager.h"
+#include "operationtilewidget.h"
+#include "toolpathlegendwidget.h"
 
 // Include ViewMode enum
 enum class ViewMode;  // Forward declaration
@@ -76,6 +79,9 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    
+    // Getters for managers
+    IntuiCAM::GUI::MaterialManager* getMaterialManager() const { return m_materialManager; }
 
 private slots:
     void newProject();
@@ -100,6 +106,7 @@ private slots:
     // Part loading panel handlers (legacy)
     void handlePartLoadingDistanceChanged(double distance);
     void handlePartLoadingDiameterChanged(double diameter);
+    void handleWorkpiecePositionChanged(double distance);
     void handlePartLoadingOrientationFlipped(bool flipped);
     void handlePartLoadingCylinderChanged(int index);
     void handlePartLoadingManualSelection();
@@ -118,6 +125,12 @@ private slots:
     void handleOperationToggled(const QString& operationName, bool enabled);
     void handleGenerateToolpaths();
     
+    // Operation tile handlers
+    void handleOperationTileEnabledChanged(const QString& operationName, bool enabled);
+    void handleOperationTileClicked(const QString& operationName);
+    void handleOperationTileToolSelectionRequested(const QString& operationName);
+    void handleOperationTileExpandedChanged(const QString& operationName, bool expanded);
+    
     // 3D viewer handlers
     void handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& clickPoint);
     void handleViewModeChanged(ViewMode mode);
@@ -126,31 +139,15 @@ private slots:
     // Setup tab actions
     void simulateToolpaths();
     
-    // Toolpath generation handlers
-    void handleToolpathGenerationStarted();
-    void handleToolpathProgressUpdated(int percentage, const QString& statusMessage);
-    void handleToolpathOperationCompleted(const QString& operationName, bool success, const QString& message);
-    void handleToolpathGenerationCompleted();
-    void handleToolpathGenerationError(const QString& errorMessage);
-    
-    // Parameter synchronization handlers
-    void handleParameterValidation(const QString& parameterName, bool isValid, const QString& errorMessage);
-    void handleIncrementalUpdateCompleted(const QStringList& affectedOperations, int updateDuration);
-    void handleParameterCacheUpdated(const QString& parameterName, const QVariant& newValue);
-    
-    // Toolpath timeline handlers
-    void handleToolpathSelected(int index);
-    void handleToolpathParametersRequested(int index, const QString& operationType);
-    void handleAddToolpathRequested(const QString& operationType);
-    void handleRemoveToolpathRequested(int index);
-    void handleToolpathReordered(int fromIndex, int toIndex);
-    void handleToolpathEnabledChanged(int index, bool enabled);
+    // Operation parameter dialog handler
+
 
     // Overlay control for chuck visibility
     void handleShowChuckToggled(bool checked);
     void handleShowRawMaterialToggled(bool checked);
     void handleShowToolpathsToggled(bool checked);
     void handleShowPartToggled(bool checked);
+    void handleShowProfilesToggled(bool checked);
 
 private:
     void createMenus();
@@ -180,7 +177,6 @@ private:
     QSplitter *m_mainSplitter;
     IntuiCAM::GUI::SetupConfigurationPanel *m_setupConfigPanel;
     OpenGL3DWidget *m_3dViewer;
-    ToolpathTimelineWidget *m_toolpathTimeline;
     QPushButton *m_generateButton;
     QPushButton *m_simulateButton;
     
@@ -208,17 +204,22 @@ private:
     // Business logic controllers
     WorkspaceController *m_workspaceController;
     StepLoader *m_stepLoader;
-    ToolpathManager *m_toolpathManager;
     WorkpieceManager *m_workpieceManager;
     
     // Material and Tool Management
     IntuiCAM::GUI::MaterialManager *m_materialManager;
     IntuiCAM::GUI::ToolManager *m_toolManager;
+    
+    // Operation Tile System
+    IntuiCAM::GUI::OperationTileContainer *m_operationTileContainer;
+    
+    // Toolpath Legend Widget
+    ToolpathLegendWidget *m_toolpathLegendWidget;
+    
+    // Tool Management Components
+    class ToolManagementTab *m_toolManagementTab;
 
     bool m_selectingThreadFace = false;
-    
-    // Toolpath Generation Controller
-    IntuiCAM::GUI::ToolpathGenerationController *m_toolpathGenerationController;
     
     // Menus
     QMenu *m_fileMenu;
@@ -245,17 +246,24 @@ private:
     QAction *m_showRawMaterialAction;
     QAction *m_showToolpathsAction;
     QAction *m_showPartAction;
+    QAction *m_showProfilesAction;
     QString m_defaultChuckFilePath;
+
+    // Timer for debouncing toolpath regeneration
+    QTimer* m_toolpathRegenerationTimer;
 
 private:
     void createViewModeOverlayButton(QWidget* parent);
     void updateViewModeOverlayButton();
     void initializeWorkspace();
-
+    
     void highlightThreadCandidateFaces();
     void clearThreadCandidateHighlights();
     void updateHighlightedThreadFace();
     void clearHighlightedThreadFace();
+    
+    // Helper methods
+    QString getDefaultToolForOperation(const QString& operationName) const;
 
     QVector<Handle(AIS_Shape)> m_candidateThreadFaces;
     Handle(AIS_Shape) m_currentThreadFaceAIS;

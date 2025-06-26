@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QCoreApplication>
 #include <QDebug>
 #include <QStandardPaths>
 #include <QDir>
@@ -9,6 +10,15 @@
 
 int main(int argc, char *argv[])
 {
+    // Enable OpenGL context sharing between QOpenGLWidgets.
+    // This prevents the 3D viewers from being unloaded and turning black when
+    // another widget gains focus or is shown.
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+    // Relax thread affinity checks so temporary OpenGL widgets created by
+    // dialogs do not cause the shared context to be destroyed. Without this
+    // setting the viewers could still go black when other widgets are opened.
+    QCoreApplication::setAttribute(Qt::AA_DontCheckOpenGLContextThreadAffinity);
+
     QApplication app(argc, argv);
     
     // CRITICAL: Set global OpenGL surface format BEFORE creating OpenGL widgets

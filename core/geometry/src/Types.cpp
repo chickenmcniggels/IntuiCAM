@@ -84,6 +84,106 @@ Matrix4x4 Matrix4x4::rotation(const Vector3D& axis, double angle) {
     return result;
 }
 
+Vector3D Vector3D::transform(const Matrix4x4& mat) const {
+    // Transform vector (direction only, no translation)
+    double newX = x * mat.data[0] + y * mat.data[4] + z * mat.data[8];
+    double newY = x * mat.data[1] + y * mat.data[5] + z * mat.data[9];
+    double newZ = x * mat.data[2] + y * mat.data[6] + z * mat.data[10];
+    return Vector3D(newX, newY, newZ);
+}
+
+Point3D Point3D::transform(const Matrix4x4& mat) const {
+    return mat.transformPoint(*this);
+}
+
+Matrix4x4 Matrix4x4::operator*(const Matrix4x4& other) const {
+    Matrix4x4 result;
+    
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+            result.data[row * 4 + col] = 0.0;
+            for (int k = 0; k < 4; ++k) {
+                result.data[row * 4 + col] += data[row * 4 + k] * other.data[k * 4 + col];
+            }
+        }
+    }
+    
+    return result;
+}
+
+Matrix4x4 Matrix4x4::inverse() const {
+    Matrix4x4 result;
+    double* inv = result.data;
+    const double* m = data;
+    
+    // Calculate inverse using adjugate method
+    inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + 
+             m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
+    inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - 
+              m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
+    inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + 
+             m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
+    inv[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - 
+               m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
+    inv[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - 
+              m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
+    inv[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + 
+             m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
+    inv[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - 
+              m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
+    inv[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + 
+              m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
+    inv[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] + 
+             m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6];
+    inv[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] - 
+              m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6];
+    inv[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] + 
+              m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5];
+    inv[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] - 
+               m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5];
+    inv[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] - 
+              m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6];
+    inv[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] + 
+             m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
+    inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - 
+               m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
+    inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + 
+              m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
+
+    double det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+
+    if (std::abs(det) < 1e-9) {
+        return Matrix4x4::identity();
+    }
+
+    det = 1.0 / det;
+    for (int i = 0; i < 16; i++) {
+        inv[i] = inv[i] * det;
+    }
+
+    return result;
+}
+
+Point3D Matrix4x4::transformPoint(const Point3D& point) const {
+    double x = point.x * data[0] + point.y * data[4] + point.z * data[8] + data[12];
+    double y = point.x * data[1] + point.y * data[5] + point.z * data[9] + data[13];
+    double z = point.x * data[2] + point.y * data[6] + point.z * data[10] + data[14];
+    double w = point.x * data[3] + point.y * data[7] + point.z * data[11] + data[15];
+    
+    if (std::abs(w - 1.0) > 1e-9) {
+        x /= w; y /= w; z /= w;
+    }
+    
+    return Point3D(x, y, z);
+}
+
+Vector3D Matrix4x4::transformVector(const Vector3D& vector) const {
+    double x = vector.x * data[0] + vector.y * data[4] + vector.z * data[8];
+    double y = vector.x * data[1] + vector.y * data[5] + vector.z * data[9];
+    double z = vector.x * data[2] + vector.y * data[6] + vector.z * data[10];
+    return Vector3D(x, y, z);
+}
+
 // BoundingBox implementations
 bool BoundingBox::contains(const Point3D& point) const {
     return point.x >= min.x && point.x <= max.x &&
@@ -371,6 +471,114 @@ void OCCTPart::setOCCTShape(const TopoDS_Shape& shape) {
     }
     m_shape = new TopoDS_Shape(shape);
     m_boundingBoxComputed = false; // Invalidate cached bounding box
+}
+
+// WorkCoordinateSystem implementations
+WorkCoordinateSystem::WorkCoordinateSystem(Type type) 
+    : type_(type)
+    , origin_(0, 0, 0)
+    , xAxis_(1, 0, 0)
+    , yAxis_(0, 1, 0) 
+    , zAxis_(0, 0, 1)
+    , toGlobal_(Matrix4x4::identity())
+    , fromGlobal_(Matrix4x4::identity()) {
+}
+
+void WorkCoordinateSystem::setOrigin(const Point3D& origin) {
+    origin_ = origin;
+    updateTransformMatrices();
+}
+
+void WorkCoordinateSystem::setAxes(const Vector3D& xAxis, const Vector3D& yAxis, const Vector3D& zAxis) {
+    xAxis_ = xAxis.normalized();
+    yAxis_ = yAxis.normalized();
+    zAxis_ = zAxis.normalized();
+    updateTransformMatrices();
+}
+
+void WorkCoordinateSystem::setFromLatheMaterial(const Point3D& rawMaterialEnd, const Vector3D& spindleAxis) {
+    // Set the origin at the end of the raw material (work coordinate zero)
+    origin_ = rawMaterialEnd;
+    
+    // Z-axis is the spindle axis (direction of increasing Z in lathe coordinates)
+    zAxis_ = spindleAxis.normalized();
+    
+    // X-axis is radial (perpendicular to spindle) - choose most appropriate direction
+    // This represents the direction of increasing X (radius) in lathe coordinates
+    if (std::abs(zAxis_.y) < 0.9) {
+        // If Z-axis is not close to Y-axis, use Y direction for X-axis base
+        Vector3D baseX(0, 1, 0);
+        Vector3D temp = Vector3D(zAxis_.y * baseX.z - zAxis_.z * baseX.y,
+                                zAxis_.z * baseX.x - zAxis_.x * baseX.z,
+                                zAxis_.x * baseX.y - zAxis_.y * baseX.x);
+        xAxis_ = Vector3D(temp.y * zAxis_.z - temp.z * zAxis_.y,
+                         temp.z * zAxis_.x - temp.x * zAxis_.z,
+                         temp.x * zAxis_.y - temp.y * zAxis_.x).normalized();
+    } else {
+        // If Z-axis is close to Y-axis, use X direction for X-axis base
+        Vector3D baseX(1, 0, 0);
+        Vector3D temp = Vector3D(zAxis_.y * baseX.z - zAxis_.z * baseX.y,
+                                zAxis_.z * baseX.x - zAxis_.x * baseX.z,
+                                zAxis_.x * baseX.y - zAxis_.y * baseX.x);
+        xAxis_ = Vector3D(temp.y * zAxis_.z - temp.z * zAxis_.y,
+                         temp.z * zAxis_.x - temp.x * zAxis_.z,
+                         temp.x * zAxis_.y - temp.y * zAxis_.x).normalized();
+    }
+    
+    // Y-axis completes the right-handed coordinate system (not used in 2D lathe ops)
+    yAxis_ = Vector3D(zAxis_.y * xAxis_.z - zAxis_.z * xAxis_.y,
+                      zAxis_.z * xAxis_.x - zAxis_.x * xAxis_.z,
+                      zAxis_.x * xAxis_.y - zAxis_.y * xAxis_.x).normalized();
+    
+    updateTransformMatrices();
+}
+
+void WorkCoordinateSystem::updateTransformMatrices() {
+    // Create transformation matrix from work coordinates to global coordinates
+    // The columns of the matrix are the work coordinate axes expressed in global coordinates
+    toGlobal_.data[0] = xAxis_.x;  toGlobal_.data[4] = yAxis_.x;  toGlobal_.data[8]  = zAxis_.x;  toGlobal_.data[12] = origin_.x;
+    toGlobal_.data[1] = xAxis_.y;  toGlobal_.data[5] = yAxis_.y;  toGlobal_.data[9]  = zAxis_.y;  toGlobal_.data[13] = origin_.y;
+    toGlobal_.data[2] = xAxis_.z;  toGlobal_.data[6] = yAxis_.z;  toGlobal_.data[10] = zAxis_.z;  toGlobal_.data[14] = origin_.z;
+    toGlobal_.data[3] = 0.0;       toGlobal_.data[7] = 0.0;       toGlobal_.data[11] = 0.0;       toGlobal_.data[15] = 1.0;
+    
+    // The inverse transformation (global to work coordinates)
+    fromGlobal_ = toGlobal_.inverse();
+}
+
+Point3D WorkCoordinateSystem::toGlobal(const Point3D& localPoint) const {
+    return toGlobal_.transformPoint(localPoint);
+}
+
+Point3D WorkCoordinateSystem::fromGlobal(const Point3D& globalPoint) const {
+    return fromGlobal_.transformPoint(globalPoint);
+}
+
+Vector3D WorkCoordinateSystem::toGlobal(const Vector3D& localVector) const {
+    return toGlobal_.transformVector(localVector);
+}
+
+Vector3D WorkCoordinateSystem::fromGlobal(const Vector3D& globalVector) const {
+    return fromGlobal_.transformVector(globalVector);
+}
+
+Point2D WorkCoordinateSystem::globalToLathe(const Point3D& globalPoint) const {
+    // Convert global point to work coordinates first
+    Point3D workPoint = fromGlobal(globalPoint);
+    
+    // In lathe coordinates: X = radius (distance from Z-axis), Z = axial position
+    double radius = std::sqrt(workPoint.x * workPoint.x + workPoint.y * workPoint.y);
+    double axial = workPoint.z;
+    
+    return Point2D(radius, axial);
+}
+
+Point3D WorkCoordinateSystem::latheToGlobal(const Point2D& lathePoint) const {
+    // In lathe coordinates: X = radius, Z = axial
+    // Convert to 3D work coordinates (radius in X direction, Z unchanged)
+    Point3D workPoint(lathePoint.x, 0.0, lathePoint.z);
+    
+    // Transform to global coordinates
+    return toGlobal(workPoint);
 }
 
 } // namespace Geometry

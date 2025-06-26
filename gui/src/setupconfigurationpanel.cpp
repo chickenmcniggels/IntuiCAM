@@ -50,25 +50,46 @@ const QStringList SURFACE_FINISH_NAMES = {
     "Rough (32 μm Ra)", "Medium (16 μm Ra)",  "Fine (8 μm Ra)",
     "Smooth (4 μm Ra)", "Polished (2 μm Ra)", "Mirror (1 μm Ra)"};
 
-const QStringList OPERATION_ORDER = {"Contouring", "Threading", "Chamfering",
-                                     "Parting"};
+const QStringList OPERATION_ORDER = {"Facing",       "Roughing",   "Finishing",
+                                     "LH Cleanup",  "Neutral Cleanup", "Threading",
+                                     "Chamfering", "Parting"};
 
 SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     : QWidget(parent)
     , m_mainLayout(nullptr)
     , m_partTab(nullptr)
     , m_operationsTabWidget(nullptr)
-    , m_contouringTab(nullptr)
+    , m_facingTab(nullptr)
+    , m_roughingTab(nullptr)
+    , m_finishingTab(nullptr)
+    , m_leftCleanupTab(nullptr)
+    , m_neutralCleanupTab(nullptr)
     , m_threadingTab(nullptr)
     , m_chamferingTab(nullptr)
     , m_partingTab(nullptr)
     , m_materialManager(nullptr)
     , m_toolManager(nullptr)
     
-    , m_contouringEnabledCheck(nullptr)
+    , m_facingEnabledCheck(nullptr)
+    , m_roughingEnabledCheck(nullptr)
+    , m_finishingEnabledCheck(nullptr)
+    , m_leftCleanupEnabledCheck(nullptr)
+    , m_neutralCleanupEnabledCheck(nullptr)
     , m_threadingEnabledCheck(nullptr)
     , m_chamferingEnabledCheck(nullptr)
     , m_partingEnabledCheck(nullptr)
+    , m_largestDrillSizeSpin(nullptr)
+    , m_internalFinishingPassesSpin(nullptr)
+    , m_externalFinishingPassesSpin(nullptr)
+    , m_partingAllowanceSpin(nullptr)
+    , m_drillingEnabledCheck(nullptr)
+    , m_internalRoughingEnabledCheck(nullptr)
+    , m_externalRoughingEnabledCheck(nullptr)
+    , m_internalFinishingEnabledCheck(nullptr)
+    , m_externalFinishingEnabledCheck(nullptr)
+    , m_internalGroovingEnabledCheck(nullptr)
+    , m_externalGroovingEnabledCheck(nullptr)
+    , m_machineInternalFeaturesEnabledCheck(nullptr)
 {
     setupUI();
     setupConnections();
@@ -107,7 +128,11 @@ void SetupConfigurationPanel::setupUI() {
   m_operationsTabWidget->setDocumentMode(true);
 
   // Create operation tabs (content widgets)
-  m_contouringTab = new QWidget();
+  m_facingTab = new QWidget();
+  m_roughingTab = new QWidget();
+  m_finishingTab = new QWidget();
+  m_leftCleanupTab = new QWidget();
+  m_neutralCleanupTab = new QWidget();
   m_threadingTab = new QWidget();
   m_chamferingTab = new QWidget();
   m_partingTab = new QWidget();
@@ -116,10 +141,30 @@ void SetupConfigurationPanel::setupUI() {
   // the available space. The scroll areas themselves are local to this
   // method, but the inner tab widgets are stored in member variables for
   // later access.
-  QScrollArea *contourScroll = new QScrollArea();
-  contourScroll->setWidgetResizable(true);
-  contourScroll->setFrameShape(QFrame::NoFrame);
-  contourScroll->setWidget(m_contouringTab);
+  QScrollArea *facingScroll = new QScrollArea();
+  facingScroll->setWidgetResizable(true);
+  facingScroll->setFrameShape(QFrame::NoFrame);
+  facingScroll->setWidget(m_facingTab);
+
+  QScrollArea *roughScroll = new QScrollArea();
+  roughScroll->setWidgetResizable(true);
+  roughScroll->setFrameShape(QFrame::NoFrame);
+  roughScroll->setWidget(m_roughingTab);
+
+  QScrollArea *finishScroll = new QScrollArea();
+  finishScroll->setWidgetResizable(true);
+  finishScroll->setFrameShape(QFrame::NoFrame);
+  finishScroll->setWidget(m_finishingTab);
+
+  QScrollArea *lhScroll = new QScrollArea();
+  lhScroll->setWidgetResizable(true);
+  lhScroll->setFrameShape(QFrame::NoFrame);
+  lhScroll->setWidget(m_leftCleanupTab);
+
+  QScrollArea *nScroll = new QScrollArea();
+  nScroll->setWidgetResizable(true);
+  nScroll->setFrameShape(QFrame::NoFrame);
+  nScroll->setWidget(m_neutralCleanupTab);
 
   QScrollArea *threadingScroll = new QScrollArea();
   threadingScroll->setWidgetResizable(true);
@@ -140,7 +185,11 @@ void SetupConfigurationPanel::setupUI() {
   setupMachiningTab();
 
   // Add tabs to widget using the scroll areas created above
-  m_operationsTabWidget->addTab(contourScroll, "Contouring");
+  m_operationsTabWidget->addTab(facingScroll, "Facing");
+  m_operationsTabWidget->addTab(roughScroll, "Roughing");
+  m_operationsTabWidget->addTab(finishScroll, "Finishing");
+  m_operationsTabWidget->addTab(lhScroll, "LH Cleanup");
+  m_operationsTabWidget->addTab(nScroll, "Neutral Cleanup");
   m_operationsTabWidget->addTab(threadingScroll, "Threading");
   m_operationsTabWidget->addTab(chamferScroll, "Chamfering");
   m_operationsTabWidget->addTab(partingScroll, "Parting");
@@ -205,13 +254,17 @@ void SetupConfigurationPanel::setupPartTab() {
   m_distanceLabel = new QLabel("Distance to Chuck:");
   m_distanceLabel->setMinimumWidth(120);
   m_distanceSlider = new QSlider(Qt::Horizontal);
-  m_distanceSlider->setRange(0, 100);
-  m_distanceSlider->setValue(25);
+  // Use 0.1mm resolution for fine control but allow larger positioning range
+  m_distanceSlider->setRange(0, 5000); // 0-500mm range
+  m_distanceSlider->setSingleStep(10);  // 1mm per scroll step
+  m_distanceSlider->setPageStep(50);    // 5mm per page step
+  m_distanceSlider->setValue(250);      // Default 25mm
   m_distanceSpinBox = new QDoubleSpinBox();
-  m_distanceSpinBox->setRange(0.0, 100.0);
+  m_distanceSpinBox->setRange(0.0, 500.0);
   m_distanceSpinBox->setValue(25.0);
   m_distanceSpinBox->setSuffix(" mm");
   m_distanceSpinBox->setDecimals(1);
+  m_distanceSpinBox->setSingleStep(1.0);
   m_distanceSpinBox->setMaximumWidth(80);
 
   m_distanceLayout->addWidget(m_distanceLabel);
@@ -267,24 +320,24 @@ void SetupConfigurationPanel::setupPartTab() {
   m_rawLengthLabel->setStyleSheet("color: #666; font-size: 11px;");
   m_materialLayout->addWidget(m_rawLengthLabel);
 
-
-
   partTabLayout->addWidget(m_materialGroup);
 
   partTabLayout->addStretch();
 }
 
 void SetupConfigurationPanel::setupMachiningTab() {
-  // --- Contouring Tab ---
-  QVBoxLayout *contourLayout = new QVBoxLayout(m_contouringTab);
-  contourLayout->setContentsMargins(12, 12, 12, 12);
-  contourLayout->setSpacing(16);
+  // --- Facing Tab ---
+  QVBoxLayout *facingLayout = new QVBoxLayout(m_facingTab);
+  facingLayout->setContentsMargins(12, 12, 12, 12);
+  facingLayout->setSpacing(16);
 
-  QHBoxLayout *contourEnableLayout = new QHBoxLayout();
-  m_contouringEnabledCheck = new QCheckBox("Enable Contouring");
-  contourEnableLayout->addWidget(m_contouringEnabledCheck);
-  contourEnableLayout->addStretch();
-  contourLayout->addLayout(contourEnableLayout);
+  // Operation enablement moved to tiles - hide the checkboxes
+  QHBoxLayout *facingEnableLayout = new QHBoxLayout();
+  m_facingEnabledCheck = new QCheckBox("Enable Facing");
+  m_facingEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
+  facingEnableLayout->addWidget(m_facingEnabledCheck);
+  facingEnableLayout->addStretch();
+  facingLayout->addLayout(facingEnableLayout);
 
   m_machiningParamsGroup = new QGroupBox("Machining Parameters");
   m_machiningParamsLayout = new QVBoxLayout(m_machiningParamsGroup);
@@ -335,6 +388,113 @@ void SetupConfigurationPanel::setupMachiningTab() {
   m_finishingAllowanceLayout->addStretch();
   m_machiningParamsLayout->addLayout(m_finishingAllowanceLayout);
 
+  // New pipeline-specific parameters
+  // Largest drill size
+  QHBoxLayout *largestDrillLayout = new QHBoxLayout();
+  QLabel *largestDrillLabel = new QLabel("Largest Drill Size:");
+  largestDrillLabel->setMinimumWidth(140);
+  m_largestDrillSizeSpin = new QDoubleSpinBox();
+  m_largestDrillSizeSpin->setRange(1.0, 50.0);
+  m_largestDrillSizeSpin->setValue(12.0);
+  m_largestDrillSizeSpin->setSuffix(" mm");
+  m_largestDrillSizeSpin->setDecimals(1);
+  m_largestDrillSizeSpin->setToolTip("Diameters larger than this will be bored instead of drilled");
+  largestDrillLayout->addWidget(largestDrillLabel);
+  largestDrillLayout->addWidget(m_largestDrillSizeSpin);
+  largestDrillLayout->addStretch();
+  m_machiningParamsLayout->addLayout(largestDrillLayout);
+
+  // Internal finishing passes
+  QHBoxLayout *intFinishPassesLayout = new QHBoxLayout();
+  QLabel *intFinishPassesLabel = new QLabel("Internal Finish Passes:");
+  intFinishPassesLabel->setMinimumWidth(140);
+  m_internalFinishingPassesSpin = new QSpinBox();
+  m_internalFinishingPassesSpin->setRange(1, 10);
+  m_internalFinishingPassesSpin->setValue(2);
+  m_internalFinishingPassesSpin->setToolTip("Number of finishing passes for internal features");
+  intFinishPassesLayout->addWidget(intFinishPassesLabel);
+  intFinishPassesLayout->addWidget(m_internalFinishingPassesSpin);
+  intFinishPassesLayout->addStretch();
+  m_machiningParamsLayout->addLayout(intFinishPassesLayout);
+
+  // External finishing passes
+  QHBoxLayout *extFinishPassesLayout = new QHBoxLayout();
+  QLabel *extFinishPassesLabel = new QLabel("External Finish Passes:");
+  extFinishPassesLabel->setMinimumWidth(140);
+  m_externalFinishingPassesSpin = new QSpinBox();
+  m_externalFinishingPassesSpin->setRange(1, 10);
+  m_externalFinishingPassesSpin->setValue(2);
+  m_externalFinishingPassesSpin->setToolTip("Number of finishing passes for external features");
+  extFinishPassesLayout->addWidget(extFinishPassesLabel);
+  extFinishPassesLayout->addWidget(m_externalFinishingPassesSpin);
+  extFinishPassesLayout->addStretch();
+  m_machiningParamsLayout->addLayout(extFinishPassesLayout);
+
+  // Parting allowance
+  QHBoxLayout *partingAllowanceLayout = new QHBoxLayout();
+  QLabel *partingAllowanceLabel = new QLabel("Parting Allowance:");
+  partingAllowanceLabel->setMinimumWidth(140);
+  m_partingAllowanceSpin = new QDoubleSpinBox();
+  m_partingAllowanceSpin->setRange(0.0, 10.0);
+  m_partingAllowanceSpin->setValue(0.0);
+  m_partingAllowanceSpin->setSuffix(" mm");
+  m_partingAllowanceSpin->setDecimals(2);
+  m_partingAllowanceSpin->setToolTip("Additional stock to leave during parting operation");
+  partingAllowanceLayout->addWidget(partingAllowanceLabel);
+  partingAllowanceLayout->addWidget(m_partingAllowanceSpin);
+  partingAllowanceLayout->addStretch();
+  m_machiningParamsLayout->addLayout(partingAllowanceLayout);
+
+  // Operation enablement section (hidden as it's now handled by tiles)
+  QGroupBox *operationEnablementGroup = new QGroupBox("Operation Enablement");
+  operationEnablementGroup->setVisible(false); // Hide the checkbox section
+  QVBoxLayout *operationEnablementLayout = new QVBoxLayout(operationEnablementGroup);
+  
+  // Master switch for internal features
+  m_machineInternalFeaturesEnabledCheck = new QCheckBox("Machine Internal Features");
+  m_machineInternalFeaturesEnabledCheck->setChecked(true);
+  m_machineInternalFeaturesEnabledCheck->setToolTip("Enable machining of internal features (holes, bores, grooves)");
+  operationEnablementLayout->addWidget(m_machineInternalFeaturesEnabledCheck);
+  
+  // Individual operation controls in two columns
+  QHBoxLayout *operationRowsLayout = new QHBoxLayout();
+  
+  QVBoxLayout *leftColumnLayout = new QVBoxLayout();
+  m_drillingEnabledCheck = new QCheckBox("Drilling");
+  m_drillingEnabledCheck->setChecked(true);
+  leftColumnLayout->addWidget(m_drillingEnabledCheck);
+  
+  m_internalRoughingEnabledCheck = new QCheckBox("Internal Roughing");
+  m_internalRoughingEnabledCheck->setChecked(true);
+  leftColumnLayout->addWidget(m_internalRoughingEnabledCheck);
+  
+  m_internalFinishingEnabledCheck = new QCheckBox("Internal Finishing");
+  m_internalFinishingEnabledCheck->setChecked(true);
+  leftColumnLayout->addWidget(m_internalFinishingEnabledCheck);
+  
+  m_internalGroovingEnabledCheck = new QCheckBox("Internal Grooving");
+  m_internalGroovingEnabledCheck->setChecked(true);
+  leftColumnLayout->addWidget(m_internalGroovingEnabledCheck);
+  
+  QVBoxLayout *rightColumnLayout = new QVBoxLayout();
+  m_externalRoughingEnabledCheck = new QCheckBox("External Roughing");
+  m_externalRoughingEnabledCheck->setChecked(true);
+  rightColumnLayout->addWidget(m_externalRoughingEnabledCheck);
+  
+  m_externalFinishingEnabledCheck = new QCheckBox("External Finishing");
+  m_externalFinishingEnabledCheck->setChecked(true);
+  rightColumnLayout->addWidget(m_externalFinishingEnabledCheck);
+  
+  m_externalGroovingEnabledCheck = new QCheckBox("External Grooving");
+  m_externalGroovingEnabledCheck->setChecked(true);
+  rightColumnLayout->addWidget(m_externalGroovingEnabledCheck);
+  
+  operationRowsLayout->addLayout(leftColumnLayout);
+  operationRowsLayout->addLayout(rightColumnLayout);
+  operationEnablementLayout->addLayout(operationRowsLayout);
+  
+  m_machiningParamsLayout->addWidget(operationEnablementGroup);
+
   // Flood coolant simple toggle
   QHBoxLayout *coolLayout = new QHBoxLayout();
   m_contourFloodCheck = new QCheckBox("Flood Coolant");
@@ -343,7 +503,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   coolLayout->addStretch();
   m_machiningParamsLayout->addLayout(coolLayout);
 
-  contourLayout->addWidget(m_machiningParamsGroup);
+  facingLayout->addWidget(m_machiningParamsGroup);
 
   // Quality Group
   m_qualityGroup = new QGroupBox("Quality Settings");
@@ -384,18 +544,18 @@ void SetupConfigurationPanel::setupMachiningTab() {
   m_toleranceLayout->addStretch();
   m_qualityLayout->addLayout(m_toleranceLayout);
 
-  contourLayout->addWidget(m_qualityGroup);
+  facingLayout->addWidget(m_qualityGroup);
 
-  QGroupBox *contourToolsGroup = new QGroupBox("Recommended Tools");
-  QVBoxLayout *contourToolsLayout = new QVBoxLayout(contourToolsGroup);
-  QListWidget *contourToolsList = new QListWidget();
-  contourToolsLayout->addWidget(contourToolsList);
-  contourLayout->addWidget(contourToolsGroup);
-  m_operationToolLists.insert("contouring", contourToolsList);
+  QGroupBox *facingToolsGroup = new QGroupBox("Available Tools");
+  QVBoxLayout *facingToolsLayout = new QVBoxLayout(facingToolsGroup);
+  QListWidget *facingToolsList = new QListWidget();
+  facingToolsLayout->addWidget(facingToolsList);
+  facingLayout->addWidget(facingToolsGroup);
+  m_operationToolLists.insert("facing", facingToolsList);
 
   // Advanced cutting parameters
-  m_contourAdvancedGroup = new QGroupBox("Advanced Cutting");
-  QVBoxLayout *contourAdvLayout = new QVBoxLayout(m_contourAdvancedGroup);
+  m_facingAdvancedGroup = new QGroupBox("Advanced Cutting");
+  QVBoxLayout *facingAdvLayout = new QVBoxLayout(m_facingAdvancedGroup);
 
   auto createSection = [this](const QString &title, QGroupBox **group,
                               QDoubleSpinBox **depth, QDoubleSpinBox **feed,
@@ -420,22 +580,100 @@ void SetupConfigurationPanel::setupMachiningTab() {
     return form;
   };
 
-  createSection("Facing", &m_contourFacingGroup, &m_contourFacingDepthSpin,
-                &m_contourFacingFeedSpin, &m_contourFacingSpeedSpin,
-                &m_contourFacingCssCheck);
-  createSection("Roughing", &m_contourRoughGroup, &m_contourRoughDepthSpin,
-                &m_contourRoughFeedSpin, &m_contourRoughSpeedSpin,
-                &m_contourRoughCssCheck);
-  createSection("Finishing", &m_contourFinishGroup, &m_contourFinishDepthSpin,
-                &m_contourFinishFeedSpin, &m_contourFinishSpeedSpin,
-                &m_contourFinishCssCheck);
+  createSection("Facing", &m_facingAdvancedGroup, &m_facingDepthSpin,
+                &m_facingFeedSpin, &m_facingSpeedSpin, &m_facingCssCheck);
+  facingAdvLayout->addWidget(m_facingAdvancedGroup);
+  facingLayout->addWidget(m_facingAdvancedGroup);
 
-  contourAdvLayout->addWidget(m_contourFacingGroup);
-  contourAdvLayout->addWidget(m_contourRoughGroup);
-  contourAdvLayout->addWidget(m_contourFinishGroup);
-  contourLayout->addWidget(m_contourAdvancedGroup);
+  facingLayout->addStretch();
 
-  contourLayout->addStretch();
+  // --- Roughing Tab ---
+  QVBoxLayout *roughLayout = new QVBoxLayout(m_roughingTab);
+  roughLayout->setContentsMargins(12, 12, 12, 12);
+  roughLayout->setSpacing(16);
+  QHBoxLayout *roughEnableLayout = new QHBoxLayout();
+  m_roughingEnabledCheck = new QCheckBox("Enable Roughing");
+  m_roughingEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
+  roughEnableLayout->addWidget(m_roughingEnabledCheck);
+  roughEnableLayout->addStretch();
+  roughLayout->addLayout(roughEnableLayout);
+
+  QGroupBox *roughToolsGroup = new QGroupBox("Available Tools");
+  QVBoxLayout *roughToolsLayout = new QVBoxLayout(roughToolsGroup);
+  QListWidget *roughToolsList = new QListWidget();
+  roughToolsLayout->addWidget(roughToolsList);
+  roughLayout->addWidget(roughToolsGroup);
+  m_operationToolLists.insert("roughing", roughToolsList);
+
+  m_roughingAdvancedGroup = new QGroupBox("Advanced Cutting");
+  QVBoxLayout *roughAdvLayout = new QVBoxLayout(m_roughingAdvancedGroup);
+  createSection("Roughing", &m_roughingAdvancedGroup, &m_roughingDepthSpin,
+                &m_roughingFeedSpin, &m_roughingSpeedSpin, &m_roughingCssCheck);
+  roughAdvLayout->addWidget(m_roughingAdvancedGroup);
+  roughLayout->addWidget(m_roughingAdvancedGroup);
+  roughLayout->addStretch();
+
+  // --- Finishing Tab ---
+  QVBoxLayout *finishLayout = new QVBoxLayout(m_finishingTab);
+  finishLayout->setContentsMargins(12, 12, 12, 12);
+  finishLayout->setSpacing(16);
+  QHBoxLayout *finishEnableLayout = new QHBoxLayout();
+  m_finishingEnabledCheck = new QCheckBox("Enable Finishing");
+  m_finishingEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
+  finishEnableLayout->addWidget(m_finishingEnabledCheck);
+  finishEnableLayout->addStretch();
+  finishLayout->addLayout(finishEnableLayout);
+
+  QGroupBox *finishToolsGroup = new QGroupBox("Available Tools");
+  QVBoxLayout *finishToolsLayout = new QVBoxLayout(finishToolsGroup);
+  QListWidget *finishToolsList = new QListWidget();
+  finishToolsLayout->addWidget(finishToolsList);
+  finishLayout->addWidget(finishToolsGroup);
+  m_operationToolLists.insert("finishing", finishToolsList);
+
+  m_finishingAdvancedGroup = new QGroupBox("Advanced Cutting");
+  QVBoxLayout *finishAdvLayout = new QVBoxLayout(m_finishingAdvancedGroup);
+  createSection("Finishing", &m_finishingAdvancedGroup, &m_finishingDepthSpin,
+                &m_finishingFeedSpin, &m_finishingSpeedSpin, &m_finishingCssCheck);
+  finishAdvLayout->addWidget(m_finishingAdvancedGroup);
+  finishLayout->addWidget(m_finishingAdvancedGroup);
+  finishLayout->addStretch();
+
+  // --- LH Cleanup Tab ---
+  QVBoxLayout *lhLayout = new QVBoxLayout(m_leftCleanupTab);
+  lhLayout->setContentsMargins(12, 12, 12, 12);
+  lhLayout->setSpacing(16);
+  QHBoxLayout *lhEnableLayout = new QHBoxLayout();
+  m_leftCleanupEnabledCheck = new QCheckBox("Enable LH Cleanup");
+  m_leftCleanupEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
+  lhEnableLayout->addWidget(m_leftCleanupEnabledCheck);
+  lhEnableLayout->addStretch();
+  lhLayout->addLayout(lhEnableLayout);
+  QGroupBox *lhToolsGroup = new QGroupBox("Available Tools");
+  QVBoxLayout *lhToolsLayout = new QVBoxLayout(lhToolsGroup);
+  QListWidget *lhToolsList = new QListWidget();
+  lhToolsLayout->addWidget(lhToolsList);
+  lhLayout->addWidget(lhToolsGroup);
+  m_operationToolLists.insert("lh_cleanup", lhToolsList);
+  lhLayout->addStretch();
+
+  // --- Neutral Cleanup Tab ---
+  QVBoxLayout *nLayout = new QVBoxLayout(m_neutralCleanupTab);
+  nLayout->setContentsMargins(12, 12, 12, 12);
+  nLayout->setSpacing(16);
+  QHBoxLayout *nEnableLayout = new QHBoxLayout();
+  m_neutralCleanupEnabledCheck = new QCheckBox("Enable Neutral Cleanup");
+  m_neutralCleanupEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
+  nEnableLayout->addWidget(m_neutralCleanupEnabledCheck);
+  nEnableLayout->addStretch();
+  nLayout->addLayout(nEnableLayout);
+  QGroupBox *nToolsGroup = new QGroupBox("Available Tools");
+  QVBoxLayout *nToolsLayout = new QVBoxLayout(nToolsGroup);
+  QListWidget *nToolsList = new QListWidget();
+  nToolsLayout->addWidget(nToolsList);
+  nLayout->addWidget(nToolsGroup);
+  m_operationToolLists.insert("neutral_cleanup", nToolsList);
+  nLayout->addStretch();
 
   // --- Threading Tab ---
   QVBoxLayout *threadingLayout = new QVBoxLayout(m_threadingTab);
@@ -443,6 +681,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   threadingLayout->setSpacing(16);
   QHBoxLayout *threadEnableLayout = new QHBoxLayout();
   m_threadingEnabledCheck = new QCheckBox("Enable Threading");
+  m_threadingEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
   threadEnableLayout->addWidget(m_threadingEnabledCheck);
   threadEnableLayout->addStretch();
   threadingLayout->addLayout(threadEnableLayout);
@@ -471,7 +710,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   threadFaceBtnLayout->addStretch();
   threadingLayout->addLayout(threadFaceBtnLayout);
 
-  QGroupBox *threadingToolsGroup = new QGroupBox("Recommended Tools");
+  QGroupBox *threadingToolsGroup = new QGroupBox("Available Tools");
   QVBoxLayout *threadingToolsLayout = new QVBoxLayout(threadingToolsGroup);
   QListWidget *threadingToolsList = new QListWidget();
   threadingToolsLayout->addWidget(threadingToolsList);
@@ -486,6 +725,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   chamferLayout->setSpacing(16);
   QHBoxLayout *chamferEnableLayout = new QHBoxLayout();
   m_chamferingEnabledCheck = new QCheckBox("Enable Chamfering");
+  m_chamferingEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
   chamferEnableLayout->addWidget(m_chamferingEnabledCheck);
   chamferEnableLayout->addStretch();
   chamferLayout->addLayout(chamferEnableLayout);
@@ -551,7 +791,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   diamLeaveLayout->addStretch();
   chamferLayout->addLayout(diamLeaveLayout);
 
-  QGroupBox *chamferToolsGroup = new QGroupBox("Recommended Tools");
+  QGroupBox *chamferToolsGroup = new QGroupBox("Available Tools");
   QVBoxLayout *chamferToolsLayout = new QVBoxLayout(chamferToolsGroup);
   QListWidget *chamferToolsList = new QListWidget();
   chamferToolsLayout->addWidget(chamferToolsList);
@@ -566,6 +806,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   partLayout->setSpacing(16);
   QHBoxLayout *partEnableLayout = new QHBoxLayout();
   m_partingEnabledCheck = new QCheckBox("Enable Parting");
+  m_partingEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
   partEnableLayout->addWidget(m_partingEnabledCheck);
   partEnableLayout->addStretch();
   partLayout->addLayout(partEnableLayout);
@@ -589,7 +830,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   partCoolLayout->addStretch();
   partLayout->addLayout(partCoolLayout);
 
-  QGroupBox *partingToolsGroup = new QGroupBox("Recommended Tools");
+  QGroupBox *partingToolsGroup = new QGroupBox("Available Tools");
   QVBoxLayout *partingToolsLayout = new QVBoxLayout(partingToolsGroup);
   QListWidget *partingToolsList = new QListWidget();
   partingToolsLayout->addWidget(partingToolsList);
@@ -628,87 +869,180 @@ void SetupConfigurationPanel::setupConnections() {
           &SetupConfigurationPanel::onBrowseStepFile);
   connect(m_manualAxisButton, &QPushButton::clicked, this,
           &SetupConfigurationPanel::onManualAxisSelectionClicked);
-  connect(m_materialTypeCombo,
-          QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-          &SetupConfigurationPanel::onMaterialChanged);
-
-  // Material and tool management connections
-  connect(m_rawDiameterSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
   connect(m_autoRawDiameterButton, &QPushButton::clicked, this,
           &SetupConfigurationPanel::onAutoRawDiameterClicked);
 
-  // Part positioning connections
+  // Material combo connection
+  if (m_materialTypeCombo) {
+    connect(m_materialTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SetupConfigurationPanel::onMaterialChanged);
+  }
+
+  // Distance controls
   connect(m_distanceSlider, &QSlider::valueChanged, this, [this](int value) {
-    m_distanceSpinBox->setValue(static_cast<double>(value));
+    m_distanceSpinBox->setValue(value / 10.0);
+    emit distanceToChuckChanged(value / 10.0);
+    emit configurationChanged();
   });
-  connect(m_distanceSpinBox,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
+  connect(m_distanceSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
           [this](double value) {
-            m_distanceSlider->setValue(static_cast<int>(value));
+            m_distanceSlider->setValue(static_cast<int>(value * 10));
             emit distanceToChuckChanged(value);
             emit configurationChanged();
           });
-  connect(m_flipOrientationCheckBox, &QCheckBox::toggled, this,
+  connect(m_flipOrientationCheckBox, &QCheckBox::toggled,
           [this](bool checked) {
             emit orientationFlipped(checked);
             emit configurationChanged();
           });
 
-  // Machining tab connections
-  connect(m_facingAllowanceSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
-  connect(m_roughingAllowanceSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
-  connect(m_finishingAllowanceSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
-  connect(m_partingWidthSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
-  connect(m_chamferSizeSpin,
-          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
-
-  connect(m_surfaceFinishCombo,
-          QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-          &SetupConfigurationPanel::onConfigurationChanged);
-  connect(m_toleranceSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-          this, &SetupConfigurationPanel::onConfigurationChanged);
-
-  // Operation controls - only connect if widgets exist
-  if (m_contouringEnabledCheck) {
-    connect(m_contouringEnabledCheck, &QCheckBox::toggled, this,
+  // Operation enable checkboxes
+  if (m_facingEnabledCheck) {
+    connect(m_facingEnabledCheck, &QCheckBox::toggled, this,
+            &SetupConfigurationPanel::onOperationToggled);
+  }
+  if (m_roughingEnabledCheck) {
+    connect(m_roughingEnabledCheck, &QCheckBox::toggled, this,
+            &SetupConfigurationPanel::onOperationToggled);
+  }
+  if (m_finishingEnabledCheck) {
+    connect(m_finishingEnabledCheck, &QCheckBox::toggled, this,
+            &SetupConfigurationPanel::onOperationToggled);
+  }
+  if (m_leftCleanupEnabledCheck) {
+    connect(m_leftCleanupEnabledCheck, &QCheckBox::toggled, this,
+            &SetupConfigurationPanel::onOperationToggled);
+  }
+  if (m_neutralCleanupEnabledCheck) {
+    connect(m_neutralCleanupEnabledCheck, &QCheckBox::toggled, this,
             &SetupConfigurationPanel::onOperationToggled);
   }
   if (m_threadingEnabledCheck) {
     connect(m_threadingEnabledCheck, &QCheckBox::toggled, this,
             &SetupConfigurationPanel::onOperationToggled);
+  }
+  if (m_chamferingEnabledCheck) {
+    connect(m_chamferingEnabledCheck, &QCheckBox::toggled, this,
+            &SetupConfigurationPanel::onOperationToggled);
+  }
+  if (m_partingEnabledCheck) {
+    connect(m_partingEnabledCheck, &QCheckBox::toggled, this,
+            &SetupConfigurationPanel::onOperationToggled);
+  }
+
+  // Thread face management
+  if (m_addThreadFaceButton) {
     connect(m_addThreadFaceButton, &QPushButton::clicked, this,
             &SetupConfigurationPanel::onAddThreadFace);
+  }
+  if (m_removeThreadFaceButton) {
     connect(m_removeThreadFaceButton, &QPushButton::clicked, this,
             &SetupConfigurationPanel::onRemoveThreadFace);
+  }
+  if (m_threadFacesTable) {
     connect(m_threadFacesTable, &QTableWidget::itemSelectionChanged, this,
             &SetupConfigurationPanel::onThreadFaceRowSelected);
     connect(m_threadFacesTable, &QTableWidget::cellChanged, this,
             &SetupConfigurationPanel::onThreadFaceCellChanged);
   }
-  if (m_chamferingEnabledCheck) {
-    connect(m_chamferingEnabledCheck, &QCheckBox::toggled, this,
-            &SetupConfigurationPanel::onOperationToggled);
+
+  // Chamfer face management
+  if (m_addChamferFaceButton) {
     connect(m_addChamferFaceButton, &QPushButton::clicked, this,
             &SetupConfigurationPanel::onAddChamferFace);
+  }
+  if (m_removeChamferFaceButton) {
     connect(m_removeChamferFaceButton, &QPushButton::clicked, this,
             &SetupConfigurationPanel::onRemoveChamferFace);
+  }
+  if (m_chamferFacesTable) {
     connect(m_chamferFacesTable, &QTableWidget::itemSelectionChanged, this,
             &SetupConfigurationPanel::onChamferFaceRowSelected);
   }
-  if (m_partingEnabledCheck) {
-    connect(m_partingEnabledCheck, &QCheckBox::toggled, this,
-            &SetupConfigurationPanel::onOperationToggled);
+
+  // Tool selection connections for each operation
+  for (auto it = m_operationToolLists.begin(); it != m_operationToolLists.end(); ++it) {
+    const QString& operation = it.key();
+    QListWidget* toolList = it.value();
+    
+    if (toolList) {
+      // Single click selection changes
+      connect(toolList, &QListWidget::itemSelectionChanged, this, 
+              [this, operation]() {
+                QListWidget* list = m_operationToolLists.value(operation);
+                if (list && list->currentItem()) {
+                  QString toolId = list->currentItem()->data(Qt::UserRole).toString();
+                  if (!toolId.isEmpty()) {
+                    onToolSelectionChanged(operation, toolId);
+                  }
+                } else {
+                  // No tool selected, clear advanced settings for this operation
+                  clearAdvancedSettingsForOperation(operation);
+                }
+              });
+      
+      // Double click to open tool details
+      connect(toolList, &QListWidget::itemDoubleClicked, this,
+              &SetupConfigurationPanel::onRecommendedToolDoubleClicked);
+    }
+  }
+
+  // Advanced mode toggle
+  if (m_advancedModeCheck) {
+    connect(m_advancedModeCheck, &QCheckBox::toggled, this,
+            &SetupConfigurationPanel::updateAdvancedMode);
+  }
+
+  // New pipeline-specific control connections
+  if (m_largestDrillSizeSpin) {
+    connect(m_largestDrillSizeSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_internalFinishingPassesSpin) {
+    connect(m_internalFinishingPassesSpin, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_externalFinishingPassesSpin) {
+    connect(m_externalFinishingPassesSpin, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_partingAllowanceSpin) {
+    connect(m_partingAllowanceSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  
+  // Operation enablement connections
+  if (m_machineInternalFeaturesEnabledCheck) {
+    connect(m_machineInternalFeaturesEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_drillingEnabledCheck) {
+    connect(m_drillingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_internalRoughingEnabledCheck) {
+    connect(m_internalRoughingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_externalRoughingEnabledCheck) {
+    connect(m_externalRoughingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_internalFinishingEnabledCheck) {
+    connect(m_internalFinishingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_externalFinishingEnabledCheck) {
+    connect(m_externalFinishingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_internalGroovingEnabledCheck) {
+    connect(m_internalGroovingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_externalGroovingEnabledCheck) {
+    connect(m_externalGroovingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
   }
 }
 
@@ -812,15 +1146,20 @@ double SetupConfigurationPanel::getTolerance() const {
 
 bool SetupConfigurationPanel::isOperationEnabled(
     const QString &operationName) const {
-  if (operationName == "Contouring")
-    return m_contouringEnabledCheck ? m_contouringEnabledCheck->isChecked()
-                                    : false;
+  if (operationName == "Facing")
+    return m_facingEnabledCheck ? m_facingEnabledCheck->isChecked() : false;
+  if (operationName == "Roughing")
+    return m_roughingEnabledCheck ? m_roughingEnabledCheck->isChecked() : false;
+  if (operationName == "Finishing")
+    return m_finishingEnabledCheck ? m_finishingEnabledCheck->isChecked() : false;
+  if (operationName == "LH Cleanup")
+    return m_leftCleanupEnabledCheck ? m_leftCleanupEnabledCheck->isChecked() : false;
+  if (operationName == "Neutral Cleanup")
+    return m_neutralCleanupEnabledCheck ? m_neutralCleanupEnabledCheck->isChecked() : false;
   if (operationName == "Threading")
-    return m_threadingEnabledCheck ? m_threadingEnabledCheck->isChecked()
-                                   : false;
+    return m_threadingEnabledCheck ? m_threadingEnabledCheck->isChecked() : false;
   if (operationName == "Chamfering")
-    return m_chamferingEnabledCheck ? m_chamferingEnabledCheck->isChecked()
-                                    : false;
+    return m_chamferingEnabledCheck ? m_chamferingEnabledCheck->isChecked() : false;
   if (operationName == "Parting")
     return m_partingEnabledCheck ? m_partingEnabledCheck->isChecked() : false;
   return false;
@@ -849,7 +1188,7 @@ void SetupConfigurationPanel::setRawDiameter(double diameter) {
 }
 
 void SetupConfigurationPanel::setDistanceToChuck(double distance) {
-  m_distanceSlider->setValue(static_cast<int>(distance));
+  m_distanceSlider->setValue(static_cast<int>(distance * 10));
   m_distanceSpinBox->setValue(distance);
 }
 
@@ -888,9 +1227,21 @@ void SetupConfigurationPanel::setTolerance(double tolerance) {
 
 void SetupConfigurationPanel::setOperationEnabled(const QString &operationName,
                                                   bool enabled) {
-  if (operationName == "Contouring" && m_contouringEnabledCheck) {
-    QSignalBlocker blocker(m_contouringEnabledCheck);
-    m_contouringEnabledCheck->setChecked(enabled);
+  if (operationName == "Facing" && m_facingEnabledCheck) {
+    QSignalBlocker blocker(m_facingEnabledCheck);
+    m_facingEnabledCheck->setChecked(enabled);
+  } else if (operationName == "Roughing" && m_roughingEnabledCheck) {
+    QSignalBlocker blocker(m_roughingEnabledCheck);
+    m_roughingEnabledCheck->setChecked(enabled);
+  } else if (operationName == "Finishing" && m_finishingEnabledCheck) {
+    QSignalBlocker blocker(m_finishingEnabledCheck);
+    m_finishingEnabledCheck->setChecked(enabled);
+  } else if (operationName == "LH Cleanup" && m_leftCleanupEnabledCheck) {
+    QSignalBlocker blocker(m_leftCleanupEnabledCheck);
+    m_leftCleanupEnabledCheck->setChecked(enabled);
+  } else if (operationName == "Neutral Cleanup" && m_neutralCleanupEnabledCheck) {
+    QSignalBlocker blocker(m_neutralCleanupEnabledCheck);
+    m_neutralCleanupEnabledCheck->setChecked(enabled);
   } else if (operationName == "Threading" && m_threadingEnabledCheck) {
     QSignalBlocker blocker(m_threadingEnabledCheck);
     m_threadingEnabledCheck->setChecked(enabled);
@@ -949,8 +1300,16 @@ void SetupConfigurationPanel::onOperationToggled() {
   QCheckBox *checkBox = qobject_cast<QCheckBox *>(sender());
   if (checkBox) {
     QString operationName;
-    if (checkBox == m_contouringEnabledCheck)
-      operationName = "Contouring";
+    if (checkBox == m_facingEnabledCheck)
+      operationName = "Facing";
+    else if (checkBox == m_roughingEnabledCheck)
+      operationName = "Roughing";
+    else if (checkBox == m_finishingEnabledCheck)
+      operationName = "Finishing";
+    else if (checkBox == m_leftCleanupEnabledCheck)
+      operationName = "LH Cleanup";
+    else if (checkBox == m_neutralCleanupEnabledCheck)
+      operationName = "Neutral Cleanup";
     else if (checkBox == m_threadingEnabledCheck)
       operationName = "Threading";
     else if (checkBox == m_chamferingEnabledCheck)
@@ -1053,9 +1412,11 @@ void SetupConfigurationPanel::updateMaterialProperties() {
 
 void SetupConfigurationPanel::updateToolRecommendations() {
   if (!m_toolManager) {
+    qDebug() << "updateToolRecommendations: No tool manager available";
     return;
   }
 
+  // Clear existing recommendations
   for (auto list : m_operationToolLists) {
     if (list)
       list->clear();
@@ -1063,8 +1424,11 @@ void SetupConfigurationPanel::updateToolRecommendations() {
 
   QString materialName = getSelectedMaterialName();
   if (materialName.isEmpty()) {
+    qDebug() << "updateToolRecommendations: No material selected";
     return;
   }
+
+  qDebug() << "updateToolRecommendations: Material selected:" << materialName;
 
   double workpieceDiameter = getRawDiameter();
   double surfaceFinish = 16.0; // Default medium finish
@@ -1092,10 +1456,18 @@ void SetupConfigurationPanel::updateToolRecommendations() {
     break;
   }
 
-  // Get tool recommendations for each enabled operation
+  // Determine enabled operations
   QStringList operations;
-  if (isOperationEnabled("Contouring"))
-    operations.append("contouring");
+  if (isOperationEnabled("Facing"))
+    operations.append("facing");
+  if (isOperationEnabled("Roughing"))
+    operations.append("roughing");
+  if (isOperationEnabled("Finishing"))
+    operations.append("finishing");
+  if (isOperationEnabled("LH Cleanup"))
+    operations.append("lh_cleanup");
+  if (isOperationEnabled("Neutral Cleanup"))
+    operations.append("neutral_cleanup");
   if (isOperationEnabled("Threading"))
     operations.append("threading");
   if (isOperationEnabled("Chamfering"))
@@ -1103,43 +1475,109 @@ void SetupConfigurationPanel::updateToolRecommendations() {
   if (isOperationEnabled("Parting"))
     operations.append("parting");
 
+  qDebug() << "updateToolRecommendations: Enabled operations:" << operations;
+
+  // Map operations to tool types
+  const QMap<QString, QList<ToolType>> opToolTypes = {
+      {"facing", {ToolType::TurningInsert, ToolType::FacingTool}},
+      {"roughing", {ToolType::TurningInsert}},
+      {"finishing", {ToolType::TurningInsert}},
+      {"lh_cleanup", {ToolType::TurningInsert}},
+      {"neutral_cleanup", {ToolType::TurningInsert}},
+      {"threading", {ToolType::ThreadingTool}},
+      {"chamfering", {ToolType::FormTool, ToolType::TurningInsert}},
+      {"parting", {ToolType::PartingTool}}};
+
+  // Map operations to capability keywords used in the tool database
+  const QMap<QString, QStringList> opCapabilities = {
+      {"facing", {"facing"}},
+      {"roughing", {"roughing"}},
+      {"finishing", {"finishing"}},
+      {"lh_cleanup", {"finishing"}},
+      {"neutral_cleanup", {"finishing"}},
+      {"threading", {"threading"}},
+      {"chamfering", {"chamfering", "facing"}},
+      {"parting", {"parting"}}};
+
   QSet<QString> recommendedToolIds;
 
   for (const QString &operation : operations) {
-    auto recommendations = m_toolManager->recommendTools(
-        operation, materialName, workpieceDiameter, surfaceFinish);
+    QListWidget *targetList = m_operationToolLists.value(operation);
+    if (!targetList)
+      continue;
 
-    // Add top 2 recommendations for each operation
-    int count = 0;
-    for (const auto &rec : recommendations) {
-      if (count >= 2)
-        break;
-      if (!recommendedToolIds.contains(rec.toolId)) {
-        recommendedToolIds.insert(rec.toolId);
+    qDebug() << "updateToolRecommendations: Processing operation:" << operation;
 
-        CuttingTool tool = m_toolManager->getTool(rec.toolId);
-        QString itemText = QString("%1 - %2 (%3)")
-                               .arg(tool.name)
-                               .arg(operation)
-                               .arg(rec.suitabilityScore, 0, 'f', 2);
+    const QList<ToolType> types = opToolTypes.value(operation);
+    for (ToolType type : types) {
+      QStringList ids = m_toolManager->getToolsByType(type);
+      qDebug() << "updateToolRecommendations: Found" << ids.size() << "tools of type" << static_cast<int>(type);
+      
+      for (const QString &id : ids) {
+        if (recommendedToolIds.contains(id))
+          continue;
+
+        CuttingTool tool = m_toolManager->getTool(id);
+        qDebug() << "updateToolRecommendations: Checking tool" << id << "name:" << tool.name;
+        
+        // Check that the tool is compatible with the selected material
+        if (!tool.capabilities.suitableMaterials.contains(materialName)) {
+          qDebug() << "updateToolRecommendations: Tool" << id << "not suitable for material" << materialName;
+          qDebug() << "  Suitable materials:" << tool.capabilities.suitableMaterials;
+          continue;
+        }
+
+        // Check that the tool supports this operation
+        bool opMatch = false;
+        for (const QString &cap : opCapabilities.value(operation)) {
+          if (tool.capabilities.supportedOperations.contains(cap)) {
+            opMatch = true;
+            break;
+          }
+        }
+        if (!opMatch) {
+          qDebug() << "updateToolRecommendations: Tool" << id << "doesn't support operation" << operation;
+          qDebug() << "  Supported operations:" << tool.capabilities.supportedOperations;
+          qDebug() << "  Required capabilities:" << opCapabilities.value(operation);
+          continue;
+        }
+
+        // Check if tool is active
+        if (!tool.isActive) {
+          qDebug() << "updateToolRecommendations: Tool" << id << "is inactive";
+          continue;
+        }
+
+        qDebug() << "updateToolRecommendations: Adding tool" << id << "to" << operation << "list";
+
+        QString itemText = QString("%1").arg(tool.name);
 
         QListWidgetItem *item = new QListWidgetItem(itemText);
-        item->setData(Qt::UserRole, QVariant(rec.toolId));
-        item->setToolTip(
-            QString("Tool: %1\nOperation: %2\nSuitability: %3\nReason: %4")
-                .arg(tool.name)
-                .arg(operation)
-                .arg(rec.suitabilityScore, 0, 'f', 2)
-                .arg(rec.reason));
+        item->setData(Qt::UserRole, QVariant(id));
+        item->setToolTip(QString("Tool ID: %1\nType: %2\nMaterial: %3")
+                         .arg(id)
+                         .arg(tool.type == ToolType::TurningInsert ? "Turning Insert" :
+                              tool.type == ToolType::FacingTool ? "Facing Tool" :
+                              tool.type == ToolType::PartingTool ? "Parting Tool" :
+                              tool.type == ToolType::BoringBar ? "Boring Bar" :
+                              tool.type == ToolType::ThreadingTool ? "Threading Tool" :
+                              tool.type == ToolType::FormTool ? "Form Tool" : "Unknown")
+                         .arg(tool.material == ToolMaterial::Carbide ? "Carbide" :
+                              tool.material == ToolMaterial::CoatedCarbide ? "Coated Carbide" :
+                              tool.material == ToolMaterial::HighSpeedSteel ? "HSS" :
+                              tool.material == ToolMaterial::Ceramic ? "Ceramic" :
+                              tool.material == ToolMaterial::CBN ? "CBN" :
+                              tool.material == ToolMaterial::PCD ? "PCD" : "Diamond"));
+        targetList->addItem(item);
 
-        QListWidget *targetList = m_operationToolLists.value(operation);
-        if (targetList) {
-          targetList->addItem(item);
-        }
-        count++;
+        recommendedToolIds.insert(id);
       }
     }
+    
+    qDebug() << "updateToolRecommendations: Operation" << operation << "has" << targetList->count() << "tools";
   }
+
+  qDebug() << "updateToolRecommendations: Total recommended tools:" << recommendedToolIds.size();
 
   emit toolRecommendationsUpdated(
       QStringList(recommendedToolIds.begin(), recommendedToolIds.end()));
@@ -1160,6 +1598,180 @@ void SetupConfigurationPanel::onToolSelectionRequested() {
   }
 }
 
+void SetupConfigurationPanel::onToolSelectionChanged(const QString& operation, const QString& toolId) {
+  qDebug() << "Tool selection changed for operation" << operation << "to tool" << toolId;
+  
+  // Store the selected tool for this operation
+  m_selectedToolsPerOperation[operation] = toolId;
+  
+  // Load tool parameters into advanced settings if in advanced mode
+  if (m_advancedModeCheck && m_advancedModeCheck->isChecked()) {
+    loadToolParametersToAdvancedSettings(toolId, operation);
+  }
+  
+  emit configurationChanged();
+}
+
+void SetupConfigurationPanel::loadToolParametersToAdvancedSettings(const QString& toolId, const QString& operation) {
+  if (!m_toolManager || toolId.isEmpty()) {
+    return;
+  }
+  
+  // Get the tool from the tool manager
+  CuttingTool tool = m_toolManager->getTool(toolId);
+  if (tool.name.isEmpty()) {
+    qWarning() << "Tool not found:" << toolId;
+    return;
+  }
+  
+  // Get the selected material for material-specific cutting data
+  QString materialName = getSelectedMaterialName();
+  if (materialName.isEmpty()) {
+    qWarning() << "No material selected, cannot load tool cutting data";
+    return;
+  }
+  
+  // Load material-specific cutting data from the tool
+  // This would typically come from the tool's material-specific settings
+  // For now, we'll use the tool's general capabilities and apply material-specific calculations
+  
+  // Get cutting parameters from material manager adjusted for this tool
+  double workpieceDiameter = getRawDiameter();
+  double surfaceFinish = 16.0; // Default, could get from UI
+  
+  // Apply surface finish from UI
+  SurfaceFinish finish = getSurfaceFinish();
+  switch (finish) {
+  case SurfaceFinish::Mirror_1Ra: surfaceFinish = 1.0; break;
+  case SurfaceFinish::Polish_2Ra: surfaceFinish = 2.0; break;
+  case SurfaceFinish::Smooth_4Ra: surfaceFinish = 4.0; break;
+  case SurfaceFinish::Fine_8Ra: surfaceFinish = 8.0; break;
+  case SurfaceFinish::Medium_16Ra: surfaceFinish = 16.0; break;
+  case SurfaceFinish::Rough_32Ra: surfaceFinish = 32.0; break;
+  }
+  
+  // Calculate appropriate cutting parameters for this tool and material
+  CuttingParameters params;
+  if (m_materialManager) {
+    params = m_materialManager->calculateCuttingParameters(
+        materialName, workpieceDiameter, operation.toLower(), surfaceFinish);
+  }
+  
+  // Load parameters into the appropriate advanced settings controls based on operation
+  if (operation == "facing" || operation == "roughing" ||
+      operation == "finishing" || operation == "lh_cleanup" ||
+      operation == "neutral_cleanup") {
+    loadContouringParameters(params, tool);
+  } else if (operation == "parting") {
+    loadPartingParameters(params, tool);
+  }
+  // Add other operations as needed
+  
+  qDebug() << "Loaded tool parameters for" << operation << "operation with tool" << toolId;
+}
+
+void SetupConfigurationPanel::loadContouringParameters(const CuttingParameters& params, const CuttingTool& tool) {
+  // Load facing parameters
+  if (m_facingDepthSpin) {
+    m_facingDepthSpin->setValue(params.depthOfCut);
+  }
+  if (m_facingFeedSpin) {
+    m_facingFeedSpin->setValue(params.feedRate);
+  }
+  if (m_facingSpeedSpin) {
+    m_facingSpeedSpin->setValue(params.spindleSpeed);
+  }
+  if (m_facingCssCheck) {
+    m_facingCssCheck->setChecked(params.useConstantSurfaceSpeed);
+  }
+  
+  // Load roughing parameters (typically more aggressive)
+  if (m_roughingDepthSpin) {
+    m_roughingDepthSpin->setValue(params.depthOfCut * 1.5); // More aggressive for roughing
+  }
+  if (m_roughingFeedSpin) {
+    m_roughingFeedSpin->setValue(params.feedRate * 1.2); // Faster feed for roughing
+  }
+  if (m_roughingSpeedSpin) {
+    m_roughingSpeedSpin->setValue(params.spindleSpeed * 0.8); // Slower speed for roughing
+  }
+  if (m_roughingCssCheck) {
+    m_roughingCssCheck->setChecked(params.useConstantSurfaceSpeed);
+  }
+  
+  // Load finishing parameters (more conservative)
+  if (m_finishingDepthSpin) {
+    m_finishingDepthSpin->setValue(params.depthOfCut * 0.3); // Light cuts for finishing
+  }
+  if (m_finishingFeedSpin) {
+    m_finishingFeedSpin->setValue(params.feedRate * 0.7); // Slower feed for better finish
+  }
+  if (m_finishingSpeedSpin) {
+    m_finishingSpeedSpin->setValue(params.spindleSpeed * 1.2); // Higher speed for finishing
+  }
+  if (m_finishingCssCheck) {
+    m_finishingCssCheck->setChecked(params.useConstantSurfaceSpeed);
+  }
+}
+
+void SetupConfigurationPanel::loadPartingParameters(const CuttingParameters& params, const CuttingTool& tool) {
+  // Load parting parameters (typically conservative)
+  if (m_partingDepthSpin) {
+    m_partingDepthSpin->setValue(params.depthOfCut * 0.5); // Conservative depth for parting
+  }
+  if (m_partingFeedSpin) {
+    m_partingFeedSpin->setValue(params.feedRate * 0.4); // Very slow feed for parting
+  }
+  if (m_partingSpeedSpin) {
+    m_partingSpeedSpin->setValue(params.spindleSpeed * 0.6); // Slower speed for parting
+  }
+  if (m_partingCssCheck) {
+    m_partingCssCheck->setChecked(params.useConstantSurfaceSpeed);
+  }
+}
+
+void SetupConfigurationPanel::clearAdvancedSettingsForOperation(const QString& operation) {
+  // Clear the selected tool for this operation
+  m_selectedToolsPerOperation.remove(operation);
+  
+  // Clear the advanced settings controls for this operation
+  if (operation == "facing") {
+    if (m_facingDepthSpin) m_facingDepthSpin->clear();
+    if (m_facingFeedSpin) m_facingFeedSpin->clear();
+    if (m_facingSpeedSpin) m_facingSpeedSpin->clear();
+  } else if (operation == "roughing") {
+    if (m_roughingDepthSpin) m_roughingDepthSpin->clear();
+    if (m_roughingFeedSpin) m_roughingFeedSpin->clear();
+    if (m_roughingSpeedSpin) m_roughingSpeedSpin->clear();
+  } else if (operation == "finishing" || operation == "lh_cleanup" ||
+             operation == "neutral_cleanup") {
+    if (m_finishingDepthSpin) m_finishingDepthSpin->clear();
+    if (m_finishingFeedSpin) m_finishingFeedSpin->clear();
+    if (m_finishingSpeedSpin) m_finishingSpeedSpin->clear();
+  } else if (operation == "parting") {
+    // Clear parting advanced settings
+    if (m_partingDepthSpin) m_partingDepthSpin->clear();
+    if (m_partingFeedSpin) m_partingFeedSpin->clear();
+    if (m_partingSpeedSpin) m_partingSpeedSpin->clear();
+  }
+  // Add other operations as needed
+}
+
+bool SetupConfigurationPanel::isToolSelectedForOperation(const QString& operation) const {
+  return m_selectedToolsPerOperation.contains(operation) && 
+         !m_selectedToolsPerOperation.value(operation).isEmpty();
+}
+
+void SetupConfigurationPanel::onRecommendedToolDoubleClicked(QListWidgetItem *item) {
+  if (!item)
+    return;
+  QVariant data = item->data(Qt::UserRole);
+  if (data.isValid()) {
+    QString toolId = data.toString();
+    emit recommendedToolActivated(toolId);
+  }
+}
+
 void SetupConfigurationPanel::updateOperationControls() {
   // Placeholder for any additional per-operation controls
 }
@@ -1167,6 +1779,7 @@ void SetupConfigurationPanel::updateOperationControls() {
 void SetupConfigurationPanel::updateAdvancedMode() {
   bool adv = m_advancedModeCheck && m_advancedModeCheck->isChecked();
 
+  // Show/hide basic advanced controls
   if (m_roughingAllowanceLabel)
     m_roughingAllowanceLabel->setVisible(adv);
   if (m_roughingAllowanceSpin)
@@ -1179,15 +1792,12 @@ void SetupConfigurationPanel::updateAdvancedMode() {
     m_partingWidthLabel->setVisible(adv);
   if (m_partingWidthSpin)
     m_partingWidthSpin->setVisible(adv);
-  if (m_partingAdvancedGroup)
-    m_partingAdvancedGroup->setVisible(adv);
   if (m_toleranceLabel)
     m_toleranceLabel->setVisible(adv);
   if (m_toleranceSpin)
     m_toleranceSpin->setVisible(adv);
-  if (m_contourAdvancedGroup)
-    m_contourAdvancedGroup->setVisible(adv);
 
+  // Show/hide simple mode coolant controls
   if (m_contourFloodCheck)
     m_contourFloodCheck->setVisible(!adv);
   if (m_threadFloodCheck)
@@ -1197,62 +1807,85 @@ void SetupConfigurationPanel::updateAdvancedMode() {
   if (m_partFloodCheck)
     m_partFloodCheck->setVisible(!adv);
 
-  if (adv && m_materialManager) {
-    QString materialName = getSelectedMaterialName();
-    double finishVal = 16.0;
-    switch (getSurfaceFinish()) {
-    case SurfaceFinish::Mirror_1Ra:
-      finishVal = 1.0;
-      break;
-    case SurfaceFinish::Polish_2Ra:
-      finishVal = 2.0;
-      break;
-    case SurfaceFinish::Smooth_4Ra:
-      finishVal = 4.0;
-      break;
-    case SurfaceFinish::Fine_8Ra:
-      finishVal = 8.0;
-      break;
-    case SurfaceFinish::Medium_16Ra:
-      finishVal = 16.0;
-      break;
-    case SurfaceFinish::Rough_32Ra:
-      finishVal = 32.0;
-      break;
+  // Handle operation-specific advanced settings with tool selection requirement
+  updateOperationAdvancedSettings("facing", adv);
+  updateOperationAdvancedSettings("roughing", adv);
+  updateOperationAdvancedSettings("finishing", adv);
+  updateOperationAdvancedSettings("lh_cleanup", adv);
+  updateOperationAdvancedSettings("neutral_cleanup", adv);
+  updateOperationAdvancedSettings("parting", adv);
+  // Add other operations as needed
+}
+
+void SetupConfigurationPanel::updateOperationAdvancedSettings(const QString& operation, bool advancedMode) {
+  // Get the advanced group for this operation
+  QGroupBox* advancedGroup = nullptr;
+  if (operation == "facing") {
+    advancedGroup = m_facingAdvancedGroup;
+  } else if (operation == "roughing") {
+    advancedGroup = m_roughingAdvancedGroup;
+  } else if (operation == "finishing" || operation == "lh_cleanup" ||
+             operation == "neutral_cleanup") {
+    advancedGroup = m_finishingAdvancedGroup;
+  } else if (operation == "parting") {
+    advancedGroup = m_partingAdvancedGroup;
+  }
+
+  if (!advancedGroup) {
+    return;
+  }
+
+  bool opEnabled = isOperationEnabled(operation);
+
+  // If advanced mode is off or the operation itself is disabled, hide the group
+  if (!advancedMode || !opEnabled) {
+    advancedGroup->setVisible(false);
+    return;
+  }
+
+  // Show the advanced group now that both conditions are satisfied
+  advancedGroup->setVisible(true);
+
+  // Check if a tool is selected for this operation
+  bool toolSelected = isToolSelectedForOperation(operation);
+
+  if (toolSelected) {
+    // Tool is selected, enable controls and load tool parameters
+    advancedGroup->setEnabled(true);
+    QString toolId = m_selectedToolsPerOperation.value(operation);
+    loadToolParametersToAdvancedSettings(toolId, operation);
+
+    // Update the group title to show selected tool
+    if (m_toolManager) {
+      CuttingTool tool = m_toolManager->getTool(toolId);
+      advancedGroup->setTitle(QString("Advanced Cutting - %1").arg(tool.name));
     }
-    CuttingParameters cp = m_materialManager->calculateCuttingParameters(
-        materialName, 10.0, "facing", finishVal);
-    if (m_contourFacingDepthSpin)
-      m_contourFacingDepthSpin->setValue(cp.depthOfCut);
-    if (m_contourFacingFeedSpin)
-      m_contourFacingFeedSpin->setValue(cp.feedRate);
-    if (m_contourFacingSpeedSpin)
-      m_contourFacingSpeedSpin->setValue(cp.spindleSpeed);
-    if (m_contourRoughDepthSpin)
-      m_contourRoughDepthSpin->setValue(cp.depthOfCut);
-    if (m_contourRoughFeedSpin)
-      m_contourRoughFeedSpin->setValue(cp.feedRate);
-    if (m_contourRoughSpeedSpin)
-      m_contourRoughSpeedSpin->setValue(cp.spindleSpeed);
-    if (m_contourFinishDepthSpin)
-      m_contourFinishDepthSpin->setValue(cp.depthOfCut);
-    if (m_contourFinishFeedSpin)
-      m_contourFinishFeedSpin->setValue(cp.feedRate);
-    if (m_contourFinishSpeedSpin)
-      m_contourFinishSpeedSpin->setValue(cp.spindleSpeed);
+  } else {
+    // No tool selected, disable controls and show message
+    advancedGroup->setEnabled(false);
+    advancedGroup->setTitle("Advanced Cutting - Select a tool first");
+    clearAdvancedSettingsForOperation(operation);
   }
 }
 
 void SetupConfigurationPanel::focusOperationTab(const QString &operationName) {
   int index = 0;
-  if (operationName.compare("Contouring", Qt::CaseInsensitive) == 0)
+  if (operationName.compare("Facing", Qt::CaseInsensitive) == 0)
     index = 0;
-  else if (operationName.compare("Threading", Qt::CaseInsensitive) == 0)
+  else if (operationName.compare("Roughing", Qt::CaseInsensitive) == 0)
     index = 1;
-  else if (operationName.compare("Chamfering", Qt::CaseInsensitive) == 0)
+  else if (operationName.compare("Finishing", Qt::CaseInsensitive) == 0)
     index = 2;
-  else if (operationName.compare("Parting", Qt::CaseInsensitive) == 0)
+  else if (operationName.compare("LH Cleanup", Qt::CaseInsensitive) == 0)
     index = 3;
+  else if (operationName.compare("Neutral Cleanup", Qt::CaseInsensitive) == 0)
+    index = 4;
+  else if (operationName.compare("Threading", Qt::CaseInsensitive) == 0)
+    index = 5;
+  else if (operationName.compare("Chamfering", Qt::CaseInsensitive) == 0)
+    index = 6;
+  else if (operationName.compare("Parting", Qt::CaseInsensitive) == 0)
+    index = 7;
   if (m_operationsTabWidget)
     m_operationsTabWidget->setCurrentIndex(index);
 }
@@ -1409,6 +2042,158 @@ SetupConfigurationPanel::stringToSurfaceFinish(const QString &finishStr) {
   int index = SURFACE_FINISH_NAMES.indexOf(finishStr);
   return (index >= 0) ? static_cast<SurfaceFinish>(index)
                       : SurfaceFinish::Medium_16Ra;
+}
+
+// New pipeline-specific getters
+double SetupConfigurationPanel::getLargestDrillSize() const {
+  return m_largestDrillSizeSpin ? m_largestDrillSizeSpin->value() : 12.0;
+}
+
+int SetupConfigurationPanel::getInternalFinishingPasses() const {
+  return m_internalFinishingPassesSpin ? m_internalFinishingPassesSpin->value() : 2;
+}
+
+int SetupConfigurationPanel::getExternalFinishingPasses() const {
+  return m_externalFinishingPassesSpin ? m_externalFinishingPassesSpin->value() : 2;
+}
+
+double SetupConfigurationPanel::getPartingAllowance() const {
+  return m_partingAllowanceSpin ? m_partingAllowanceSpin->value() : 0.0;
+}
+
+bool SetupConfigurationPanel::isDrillingEnabled() const {
+  return m_drillingEnabledCheck ? m_drillingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isInternalRoughingEnabled() const {
+  return m_internalRoughingEnabledCheck ? m_internalRoughingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isExternalRoughingEnabled() const {
+  return m_externalRoughingEnabledCheck ? m_externalRoughingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isInternalFinishingEnabled() const {
+  return m_internalFinishingEnabledCheck ? m_internalFinishingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isExternalFinishingEnabled() const {
+  return m_externalFinishingEnabledCheck ? m_externalFinishingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isInternalGroovingEnabled() const {
+  return m_internalGroovingEnabledCheck ? m_internalGroovingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isExternalGroovingEnabled() const {
+  return m_externalGroovingEnabledCheck ? m_externalGroovingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isMachineInternalFeaturesEnabled() const {
+  return m_machineInternalFeaturesEnabledCheck ? m_machineInternalFeaturesEnabledCheck->isChecked() : true;
+}
+
+// New pipeline-specific setters
+void SetupConfigurationPanel::setLargestDrillSize(double size) {
+  if (m_largestDrillSizeSpin) {
+    m_largestDrillSizeSpin->setValue(size);
+  }
+}
+
+void SetupConfigurationPanel::setInternalFinishingPasses(int passes) {
+  if (m_internalFinishingPassesSpin) {
+    m_internalFinishingPassesSpin->setValue(passes);
+  }
+}
+
+void SetupConfigurationPanel::setExternalFinishingPasses(int passes) {
+  if (m_externalFinishingPassesSpin) {
+    m_externalFinishingPassesSpin->setValue(passes);
+  }
+}
+
+void SetupConfigurationPanel::setPartingAllowance(double allowance) {
+  if (m_partingAllowanceSpin) {
+    m_partingAllowanceSpin->setValue(allowance);
+  }
+}
+
+void SetupConfigurationPanel::setDrillingEnabled(bool enabled) {
+  if (m_drillingEnabledCheck) {
+    QSignalBlocker blocker(m_drillingEnabledCheck);
+    m_drillingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setInternalRoughingEnabled(bool enabled) {
+  if (m_internalRoughingEnabledCheck) {
+    QSignalBlocker blocker(m_internalRoughingEnabledCheck);
+    m_internalRoughingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setExternalRoughingEnabled(bool enabled) {
+  if (m_externalRoughingEnabledCheck) {
+    QSignalBlocker blocker(m_externalRoughingEnabledCheck);
+    m_externalRoughingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setInternalFinishingEnabled(bool enabled) {
+  if (m_internalFinishingEnabledCheck) {
+    QSignalBlocker blocker(m_internalFinishingEnabledCheck);
+    m_internalFinishingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setExternalFinishingEnabled(bool enabled) {
+  if (m_externalFinishingEnabledCheck) {
+    QSignalBlocker blocker(m_externalFinishingEnabledCheck);
+    m_externalFinishingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setInternalGroovingEnabled(bool enabled) {
+  if (m_internalGroovingEnabledCheck) {
+    QSignalBlocker blocker(m_internalGroovingEnabledCheck);
+    m_internalGroovingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setExternalGroovingEnabled(bool enabled) {
+  if (m_externalGroovingEnabledCheck) {
+    QSignalBlocker blocker(m_externalGroovingEnabledCheck);
+    m_externalGroovingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setMachineInternalFeaturesEnabled(bool enabled) {
+  if (m_machineInternalFeaturesEnabledCheck) {
+    QSignalBlocker blocker(m_machineInternalFeaturesEnabledCheck);
+    m_machineInternalFeaturesEnabledCheck->setChecked(enabled);
+  }
+}
+
+// Additional pipeline parameter getters
+double SetupConfigurationPanel::getRawMaterialLength() const {
+  return m_rawMaterialLength;
+}
+
+double SetupConfigurationPanel::getPartLength() const {
+  return m_partLength;
+}
+
+// Additional pipeline parameter setters
+void SetupConfigurationPanel::setRawMaterialLength(double length) {
+  m_rawMaterialLength = length;
+  // Update the display label if it exists
+  if (m_rawLengthLabel) {
+    m_rawLengthLabel->setText(QString("Raw material length required: %1 mm").arg(length, 0, 'f', 1));
+  }
+}
+
+void SetupConfigurationPanel::setPartLength(double length) {
+  m_partLength = length;
 }
 
 } // namespace GUI

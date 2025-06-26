@@ -39,6 +39,9 @@
 #include <Prs3d_LineAspect.hxx>
 #include <AIS_InteractiveObject.hxx>
 
+// IntuiCAM toolpath includes for visibility management
+#include <IntuiCAM/Toolpath/ToolpathDisplayObject.h>
+
 // Qt includes for the overlay button
 #include <QPushButton>
 
@@ -245,7 +248,7 @@ private:
     void applyCameraForViewMode();
     
     /**
-     * @brief Set up 3D perspective camera
+     * @brief Set up 3D orthographic camera
      */
     void setupCamera3D();
     

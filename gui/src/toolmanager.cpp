@@ -378,7 +378,7 @@ QString ToolManager::getDatabaseFilePath() const
     if (!dir.exists()) {
         dir.mkpath(".");
     }
-    return dir.absoluteFilePath("tools.json");
+    return dir.absoluteFilePath("tool_assemblies.json");
 }
 
 bool ToolManager::loadToolDatabase()
@@ -387,17 +387,78 @@ bool ToolManager::loadToolDatabase()
     if (!file.open(QIODevice::ReadOnly)) {
         return false;
     }
-    
+
     QByteArray data = file.readAll();
     file.close();
-    
+
     QJsonParseError error;
     QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-    if (error.error != QJsonParseError::NoError) {
+    if (error.error != QJsonParseError::NoError || !doc.isObject()) {
         return false;
     }
-    
-    // Parse and load tools (simplified for space)
+
+    QJsonObject root = doc.object();
+    if (!root.contains("tools")) {
+        return false;
+    }
+
+    m_tools.clear();
+    m_toolsByType.clear();
+
+    QJsonArray toolsArray = root["tools"].toArray();
+    for (const QJsonValue &val : toolsArray) {
+        if (!val.isObject())
+            continue;
+        QJsonObject obj = val.toObject();
+
+        CuttingTool tool;
+        tool.id = obj["id"].toString();
+        tool.name = obj["name"].toString();
+        tool.type = static_cast<ToolType>(obj["toolType"].toInt());
+        tool.isActive = obj.value("isActive").toBool(true);
+
+        ToolCapabilities caps;
+
+        if (obj.value("longitudinalTurning").toBool(false)) {
+            caps.supportedOperations << "roughing" << "finishing";
+        }
+        if (obj.value("facing").toBool(false)) {
+            if (!caps.supportedOperations.contains("facing"))
+                caps.supportedOperations << "facing";
+        }
+        if (obj.value("partingGrooving").toBool(false)) {
+            if (!caps.supportedOperations.contains("parting"))
+                caps.supportedOperations << "parting";
+        }
+        if (obj.value("internalThreading").toBool(false) ||
+            obj.value("externalThreading").toBool(false)) {
+            if (!caps.supportedOperations.contains("threading"))
+                caps.supportedOperations << "threading";
+        }
+        if (obj.value("chamfering").toBool(false)) {
+            if (!caps.supportedOperations.contains("chamfering"))
+                caps.supportedOperations << "chamfering";
+        }
+
+        if (obj.contains("cuttingData")) {
+            QJsonObject cutting = obj["cuttingData"].toObject();
+            if (cutting.contains("materialSettings")) {
+                QJsonObject matSettings = cutting["materialSettings"].toObject();
+                for (auto it = matSettings.begin(); it != matSettings.end(); ++it) {
+                    QJsonObject matObj = it.value().toObject();
+                    if (matObj.value("enabled").toBool()) {
+                        caps.suitableMaterials << it.key();
+                    }
+                }
+            }
+        }
+
+        tool.capabilities = caps;
+
+        m_tools[tool.id] = tool;
+        m_toolsByType[tool.type].append(tool.id);
+    }
+
     m_databaseLoaded = true;
     emit databaseLoaded();
     return true;
@@ -405,23 +466,9 @@ bool ToolManager::loadToolDatabase()
 
 bool ToolManager::saveToolDatabase()
 {
-    // Simplified save implementation
-    QDir dir = QFileInfo(m_databasePath).dir();
-    if (!dir.exists()) {
-        dir.mkpath(".");
-    }
-    
-    QJsonObject root;
-    root["version"] = "1.0";
-    
-    QJsonDocument doc(root);
-    QFile file(m_databasePath);
-    if (!file.open(QIODevice::WriteOnly)) {
-        return false;
-    }
-    
-    file.write(doc.toJson());
-    file.close();
+    Q_UNUSED(m_databasePath);
+    // Writing back to the tool assembly database is handled by the
+    // ToolManagementDialog. Avoid overwriting user data here.
     return true;
 }
 
