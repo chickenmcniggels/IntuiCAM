@@ -45,12 +45,23 @@ WorkspaceController::WorkspaceController(QObject *parent)
     , m_stepLoader(nullptr)
     , m_initialized(false)
     , m_profileVisible(true)  // Initialize profile visibility to true
+    , m_materialUpdateTimer(new QTimer(this))
 {
     // Create component managers
     m_chuckManager = new ChuckManager(this);
     m_workpieceManager = new WorkpieceManager(this);
     m_rawMaterialManager = new RawMaterialManager(this);
     m_coordinateManager = new WorkspaceCoordinateManager(this);
+
+    // Configure raw material update timer used for debouncing position changes
+    m_materialUpdateTimer->setSingleShot(true);
+    connect(m_materialUpdateTimer, &QTimer::timeout, this, [this]() {
+        if (m_rawMaterialManager && m_rawMaterialManager->isRawMaterialDisplayed()) {
+            recalculateRawMaterial(-1.0); // Use current diameter
+            qDebug() << "WorkspaceController: Recalculated raw material for new position (debounced)";
+        }
+        updateProfileDisplay();
+    });
     
     // Set up signal connections
     setupManagerConnections();
@@ -452,14 +463,8 @@ bool WorkspaceController::updateDistanceToChuck(double distance)
             m_lastDistanceToChuck = distance;
             qDebug() << "WorkspaceController: Workpiece positioned at" << distance << "mm from chuck";
             
-            // If raw material is loaded, update it to match workpiece position
-            if (m_rawMaterialManager && m_rawMaterialManager->isRawMaterialDisplayed()) {
-                recalculateRawMaterial(-1.0); // Use current diameter
-                qDebug() << "WorkspaceController: Recalculated raw material for new position";
-            }
-
-            // Update profile display to keep it aligned with the workpiece
-            updateProfileDisplay();
+            // Debounce raw material/profile updates to avoid slider lag
+            m_materialUpdateTimer->start(250); // restart timer
 
             // Make sure toolpaths are properly transformed
             qDebug() << "WorkspaceController: Emitting workpiecePositionChanged signal for toolpath updates";
