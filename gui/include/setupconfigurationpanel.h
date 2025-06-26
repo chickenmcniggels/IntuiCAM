@@ -20,6 +20,7 @@
 #include <TopoDS_Shape.hxx>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QStackedWidget>
 
 // Forward declarations
 class QListWidget;
@@ -163,6 +164,7 @@ public:
   void updateMaterialProperties();
   void updateToolRecommendations();
   void focusOperationTab(const QString &operationName);
+  void showOperationWidget(const QString &operationName);
 
   // Utility methods
   static QString materialTypeToString(MaterialType type);
@@ -218,7 +220,7 @@ private:
   // Main layout and tabs
   QVBoxLayout *m_mainLayout;
   QWidget *m_partTab;
-  QTabWidget *m_operationsTabWidget;
+  QStackedWidget *m_operationsStackedWidget;
   QWidget *m_facingTab;
   QWidget *m_roughingTab;
   QWidget *m_finishingTab;
@@ -227,6 +229,9 @@ private:
   QWidget *m_threadingTab;
   QWidget *m_chamferingTab;
   QWidget *m_partingTab;
+  
+  // Operation selection state
+  QString m_currentSelectedOperation;
 
   // Part Tab Components (Part Setup + Material Settings)
   QGroupBox *m_partSetupGroup;

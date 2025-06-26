@@ -52,6 +52,10 @@ public:
     // Expanded state for Internal Features
     bool isExpanded() const { return m_expanded; }
     void setExpanded(bool expanded);
+    
+    // Selection state
+    bool isSelected() const { return m_selected; }
+    void setSelected(bool selected);
 
     // Color properties for animations
     QColor backgroundColor() const { return m_backgroundColor; }
@@ -93,6 +97,7 @@ private:
     bool m_enabled;
     bool m_expanded;
     bool m_isHovered;
+    bool m_selected;
     
     // Sub-tiles for Internal Features
     QList<OperationTileWidget*> m_subTiles;
@@ -146,6 +151,11 @@ public:
     // Tool selection
     void setTileSelectedTool(const QString& operationName, const QString& toolName);
     QString getTileSelectedTool(const QString& operationName) const;
+    
+    // Selection management
+    void setSelectedOperation(const QString& operationName);
+    QString getSelectedOperation() const;
+    void clearSelection();
 
 signals:
     void operationEnabledChanged(const QString& operationName, bool enabled);
@@ -170,6 +180,9 @@ private:
     
     // Special handling for Internal Features
     OperationTileWidget* m_internalFeaturesTile;
+    
+    // Selection tracking
+    QString m_selectedOperation;
 };
 
 } // namespace GUI

@@ -19,6 +19,7 @@ OperationTileWidget::OperationTileWidget(const QString& operationName, bool enab
     , m_enabled(enabledByDefault)
     , m_expanded(false)
     , m_isHovered(false)
+    , m_selected(false)
     , m_subTileContainer(nullptr)
     , m_subTileLayout(nullptr)
     , m_mainLayout(nullptr)
@@ -264,6 +265,30 @@ void OperationTileWidget::setExpanded(bool expanded)
     emit expandedChanged(m_operationName, expanded);
 }
 
+void OperationTileWidget::setSelected(bool selected)
+{
+    if (m_selected == selected) return;
+    
+    m_selected = selected;
+    updateColors();
+    
+    // Update visual state to show selection with more prominent styling
+    if (selected) {
+        setLineWidth(3);
+        m_shadowEffect->setBlurRadius(12);
+        m_shadowEffect->setOffset(3, 3);
+        m_shadowEffect->setColor(QColor(0, 0, 0, 60));
+    } else {
+        setLineWidth(2);
+        m_shadowEffect->setBlurRadius(8);
+        m_shadowEffect->setOffset(2, 2);
+        m_shadowEffect->setColor(QColor(0, 0, 0, 30));
+    }
+    
+    // Force a repaint to show the changes immediately
+    update();
+}
+
 void OperationTileWidget::updateColors()
 {
     QColor targetColor = m_enabled ? m_enabledColor : m_disabledColor;
@@ -271,14 +296,31 @@ void OperationTileWidget::updateColors()
         targetColor = m_hoverColor;
     }
     
+    // Make selected tiles significantly brighter and more prominent
+    if (m_selected && m_enabled) {
+        targetColor = targetColor.lighter(120);
+        // Add a subtle saturation boost for selected tiles
+        int h, s, v;
+        targetColor.getHsv(&h, &s, &v);
+        s = qMin(255, s + 30); // Increase saturation
+        targetColor.setHsv(h, s, v);
+    }
+    
     m_backgroundColor = targetColor;
     
-    // Update text color based on background
+    // Update text color based on background with better contrast for selected tiles
     qreal luminance = 0.299 * targetColor.redF() + 0.587 * targetColor.greenF() + 0.114 * targetColor.blueF();
-    QColor textColor = luminance > 0.6 ? QColor("#212121") : QColor("#FFFFFF");
+    QColor textColor;
+    if (m_selected && m_enabled) {
+        // Use higher contrast text for selected tiles
+        textColor = luminance > 0.5 ? QColor("#000000") : QColor("#FFFFFF");
+    } else {
+        textColor = luminance > 0.6 ? QColor("#212121") : QColor("#FFFFFF");
+    }
     
     if (m_nameLabel) {
-        m_nameLabel->setStyleSheet(QString("color: %1;").arg(textColor.name()));
+        QString fontWeight = m_selected ? "bold" : "normal";
+        m_nameLabel->setStyleSheet(QString("color: %1; font-weight: %2;").arg(textColor.name(), fontWeight));
     }
     if (m_toolLabel) {
         m_toolLabel->setStyleSheet(QString("color: %1;").arg(textColor.name()));
@@ -331,11 +373,38 @@ void OperationTileWidget::paintEvent(QPaintEvent* event)
     painter.setBrush(QBrush(m_backgroundColor));
     
     QColor borderColor = m_enabled ? m_enabledColor.darker(120) : m_borderColor;
-    painter.setPen(QPen(borderColor, 2));
+    
+    // Use thicker border and enhanced colors for selected tiles
+    int borderWidth = m_selected ? 3 : 2;
+    if (m_selected && m_enabled) {
+        borderColor = m_enabledColor.darker(140);
+    }
+    
+    painter.setPen(QPen(borderColor, borderWidth));
     painter.drawRoundedRect(rect, 8, 8);
     
-    // Draw selection indicator if enabled
-    if (m_enabled) {
+    // Draw selection indicator if selected
+    if (m_selected && m_enabled) {
+        // Draw selection checkmark in top-right corner
+        QRect indicator = QRect(rect.right() - 18, rect.top() + 4, 14, 14);
+        painter.setBrush(QBrush(Qt::white));
+        painter.setPen(QPen(borderColor, 2));
+        painter.drawEllipse(indicator);
+        
+        // Draw checkmark
+        painter.setPen(QPen(borderColor, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        QPoint p1(indicator.left() + 3, indicator.center().y());
+        QPoint p2(indicator.center().x(), indicator.bottom() - 3);
+        QPoint p3(indicator.right() - 2, indicator.top() + 3);
+        painter.drawLine(p1, p2);
+        painter.drawLine(p2, p3);
+        
+        // Draw additional selection highlight around the border
+        QPen highlightPen(m_enabledColor.lighter(150), 1, Qt::DashLine);
+        painter.setPen(highlightPen);
+        painter.drawRoundedRect(rect.adjusted(-1, -1, 1, 1), 9, 9);
+    } else if (m_enabled) {
+        // Draw simple enabled indicator
         QRect indicator = QRect(rect.right() - 12, rect.top() + 4, 8, 8);
         painter.setBrush(QBrush(Qt::white));
         painter.setPen(QPen(borderColor, 1));
@@ -411,6 +480,7 @@ OperationTileContainer::OperationTileContainer(QWidget* parent)
     , m_primaryRowLayout(nullptr)
     , m_secondaryRowLayout(nullptr)
     , m_internalFeaturesTile(nullptr)
+    , m_selectedOperation(QString())
 {
     setupUI();
 }
@@ -565,24 +635,36 @@ QString OperationTileContainer::getTileSelectedTool(const QString& operationName
     return tile ? tile->selectedTool() : QString();
 }
 
-void OperationTileContainer::arrangeInternalFeatures()
+void OperationTileContainer::setSelectedOperation(const QString& operationName)
 {
-    if (!m_internalFeaturesTile) return;
+    if (m_selectedOperation == operationName) return;
     
-    // When Internal Features is expanded, show sub-tiles in secondary row
-    connect(m_internalFeaturesTile, &OperationTileWidget::expandedChanged,
-            [this](const QString&, bool expanded) {
-                // Move sub-tiles to secondary row when expanded
-                for (OperationTileWidget* subTile : m_internalFeaturesTile->subTiles()) {
-                    if (expanded) {
-                        m_secondaryRowLayout->addWidget(subTile);
-                        subTile->show();
-                    } else {
-                        m_secondaryRowLayout->removeWidget(subTile);
-                        subTile->hide();
-                    }
-                }
-            });
+    // Clear previous selection
+    if (!m_selectedOperation.isEmpty()) {
+        OperationTileWidget* previousTile = getTile(m_selectedOperation);
+        if (previousTile) {
+            previousTile->setSelected(false);
+        }
+    }
+    
+    // Set new selection
+    m_selectedOperation = operationName;
+    if (!operationName.isEmpty()) {
+        OperationTileWidget* newTile = getTile(operationName);
+        if (newTile && newTile->isEnabled()) {
+            newTile->setSelected(true);
+        }
+    }
+}
+
+QString OperationTileContainer::getSelectedOperation() const
+{
+    return m_selectedOperation;
+}
+
+void OperationTileContainer::clearSelection()
+{
+    setSelectedOperation(QString());
 }
 
 void OperationTileContainer::onTileEnabledChanged(const QString& operationName, bool enabled)
@@ -603,6 +685,26 @@ void OperationTileContainer::onTileToolSelectionRequested(const QString& operati
 void OperationTileContainer::onTileExpandedChanged(const QString& operationName, bool expanded)
 {
     emit operationExpandedChanged(operationName, expanded);
+}
+
+void OperationTileContainer::arrangeInternalFeatures()
+{
+    if (!m_internalFeaturesTile) return;
+    
+    // When Internal Features is expanded, show sub-tiles in secondary row
+    connect(m_internalFeaturesTile, &OperationTileWidget::expandedChanged,
+            [this](const QString&, bool expanded) {
+                // Move sub-tiles to secondary row when expanded
+                for (OperationTileWidget* subTile : m_internalFeaturesTile->subTiles()) {
+                    if (expanded) {
+                        m_secondaryRowLayout->addWidget(subTile);
+                        subTile->show();
+                    } else {
+                        m_secondaryRowLayout->removeWidget(subTile);
+                        subTile->hide();
+                    }
+                }
+            });
 }
 
 } // namespace GUI

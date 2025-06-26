@@ -58,7 +58,7 @@ SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     : QWidget(parent)
     , m_mainLayout(nullptr)
     , m_partTab(nullptr)
-    , m_operationsTabWidget(nullptr)
+    , m_operationsStackedWidget(nullptr)
     , m_facingTab(nullptr)
     , m_roughingTab(nullptr)
     , m_finishingTab(nullptr)
@@ -123,10 +123,8 @@ void SetupConfigurationPanel::setupUI() {
           &SetupConfigurationPanel::updateAdvancedMode);
 
   // Create operations tab widget
-  m_operationsTabWidget = new QTabWidget();
-  m_operationsTabWidget->setTabPosition(QTabWidget::North);
-  m_operationsTabWidget->setDocumentMode(true);
-
+  m_operationsStackedWidget = new QStackedWidget();
+  
   // Create operation tabs (content widgets)
   m_facingTab = new QWidget();
   m_roughingTab = new QWidget();
@@ -185,17 +183,17 @@ void SetupConfigurationPanel::setupUI() {
   setupMachiningTab();
 
   // Add tabs to widget using the scroll areas created above
-  m_operationsTabWidget->addTab(facingScroll, "Facing");
-  m_operationsTabWidget->addTab(roughScroll, "Roughing");
-  m_operationsTabWidget->addTab(finishScroll, "Finishing");
-  m_operationsTabWidget->addTab(lhScroll, "LH Cleanup");
-  m_operationsTabWidget->addTab(nScroll, "Neutral Cleanup");
-  m_operationsTabWidget->addTab(threadingScroll, "Threading");
-  m_operationsTabWidget->addTab(chamferScroll, "Chamfering");
-  m_operationsTabWidget->addTab(partingScroll, "Parting");
+  m_operationsStackedWidget->addWidget(facingScroll);
+  m_operationsStackedWidget->addWidget(roughScroll);
+  m_operationsStackedWidget->addWidget(finishScroll);
+  m_operationsStackedWidget->addWidget(lhScroll);
+  m_operationsStackedWidget->addWidget(nScroll);
+  m_operationsStackedWidget->addWidget(threadingScroll);
+  m_operationsStackedWidget->addWidget(chamferScroll);
+  m_operationsStackedWidget->addWidget(partingScroll);
 
   // Add operations tab widget to main layout
-  m_mainLayout->addWidget(m_operationsTabWidget);
+  m_mainLayout->addWidget(m_operationsStackedWidget);
 }
 
 void SetupConfigurationPanel::setupPartTab() {
@@ -1048,7 +1046,7 @@ void SetupConfigurationPanel::setupConnections() {
 
 void SetupConfigurationPanel::applyTabStyling() {
   // Apply modern styling to tab widget
-  m_operationsTabWidget->setStyleSheet(R"(
+  m_operationsStackedWidget->setStyleSheet(R"(
         QTabWidget::pane {
             border: 1px solid #c0c0c0;
             background-color: #f0f0f0;
@@ -1886,8 +1884,8 @@ void SetupConfigurationPanel::focusOperationTab(const QString &operationName) {
     index = 6;
   else if (operationName.compare("Parting", Qt::CaseInsensitive) == 0)
     index = 7;
-  if (m_operationsTabWidget)
-    m_operationsTabWidget->setCurrentIndex(index);
+  if (m_operationsStackedWidget)
+    m_operationsStackedWidget->setCurrentIndex(index);
 }
 
 void SetupConfigurationPanel::onAddThreadFace() {
@@ -2194,6 +2192,36 @@ void SetupConfigurationPanel::setRawMaterialLength(double length) {
 
 void SetupConfigurationPanel::setPartLength(double length) {
   m_partLength = length;
+}
+
+void SetupConfigurationPanel::showOperationWidget(const QString &operationName) {
+  // Update current selected operation
+  m_currentSelectedOperation = operationName;
+  
+  // Show the corresponding widget in the stacked widget
+  int index = 0;
+  if (operationName.compare("Facing", Qt::CaseInsensitive) == 0)
+    index = 0;
+  else if (operationName.compare("Roughing", Qt::CaseInsensitive) == 0)
+    index = 1;
+  else if (operationName.compare("Finishing", Qt::CaseInsensitive) == 0)
+    index = 2;
+  else if (operationName.compare("LH Cleanup", Qt::CaseInsensitive) == 0)
+    index = 3;
+  else if (operationName.compare("Neutral Cleanup", Qt::CaseInsensitive) == 0)
+    index = 4;
+  else if (operationName.compare("Threading", Qt::CaseInsensitive) == 0)
+    index = 5;
+  else if (operationName.compare("Chamfering", Qt::CaseInsensitive) == 0)
+    index = 6;
+  else if (operationName.compare("Parting", Qt::CaseInsensitive) == 0)
+    index = 7;
+  else if (operationName.compare("Internal Features", Qt::CaseInsensitive) == 0)
+    index = 1; // Show roughing as default for internal features
+    
+  if (m_operationsStackedWidget) {
+    m_operationsStackedWidget->setCurrentIndex(index);
+  }
 }
 
 } // namespace GUI
