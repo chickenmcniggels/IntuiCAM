@@ -88,6 +88,7 @@ private:
     void updateColors();
     void animateToState(bool enabled);
     void updateSubTilesVisibility();
+    void updateIconSize();
     
     // Visual state
     QString m_operationName;
@@ -123,6 +124,10 @@ private:
     QColor m_textColor;
     QColor m_borderColor;
     QColor m_selectionBorderColor;
+
+    // Icon sizes
+    int m_defaultIconSize;
+    int m_highlightedIconSize;
     
     // Context menu
     QMenu* m_contextMenu;
