@@ -67,12 +67,7 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
     
-    // Preserve the previous frame so the view does not clear when the widget
-    // temporarily loses focus. This follows the Qt documentation which states
-    // that in non-preserved mode the buffers are invalidated after each frame
-    // and the view must be fully redrawn. Using PartialUpdate avoids a black
-    // screen when other widgets gain focus.
-    setUpdateBehavior(QOpenGLWidget::PartialUpdate);
+    setUpdateBehavior(QOpenGLWidget::NoPartialUpdate);
     
     // Proper OpenGL context attributes for stable rendering
     QSurfaceFormat format;
@@ -82,16 +77,16 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
     format.setRenderableType(QSurfaceFormat::OpenGL);
     format.setProfile(QSurfaceFormat::CompatibilityProfile);
-    format.setVersion(3, 3); // Minimum OpenGL 3.3
+    //format.setVersion(3, 3); // Minimum OpenGL 3.3
     setFormat(format);
     
-    // Widget attributes for stable rendering - ESSENTIAL for preventing black screen
-    setAttribute(Qt::WA_OpaquePaintEvent, true);
-    setAttribute(Qt::WA_NoSystemBackground, true);
-    setAttribute(Qt::WA_PaintOnScreen, false);
+    // Widget attributes for stable rendering
+    setAttribute(Qt::WA_OpaquePaintEvent, false);
+    setAttribute(Qt::WA_NoSystemBackground, false);
+    setAttribute(Qt::WA_PaintOnScreen, true); // prevents black screen
     setAttribute(Qt::WA_AlwaysStackOnTop, false);
-    setAttribute(Qt::WA_NativeWindow, false); // Prevents some focus-related black screen issues
-    setAttribute(Qt::WA_DontCreateNativeAncestors, true); // Improves widget stability
+    setAttribute(Qt::WA_NativeWindow, false); 
+    setAttribute(Qt::WA_DontCreateNativeAncestors, false);
     
     // Setup redraw throttling timer to prevent excessive redraws
     m_redrawThrottleTimer = new QTimer(this);
@@ -99,10 +94,7 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     m_redrawThrottleTimer->setInterval(16); // ~60 FPS max
     connect(m_redrawThrottleTimer, &QTimer::timeout, this, [this]() {
         if (!m_view.IsNull() && !m_window.IsNull() && m_isInitialized) {
-            // CRITICAL: Ensure context is current before redraw
-            makeCurrent();
             m_view->Redraw();
-            // Don't call doneCurrent() here as it can cause black screens
         }
     });
     
@@ -120,7 +112,7 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     connect(m_deferredResizeTimer, &QTimer::timeout, this, [this]() {
         if (!m_view.IsNull() && !m_window.IsNull() && m_isInitialized) {
             try {
-                makeCurrent();
+                //makeCurrent();
                 m_view->MustBeResized();
                 m_window->DoResize();
                 update();
@@ -185,7 +177,7 @@ void OpenGL3DWidget::paintGL()
 {
     // ESSENTIAL: Always ensure context is current before rendering
     // This prevents black screen when other widgets take focus
-    makeCurrent(); // makeCurrent() returns void, so we can't check its return value
+    //makeCurrent(); // makeCurrent() returns void, so we can't check its return value
     
     // Additional validation to prevent black screen
     // If the context was somehow lost while the widget was hidden, attempt to
@@ -219,7 +211,7 @@ void OpenGL3DWidget::resizeGL(int width, int height)
         
         try {
             // CRITICAL: Ensure current OpenGL context - prevents black screen during resize
-            makeCurrent(); // makeCurrent() returns void
+            //makeCurrent(); // makeCurrent() returns void
             
             // Tell OpenCASCADE about the resize
             m_view->MustBeResized();
@@ -261,7 +253,7 @@ void OpenGL3DWidget::initializeViewer()
 {
     try {
         // CRITICAL: Ensure context is current
-        makeCurrent();
+        //makeCurrent();
         
         // Create display connection
         Handle(Aspect_DisplayConnection) aDisplayConnection = new Aspect_DisplayConnection();
@@ -328,7 +320,7 @@ void OpenGL3DWidget::updateView()
     // This is the critical fix for black screen issues
     if (!m_view.IsNull() && m_isInitialized) {
         // Always make context current before OpenCASCADE operations
-        makeCurrent(); // makeCurrent() returns void
+        //makeCurrent(); // makeCurrent() returns void
         
         try {
             m_view->Invalidate();
@@ -354,7 +346,7 @@ void OpenGL3DWidget::mousePressEvent(QMouseEvent *event)
 
     // Handle selection mode first
     if (m_selectionMode && event->button() == Qt::LeftButton && !m_context.IsNull()) {
-        makeCurrent(); // makeCurrent() returns void
+        //makeCurrent(); // makeCurrent() returns void
         
         m_context->MoveTo(event->pos().x(), event->pos().y(), m_view, Standard_True);
         if (m_context->HasDetected()) {
@@ -394,7 +386,7 @@ void OpenGL3DWidget::mouseMoveEvent(QMouseEvent *event)
     if (m_isDragging && !m_selectionMode && m_isMousePressed) {
         
         // CRITICAL: Ensure context is current for interaction - prevents black screen
-        makeCurrent(); // makeCurrent() returns void
+        //makeCurrent(); // makeCurrent() returns void
         
         // Check if we're in XZ lathe mode and restrict rotation
         if (m_currentViewMode == ViewMode::LatheXZ) {
@@ -431,7 +423,7 @@ void OpenGL3DWidget::mouseMoveEvent(QMouseEvent *event)
         
     } else if (m_selectionMode && !m_context.IsNull()) {
         // In selection mode, just provide hover feedback
-        makeCurrent(); // makeCurrent() returns void
+        // makeCurrent(); // makeCurrent() returns void
         m_context->MoveTo(currentPos.x(), currentPos.y(), m_view, Standard_False);
     }
 
