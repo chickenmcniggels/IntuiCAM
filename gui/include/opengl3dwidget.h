@@ -301,6 +301,7 @@ private:
     bool m_continuousUpdate;
     QTimer* m_updateTimer;
     QTimer* m_redrawThrottleTimer;
+    QTimer* m_deferredResizeTimer; ///< Delay heavy resize handling
     
     // State tracking
     bool m_isInitialized;
