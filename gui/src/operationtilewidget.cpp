@@ -143,12 +143,42 @@ void OperationTileWidget::setupUI()
     m_mainLayout->setContentsMargins(8, 8, 8, 8);
     m_mainLayout->setSpacing(4);
     
-    // Icon (placeholder for now)
+    // Icon corresponding to the operation
     m_iconLabel = new QLabel();
     m_iconLabel->setAlignment(Qt::AlignCenter);
     m_iconLabel->setFixedSize(32, 32);
     m_iconLabel->setStyleSheet("QLabel { border: 1px solid #ccc; border-radius: 16px; background-color: white; }");
-    m_iconLabel->setText("🔧");  // Placeholder emoji
+
+    QString iconText;
+    if (m_operationName == "Facing") {
+        iconText = "📐";
+    } else if (m_operationName == "Internal Features") {
+        iconText = "🕳";
+    } else if (m_operationName == "Roughing") {
+        iconText = "🪓";
+    } else if (m_operationName == "Finishing") {
+        iconText = "✨";
+    } else if (m_operationName == "Grooving") {
+        iconText = "🪛";
+    } else if (m_operationName == "Threading") {
+        iconText = "🔩";
+    } else if (m_operationName == "Chamfering") {
+        iconText = "◢";
+    } else if (m_operationName == "Parting") {
+        iconText = "✂";
+    } else if (m_operationName == "Drilling") {
+        iconText = "🛠";
+    } else if (m_operationName == "Internal Roughing") {
+        iconText = "⛏";
+    } else if (m_operationName == "Internal Finishing") {
+        iconText = "✨";
+    } else if (m_operationName == "Internal Grooving") {
+        iconText = "🪛";
+    } else {
+        iconText = "🔧";  // Fallback
+    }
+
+    m_iconLabel->setText(iconText);
     m_mainLayout->addWidget(m_iconLabel);
     
     // Operation name
@@ -206,12 +236,16 @@ void OperationTileWidget::setEnabled(bool enabled)
 void OperationTileWidget::setIcon(const QString& iconPath)
 {
     m_iconPath = iconPath;
-    if (m_iconLabel && !iconPath.isEmpty()) {
-        QPixmap pixmap(iconPath);
-        if (!pixmap.isNull()) {
-            m_iconLabel->setPixmap(pixmap.scaled(24, 24, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-            m_iconLabel->setText("");
-        }
+    if (!m_iconLabel || iconPath.isEmpty()) return;
+
+    QPixmap pixmap(iconPath);
+    if (!pixmap.isNull()) {
+        m_iconLabel->setPixmap(pixmap.scaled(24, 24, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        m_iconLabel->setText("");
+    } else {
+        // If pixmap fails to load, treat the string as emoji/text
+        m_iconLabel->setPixmap(QPixmap());
+        m_iconLabel->setText(iconPath);
     }
 }
 
