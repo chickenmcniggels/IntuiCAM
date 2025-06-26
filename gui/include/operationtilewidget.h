@@ -122,6 +122,7 @@ private:
     QColor m_hoverColor;
     QColor m_textColor;
     QColor m_borderColor;
+    QColor m_selectionBorderColor;
     
     // Context menu
     QMenu* m_contextMenu;

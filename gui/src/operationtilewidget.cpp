@@ -93,6 +93,7 @@ OperationTileWidget::OperationTileWidget(const QString& operationName, bool enab
     m_hoverColor = m_enabledColor.lighter(110);
     m_textColor = QColor("#212121");  // Dark grey
     m_borderColor = QColor("#BDBDBD");  // Medium grey
+    m_selectionBorderColor = QColor("#FFD700");  // Gold for selected highlight
     
     setupUI();
     updateColors();
@@ -403,7 +404,7 @@ void OperationTileWidget::paintEvent(QPaintEvent* event)
     // Use thicker border and distinct color for selected tiles
     int borderWidth = m_selected ? 3 : 2;
     if (m_selected && m_enabled) {
-        borderColor = m_enabledColor.lighter(150);
+        borderColor = m_selectionBorderColor;
     }
     
     painter.setPen(QPen(borderColor, borderWidth));
@@ -426,7 +427,7 @@ void OperationTileWidget::paintEvent(QPaintEvent* event)
         painter.drawLine(p2, p3);
         
         // Draw additional selection highlight around the border
-        QPen highlightPen(m_enabledColor.lighter(150), 1, Qt::DashLine);
+        QPen highlightPen(m_selectionBorderColor, 1, Qt::DashLine);
         painter.setPen(highlightPen);
         painter.drawRoundedRect(rect.adjusted(-1, -1, 1, 1), 9, 9);
     } else if (m_enabled) {
