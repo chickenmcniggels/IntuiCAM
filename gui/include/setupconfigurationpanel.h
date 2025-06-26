@@ -260,9 +260,17 @@ private:
   QPushButton *m_autoRawDiameterButton;
   QLabel *m_rawLengthLabel; // Displays current raw material length
 
-  // Machining Tab Components (Machining Parameters + Operations + Quality)
-  QGroupBox *m_machiningParamsGroup;
-  QVBoxLayout *m_machiningParamsLayout;
+  // Machining Parameter panels per operation
+  QGroupBox *m_facingParamsGroup;
+  QVBoxLayout *m_facingParamsLayout;
+  QGroupBox *m_internalRoughingParamsGroup;
+  QVBoxLayout *m_internalRoughingParamsLayout;
+  QGroupBox *m_internalFinishingParamsGroup;
+  QVBoxLayout *m_internalFinishingParamsLayout;
+  QGroupBox *m_finishingParamsGroup;
+  QVBoxLayout *m_finishingParamsLayout;
+  QGroupBox *m_partingParamsGroup;
+  QVBoxLayout *m_partingParamsLayout;
   QHBoxLayout *m_facingAllowanceLayout;
   QLabel *m_facingAllowanceLabel;
   QDoubleSpinBox *m_facingAllowanceSpin;
