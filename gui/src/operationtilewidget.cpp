@@ -341,34 +341,15 @@ void OperationTileWidget::updateColors()
         targetColor = m_hoverColor;
     }
     
-    // Make selected tiles significantly brighter and more prominent
-    if (m_selected && m_enabled) {
-        targetColor = targetColor.lighter(120);
-        // Add a subtle saturation boost for selected tiles
-        int h, s, v;
-        targetColor.getHsv(&h, &s, &v);
-        s = qMin(255, s + 30); // Increase saturation
-        targetColor.setHsv(h, s, v);
-    }
-    
     m_backgroundColor = targetColor;
-    
-    // Update text color based on background with better contrast for selected tiles
-    qreal luminance = 0.299 * targetColor.redF() + 0.587 * targetColor.greenF() + 0.114 * targetColor.blueF();
-    QColor textColor;
-    if (m_selected && m_enabled) {
-        // Use higher contrast text for selected tiles
-        textColor = luminance > 0.5 ? QColor("#000000") : QColor("#FFFFFF");
-    } else {
-        textColor = luminance > 0.6 ? QColor("#212121") : QColor("#FFFFFF");
-    }
-    
+
+    // Use a uniform text color for all tiles
     if (m_nameLabel) {
         QString fontWeight = m_selected ? "bold" : "normal";
-        m_nameLabel->setStyleSheet(QString("color: %1; font-weight: %2;").arg(textColor.name(), fontWeight));
+        m_nameLabel->setStyleSheet(QString("color: %1; font-weight: %2;").arg(m_textColor.name(), fontWeight));
     }
     if (m_toolLabel) {
-        m_toolLabel->setStyleSheet(QString("color: %1;").arg(textColor.name()));
+        m_toolLabel->setStyleSheet(QString("color: %1;").arg(m_textColor.name()));
     }
     
     update();
@@ -418,11 +399,11 @@ void OperationTileWidget::paintEvent(QPaintEvent* event)
     painter.setBrush(QBrush(m_backgroundColor));
     
     QColor borderColor = m_enabled ? m_enabledColor.darker(120) : m_borderColor;
-    
-    // Use thicker border and enhanced colors for selected tiles
+
+    // Use thicker border and distinct color for selected tiles
     int borderWidth = m_selected ? 3 : 2;
     if (m_selected && m_enabled) {
-        borderColor = m_enabledColor.darker(140);
+        borderColor = m_enabledColor.lighter(150);
     }
     
     painter.setPen(QPen(borderColor, borderWidth));
