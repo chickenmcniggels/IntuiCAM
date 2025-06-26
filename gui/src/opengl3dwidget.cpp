@@ -164,11 +164,17 @@ void OpenGL3DWidget::paintGL()
     makeCurrent(); // makeCurrent() returns void, so we can't check its return value
     
     // Additional validation to prevent black screen
+    // If the context was somehow lost while the widget was hidden, attempt to
+    // reinitialize the viewer automatically when the Setup tab is shown again.
     if (!m_isInitialized || m_view.IsNull() || m_context.IsNull()) {
-        // Clear to background color if not properly initialized
-        glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        return;
+        initializeViewer();
+
+        // Bail out if initialization failed so we don't draw garbage
+        if (!m_isInitialized) {
+            glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            return;
+        }
     }
     
     updateView();
@@ -490,7 +496,12 @@ void OpenGL3DWidget::focusOutEvent(QFocusEvent *event)
 void OpenGL3DWidget::showEvent(QShowEvent *event)
 {
     QOpenGLWidget::showEvent(event);
-    
+
+    // Reinitialize the viewer if the context was destroyed while hidden
+    if (!m_isInitialized || m_view.IsNull() || m_context.IsNull()) {
+        initializeViewer();
+    }
+
     // Request a repaint when the widget becomes visible. update() will trigger
     // paintGL() where the actual rendering occurs.
     if (m_isInitialized && !m_view.IsNull()) {
