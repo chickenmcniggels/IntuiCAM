@@ -14,6 +14,7 @@ set(GUI_SOURCES
     src/workspacecontroller.cpp
     src/partloadingpanel.cpp
     src/setupconfigurationpanel.cpp
+    src/operationtilewidget.cpp
     src/materialmanager.cpp
     src/materialadditiondialog.cpp
     src/materialspecificcuttingdatawidget.cpp
@@ -33,6 +34,7 @@ set(GUI_HEADERS
     include/workspacecontroller.h
     include/partloadingpanel.h
     include/setupconfigurationpanel.h
+    include/operationtilewidget.h
     include/materialmanager.h
     include/materialadditiondialog.h
     include/materialspecificcuttingdatawidget.h

@@ -53,6 +53,7 @@ public:
     // Tool filtering and display
     void filterByToolType(IntuiCAM::Toolpath::ToolType toolType);
     void filterByMaterial(IntuiCAM::Toolpath::InsertMaterial material);
+    void filterToolsByOperation(const QString& operationName);
     void clearFilters();
     void showAllTools();
     

@@ -51,6 +51,7 @@ namespace GUI {
 
 // Include CylinderInfo definition
 #include "workpiecemanager.h"
+#include "operationtilewidget.h"
 
 // Include ViewMode enum
 enum class ViewMode;  // Forward declaration
@@ -120,6 +121,12 @@ private slots:
     void handleWorkpieceTransformed();
     void handleOperationToggled(const QString& operationName, bool enabled);
     void handleGenerateToolpaths();
+    
+    // Operation tile handlers
+    void handleOperationTileEnabledChanged(const QString& operationName, bool enabled);
+    void handleOperationTileClicked(const QString& operationName);
+    void handleOperationTileToolSelectionRequested(const QString& operationName);
+    void handleOperationTileExpandedChanged(const QString& operationName, bool expanded);
     
     // 3D viewer handlers
     void handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& clickPoint);
@@ -199,6 +206,9 @@ private:
     IntuiCAM::GUI::MaterialManager *m_materialManager;
     IntuiCAM::GUI::ToolManager *m_toolManager;
     
+    // Operation Tile System
+    IntuiCAM::GUI::OperationTileContainer *m_operationTileContainer;
+    
     // Tool Management Components
     class ToolManagementTab *m_toolManagementTab;
 
@@ -234,12 +244,15 @@ private:
 private:
     void createViewModeOverlayButton(QWidget* parent);
     void updateViewModeOverlayButton();
-    void initializeWorkspace();
-
+        void initializeWorkspace();
+    
     void highlightThreadCandidateFaces();
     void clearThreadCandidateHighlights();
     void updateHighlightedThreadFace();
     void clearHighlightedThreadFace();
+    
+    // Helper methods
+    QString getDefaultToolForOperation(const QString& operationName) const;
 
     QVector<Handle(AIS_Shape)> m_candidateThreadFaces;
     Handle(AIS_Shape) m_currentThreadFaceAIS;

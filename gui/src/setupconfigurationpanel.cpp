@@ -78,6 +78,18 @@ SetupConfigurationPanel::SetupConfigurationPanel(QWidget *parent)
     , m_threadingEnabledCheck(nullptr)
     , m_chamferingEnabledCheck(nullptr)
     , m_partingEnabledCheck(nullptr)
+    , m_largestDrillSizeSpin(nullptr)
+    , m_internalFinishingPassesSpin(nullptr)
+    , m_externalFinishingPassesSpin(nullptr)
+    , m_partingAllowanceSpin(nullptr)
+    , m_drillingEnabledCheck(nullptr)
+    , m_internalRoughingEnabledCheck(nullptr)
+    , m_externalRoughingEnabledCheck(nullptr)
+    , m_internalFinishingEnabledCheck(nullptr)
+    , m_externalFinishingEnabledCheck(nullptr)
+    , m_internalGroovingEnabledCheck(nullptr)
+    , m_externalGroovingEnabledCheck(nullptr)
+    , m_machineInternalFeaturesEnabledCheck(nullptr)
 {
     setupUI();
     setupConnections();
@@ -315,8 +327,10 @@ void SetupConfigurationPanel::setupMachiningTab() {
   facingLayout->setContentsMargins(12, 12, 12, 12);
   facingLayout->setSpacing(16);
 
+  // Operation enablement moved to tiles - hide the checkboxes
   QHBoxLayout *facingEnableLayout = new QHBoxLayout();
   m_facingEnabledCheck = new QCheckBox("Enable Facing");
+  m_facingEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
   facingEnableLayout->addWidget(m_facingEnabledCheck);
   facingEnableLayout->addStretch();
   facingLayout->addLayout(facingEnableLayout);
@@ -369,6 +383,113 @@ void SetupConfigurationPanel::setupMachiningTab() {
   m_finishingAllowanceLayout->addWidget(m_finishingAllowanceSpin);
   m_finishingAllowanceLayout->addStretch();
   m_machiningParamsLayout->addLayout(m_finishingAllowanceLayout);
+
+  // New pipeline-specific parameters
+  // Largest drill size
+  QHBoxLayout *largestDrillLayout = new QHBoxLayout();
+  QLabel *largestDrillLabel = new QLabel("Largest Drill Size:");
+  largestDrillLabel->setMinimumWidth(140);
+  m_largestDrillSizeSpin = new QDoubleSpinBox();
+  m_largestDrillSizeSpin->setRange(1.0, 50.0);
+  m_largestDrillSizeSpin->setValue(12.0);
+  m_largestDrillSizeSpin->setSuffix(" mm");
+  m_largestDrillSizeSpin->setDecimals(1);
+  m_largestDrillSizeSpin->setToolTip("Diameters larger than this will be bored instead of drilled");
+  largestDrillLayout->addWidget(largestDrillLabel);
+  largestDrillLayout->addWidget(m_largestDrillSizeSpin);
+  largestDrillLayout->addStretch();
+  m_machiningParamsLayout->addLayout(largestDrillLayout);
+
+  // Internal finishing passes
+  QHBoxLayout *intFinishPassesLayout = new QHBoxLayout();
+  QLabel *intFinishPassesLabel = new QLabel("Internal Finish Passes:");
+  intFinishPassesLabel->setMinimumWidth(140);
+  m_internalFinishingPassesSpin = new QSpinBox();
+  m_internalFinishingPassesSpin->setRange(1, 10);
+  m_internalFinishingPassesSpin->setValue(2);
+  m_internalFinishingPassesSpin->setToolTip("Number of finishing passes for internal features");
+  intFinishPassesLayout->addWidget(intFinishPassesLabel);
+  intFinishPassesLayout->addWidget(m_internalFinishingPassesSpin);
+  intFinishPassesLayout->addStretch();
+  m_machiningParamsLayout->addLayout(intFinishPassesLayout);
+
+  // External finishing passes
+  QHBoxLayout *extFinishPassesLayout = new QHBoxLayout();
+  QLabel *extFinishPassesLabel = new QLabel("External Finish Passes:");
+  extFinishPassesLabel->setMinimumWidth(140);
+  m_externalFinishingPassesSpin = new QSpinBox();
+  m_externalFinishingPassesSpin->setRange(1, 10);
+  m_externalFinishingPassesSpin->setValue(2);
+  m_externalFinishingPassesSpin->setToolTip("Number of finishing passes for external features");
+  extFinishPassesLayout->addWidget(extFinishPassesLabel);
+  extFinishPassesLayout->addWidget(m_externalFinishingPassesSpin);
+  extFinishPassesLayout->addStretch();
+  m_machiningParamsLayout->addLayout(extFinishPassesLayout);
+
+  // Parting allowance
+  QHBoxLayout *partingAllowanceLayout = new QHBoxLayout();
+  QLabel *partingAllowanceLabel = new QLabel("Parting Allowance:");
+  partingAllowanceLabel->setMinimumWidth(140);
+  m_partingAllowanceSpin = new QDoubleSpinBox();
+  m_partingAllowanceSpin->setRange(0.0, 10.0);
+  m_partingAllowanceSpin->setValue(0.0);
+  m_partingAllowanceSpin->setSuffix(" mm");
+  m_partingAllowanceSpin->setDecimals(2);
+  m_partingAllowanceSpin->setToolTip("Additional stock to leave during parting operation");
+  partingAllowanceLayout->addWidget(partingAllowanceLabel);
+  partingAllowanceLayout->addWidget(m_partingAllowanceSpin);
+  partingAllowanceLayout->addStretch();
+  m_machiningParamsLayout->addLayout(partingAllowanceLayout);
+
+  // Operation enablement section (hidden as it's now handled by tiles)
+  QGroupBox *operationEnablementGroup = new QGroupBox("Operation Enablement");
+  operationEnablementGroup->setVisible(false); // Hide the checkbox section
+  QVBoxLayout *operationEnablementLayout = new QVBoxLayout(operationEnablementGroup);
+  
+  // Master switch for internal features
+  m_machineInternalFeaturesEnabledCheck = new QCheckBox("Machine Internal Features");
+  m_machineInternalFeaturesEnabledCheck->setChecked(true);
+  m_machineInternalFeaturesEnabledCheck->setToolTip("Enable machining of internal features (holes, bores, grooves)");
+  operationEnablementLayout->addWidget(m_machineInternalFeaturesEnabledCheck);
+  
+  // Individual operation controls in two columns
+  QHBoxLayout *operationRowsLayout = new QHBoxLayout();
+  
+  QVBoxLayout *leftColumnLayout = new QVBoxLayout();
+  m_drillingEnabledCheck = new QCheckBox("Drilling");
+  m_drillingEnabledCheck->setChecked(true);
+  leftColumnLayout->addWidget(m_drillingEnabledCheck);
+  
+  m_internalRoughingEnabledCheck = new QCheckBox("Internal Roughing");
+  m_internalRoughingEnabledCheck->setChecked(true);
+  leftColumnLayout->addWidget(m_internalRoughingEnabledCheck);
+  
+  m_internalFinishingEnabledCheck = new QCheckBox("Internal Finishing");
+  m_internalFinishingEnabledCheck->setChecked(true);
+  leftColumnLayout->addWidget(m_internalFinishingEnabledCheck);
+  
+  m_internalGroovingEnabledCheck = new QCheckBox("Internal Grooving");
+  m_internalGroovingEnabledCheck->setChecked(true);
+  leftColumnLayout->addWidget(m_internalGroovingEnabledCheck);
+  
+  QVBoxLayout *rightColumnLayout = new QVBoxLayout();
+  m_externalRoughingEnabledCheck = new QCheckBox("External Roughing");
+  m_externalRoughingEnabledCheck->setChecked(true);
+  rightColumnLayout->addWidget(m_externalRoughingEnabledCheck);
+  
+  m_externalFinishingEnabledCheck = new QCheckBox("External Finishing");
+  m_externalFinishingEnabledCheck->setChecked(true);
+  rightColumnLayout->addWidget(m_externalFinishingEnabledCheck);
+  
+  m_externalGroovingEnabledCheck = new QCheckBox("External Grooving");
+  m_externalGroovingEnabledCheck->setChecked(true);
+  rightColumnLayout->addWidget(m_externalGroovingEnabledCheck);
+  
+  operationRowsLayout->addLayout(leftColumnLayout);
+  operationRowsLayout->addLayout(rightColumnLayout);
+  operationEnablementLayout->addLayout(operationRowsLayout);
+  
+  m_machiningParamsLayout->addWidget(operationEnablementGroup);
 
   // Flood coolant simple toggle
   QHBoxLayout *coolLayout = new QHBoxLayout();
@@ -468,6 +589,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   roughLayout->setSpacing(16);
   QHBoxLayout *roughEnableLayout = new QHBoxLayout();
   m_roughingEnabledCheck = new QCheckBox("Enable Roughing");
+  m_roughingEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
   roughEnableLayout->addWidget(m_roughingEnabledCheck);
   roughEnableLayout->addStretch();
   roughLayout->addLayout(roughEnableLayout);
@@ -493,6 +615,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   finishLayout->setSpacing(16);
   QHBoxLayout *finishEnableLayout = new QHBoxLayout();
   m_finishingEnabledCheck = new QCheckBox("Enable Finishing");
+  m_finishingEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
   finishEnableLayout->addWidget(m_finishingEnabledCheck);
   finishEnableLayout->addStretch();
   finishLayout->addLayout(finishEnableLayout);
@@ -518,6 +641,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   lhLayout->setSpacing(16);
   QHBoxLayout *lhEnableLayout = new QHBoxLayout();
   m_leftCleanupEnabledCheck = new QCheckBox("Enable LH Cleanup");
+  m_leftCleanupEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
   lhEnableLayout->addWidget(m_leftCleanupEnabledCheck);
   lhEnableLayout->addStretch();
   lhLayout->addLayout(lhEnableLayout);
@@ -535,6 +659,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   nLayout->setSpacing(16);
   QHBoxLayout *nEnableLayout = new QHBoxLayout();
   m_neutralCleanupEnabledCheck = new QCheckBox("Enable Neutral Cleanup");
+  m_neutralCleanupEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
   nEnableLayout->addWidget(m_neutralCleanupEnabledCheck);
   nEnableLayout->addStretch();
   nLayout->addLayout(nEnableLayout);
@@ -552,6 +677,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   threadingLayout->setSpacing(16);
   QHBoxLayout *threadEnableLayout = new QHBoxLayout();
   m_threadingEnabledCheck = new QCheckBox("Enable Threading");
+  m_threadingEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
   threadEnableLayout->addWidget(m_threadingEnabledCheck);
   threadEnableLayout->addStretch();
   threadingLayout->addLayout(threadEnableLayout);
@@ -595,6 +721,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   chamferLayout->setSpacing(16);
   QHBoxLayout *chamferEnableLayout = new QHBoxLayout();
   m_chamferingEnabledCheck = new QCheckBox("Enable Chamfering");
+  m_chamferingEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
   chamferEnableLayout->addWidget(m_chamferingEnabledCheck);
   chamferEnableLayout->addStretch();
   chamferLayout->addLayout(chamferEnableLayout);
@@ -675,6 +802,7 @@ void SetupConfigurationPanel::setupMachiningTab() {
   partLayout->setSpacing(16);
   QHBoxLayout *partEnableLayout = new QHBoxLayout();
   m_partingEnabledCheck = new QCheckBox("Enable Parting");
+  m_partingEnabledCheck->setVisible(false); // Hidden as enablement is handled by tiles
   partEnableLayout->addWidget(m_partingEnabledCheck);
   partEnableLayout->addStretch();
   partLayout->addLayout(partEnableLayout);
@@ -859,6 +987,58 @@ void SetupConfigurationPanel::setupConnections() {
   if (m_advancedModeCheck) {
     connect(m_advancedModeCheck, &QCheckBox::toggled, this,
             &SetupConfigurationPanel::updateAdvancedMode);
+  }
+
+  // New pipeline-specific control connections
+  if (m_largestDrillSizeSpin) {
+    connect(m_largestDrillSizeSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_internalFinishingPassesSpin) {
+    connect(m_internalFinishingPassesSpin, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_externalFinishingPassesSpin) {
+    connect(m_externalFinishingPassesSpin, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_partingAllowanceSpin) {
+    connect(m_partingAllowanceSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  
+  // Operation enablement connections
+  if (m_machineInternalFeaturesEnabledCheck) {
+    connect(m_machineInternalFeaturesEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_drillingEnabledCheck) {
+    connect(m_drillingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_internalRoughingEnabledCheck) {
+    connect(m_internalRoughingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_externalRoughingEnabledCheck) {
+    connect(m_externalRoughingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_internalFinishingEnabledCheck) {
+    connect(m_internalFinishingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_externalFinishingEnabledCheck) {
+    connect(m_externalFinishingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_internalGroovingEnabledCheck) {
+    connect(m_internalGroovingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
+  }
+  if (m_externalGroovingEnabledCheck) {
+    connect(m_externalGroovingEnabledCheck, &QCheckBox::toggled, 
+            this, &SetupConfigurationPanel::onConfigurationChanged);
   }
 }
 
@@ -1858,6 +2038,158 @@ SetupConfigurationPanel::stringToSurfaceFinish(const QString &finishStr) {
   int index = SURFACE_FINISH_NAMES.indexOf(finishStr);
   return (index >= 0) ? static_cast<SurfaceFinish>(index)
                       : SurfaceFinish::Medium_16Ra;
+}
+
+// New pipeline-specific getters
+double SetupConfigurationPanel::getLargestDrillSize() const {
+  return m_largestDrillSizeSpin ? m_largestDrillSizeSpin->value() : 12.0;
+}
+
+int SetupConfigurationPanel::getInternalFinishingPasses() const {
+  return m_internalFinishingPassesSpin ? m_internalFinishingPassesSpin->value() : 2;
+}
+
+int SetupConfigurationPanel::getExternalFinishingPasses() const {
+  return m_externalFinishingPassesSpin ? m_externalFinishingPassesSpin->value() : 2;
+}
+
+double SetupConfigurationPanel::getPartingAllowance() const {
+  return m_partingAllowanceSpin ? m_partingAllowanceSpin->value() : 0.0;
+}
+
+bool SetupConfigurationPanel::isDrillingEnabled() const {
+  return m_drillingEnabledCheck ? m_drillingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isInternalRoughingEnabled() const {
+  return m_internalRoughingEnabledCheck ? m_internalRoughingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isExternalRoughingEnabled() const {
+  return m_externalRoughingEnabledCheck ? m_externalRoughingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isInternalFinishingEnabled() const {
+  return m_internalFinishingEnabledCheck ? m_internalFinishingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isExternalFinishingEnabled() const {
+  return m_externalFinishingEnabledCheck ? m_externalFinishingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isInternalGroovingEnabled() const {
+  return m_internalGroovingEnabledCheck ? m_internalGroovingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isExternalGroovingEnabled() const {
+  return m_externalGroovingEnabledCheck ? m_externalGroovingEnabledCheck->isChecked() : true;
+}
+
+bool SetupConfigurationPanel::isMachineInternalFeaturesEnabled() const {
+  return m_machineInternalFeaturesEnabledCheck ? m_machineInternalFeaturesEnabledCheck->isChecked() : true;
+}
+
+// New pipeline-specific setters
+void SetupConfigurationPanel::setLargestDrillSize(double size) {
+  if (m_largestDrillSizeSpin) {
+    m_largestDrillSizeSpin->setValue(size);
+  }
+}
+
+void SetupConfigurationPanel::setInternalFinishingPasses(int passes) {
+  if (m_internalFinishingPassesSpin) {
+    m_internalFinishingPassesSpin->setValue(passes);
+  }
+}
+
+void SetupConfigurationPanel::setExternalFinishingPasses(int passes) {
+  if (m_externalFinishingPassesSpin) {
+    m_externalFinishingPassesSpin->setValue(passes);
+  }
+}
+
+void SetupConfigurationPanel::setPartingAllowance(double allowance) {
+  if (m_partingAllowanceSpin) {
+    m_partingAllowanceSpin->setValue(allowance);
+  }
+}
+
+void SetupConfigurationPanel::setDrillingEnabled(bool enabled) {
+  if (m_drillingEnabledCheck) {
+    QSignalBlocker blocker(m_drillingEnabledCheck);
+    m_drillingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setInternalRoughingEnabled(bool enabled) {
+  if (m_internalRoughingEnabledCheck) {
+    QSignalBlocker blocker(m_internalRoughingEnabledCheck);
+    m_internalRoughingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setExternalRoughingEnabled(bool enabled) {
+  if (m_externalRoughingEnabledCheck) {
+    QSignalBlocker blocker(m_externalRoughingEnabledCheck);
+    m_externalRoughingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setInternalFinishingEnabled(bool enabled) {
+  if (m_internalFinishingEnabledCheck) {
+    QSignalBlocker blocker(m_internalFinishingEnabledCheck);
+    m_internalFinishingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setExternalFinishingEnabled(bool enabled) {
+  if (m_externalFinishingEnabledCheck) {
+    QSignalBlocker blocker(m_externalFinishingEnabledCheck);
+    m_externalFinishingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setInternalGroovingEnabled(bool enabled) {
+  if (m_internalGroovingEnabledCheck) {
+    QSignalBlocker blocker(m_internalGroovingEnabledCheck);
+    m_internalGroovingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setExternalGroovingEnabled(bool enabled) {
+  if (m_externalGroovingEnabledCheck) {
+    QSignalBlocker blocker(m_externalGroovingEnabledCheck);
+    m_externalGroovingEnabledCheck->setChecked(enabled);
+  }
+}
+
+void SetupConfigurationPanel::setMachineInternalFeaturesEnabled(bool enabled) {
+  if (m_machineInternalFeaturesEnabledCheck) {
+    QSignalBlocker blocker(m_machineInternalFeaturesEnabledCheck);
+    m_machineInternalFeaturesEnabledCheck->setChecked(enabled);
+  }
+}
+
+// Additional pipeline parameter getters
+double SetupConfigurationPanel::getRawMaterialLength() const {
+  return m_rawMaterialLength;
+}
+
+double SetupConfigurationPanel::getPartLength() const {
+  return m_partLength;
+}
+
+// Additional pipeline parameter setters
+void SetupConfigurationPanel::setRawMaterialLength(double length) {
+  m_rawMaterialLength = length;
+  // Update the display label if it exists
+  if (m_rawLengthLabel) {
+    m_rawLengthLabel->setText(QString("Raw material length required: %1 mm").arg(length, 0, 'f', 1));
+  }
+}
+
+void SetupConfigurationPanel::setPartLength(double length) {
+  m_partLength = length;
 }
 
 } // namespace GUI

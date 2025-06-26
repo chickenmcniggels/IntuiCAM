@@ -863,57 +863,44 @@ bool WorkspaceController::generateToolpaths()
         // Create the toolpath generation pipeline
         auto pipeline = std::make_unique<IntuiCAM::Toolpath::ToolpathGenerationPipeline>();
         
-        // Set up enabled operations (for now, enable a basic set)
-        std::vector<IntuiCAM::Toolpath::ToolpathGenerationPipeline::EnabledOperation> enabledOps;
+        // Get turning axis from workspace (chuck centerline) or default
+        gp_Ax1 turningAxis;
+        if (hasChuckCenterline()) {
+            turningAxis = getChuckCenterlineAxis();
+        } else {
+            turningAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1)); // Default Z-axis
+        }
         
-        // Add a contouring operation as an example
-        IntuiCAM::Toolpath::ToolpathGenerationPipeline::EnabledOperation contouringOp;
-        contouringOp.operationType = "Facing";
-        contouringOp.enabled = true;
+        // Extract inputs from part using the new pipeline interface
+        auto inputs = pipeline->extractInputsFromPart(partShape, turningAxis);
         
-        // Set some default parameters using the correct structure
-        contouringOp.numericParams["toolDiameter"] = 12.0;
-        contouringOp.numericParams["stepover"] = 8.0;
-        contouringOp.numericParams["depthOfCut"] = 2.0;
-        contouringOp.numericParams["feedRate"] = 300.0;
-        contouringOp.numericParams["spindleSpeed"] = 1200.0;
-        contouringOp.stringParams["material"] = "steel";
+        // Set default parameters for workspace controller generated toolpaths
+        inputs.rawMaterialDiameter = getAutoRawMaterialDiameter();
+        inputs.rawMaterialLength = 100.0; // Default length
+        inputs.partLength = 80.0; // Default part length
+        inputs.z0 = inputs.rawMaterialLength;
+        inputs.facingAllowance = 2.0;
+        inputs.largestDrillSize = 12.0;
+        inputs.internalFinishingPasses = 2;
+        inputs.externalFinishingPasses = 2;
+        inputs.partingAllowance = 0.0;
         
-        enabledOps.push_back(contouringOp);
+        // Enable basic operations
+        inputs.facing = true;
+        inputs.externalRoughing = true;
+        inputs.externalFinishing = true;
+        inputs.parting = true;
+        inputs.drilling = false; // Disabled by default in workspace controller
+        inputs.machineInternalFeatures = false;
+        inputs.internalRoughing = false;
+        inputs.internalFinishing = false;
+        inputs.internalGrooving = false;
+        inputs.externalGrooving = false;
+        inputs.chamfering = false;
+        inputs.threading = false;
         
-        // Create default tool
-        auto defaultTool = std::make_shared<IntuiCAM::Toolpath::Tool>(
-            IntuiCAM::Toolpath::Tool::Type::Turning, "Default Turning Tool");
-        defaultTool->setDiameter(12.0);
-        defaultTool->setLength(100.0);
-        
-        // Set up global parameters
-        IntuiCAM::Toolpath::ToolpathGenerationPipeline::ToolpathGenerationParameters globalParams;
-        globalParams.turningAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1)); // Default Z-axis
-        globalParams.safetyHeight = 5.0;
-        globalParams.clearanceDistance = 1.0;
-        globalParams.profileTolerance = 0.01;
-        globalParams.profileSections = 100;
-        globalParams.materialType = "steel";
-        globalParams.partDiameter = 50.0;
-        globalParams.partLength = 100.0;
-        
-        // Create generation request
-        IntuiCAM::Toolpath::ToolpathGenerationPipeline::GenerationRequest request;
-        request.partGeometry = partShape;
-        request.enabledOps = enabledOps;
-        request.globalParams = globalParams;
-        request.primaryTool = defaultTool;
-        
-        // Set up progress callback
-        request.progressCallback = [](double progress, const std::string& status) {
-            qDebug() << "Toolpath generation progress:" << QString::number(progress * 100, 'f', 1) 
-                     << "% -" << QString::fromStdString(status);
-        };
-        
-        // Generate toolpaths
         qDebug() << "WorkspaceController: Executing toolpath generation pipeline";
-        auto result = pipeline->generateToolpaths(request);
+        auto result = pipeline->executePipeline(inputs);
         
         if (!result.success) {
             QString errorMsg = QString("Toolpath generation failed: %1")
@@ -923,9 +910,8 @@ bool WorkspaceController::generateToolpaths()
         }
         
         qDebug() << "WorkspaceController: Toolpath generation successful";
-        qDebug() << "  - Generated" << result.generatedToolpaths.size() << "toolpaths";
-        qDebug() << "  - Extracted profile with" << result.extractedProfile.size() << "points";
-        qDebug() << "  - Total estimated time:" << result.statistics.totalMachiningTime << "minutes";
+        qDebug() << "  - Generated" << result.timeline.size() << "toolpaths";
+        qDebug() << "  - Processing time:" << result.processingTime.count() << "ms";
         
         // Display the generated toolpaths in the 3D viewer
         for (size_t i = 0; i < result.toolpathDisplayObjects.size(); ++i) {

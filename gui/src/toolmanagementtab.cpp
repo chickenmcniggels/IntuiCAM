@@ -2833,6 +2833,72 @@ void ToolManagementTab::filterByMaterial(InsertMaterial material) {
     }
 }
 
+void ToolManagementTab::filterToolsByOperation(const QString& operationName) {
+    // Clear current search and filters
+    m_searchBox->clear();
+    m_toolTypeFilter->setCurrentIndex(0); // "All Tool Types"
+    m_materialFilter->setCurrentIndex(0); // "All Materials"
+    
+    // Set search text based on operation type to filter tools
+    QString searchText;
+    
+    if (operationName == "Facing") {
+        // Show tools suitable for facing operations
+        m_toolTypeFilter->setCurrentText("General Turning");
+        searchText = "facing";
+    } else if (operationName == "Roughing" || operationName == "External Roughing") {
+        // Show tools suitable for roughing operations  
+        m_toolTypeFilter->setCurrentText("General Turning");
+        searchText = "rough";
+    } else if (operationName == "Finishing" || operationName == "External Finishing") {
+        // Show tools suitable for finishing operations
+        m_toolTypeFilter->setCurrentText("General Turning");
+        searchText = "finish";
+    } else if (operationName == "Internal Roughing") {
+        // Show boring bars and internal turning tools
+        m_toolTypeFilter->setCurrentText("Boring Bar");
+        searchText = "internal";
+    } else if (operationName == "Internal Finishing") {
+        // Show boring bars and fine internal turning tools
+        m_toolTypeFilter->setCurrentText("Boring Bar");
+        searchText = "finish";
+    } else if (operationName == "Drilling") {
+        // Show drill tools
+        m_toolTypeFilter->setCurrentText("Drill");
+        searchText = "drill";
+    } else if (operationName == "Grooving" || operationName == "Internal Grooving" || operationName == "External Grooving") {
+        // Show grooving tools
+        m_toolTypeFilter->setCurrentText("Grooving Tool");
+        searchText = "groove";
+    } else if (operationName == "Threading") {
+        // Show threading tools
+        m_toolTypeFilter->setCurrentText("Threading Tool");
+        searchText = "thread";
+    } else if (operationName == "Chamfering") {
+        // Show chamfering and general turning tools
+        m_toolTypeFilter->setCurrentText("General Turning");
+        searchText = "chamfer";
+    } else if (operationName == "Parting") {
+        // Show parting tools
+        m_toolTypeFilter->setCurrentText("Parting Tool");
+        searchText = "part";
+    }
+    
+    // Set the search text if we have one
+    if (!searchText.isEmpty()) {
+        m_searchBox->setText(searchText);
+    }
+    
+    // Apply the filters
+    applyFilters();
+    
+    // Show a message about the filtering
+    if (m_toolTreeWidget->topLevelItemCount() == 0) {
+        QMessageBox::information(this, "Tool Filter", 
+            QString("No tools found suitable for %1 operation.\nConsider adding tools or clearing filters.").arg(operationName));
+    }
+}
+
 // Missing method implementations for context menu actions
 void ToolManagementTab::onEditToolAction() {
     editSelectedTool();

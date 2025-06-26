@@ -103,6 +103,24 @@ public:
   bool isOperationEnabled(const QString &operationName) const;
   OperationConfig getOperationConfig(const QString &operationName) const;
 
+  // New pipeline-specific getters
+  double getLargestDrillSize() const;
+  int getInternalFinishingPasses() const;
+  int getExternalFinishingPasses() const;
+  double getPartingAllowance() const;
+  bool isDrillingEnabled() const;
+  bool isInternalRoughingEnabled() const;
+  bool isExternalRoughingEnabled() const;
+  bool isInternalFinishingEnabled() const;
+  bool isExternalFinishingEnabled() const;
+  bool isInternalGroovingEnabled() const;
+  bool isExternalGroovingEnabled() const;
+  bool isMachineInternalFeaturesEnabled() const;
+
+  // Additional pipeline parameters
+  double getRawMaterialLength() const;
+  double getPartLength() const;
+
   // Setters
   void setStepFilePath(const QString &path);
   void setMaterialType(MaterialType type);
@@ -118,6 +136,24 @@ public:
   void setTolerance(double tolerance);
   void setOperationEnabled(const QString &operationName, bool enabled);
   void updateAxisInfo(const QString &info);
+
+  // New pipeline-specific setters
+  void setLargestDrillSize(double size);
+  void setInternalFinishingPasses(int passes);
+  void setExternalFinishingPasses(int passes);
+  void setPartingAllowance(double allowance);
+  void setDrillingEnabled(bool enabled);
+  void setInternalRoughingEnabled(bool enabled);
+  void setExternalRoughingEnabled(bool enabled);
+  void setInternalFinishingEnabled(bool enabled);
+  void setExternalFinishingEnabled(bool enabled);
+  void setInternalGroovingEnabled(bool enabled);
+  void setExternalGroovingEnabled(bool enabled);
+  void setMachineInternalFeaturesEnabled(bool enabled);
+
+  // Additional pipeline parameter setters
+  void setRawMaterialLength(double length);
+  void setPartLength(double length);
 
   // Material and Tool Management
   void setMaterialManager(MaterialManager *materialManager);
@@ -144,7 +180,6 @@ signals:
   void orientationFlipped(bool flipped);
   void manualAxisSelectionRequested();
   void operationToggled(const QString &operationName, bool enabled);
-  void automaticToolpathGenerationRequested();
   void materialSelectionChanged(const QString &materialName);
   void toolRecommendationsUpdated(const QStringList &toolIds);
   void recommendedToolActivated(const QString &toolId);
@@ -333,6 +368,24 @@ private:
   void updateOperationAdvancedSettings(const QString& operation, bool advancedMode);
   void loadContouringParameters(const CuttingParameters& params, const CuttingTool& tool);
   void loadPartingParameters(const CuttingParameters& params, const CuttingTool& tool);
+
+  // New pipeline-specific UI controls
+  QDoubleSpinBox *m_largestDrillSizeSpin;
+  QSpinBox *m_internalFinishingPassesSpin;
+  QSpinBox *m_externalFinishingPassesSpin;
+  QDoubleSpinBox *m_partingAllowanceSpin;
+  QCheckBox *m_drillingEnabledCheck;
+  QCheckBox *m_internalRoughingEnabledCheck;
+  QCheckBox *m_externalRoughingEnabledCheck;
+  QCheckBox *m_internalFinishingEnabledCheck;
+  QCheckBox *m_externalFinishingEnabledCheck;
+  QCheckBox *m_internalGroovingEnabledCheck;
+  QCheckBox *m_externalGroovingEnabledCheck;
+  QCheckBox *m_machineInternalFeaturesEnabledCheck;
+
+  // Additional pipeline parameter storage
+  double m_rawMaterialLength = 50.0;  // mm
+  double m_partLength = 40.0;         // mm
 
 };
 

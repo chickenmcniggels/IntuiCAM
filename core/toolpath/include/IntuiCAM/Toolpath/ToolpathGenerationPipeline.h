@@ -1,10 +1,12 @@
 #pragma once
 
-#include <memory>
 #include <vector>
+#include <memory>
 #include <string>
-#include <future>
+#include <map>
 #include <functional>
+#include <atomic>
+#include <chrono>
 
 // OpenCASCADE includes
 #include <TopoDS_Shape.hxx>
@@ -24,193 +26,194 @@ class Tool;
 class Toolpath;
 
 /**
- * @brief Central coordinator for toolpath generation pipeline
+ * @brief New Toolpath Generation Pipeline following chronological CAM strategy
  * 
- * This class orchestrates the complete toolpath generation workflow:
- * 1. Validates operation parameters and fills missing ones
- * 2. Extracts 2D profile from 3D part geometry
- * 3. Generates toolpaths for each enabled operation
- * 4. Creates renderable objects for display
- * 5. Provides progress reporting and error handling
- * 
- * The pipeline is designed to be thread-safe and can run in background
- * while providing progress updates to the UI.
+ * This pipeline follows the exact sequence from the pseudocode:
+ * 1. Facing (always first - establish reference surface)
+ * 2. Internal features (drilling, boring, roughing, finishing, grooving)
+ * 3. External roughing
+ * 4. External finishing
+ * 5. Chamfering
+ * 6. Threading
+ * 7. Parting (always last)
  */
 class ToolpathGenerationPipeline {
 public:
-    /**
-     * @brief Operation configuration with parameters
-     */
-    struct EnabledOperation {
-        std::string operationType;      // "Contouring", "Threading", "Chamfering", "Parting"
-        bool enabled = false;
-        std::map<std::string, double> numericParams;
-        std::map<std::string, std::string> stringParams;
-        std::map<std::string, bool> booleanParams;
-        std::vector<TopoDS_Shape> targetGeometry; // Faces for threading, edges for chamfering
+    // Feature detection structures
+    struct DetectedFeature {
+        std::string type;  // "hole", "groove", "chamfer", "thread"
+        double depth = 0.0;
+        double diameter = 0.0;
+        IntuiCAM::Geometry::Point3D coordinates;
+        std::map<std::string, double> geometry;  // Additional geometry parameters
+        std::string tool;  // Suggested tool type
+        bool chamferEdges = false;
     };
 
-    /**
-     * @brief Global parameters affecting all operations
-     */
-    struct ToolpathGenerationParameters {
-        gp_Ax1 turningAxis;             // Main turning axis from workspace
-        double safetyHeight = 5.0;      // mm - safe height for rapid moves
-        double clearanceDistance = 1.0; // mm - clearance from part surface
-        double profileTolerance = 0.01; // mm - tolerance for profile extraction
-        int profileSections = 100;      // number of sections for profile
-        std::string materialType = "steel"; // Material type for parameter defaults
-        double partDiameter = 50.0;     // mm - estimated part diameter
-        double partLength = 100.0;      // mm - estimated part length
-    };
-
-    /**
-     * @brief Complete request for toolpath generation
-     */
-    struct GenerationRequest {
-        TopoDS_Shape partGeometry;                    // 3D part to machine
-        std::vector<EnabledOperation> enabledOps;    // Operations to perform
-        ToolpathGenerationParameters globalParams;   // Global settings
-        std::shared_ptr<Tool> primaryTool;          // Primary cutting tool
+    // Input parameters (Section 1 from pseudocode)
+    struct PipelineInputs {
+        // Extracted from part
+        LatheProfile::Profile2D profile2D;
         
-        // Optional callback for progress reporting (0.0 to 1.0)
-        std::function<void(double, const std::string&)> progressCallback;
-    };
-
-    /**
-     * @brief Statistics about generated toolpaths
-     */
-    struct ToolpathStatistics {
-        double totalMachiningTime = 0.0;    // minutes
-        double totalRapidTime = 0.0;        // minutes
-        double materialRemovalVolume = 0.0; // mm³
-        int totalMovements = 0;             // number of G-code moves
-        double totalDistance = 0.0;         // mm - total tool travel
+        // Raw material
+        double rawMaterialDiameter = 20.0;  // mm
+        double rawMaterialLength = 50.0;    // mm
         
-        // Per-operation breakdown
-        std::map<std::string, double> operationTimes;
-        std::map<std::string, int> operationMoves;
+        // Datum and dimensions
+        double z0 = 50.0;           // provisional datum (raw_material_length)
+        double partLength = 40.0;   // mm
+        
+        // Operation enablement flags
+        bool machineInternalFeatures = true;
+        bool drilling = true;
+        bool internalRoughing = true;
+        bool externalRoughing = true;
+        bool internalFinishing = true;
+        bool externalFinishing = true;
+        bool internalGrooving = true;
+        bool externalGrooving = true;
+        bool chamfering = true;
+        bool threading = true;
+        bool facing = true;
+        bool parting = true;
+        
+        // Operation parameters
+        double largestDrillSize = 12.0;      // mm - diameters > this are bored
+        double facingAllowance = 2.0;        // mm - distance raw-stock → part Z-max
+        int internalFinishingPasses = 2;     // number of finish passes
+        int externalFinishingPasses = 2;
+        double partingAllowance = 0.0;       // mm
+        
+        // Auto-detected features
+        std::vector<DetectedFeature> featuresToBeDrilled;
+        std::vector<DetectedFeature> internalFeaturesToBeGrooved;
+        std::vector<DetectedFeature> externalFeaturesToBeGrooved;
+        std::vector<DetectedFeature> featuresToBeChamfered;
+        std::vector<DetectedFeature> featuresToBeThreaded;
+        
+        // Tools (placeholders for now)
+        std::string facingTool = "facing tool";
+        std::string internalRoughingTool = "internal roughing tool";
+        std::string externalRoughingTool = "external roughing tool";
+        std::string internalFinishingTool = "internal finishing tool";
+        std::string externalFinishingTool = "external finishing tool";
+        std::string partingTool = "parting tool";
     };
 
-    /**
-     * @brief Result of toolpath generation pipeline
-     */
-    struct GenerationResult {
+    // Pipeline result containing timeline of operations
+    struct PipelineResult {
         bool success = false;
         std::string errorMessage;
         std::vector<std::string> warnings;
         
-        // Generated data
-        LatheProfile::Profile2D extractedProfile;
-        std::vector<std::unique_ptr<Toolpath>> generatedToolpaths;
-        ToolpathStatistics statistics;
+        // Generated timeline (ordered list of toolpaths)
+        std::vector<std::unique_ptr<Toolpath>> timeline;
         
-        // Display objects
+        // Display objects for visualization
         std::vector<Handle(AIS_InteractiveObject)> toolpathDisplayObjects;
         Handle(AIS_InteractiveObject) profileDisplayObject;
         
-        // Metadata
+        // Processing metadata
         std::chrono::milliseconds processingTime{0};
         std::string generationTimestamp;
+        
+        // Progress callback
+        std::function<void(double, const std::string&)> progressCallback;
     };
 
-    /**
-     * @brief Constructor
-     */
+public:
     ToolpathGenerationPipeline();
-    
-    /**
-     * @brief Virtual destructor
-     */
     virtual ~ToolpathGenerationPipeline() = default;
 
     /**
-     * @brief Generate complete toolpath pipeline
-     * @param request Complete generation request
-     * @return Generation result with toolpaths and display objects
+     * @brief Main pipeline execution following pseudocode logic
+     * @param inputs Complete input parameters
+     * @return Pipeline result with ordered timeline of toolpaths
      */
-    GenerationResult generateToolpaths(const GenerationRequest& request);
+    PipelineResult executePipeline(const PipelineInputs& inputs);
 
     /**
-     * @brief Generate toolpaths asynchronously
-     * @param request Complete generation request
-     * @return Future that will contain the generation result
+     * @brief Extract inputs from part geometry and GUI settings
+     * @param partGeometry 3D part to machine
+     * @param turningAxis Main turning axis
+     * @return Populated input structure
      */
-    std::future<GenerationResult> generateToolpathsAsync(const GenerationRequest& request);
+    PipelineInputs extractInputsFromPart(const TopoDS_Shape& partGeometry, const gp_Ax1& turningAxis);
 
     /**
-     * @brief Validate request before processing
-     * @param request Request to validate
-     * @return Empty string if valid, error message if invalid
+     * @brief Auto-detect features from 2D profile
+     * @param profile Profile to analyze
+     * @return Detected features for machining
      */
-    static std::string validateRequest(const GenerationRequest& request);
+    std::vector<DetectedFeature> detectFeatures(const LatheProfile::Profile2D& profile);
 
-    /**
-     * @brief Get estimated processing time for request
-     * @param request Request to estimate
-     * @return Estimated time in seconds
-     */
-    static double estimateProcessingTime(const GenerationRequest& request);
-
-    /**
-     * @brief Cancel ongoing generation (if running asynchronously)
-     */
+    // Cancel ongoing generation
     void cancelGeneration();
-
-    /**
-     * @brief Check if generation is currently running
-     */
     bool isGenerating() const { return m_isGenerating; }
 
 private:
-    /**
-     * @brief Validate and fill missing operation parameters
-     */
-    std::vector<EnabledOperation> validateAndFillParameters(
-        const std::vector<EnabledOperation>& operations,
-        const ToolpathGenerationParameters& globalParams);
+    // STUB FUNCTIONS (Section 2 from pseudocode) - these will be implemented later
+    std::vector<std::unique_ptr<Toolpath>> facingToolpath(
+        const IntuiCAM::Geometry::Point3D& coordinates,
+        const IntuiCAM::Geometry::Point3D& startPos,
+        const IntuiCAM::Geometry::Point3D& endPos,
+        const std::string& toolData);
 
-    /**
-     * @brief Extract 2D profile from part geometry
-     */
-    LatheProfile::Profile2D extractProfile(
-        const TopoDS_Shape& partGeometry,
-        const ToolpathGenerationParameters& params);
+    std::vector<std::unique_ptr<Toolpath>> drillingToolpath(
+        double depth,
+        const std::string& toolData);
 
-    /**
-     * @brief Generate toolpath for a specific operation
-     */
-    std::unique_ptr<Toolpath> generateOperationToolpath(
-        const EnabledOperation& operation,
-        const LatheProfile::Profile2D& profile,
-        std::shared_ptr<Tool> tool,
-        const ToolpathGenerationParameters& globalParams);
-
-    /**
-     * @brief Create display objects for toolpaths
-     */
-    std::vector<Handle(AIS_InteractiveObject)> createToolpathDisplayObjects(
-        const std::vector<std::unique_ptr<Toolpath>>& toolpaths);
-
-    /**
-     * @brief Create display object for 2D profile
-     */
-    Handle(AIS_InteractiveObject) createProfileDisplayObject(
-        const LatheProfile::Profile2D& profile,
-        const gp_Ax1& turningAxis);
-
-    /**
-     * @brief Calculate comprehensive statistics
-     */
-    ToolpathStatistics calculateStatistics(
-        const std::vector<std::unique_ptr<Toolpath>>& toolpaths,
+    std::vector<std::unique_ptr<Toolpath>> internalRoughingToolpath(
+        const IntuiCAM::Geometry::Point3D& coordinates,
+        const std::string& toolData,
         const LatheProfile::Profile2D& profile);
 
-    /**
-     * @brief Report progress to callback if available
-     */
-    void reportProgress(double progress, const std::string& status,
-                       const GenerationRequest& request);
+    std::vector<std::unique_ptr<Toolpath>> externalRoughingToolpath(
+        const IntuiCAM::Geometry::Point3D& coordinates,
+        const std::string& toolData,
+        const LatheProfile::Profile2D& profile);
+
+    std::vector<std::unique_ptr<Toolpath>> internalFinishingToolpath(
+        const IntuiCAM::Geometry::Point3D& coordinates,
+        const std::string& toolData,
+        const LatheProfile::Profile2D& profile);
+
+    std::vector<std::unique_ptr<Toolpath>> externalFinishingToolpath(
+        const IntuiCAM::Geometry::Point3D& coordinates,
+        const std::string& toolData,
+        const LatheProfile::Profile2D& profile);
+
+    std::vector<std::unique_ptr<Toolpath>> externalGroovingToolpath(
+        const IntuiCAM::Geometry::Point3D& coordinates,
+        const std::map<std::string, double>& grooveGeometry,
+        const std::string& toolData,
+        bool chamferEdges);
+
+    std::vector<std::unique_ptr<Toolpath>> internalGroovingToolpath(
+        const IntuiCAM::Geometry::Point3D& coordinates,
+        const std::map<std::string, double>& grooveGeometry,
+        const std::string& toolData,
+        bool chamferEdges);
+
+    std::vector<std::unique_ptr<Toolpath>> chamferingToolpath(
+        const IntuiCAM::Geometry::Point3D& coordinates,
+        const std::map<std::string, double>& chamferGeometry,
+        const std::string& toolData);
+
+    std::vector<std::unique_ptr<Toolpath>> threadingToolpath(
+        const IntuiCAM::Geometry::Point3D& coordinates,
+        const std::map<std::string, double>& threadGeometry,
+        const std::string& toolData);
+
+    std::vector<std::unique_ptr<Toolpath>> partingToolpath(
+        const IntuiCAM::Geometry::Point3D& coordinates,
+        const std::string& toolData,
+        bool chamferEdges);
+
+    // Helper methods
+    void reportProgress(double progress, const std::string& status, const PipelineResult& result);
+    std::vector<Handle(AIS_InteractiveObject)> createToolpathDisplayObjects(
+        const std::vector<std::unique_ptr<Toolpath>>& toolpaths);
 
     // State management
     std::atomic<bool> m_isGenerating{false};
