@@ -61,6 +61,7 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     , m_gridVisible(false)
     , m_toolpathsVisible(true)
     , m_profilesVisible(true)
+    , m_deferredResizeTimer(new QTimer(this))
 {
     // Enable mouse tracking for proper interaction
     setMouseTracking(true);
@@ -111,6 +112,23 @@ OpenGL3DWidget::OpenGL3DWidget(QWidget *parent)
     connect(m_updateTimer, &QTimer::timeout, this, [this]() {
         throttledRedraw();
     });
+
+    // Setup deferred resize timer so heavy OpenCASCADE resize
+    // operations only occur after resizing is finished
+    m_deferredResizeTimer->setSingleShot(true);
+    m_deferredResizeTimer->setInterval(100); // delay resize handling
+    connect(m_deferredResizeTimer, &QTimer::timeout, this, [this]() {
+        if (!m_view.IsNull() && !m_window.IsNull() && m_isInitialized) {
+            try {
+                makeCurrent();
+                m_view->MustBeResized();
+                m_window->DoResize();
+                update();
+            } catch (...) {
+                qDebug() << "Error applying deferred resize";
+            }
+        }
+    });
     
     qDebug() << "OpenGL3DWidget created with improved stability and performance";
 }
@@ -131,6 +149,12 @@ OpenGL3DWidget::~OpenGL3DWidget()
         m_redrawThrottleTimer->stop();
         delete m_redrawThrottleTimer;
         m_redrawThrottleTimer = nullptr;
+    }
+
+    if (m_deferredResizeTimer) {
+        m_deferredResizeTimer->stop();
+        delete m_deferredResizeTimer;
+        m_deferredResizeTimer = nullptr;
     }
     
     // Clean up lathe grid if present
@@ -225,22 +249,10 @@ void OpenGL3DWidget::resizeEvent(QResizeEvent *event)
     // Call the base class implementation first
     QOpenGLWidget::resizeEvent(event);
     
-    // Additional resize handling for smooth OpenCASCADE integration
-    if (!m_view.IsNull() && !m_window.IsNull() && m_isInitialized)
-    {
-        QSize newSize = event->size();
-        
-        // Ensure minimum size and valid dimensions
-        if (newSize.width() > 0 && newSize.height() > 0)
-        {
-            try {
-                makeCurrent();
-                m_view->MustBeResized();
-                m_window->DoResize();
-                update();
-            } catch (...) {
-                qDebug() << "Error during resize event";
-            }
+    // Defer heavy viewer resize until user finishes resizing
+    if (!m_view.IsNull() && !m_window.IsNull() && m_isInitialized) {
+        if (width() > 0 && height() > 0) {
+            m_deferredResizeTimer->start();
         }
     }
 }
