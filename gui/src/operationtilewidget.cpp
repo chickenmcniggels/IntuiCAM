@@ -314,24 +314,11 @@ void OperationTileWidget::setExpanded(bool expanded)
 void OperationTileWidget::setSelected(bool selected)
 {
     if (m_selected == selected) return;
-    
+
     m_selected = selected;
     updateColors();
-    
-    // Update visual state to show selection with more prominent styling
-    if (selected) {
-        setLineWidth(3);
-        m_shadowEffect->setBlurRadius(12);
-        m_shadowEffect->setOffset(3, 3);
-        m_shadowEffect->setColor(QColor(0, 0, 0, 60));
-    } else {
-        setLineWidth(2);
-        m_shadowEffect->setBlurRadius(8);
-        m_shadowEffect->setOffset(2, 2);
-        m_shadowEffect->setColor(QColor(0, 0, 0, 30));
-    }
-    
-    // Force a repaint to show the changes immediately
+
+    // Simply repaint to reflect the new border color
     update();
 }
 
@@ -398,40 +385,19 @@ void OperationTileWidget::paintEvent(QPaintEvent* event)
     // Draw background
     QRect rect = this->rect().adjusted(1, 1, -1, -1);
     painter.setBrush(QBrush(m_backgroundColor));
-    
+
     QColor borderColor = m_enabled ? m_enabledColor.darker(120) : m_borderColor;
 
-    // Use thicker border and distinct color for selected tiles
-    int borderWidth = m_selected ? 3 : 2;
+    // Selected tiles get a distinct border color
     if (m_selected && m_enabled) {
         borderColor = m_selectionBorderColor;
     }
-    
-    painter.setPen(QPen(borderColor, borderWidth));
+
+    painter.setPen(QPen(borderColor, 2));
     painter.drawRoundedRect(rect, 8, 8);
-    
-    // Draw selection indicator if selected
-    if (m_selected && m_enabled) {
-        // Draw selection checkmark in top-right corner
-        QRect indicator = QRect(rect.right() - 18, rect.top() + 4, 14, 14);
-        painter.setBrush(QBrush(Qt::white));
-        painter.setPen(QPen(borderColor, 2));
-        painter.drawEllipse(indicator);
-        
-        // Draw checkmark
-        painter.setPen(QPen(borderColor, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-        QPoint p1(indicator.left() + 3, indicator.center().y());
-        QPoint p2(indicator.center().x(), indicator.bottom() - 3);
-        QPoint p3(indicator.right() - 2, indicator.top() + 3);
-        painter.drawLine(p1, p2);
-        painter.drawLine(p2, p3);
-        
-        // Draw additional selection highlight around the border
-        QPen highlightPen(m_selectionBorderColor, 1, Qt::DashLine);
-        painter.setPen(highlightPen);
-        painter.drawRoundedRect(rect.adjusted(-1, -1, 1, 1), 9, 9);
-    } else if (m_enabled) {
-        // Draw simple enabled indicator
+
+    // Draw simple enabled indicator
+    if (m_enabled) {
         QRect indicator = QRect(rect.right() - 12, rect.top() + 4, 8, 8);
         painter.setBrush(QBrush(Qt::white));
         painter.setPen(QPen(borderColor, 1));
