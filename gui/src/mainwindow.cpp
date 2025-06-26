@@ -2094,22 +2094,9 @@ void MainWindow::handleManualAxisSelected(double diameter, const gp_Ax1& axis)
 
 void MainWindow::handlePartLoadingDistanceChanged(double distance)
 {
-    if (!m_workspaceController || !m_workspaceController->isInitialized()) {
-        return;
-    }
-
     statusBar()->showMessage(QString("Distance to chuck changed: %1mm").arg(distance, 0, 'f', 1), 2000);
-
     if (m_outputWindow) {
         m_outputWindow->append(QString("Part distance to chuck updated: %1mm").arg(distance, 0, 'f', 1));
-    }
-
-    bool success = m_workspaceController->updateDistanceToChuck(distance);
-    if (!success) {
-        statusBar()->showMessage(tr("Failed to update distance to chuck"), 3000);
-        if (m_outputWindow) {
-            m_outputWindow->append("Failed to update distance to chuck");
-        }
     }
 }
 
