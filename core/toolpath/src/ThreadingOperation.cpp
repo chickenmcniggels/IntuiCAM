@@ -84,8 +84,8 @@ std::vector<ThreadingOperation::ThreadFeature> ThreadingOperation::detectThreadF
     
     std::vector<ThreadFeature> features;
     
-    // Use external profile points for thread detection
-    const auto& points = profile.externalProfile.points;
+    // Convert segments to points for thread detection
+    std::vector<IntuiCAM::Geometry::Point2D> points = profile.toPointArray(0.1);
     
     if (points.size() < 10) {
         return features; // Not enough points for thread detection
@@ -106,9 +106,9 @@ std::vector<ThreadingOperation::ThreadFeature> ThreadingOperation::detectThreadF
         double windowSize = std::max(minThreadLength, params.pitch * 5);
         for (size_t j = 0; j < points.size(); ++j) {
             const auto& testPoint = points[j];
-            if (std::abs(testPoint.x - point.x) <= windowSize) {
-                localRadii.push_back(testPoint.z);
-                localZ.push_back(testPoint.x);
+            if (std::abs(testPoint.z - point.z) <= windowSize) {
+                localRadii.push_back(testPoint.x);
+                localZ.push_back(testPoint.z);
             }
         }
         

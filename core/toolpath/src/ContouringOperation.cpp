@@ -92,12 +92,10 @@ LatheProfile::Profile2D ContouringOperation::extractProfile(
     // Use ProfileExtractor for consistent profile extraction
     ProfileExtractor::ExtractionParameters extractParams;
     
-    // Convert ContouringOperation parameters to ProfileExtractor parameters
-    extractParams.profileTolerance = params.profileTolerance;
-    extractParams.profileSections = params.profileSections;
-    extractParams.includeInternalFeatures = true;
-    extractParams.autoDetectFeatures = true;
-    extractParams.optimizeProfile = true;
+    // Convert ContouringOperation parameters to new simplified ProfileExtractor parameters
+    extractParams.tolerance = params.profileTolerance;             // Use tolerance instead of profileTolerance
+    extractParams.minSegmentLength = params.profileTolerance / 10.0; // Set minimum segment length based on tolerance
+    extractParams.sortSegments = true;                             // Ensure proper segment ordering
     
     // Get turning axis from part (this would need proper implementation)
     // For now, assume standard Z-axis turning
@@ -121,9 +119,8 @@ std::string ContouringOperation::validateParameters(const Parameters& params) {
         return "Profile tolerance must be positive";
     }
     
-    if (params.profileSections < 10) {
-        return "Profile sections must be at least 10";
-    }
+    // Note: profileSections is no longer used with segment-based extraction
+    // The accuracy is now controlled by tolerance parameter
     
     // Check that at least one operation is enabled
     if (!params.enableFacing && !params.enableRoughing && !params.enableFinishing) {
@@ -170,12 +167,10 @@ ContouringOperation::Parameters ContouringOperation::getDefaultParameters(
     
     // Adjust based on part complexity
     if (partComplexity == "simple") {
-        params.profileSections = 50;
-        params.profileTolerance = 0.02;
+        params.profileTolerance = 0.02;                         // Coarser tolerance for simple parts
     } else if (partComplexity == "complex") {
-        params.profileSections = 200;
-        params.profileTolerance = 0.005;
-        params.enableFacing = true; // Always face complex parts
+        params.profileTolerance = 0.005;                        // Finer tolerance for complex parts
+        params.enableFacing = true;                             // Always face complex parts
     }
     
     // Material-specific adjustments will be applied to tool parameters during toolpath generation
@@ -188,22 +183,22 @@ std::unique_ptr<Toolpath> ContouringOperation::generateFacingPass(
     std::shared_ptr<Tool> tool,
     const Parameters& params) {
     
-    if (profile.empty()) {
+    if (profile.isEmpty()) {
         return nullptr;
     }
     
     // Create facing toolpath
     auto toolpath = std::make_unique<Toolpath>("Facing_Pass", tool);
     
-    // Find maximum radius and face boundaries
+    // Find maximum radius and face boundaries from profile segments
     double maxRadius = 0.0;
     double minZ = std::numeric_limits<double>::max();
     double maxZ = std::numeric_limits<double>::lowest();
     
-    for (const auto& point : profile) {
-        maxRadius = std::max(maxRadius, point.z);
-        minZ = std::min(minZ, point.x);
-        maxZ = std::max(maxZ, point.x);
+    for (const auto& segment : profile.segments) {
+        maxRadius = std::max(maxRadius, std::max(segment.start.x, segment.end.x));
+        minZ = std::min(minZ, std::min(segment.start.z, segment.end.z));
+        maxZ = std::max(maxZ, std::max(segment.start.z, segment.end.z));
     }
     
     // Generate facing passes from outside to center
@@ -252,7 +247,7 @@ std::unique_ptr<Toolpath> ContouringOperation::generateRoughingPass(
     std::shared_ptr<Tool> tool,
     const Parameters& params) {
     
-    if (profile.empty()) {
+    if (profile.isEmpty()) {
         return nullptr;
     }
     
@@ -265,13 +260,15 @@ std::unique_ptr<Toolpath> ContouringOperation::generateRoughingPass(
     // Generate roughing passes parallel to the profile
     double currentDepth = tool->getCuttingParameters().depthOfCut;
     
-    // Find profile bounds
-    double minZ = profile.front().x;
-    double maxZ = profile.back().x;
+    // Find profile bounds from segments
+    double minZ = std::numeric_limits<double>::max();
+    double maxZ = std::numeric_limits<double>::lowest();
     double maxRadius = 0.0;
     
-    for (const auto& point : profile) {
-        maxRadius = std::max(maxRadius, point.z);
+    for (const auto& segment : profile.segments) {
+        minZ = std::min({minZ, segment.start.z, segment.end.z});
+        maxZ = std::max({maxZ, segment.start.z, segment.end.z});
+        maxRadius = std::max({maxRadius, segment.start.x, segment.end.x});
     }
     
     // Start from safe position
@@ -293,10 +290,10 @@ std::unique_ptr<Toolpath> ContouringOperation::generateRoughingPass(
             tool->getCuttingParameters().feedRate * 60.0); // Convert mm/rev to mm/min
         
         // Follow profile with offset for stock allowance
-        for (const auto& point : profile) {
-            double offsetRadius = point.z + stockAllowance;
+        for (const auto& segment : profile.segments) {
+            double offsetRadius = std::max(segment.start.x, segment.end.x) + stockAllowance;
             if (offsetRadius <= currentRadius) {
-                gp_Pnt cutPoint(point.x, 0.0, offsetRadius);
+                gp_Pnt cutPoint(segment.start.z, 0.0, offsetRadius);
                 toolpath->addLinearMove(
                     Geometry::Point3D(cutPoint.X(), cutPoint.Y(), cutPoint.Z()),
                     tool->getCuttingParameters().feedRate * 60.0); // Convert mm/rev to mm/min
@@ -319,19 +316,26 @@ std::unique_ptr<Toolpath> ContouringOperation::generateFinishingPass(
     std::shared_ptr<Tool> tool,
     const Parameters& params) {
     
-    if (profile.empty()) {
+    if (profile.isEmpty()) {
         return nullptr;
     }
     
     auto toolpath = std::make_unique<Toolpath>("Finishing_Pass", tool);
     
+    // Convert segments to points for finishing pass
+    std::vector<IntuiCAM::Geometry::Point2D> points = profile.toPointArray(0.1);
+    
+    if (points.empty()) {
+        return nullptr;
+    }
+    
     // Find profile bounds
-    double minZ = profile.front().x;
-    double maxZ = profile.back().x;
+    double minZ = points.front().z;
+    double maxZ = points.back().z;
     double maxRadius = 0.0;
     
-    for (const auto& point : profile) {
-        maxRadius = std::max(maxRadius, point.z);
+    for (const auto& point : points) {
+        maxRadius = std::max(maxRadius, point.x);
     }
     
     // Start from safe position
@@ -343,17 +347,17 @@ std::unique_ptr<Toolpath> ContouringOperation::generateFinishingPass(
     toolpath->addRapidMove(Geometry::Point3D(finishStart.X(), finishStart.Y(), finishStart.Z()));
     
     // Feed to first profile point
-    if (!profile.empty()) {
-        const auto& firstPoint = profile.front();
-        gp_Pnt firstCut(firstPoint.x, 0.0, firstPoint.z);
+    if (!points.empty()) {
+        const auto& firstPoint = points.front();
+        gp_Pnt firstCut(firstPoint.z, 0.0, firstPoint.x);
         toolpath->addLinearMove(
             Geometry::Point3D(firstCut.X(), firstCut.Y(), firstCut.Z()),
             params.finishingParams.feedRate);
         
         // Follow the exact profile for finishing
-        for (size_t i = 1; i < profile.size(); ++i) {
-            const auto& point = profile[i];
-            gp_Pnt cutPoint(point.x, 0.0, point.z);
+        for (size_t i = 1; i < points.size(); ++i) {
+            const auto& point = points[i];
+            gp_Pnt cutPoint(point.z, 0.0, point.x);
             toolpath->addLinearMove(
                 Geometry::Point3D(cutPoint.X(), cutPoint.Y(), cutPoint.Z()),
                 params.finishingParams.feedRate);
@@ -417,20 +421,27 @@ double ContouringOperation::calculateMaterialRemoval(
     const LatheProfile::Profile2D& profile,
     const Parameters& params) {
     
-    if (profile.size() < 2) {
+    if (profile.isEmpty()) {
+        return 0.0;
+    }
+    
+    // Convert segments to points for volume calculation
+    std::vector<IntuiCAM::Geometry::Point2D> points = profile.toPointArray(0.1);
+    
+    if (points.size() < 2) {
         return 0.0;
     }
     
     double totalVolume = 0.0;
     
     // Calculate volume using trapezoidal rule for revolution solid
-    for (size_t i = 1; i < profile.size(); ++i) {
-        const auto& p1 = profile[i-1];
-        const auto& p2 = profile[i];
+    for (size_t i = 1; i < points.size(); ++i) {
+        const auto& p1 = points[i-1];
+        const auto& p2 = points[i];
         
-        double height = std::abs(p2.x - p1.x);
-        double r1 = p1.z;
-        double r2 = p2.z;
+        double height = std::abs(p2.z - p1.z);
+        double r1 = p1.x;
+        double r2 = p2.x;
         
         // Volume of truncated cone segment
         double segmentVolume = M_PI * height * (r1*r1 + r1*r2 + r2*r2) / 3.0;

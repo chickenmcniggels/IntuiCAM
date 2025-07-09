@@ -38,9 +38,10 @@ PartingOperation::Result PartingOperation::generateToolpaths(
     try {
         // Extract 2D profile for parting position analysis
         ProfileExtractor::ExtractionParameters extractParams;
-        extractParams.profileTolerance = 0.01;
-        extractParams.profileSections = 100;
+        extractParams.tolerance = 0.01;                              // Use tolerance instead of profileTolerance
+        extractParams.minSegmentLength = 0.001;                     // Filter tiny segments
         extractParams.turningAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
+        extractParams.sortSegments = true;                          // Ensure proper ordering
         
         TopoDS_Shape partShape; // This would come from the Part object
         auto profile = ProfileExtractor::extractProfile(partShape, extractParams);
@@ -119,8 +120,24 @@ std::vector<PartingOperation::PartingPosition> PartingOperation::detectPartingPo
     
     std::vector<PartingPosition> positions;
     
-    // Use external profile points for parting analysis
-    const auto& points = profile.externalProfile.points;
+    if (profile.isEmpty()) {
+        return positions; // No segments for analysis
+    }
+    
+    // Extract points from segments for analysis
+    std::vector<IntuiCAM::Geometry::Point2D> points;
+    for (const auto& segment : profile.segments) {
+        points.push_back(segment.start);
+        points.push_back(segment.end);
+    }
+    
+    // Remove duplicate points and sort by Z position
+    std::sort(points.begin(), points.end(), [](const auto& a, const auto& b) {
+        return a.z < b.z;
+    });
+    points.erase(std::unique(points.begin(), points.end(), [](const auto& a, const auto& b) {
+        return std::abs(a.x - b.x) < 0.001 && std::abs(a.z - b.z) < 0.001;
+    }), points.end());
     
     if (points.size() < 5) {
         return positions; // Not enough points for analysis
@@ -133,15 +150,15 @@ std::vector<PartingOperation::PartingPosition> PartingOperation::detectPartingPo
         const auto& nextPoint = points[i+1];
         
         PartingPosition position;
-        position.zPosition = currentPoint.x;
-        position.diameter = currentPoint.z * 2.0; // Convert radius to diameter
+        position.zPosition = currentPoint.z;                    // Z position along turning axis
+        position.diameter = currentPoint.x * 2.0;              // Convert radius to diameter
         position.hasNeck = false;
         position.isOptimal = false;
         position.confidence = 0.0;
         
         // Look for necking features (reduced diameter sections)
-        double prevDiameter = prevPoint.z * 2.0;
-        double nextDiameter = nextPoint.z * 2.0;
+        double prevDiameter = prevPoint.x * 2.0;
+        double nextDiameter = nextPoint.x * 2.0;
         double currentDiameter = position.diameter;
         
         if (currentDiameter < prevDiameter && currentDiameter < nextDiameter) {
@@ -168,8 +185,8 @@ std::vector<PartingOperation::PartingPosition> PartingOperation::detectPartingPo
         
         // Look for flat sections perpendicular to axis
         double flatnessThreshold = 0.1; // mm
-        if (std::abs(currentPoint.z - prevPoint.z) < flatnessThreshold &&
-            std::abs(currentPoint.z - nextPoint.z) < flatnessThreshold) {
+        if (std::abs(currentPoint.x - prevPoint.x) < flatnessThreshold &&
+            std::abs(currentPoint.x - nextPoint.x) < flatnessThreshold) {
             position.confidence += 0.2;
             position.reason += " (flat section)";
         }
@@ -177,7 +194,7 @@ std::vector<PartingOperation::PartingPosition> PartingOperation::detectPartingPo
         // Consider accessibility (avoid internal features)
         bool isAccessible = true;
         for (size_t j = i; j < points.size(); ++j) {
-            if (points[j].z < currentPoint.z - 0.5) {
+            if (points[j].x < currentPoint.x - 0.5) {
                 isAccessible = false;
                 break;
             }

@@ -1228,22 +1228,19 @@ bool WorkspaceController::extractAndDisplayProfile()
         }
 
         // Configure extraction parameters for lathe operations
-        params.profileTolerance = 0.01;        // 0.01mm tolerance
-        params.projectionTolerance = 0.001;    // 0.001mm projection tolerance
-        params.profileSections = 200;          // High resolution for accurate profile
-        params.includeInternalFeatures = true; // Include grooves and bores
-        params.autoDetectFeatures = true;      // Automatic feature detection
-        params.optimizeProfile = true;         // Optimize for smoothness
-        params.minFeatureSize = 0.1;           // 0.1mm minimum feature size
+        params.tolerance = 0.01;               // 0.01mm geometric tolerance for sectioning
+        params.minSegmentLength = 0.001;       // 0.001mm minimum segment length
+        params.sortSegments = true;            // Sort segments by Z coordinate
 
-        qDebug() << "WorkspaceController: Extracting profile with" << params.profileSections << "sections";
+        qDebug() << "WorkspaceController: Extracting profile with tolerance" << params.tolerance << "mm";
 
         // Extract the profile
         m_extractedProfile = IntuiCAM::Toolpath::ProfileExtractor::extractProfile(transformedWorkpiece, params);
 
         if (!m_extractedProfile.isEmpty()) {
             qDebug() << "WorkspaceController: Profile extracted successfully with" 
-                     << m_extractedProfile.getTotalPointCount() << "total points";
+                     << m_extractedProfile.getSegmentCount() << "segments, total length"
+                     << m_extractedProfile.getTotalLength();
             
             // Create profile display object
             m_profileDisplayObject = createProfileDisplayObject(m_extractedProfile);
@@ -1301,17 +1298,17 @@ Handle(AIS_InteractiveObject) WorkspaceController::createProfileDisplayObject(co
     }
 
     try {
-        // Create a compound shape to hold all profile curves
+        // Create a compound shape to hold all profile segments
         TopoDS_Compound profileCompound;
         BRep_Builder builder;
         builder.MakeCompound(profileCompound);
 
         // PROFILE DISPLAY COORDINATE SYSTEM
-        // Profile extraction happens on the already-transformed workpiece in global coordinates
-        // The extracted Point2D(radius, axial) are relative to the extraction axis in global space
-        // We need to convert these to 3D points and apply the same transformation as the workpiece
+        // The new segment-based profile extraction already provides ProfileSegments with
+        // start and end points in 2D (radius, z) coordinates. We need to convert these
+        // to 3D coordinates for display in the XZ plane (Y=0).
 
-        // Get the extraction axis for reconstruction
+        // Get the extraction axis for coordinate system reconstruction
         gp_Ax1 extractionAxis;
         if (m_coordinateManager && m_coordinateManager->isInitialized()) {
             const auto& workCS = m_coordinateManager->getWorkCoordinateSystem();
@@ -1328,85 +1325,64 @@ Handle(AIS_InteractiveObject) WorkspaceController::createProfileDisplayObject(co
             extractionAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
         }
 
-        // External profile
-        if (!profile.externalProfile.points.empty()) {
-            std::vector<gp_Pnt> externalPoints3D;
-            for (const auto& point2D : profile.externalProfile.points) {
-                // Point2D: x = radius, z = axial position relative to extraction axis
-                // Reconstruct the 3D point relative to the extraction axis
-                gp_Pnt axisPoint = extractionAxis.Location().Translated(
-                    gp_Vec(extractionAxis.Direction()) * point2D.z);
-                
-                // For XZ plane display, offset the point by radius in the X direction
-                // This assumes the extraction axis is aligned with Z and we want radius in X
-                gp_Vec radialOffset;
-                if (extractionAxis.Direction().IsEqual(gp_Dir(0, 0, 1), Precision::Angular())) {
-                    // Z-axis aligned: radius goes in X direction
-                    radialOffset = gp_Vec(point2D.x, 0.0, 0.0);
-                } else {
-                    // General case: find perpendicular direction in XZ plane
-                    gp_Dir axisDir = extractionAxis.Direction();
-                    gp_Vec perpendicular(axisDir.Y(), -axisDir.X(), 0.0);
-                    if (perpendicular.Magnitude() < Precision::Confusion()) {
-                        perpendicular = gp_Vec(1.0, 0.0, 0.0);
-                    }
-                    perpendicular.Normalize();
-                    radialOffset = perpendicular * point2D.x;
+        // Process all profile segments
+        for (const auto& segment : profile.segments) {
+            // Convert start point from 2D (radius, z) to 3D coordinates
+            gp_Pnt axisPointStart = extractionAxis.Location().Translated(
+                gp_Vec(extractionAxis.Direction()) * segment.start.z);
+            
+            gp_Vec radialOffsetStart;
+            if (extractionAxis.Direction().IsEqual(gp_Dir(0, 0, 1), Precision::Angular())) {
+                // Z-axis aligned: radius goes in X direction for XZ plane display
+                radialOffsetStart = gp_Vec(segment.start.x, 0.0, 0.0);
+            } else {
+                // General case: find perpendicular direction in XZ plane
+                gp_Dir axisDir = extractionAxis.Direction();
+                gp_Vec perpendicular(axisDir.Y(), -axisDir.X(), 0.0);
+                if (perpendicular.Magnitude() < Precision::Confusion()) {
+                    perpendicular = gp_Vec(1.0, 0.0, 0.0);
                 }
-                
-                gp_Pnt point3D = axisPoint.Translated(radialOffset);
-                externalPoints3D.push_back(point3D);
+                perpendicular.Normalize();
+                radialOffsetStart = perpendicular * segment.start.x;
             }
+            gp_Pnt startPoint3D = axisPointStart.Translated(radialOffsetStart);
+            
+            // Convert end point from 2D (radius, z) to 3D coordinates  
+            gp_Pnt axisPointEnd = extractionAxis.Location().Translated(
+                gp_Vec(extractionAxis.Direction()) * segment.end.z);
+            
+            gp_Vec radialOffsetEnd;
+            if (extractionAxis.Direction().IsEqual(gp_Dir(0, 0, 1), Precision::Angular())) {
+                // Z-axis aligned: radius goes in X direction for XZ plane display
+                radialOffsetEnd = gp_Vec(segment.end.x, 0.0, 0.0);
+            } else {
+                // General case: find perpendicular direction in XZ plane
+                gp_Dir axisDir = extractionAxis.Direction();
+                gp_Vec perpendicular(axisDir.Y(), -axisDir.X(), 0.0);
+                if (perpendicular.Magnitude() < Precision::Confusion()) {
+                    perpendicular = gp_Vec(1.0, 0.0, 0.0);
+                }
+                perpendicular.Normalize();
+                radialOffsetEnd = perpendicular * segment.end.x;
+            }
+            gp_Pnt endPoint3D = axisPointEnd.Translated(radialOffsetEnd);
 
-            // Create polyline for external profile
-            if (externalPoints3D.size() >= 2) {
-                for (size_t i = 0; i < externalPoints3D.size() - 1; ++i) {
-                    BRepBuilderAPI_MakeEdge edgeBuilder(externalPoints3D[i], externalPoints3D[i + 1]);
-                    if (edgeBuilder.IsDone()) {
-                        builder.Add(profileCompound, edgeBuilder.Edge());
-                    }
+            // Create edge from the segment
+            // Use the original OCCT edge if available (preserves curves), otherwise create linear edge
+            TopoDS_Edge displayEdge;
+            if (!segment.edge.IsNull()) {
+                // Transform the original edge to display coordinates if needed
+                displayEdge = segment.edge;
+            } else {
+                // Create linear edge as fallback
+                BRepBuilderAPI_MakeEdge edgeBuilder(startPoint3D, endPoint3D);
+                if (edgeBuilder.IsDone()) {
+                    displayEdge = edgeBuilder.Edge();
                 }
             }
-        }
-
-        // Internal profile (if any)
-        if (!profile.internalProfile.points.empty()) {
-            std::vector<gp_Pnt> internalPoints3D;
-            for (const auto& point2D : profile.internalProfile.points) {
-                // Point2D: x = radius, z = axial position relative to extraction axis
-                // Reconstruct the 3D point relative to the extraction axis
-                gp_Pnt axisPoint = extractionAxis.Location().Translated(
-                    gp_Vec(extractionAxis.Direction()) * point2D.z);
-                
-                // For XZ plane display, offset the point by radius in the X direction
-                // This assumes the extraction axis is aligned with Z and we want radius in X
-                gp_Vec radialOffset;
-                if (extractionAxis.Direction().IsEqual(gp_Dir(0, 0, 1), Precision::Angular())) {
-                    // Z-axis aligned: radius goes in X direction
-                    radialOffset = gp_Vec(point2D.x, 0.0, 0.0);
-                } else {
-                    // General case: find perpendicular direction in XZ plane
-                    gp_Dir axisDir = extractionAxis.Direction();
-                    gp_Vec perpendicular(axisDir.Y(), -axisDir.X(), 0.0);
-                    if (perpendicular.Magnitude() < Precision::Confusion()) {
-                        perpendicular = gp_Vec(1.0, 0.0, 0.0);
-                    }
-                    perpendicular.Normalize();
-                    radialOffset = perpendicular * point2D.x;
-                }
-                
-                gp_Pnt point3D = axisPoint.Translated(radialOffset);
-                internalPoints3D.push_back(point3D);
-            }
-
-            // Create polyline for internal profile
-            if (internalPoints3D.size() >= 2) {
-                for (size_t i = 0; i < internalPoints3D.size() - 1; ++i) {
-                    BRepBuilderAPI_MakeEdge edgeBuilder(internalPoints3D[i], internalPoints3D[i + 1]);
-                    if (edgeBuilder.IsDone()) {
-                        builder.Add(profileCompound, edgeBuilder.Edge());
-                    }
-                }
+            
+            if (!displayEdge.IsNull()) {
+                builder.Add(profileCompound, displayEdge);
             }
         }
 
@@ -1419,7 +1395,9 @@ Handle(AIS_InteractiveObject) WorkspaceController::createProfileDisplayObject(co
         profileShape->SetDisplayMode(AIS_WireFrame);
         profileShape->SetTransparency(0.0);
         
-        qDebug() << "WorkspaceController: Profile display object created successfully with coordinate transformation";
+        qDebug() << "WorkspaceController: Profile display object created successfully with" 
+                 << profile.getSegmentCount() << "segments, total length" 
+                 << profile.getTotalLength();
         return profileShape;
         
     } catch (const std::exception& e) {

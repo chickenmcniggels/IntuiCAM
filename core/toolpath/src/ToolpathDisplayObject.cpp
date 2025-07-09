@@ -583,13 +583,45 @@ void ProfileDisplayObject::ComputeSelection(const Handle(SelectMgr_Selection)& t
     
     Handle(SelectMgr_EntityOwner) owner = new SelectMgr_EntityOwner(this);
     
-    for (size_t i = 0; i < profile_.size(); ++i) {
-        const auto& point = profile_[i];
-        gp_Pnt pnt(point.x, point.z, 0.0);
+    // Iterate over profile segments instead of individual points
+    for (const auto& segment : profile_.segments) {
+        // Add selection for start point
+        gp_Pnt startPnt(segment.start.x, 0.0, segment.start.z);
+        Handle(Select3D_SensitivePoint) startSensPoint = new Select3D_SensitivePoint(owner, startPnt);
+        theSelection->Add(startSensPoint);
         
-        Handle(Select3D_SensitivePoint) sensPoint = new Select3D_SensitivePoint(owner, pnt);
-        theSelection->Add(sensPoint);
+        // Add selection for end point
+        gp_Pnt endPnt(segment.end.x, 0.0, segment.end.z);
+        Handle(Select3D_SensitivePoint) endSensPoint = new Select3D_SensitivePoint(owner, endPnt);
+        theSelection->Add(endSensPoint);
+        
+        // Add selection for the segment itself
+        Handle(Select3D_SensitiveSegment) sensSegment = new Select3D_SensitiveSegment(owner, startPnt, endPnt);
+        theSelection->Add(sensSegment);
     }
+}
+
+TopoDS_Shape ProfileDisplayObject::createProfileWire() const {
+    if (profile_.isEmpty()) {
+        return TopoDS_Shape();
+    }
+    
+    BRepBuilderAPI_MakeWire wireBuilder;
+    
+    for (const auto& segment : profile_.segments) {
+        gp_Pnt start(segment.start.x, 0.0, segment.start.z);
+        gp_Pnt end(segment.end.x, 0.0, segment.end.z);
+        
+        TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(start, end).Edge();
+        wireBuilder.Add(edge);
+    }
+    
+    if (wireBuilder.IsDone()) {
+        TopoDS_Wire wire = wireBuilder.Wire();
+        return wire;
+    }
+    
+    return TopoDS_Shape();
 }
 
 void ProfileDisplayObject::setProfile(const LatheProfile::Profile2D& profile) {
@@ -629,13 +661,20 @@ Handle(ProfileDisplayObject) ProfileDisplayObject::create(const LatheProfile::Pr
 }
 
 void ProfileDisplayObject::computePointsPresentation(const Handle(Prs3d_Presentation)& presentation) {
-    if (profile_.empty()) return;
+    if (profile_.isEmpty()) return;
 
-    Handle(Graphic3d_ArrayOfPoints) points = new Graphic3d_ArrayOfPoints(static_cast<Standard_Integer>(profile_.size()));
+    // Count total points (start and end of each segment)
+    size_t totalPoints = profile_.segments.size() * 2;
+    Handle(Graphic3d_ArrayOfPoints) points = new Graphic3d_ArrayOfPoints(static_cast<Standard_Integer>(totalPoints));
 
-    for (const auto& point : profile_) {
-        gp_Pnt pnt(point.x, point.z, 0.0);
-        points->AddVertex(pnt, settings_.profileColor);
+    for (const auto& segment : profile_.segments) {
+        // Add start point
+        gp_Pnt startPnt(segment.start.x, 0.0, segment.start.z);
+        points->AddVertex(startPnt, settings_.profileColor);
+        
+        // Add end point
+        gp_Pnt endPnt(segment.end.x, 0.0, segment.end.z);
+        points->AddVertex(endPnt, settings_.profileColor);
     }
     
     Handle(Graphic3d_AspectMarker3d) markerAspect = new Graphic3d_AspectMarker3d();
@@ -647,13 +686,13 @@ void ProfileDisplayObject::computePointsPresentation(const Handle(Prs3d_Presenta
 }
 
 void ProfileDisplayObject::computeLinesPresentation(const Handle(Prs3d_Presentation)& presentation) {
-    if (profile_.size() < 2) return;
+    if (profile_.isEmpty()) return;
 
-    Handle(Graphic3d_ArrayOfSegments) segments = new Graphic3d_ArrayOfSegments(static_cast<Standard_Integer>((profile_.size() - 1) * 2));
+    Handle(Graphic3d_ArrayOfSegments) segments = new Graphic3d_ArrayOfSegments(static_cast<Standard_Integer>(profile_.segments.size() * 2));
 
-    for (size_t i = 0; i < profile_.size() - 1; ++i) {
-        gp_Pnt start(profile_[i].x, profile_[i].z, 0.0);
-        gp_Pnt end(profile_[i + 1].x, profile_[i + 1].z, 0.0);
+    for (const auto& segment : profile_.segments) {
+        gp_Pnt start(segment.start.x, 0.0, segment.start.z);
+        gp_Pnt end(segment.end.x, 0.0, segment.end.z);
         
         segments->AddVertex(start, settings_.profileColor);
         segments->AddVertex(end, settings_.profileColor);
@@ -677,55 +716,48 @@ void ProfileDisplayObject::computeSplinePresentation(const Handle(Prs3d_Presenta
 }
 
 void ProfileDisplayObject::computeFeaturesPresentation(const Handle(Prs3d_Presentation)& presentation) {
+    // For now, just use lines presentation
+    // TODO: In the future, we could analyze ProfileSegment.isLinear to highlight curved vs linear segments
     computeLinesPresentation(presentation);
-}
-
-TopoDS_Shape ProfileDisplayObject::createProfileWire() const {
-    if (profile_.size() < 2) {
-        return TopoDS_Shape();
-    }
     
-    BRepBuilderAPI_MakeWire wireBuilder;
-    
-    for (size_t i = 0; i < profile_.size() - 1; ++i) {
-        gp_Pnt start(profile_[i].x, profile_[i].z, 0.0);
-        gp_Pnt end(profile_[i + 1].x, profile_[i + 1].z, 0.0);
+    // Optional: Add special highlighting for curved segments
+    if (settings_.showFeatures) {
+        Handle(Graphic3d_ArrayOfPoints) featurePoints = new Graphic3d_ArrayOfPoints(static_cast<Standard_Integer>(profile_.segments.size()));
         
-        TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(start, end).Edge();
-        wireBuilder.Add(edge);
+        for (const auto& segment : profile_.segments) {
+            if (!segment.isLinear) {
+                // Highlight curved segments with special markers
+                gp_Pnt midPoint(
+                    (segment.start.x + segment.end.x) / 2.0,
+                    0.0,
+                    (segment.start.z + segment.end.z) / 2.0
+                );
+                featurePoints->AddVertex(midPoint, settings_.featureColor);
+            }
+        }
+        
+        if (featurePoints->VertexNumber() > 0) {
+            Handle(Graphic3d_AspectMarker3d) markerAspect = new Graphic3d_AspectMarker3d();
+            markerAspect->SetScale(settings_.pointSize * 1.5);
+            markerAspect->SetColor(settings_.featureColor);
+            
+            Handle(Graphic3d_Group) group = presentation->NewGroup();
+            group->SetPrimitivesAspect(markerAspect);
+            group->AddPrimitiveArray(featurePoints);
+        }
     }
-    
-    if (wireBuilder.IsDone()) {
-        TopoDS_Wire wire = wireBuilder.Wire();
-        return wire;
-    }
-    
-    return TopoDS_Shape();
 }
 
-TopoDS_Shape ProfileDisplayObject::createFeatureMarker(const ProfileExtractor::ProfilePoint& point) const {
-    gp_Pnt pnt(point.position.X(), point.position.Y(), 0.0);
-    return BRepBuilderAPI_MakeVertex(pnt).Vertex();
-}
+// Remove deprecated methods that used old ProfileExtractor types
+// These are no longer needed with the segment-based approach
 
-Quantity_Color ProfileDisplayObject::getFeatureColor(ProfileExtractor::FeatureType featureType) const {
-    switch (featureType) {
-        case ProfileExtractor::FeatureType::External:
-            return Quantity_Color(0.0, 0.8, 0.0, Quantity_TOC_RGB); // Green
-        case ProfileExtractor::FeatureType::Internal:
-            return Quantity_Color(0.8, 0.0, 0.0, Quantity_TOC_RGB); // Red
-        case ProfileExtractor::FeatureType::Groove:
-            return Quantity_Color(0.8, 0.4, 0.0, Quantity_TOC_RGB); // Orange
-        case ProfileExtractor::FeatureType::Chamfer:
-            return Quantity_Color(0.0, 0.0, 0.8, Quantity_TOC_RGB); // Blue
-        case ProfileExtractor::FeatureType::Radius:
-            return Quantity_Color(0.8, 0.0, 0.8, Quantity_TOC_RGB); // Magenta
-        case ProfileExtractor::FeatureType::Thread:
-            return Quantity_Color(0.0, 0.8, 0.8, Quantity_TOC_RGB); // Cyan
-        default:
-            return settings_.featureColor;
-    }
-}
+// TopoDS_Shape ProfileDisplayObject::createFeatureMarker(const ProfileExtractor::ProfilePoint& point) const {
+//     // DEPRECATED - removed because ProfileExtractor::ProfilePoint no longer exists
+// }
+
+// Quantity_Color ProfileDisplayObject::getFeatureColor(ProfileExtractor::FeatureType featureType) const {
+//     // DEPRECATED - removed because ProfileExtractor::FeatureType no longer exists  
+// }
 
 // ToolpathDisplayFactory Implementation
 Handle(ToolpathDisplayObject) ToolpathDisplayFactory::createToolpathDisplay(
