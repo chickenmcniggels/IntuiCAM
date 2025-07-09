@@ -8,6 +8,9 @@
 #include <TopoDS_Edge.hxx>
 #include <gp_Ax1.hxx>
 
+// Forward declarations
+class BRepAdaptor_Curve;
+
 namespace IntuiCAM {
 namespace Toolpath {
 
@@ -129,7 +132,37 @@ private:
                                                        const gp_Ax1& turningAxis);
     
     /**
-     * @brief Convert 3D edge to 2D profile segment
+     * @brief Split an edge at intersections with the Z-axis, keeping only positive X portions
+     * @param edge Edge to process
+     * @param turningAxis The turning axis (Z-axis)
+     * @return Vector of edge portions in positive X space
+     */
+    static std::vector<TopoDS_Edge> splitEdgeAtZAxis(const TopoDS_Edge& edge, const gp_Ax1& turningAxis);
+
+    /**
+     * @brief Split an edge at its intersection with the Z-axis
+     * @param edge Edge to split
+     * @param turningAxis The turning axis
+     * @param startX X coordinate of start point
+     * @param endX X coordinate of end point
+     * @return The portion of the edge in positive X space
+     */
+    static TopoDS_Edge splitEdgeAtZAxisIntersection(const TopoDS_Edge& edge, const gp_Ax1& turningAxis, 
+                                                   double startX, double endX);
+
+    /**
+     * @brief Find the parameter where an edge intersects the Z-axis
+     * @param curve The curve adapter for the edge
+     * @param turningAxis The turning axis
+     * @param firstParam First parameter of the curve
+     * @param lastParam Last parameter of the curve
+     * @return Parameter value at Z-axis intersection
+     */
+    static double findZAxisIntersectionParameter(const BRepAdaptor_Curve& curve, const gp_Ax1& turningAxis,
+                                               double firstParam, double lastParam);
+
+    /**
+     * @brief Convert a 3D edge to a 2D profile segment
      */
     static ProfileSegment convertEdgeToSegment(const TopoDS_Edge& edge,
                                              const gp_Ax1& turningAxis);
