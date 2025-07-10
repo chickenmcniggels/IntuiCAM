@@ -844,9 +844,11 @@ bool WorkspaceController::hasPartShape() const
 
 TopoDS_Shape WorkspaceController::getPartShape() const
 {
-    // If we have a workpiece manager and it has a part, return it
+    // If we have a workpiece manager and it has a part, return it with the
+    // current transformation applied so that downstream processing operates on
+    // geometry positioned exactly as displayed in the viewer.
     if (m_workpieceManager && m_workpieceManager->hasWorkpiece()) {
-        return m_workpieceManager->getWorkpieceShape();
+        return m_workpieceManager->getTransformedWorkpieceShape();
     }
     
     // Otherwise return a null shape
@@ -907,7 +909,7 @@ bool WorkspaceController::generateToolpaths()
     try {
         qDebug() << "WorkspaceController: Starting toolpath generation";
         
-        // Get the current part shape
+        // Get the current part shape with all transformations applied
         TopoDS_Shape partShape = getPartShape();
         
         // Create the toolpath generation pipeline
