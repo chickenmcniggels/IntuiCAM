@@ -18,6 +18,7 @@
 #include <Graphic3d_ArrayOfPoints.hxx>
 #include <Graphic3d_AspectLine3d.hxx>
 #include <Graphic3d_AspectMarker3d.hxx>
+#include <gp_Trsf.hxx>
 #include <Prs3d_LineAspect.hxx>
 #include <Prs3d_PointAspect.hxx>
 #include <SelectMgr_EntityOwner.hxx>
@@ -43,7 +44,8 @@ ToolpathDisplayObject::ToolpathDisplayObject(std::shared_ptr<Toolpath> toolpath,
     , settings_(settings)
     , isVisible_(true)
     , progress_(1.0)
-    , needsUpdate_(true) {
+    , needsUpdate_(true)
+    , transformation_(gp_Trsf()) {
     
     SetDisplayMode(static_cast<Standard_Integer>(DisplayMode::AllMoves));
     SetHilightMode(static_cast<Standard_Integer>(DisplayMode::AllMoves));
@@ -98,6 +100,10 @@ void ToolpathDisplayObject::ComputeSelection(const Handle(SelectMgr_Selection)& 
         // Convert to viewer coordinates (X = radius, Z = axial).
         gp_Pnt startPnt(move.startPoint.z, 0.0, move.startPoint.x);  // (radius, 0, axial)
         gp_Pnt endPnt(move.endPoint.z, 0.0, move.endPoint.x);        // (radius, 0, axial)
+
+        // Apply transformation so display follows workpiece
+        startPnt.Transform(transformation_);
+        endPnt.Transform(transformation_);
         
         // Ensure Y=0 to constrain to XZ plane for lathe operations
         startPnt.SetY(0.0);
@@ -291,6 +297,10 @@ void ToolpathDisplayObject::computeWireframePresentation(const Handle(Prs3d_Pres
         // Movements store axial position in `x` and radial position in `z`.
         gp_Pnt startPnt(prevMove.position.z, 0.0, prevMove.position.x);      // (radius, 0, axial)
         gp_Pnt endPnt(currentMove.position.z, 0.0, currentMove.position.x);  // (radius, 0, axial)
+
+        // Apply external transformation so toolpaths follow workpiece position
+        startPnt.Transform(transformation_);
+        endPnt.Transform(transformation_);
         
         // Ensure Y=0 to constrain to XZ plane for lathe operations
         startPnt.SetY(0.0);
@@ -383,7 +393,11 @@ void ToolpathDisplayObject::computeMoveTypePresentation(const Handle(Prs3d_Prese
         // Movements store axial position in `x` and radial position in `z`.
         gp_Pnt startPnt(move.startPoint.z, 0.0, move.startPoint.x);  // (radius, 0, axial)
         gp_Pnt endPnt(move.endPoint.z, 0.0, move.endPoint.x);        // (radius, 0, axial)
-        
+
+        // Apply transformation so display follows workpiece
+        startPnt.Transform(transformation_);
+        endPnt.Transform(transformation_);
+
         // Ensure Y=0 to constrain to XZ plane for lathe operations
         startPnt.SetY(0.0);
         endPnt.SetY(0.0);
@@ -539,7 +553,8 @@ ProfileDisplayObject::ProfileDisplayObject(const LatheProfile::Profile2D& profil
                                            const ProfileVisualizationSettings& settings)
     : AIS_InteractiveObject()
     , profile_(profile)
-    , settings_(settings) {
+    , settings_(settings)
+    , transformation_(gp_Trsf()) {
     
     SetDisplayMode(static_cast<Standard_Integer>(ProfileDisplayMode::Lines));
 }
@@ -601,6 +616,8 @@ TopoDS_Shape ProfileDisplayObject::createProfileWire() const {
     for (const auto& segment : profile_.segments) {
         gp_Pnt start(segment.start.x, 0.0, segment.start.z);
         gp_Pnt end(segment.end.x, 0.0, segment.end.z);
+        start.Transform(transformation_);
+        end.Transform(transformation_);
         
         TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(start, end).Edge();
         wireBuilder.Add(edge);
@@ -660,10 +677,12 @@ void ProfileDisplayObject::computePointsPresentation(const Handle(Prs3d_Presenta
     for (const auto& segment : profile_.segments) {
         // Add start point
         gp_Pnt startPnt(segment.start.x, 0.0, segment.start.z);
+        startPnt.Transform(transformation_);
         points->AddVertex(startPnt, settings_.profileColor);
         
         // Add end point
         gp_Pnt endPnt(segment.end.x, 0.0, segment.end.z);
+        endPnt.Transform(transformation_);
         points->AddVertex(endPnt, settings_.profileColor);
     }
     

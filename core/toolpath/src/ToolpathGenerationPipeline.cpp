@@ -1366,6 +1366,7 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
             
             // Create the ToolpathDisplayObject
             Handle(ToolpathDisplayObject) displayObj = ToolpathDisplayObject::create(sharedToolpath, settings);
+            displayObj->setTransformation(workpieceTransform);
             
             if (!displayObj.IsNull()) {
                 // Apply coordinate transformation if needed
