@@ -123,6 +123,16 @@ public:
     TopoDS_Shape getWorkpieceShape() const;
 
     /**
+     * @brief Get the shape of the current workpiece with all active
+     *        transformations (alignment, flipping and positioning) applied.
+     *
+     * This is useful when the raw geometry needs to be processed by
+     * algorithms that expect it to be in the same position as displayed in
+     * the viewer, e.g. toolpath generation or profile extraction.
+     */
+    TopoDS_Shape getTransformedWorkpieceShape() const;
+
+    /**
      * @brief Get the main cylinder axis from the current workpiece
      */
     gp_Ax1 getMainCylinderAxis() const { return m_mainCylinderAxis; }

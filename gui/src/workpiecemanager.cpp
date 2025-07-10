@@ -28,6 +28,7 @@
 #include <TopoDS_Edge.hxx>
 #include <BRepAdaptor_Curve.hxx>
 #include <GeomAbs_CurveType.hxx>
+#include <BRepBuilderAPI_Transform.hxx>
 #include <gp_Circ.hxx>
 #include <BRep_Tool.hxx>
 #include <TopExp.hxx>
@@ -660,9 +661,22 @@ TopoDS_Shape WorkpieceManager::getWorkpieceShape() const
             return aisShape->Shape();
         }
     }
-    
+
     // Return null shape if no workpiece or invalid shape
     return TopoDS_Shape();
+}
+
+TopoDS_Shape WorkpieceManager::getTransformedWorkpieceShape() const
+{
+    TopoDS_Shape shape = getWorkpieceShape();
+    if (shape.IsNull()) {
+        return shape;
+    }
+
+    // Apply the current transformation stack (axis alignment, flip, positioning)
+    gp_Trsf transform = getCurrentTransformation();
+    BRepBuilderAPI_Transform transformer(shape, transform, true);
+    return transformer.Shape();
 }
 
 double WorkpieceManager::getLargestCircularEdgeDiameter(const TopoDS_Shape& workpiece) const
