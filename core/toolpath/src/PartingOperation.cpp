@@ -344,7 +344,7 @@ std::unique_ptr<Toolpath> PartingOperation::generateStraightParting(
     
     // Start from safe position
     gp_Pnt safeStart(partingZ + params.safetyHeight, 0.0, outerRadius + params.clearanceDistance);
-    toolpath->addRapidMove(Geometry::Point3D(safeStart.X(), safeStart.Y(), safeStart.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(safeStart.Z(), safeStart.Y(), safeStart.X()));
     
     // Calculate pass depths
     double totalDepth = outerRadius - innerRadius;
@@ -364,18 +364,18 @@ std::unique_ptr<Toolpath> PartingOperation::generateStraightParting(
         
         // Rapid to start of cut
         gp_Pnt cutStart(partingZ + params.clearanceDistance, 0.0, currentRadius);
-        toolpath->addRapidMove(Geometry::Point3D(cutStart.X(), cutStart.Y(), cutStart.Z()));
+        toolpath->addRapidMove(Geometry::Point3D(cutStart.Z(), cutStart.Y(), cutStart.X()));
         
         // Feed to cutting position
         gp_Pnt feedStart(partingZ, 0.0, currentRadius);
         toolpath->addLinearMove(
-            Geometry::Point3D(feedStart.X(), feedStart.Y(), feedStart.Z()),
+            Geometry::Point3D(feedStart.Z(), feedStart.Y(), feedStart.X()),
             params.feedRate);
         
         // Parting cut
         gp_Pnt cutEnd(partingZ, 0.0, targetRadius);
         toolpath->addLinearMove(
-            Geometry::Point3D(cutEnd.X(), cutEnd.Y(), cutEnd.Z()),
+            Geometry::Point3D(cutEnd.Z(), cutEnd.Y(), cutEnd.X()),
             params.feedRate);
         
         // Chip breaking if enabled
@@ -386,12 +386,12 @@ std::unique_ptr<Toolpath> PartingOperation::generateStraightParting(
                     // Retract slightly for chip breaking
                     gp_Pnt chipBreak(partingZ, 0.0, breakRadius + params.chipBreakDistance);
                     toolpath->addLinearMove(
-                        Geometry::Point3D(chipBreak.X(), chipBreak.Y(), chipBreak.Z()),
+                        Geometry::Point3D(chipBreak.Z(), chipBreak.Y(), chipBreak.X()),
                         params.feedRate * 2.0);
                     
                     // Return to cutting
                     toolpath->addLinearMove(
-                        Geometry::Point3D(cutEnd.X(), cutEnd.Y(), cutEnd.Z()),
+                        Geometry::Point3D(cutEnd.Z(), cutEnd.Y(), cutEnd.X()),
                         params.feedRate);
                 }
             }
@@ -399,12 +399,12 @@ std::unique_ptr<Toolpath> PartingOperation::generateStraightParting(
         
         // Retract to safe radius
         gp_Pnt retract(partingZ + params.retractDistance, 0.0, targetRadius);
-        toolpath->addRapidMove(Geometry::Point3D(retract.X(), retract.Y(), retract.Z()));
+        toolpath->addRapidMove(Geometry::Point3D(retract.Z(), retract.Y(), retract.X()));
     }
     
     // Final retract to safe position
     gp_Pnt finalSafe(partingZ + params.safetyHeight, 0.0, outerRadius + params.clearanceDistance);
-    toolpath->addRapidMove(Geometry::Point3D(finalSafe.X(), finalSafe.Y(), finalSafe.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(finalSafe.Z(), finalSafe.Y(), finalSafe.X()));
     
     return toolpath;
 }
@@ -424,7 +424,7 @@ std::unique_ptr<Toolpath> PartingOperation::generateSteppedParting(
     
     // Start from safe position
     gp_Pnt safeStart(partingZ + params.safetyHeight, 0.0, outerRadius + params.clearanceDistance);
-    toolpath->addRapidMove(Geometry::Point3D(safeStart.X(), safeStart.Y(), safeStart.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(safeStart.Z(), safeStart.Y(), safeStart.X()));
     
     // Generate stepped cuts
     double currentRadius = outerRadius;
@@ -443,23 +443,23 @@ std::unique_ptr<Toolpath> PartingOperation::generateSteppedParting(
             
             // Rapid to cutting position
             gp_Pnt cutStart(partingZ + params.clearanceDistance, 0.0, passStartRadius);
-            toolpath->addRapidMove(Geometry::Point3D(cutStart.X(), cutStart.Y(), cutStart.Z()));
+            toolpath->addRapidMove(Geometry::Point3D(cutStart.Z(), cutStart.Y(), cutStart.X()));
             
             // Feed to cutting depth
             gp_Pnt feedStart(partingZ, 0.0, passStartRadius);
             toolpath->addLinearMove(
-                Geometry::Point3D(feedStart.X(), feedStart.Y(), feedStart.Z()),
+                Geometry::Point3D(feedStart.Z(), feedStart.Y(), feedStart.X()),
                 params.feedRate);
             
             // Cutting move
             gp_Pnt cutEnd(partingZ, 0.0, passEndRadius);
             toolpath->addLinearMove(
-                Geometry::Point3D(cutEnd.X(), cutEnd.Y(), cutEnd.Z()),
+                Geometry::Point3D(cutEnd.Z(), cutEnd.Y(), cutEnd.X()),
                 params.feedRate);
             
             // Retract
             gp_Pnt retract(partingZ + params.retractDistance, 0.0, passEndRadius);
-            toolpath->addRapidMove(Geometry::Point3D(retract.X(), retract.Y(), retract.Z()));
+            toolpath->addRapidMove(Geometry::Point3D(retract.Z(), retract.Y(), retract.X()));
         }
         
         currentRadius = targetRadius;
@@ -471,7 +471,7 @@ std::unique_ptr<Toolpath> PartingOperation::generateSteppedParting(
     
     // Final safe position
     gp_Pnt finalSafe(partingZ + params.safetyHeight, 0.0, outerRadius + params.clearanceDistance);
-    toolpath->addRapidMove(Geometry::Point3D(finalSafe.X(), finalSafe.Y(), finalSafe.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(finalSafe.Z(), finalSafe.Y(), finalSafe.X()));
     
     return toolpath;
 }
@@ -490,16 +490,16 @@ std::unique_ptr<Toolpath> PartingOperation::generateGrooveRelief(
     gp_Pnt grooveEnd(grooveZ, 0.0, grooveRadius);
     
     // Rapid to groove start
-    toolpath->addRapidMove(Geometry::Point3D(grooveStart.X(), grooveStart.Y(), grooveStart.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(grooveStart.Z(), grooveStart.Y(), grooveStart.X()));
     
     // Cut groove
     toolpath->addLinearMove(
-        Geometry::Point3D(grooveEnd.X(), grooveEnd.Y(), grooveEnd.Z()),
+        Geometry::Point3D(grooveEnd.Z(), grooveEnd.Y(), grooveEnd.X()),
         params.feedRate * 0.8); // Slower for grooving
     
     // Retract
     gp_Pnt retract(grooveZ + params.retractDistance, 0.0, grooveRadius);
-    toolpath->addRapidMove(Geometry::Point3D(retract.X(), retract.Y(), retract.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(retract.Z(), retract.Y(), retract.X()));
     
     return toolpath;
 }
@@ -522,15 +522,15 @@ std::unique_ptr<Toolpath> PartingOperation::generateUndercutParting(
     
     // Start position
     gp_Pnt safeStart(partingZ + params.safetyHeight, 0.0, outerRadius + params.clearanceDistance);
-    toolpath->addRapidMove(Geometry::Point3D(safeStart.X(), safeStart.Y(), safeStart.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(safeStart.Z(), safeStart.Y(), safeStart.X()));
     
     // Create undercut first
     gp_Pnt undercutStart(partingZ + undercutOffset, 0.0, outerRadius);
     gp_Pnt undercutEnd(partingZ, 0.0, outerRadius - undercutDepth);
     
-    toolpath->addRapidMove(Geometry::Point3D(undercutStart.X(), undercutStart.Y(), undercutStart.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(undercutStart.Z(), undercutStart.Y(), undercutStart.X()));
     toolpath->addLinearMove(
-        Geometry::Point3D(undercutEnd.X(), undercutEnd.Y(), undercutEnd.Z()),
+        Geometry::Point3D(undercutEnd.Z(), undercutEnd.Y(), undercutEnd.X()),
         params.feedRate);
     
     // Continue with normal parting from undercut position
@@ -540,7 +540,7 @@ std::unique_ptr<Toolpath> PartingOperation::generateUndercutParting(
         
         gp_Pnt cutEnd(partingZ, 0.0, targetRadius);
         toolpath->addLinearMove(
-            Geometry::Point3D(cutEnd.X(), cutEnd.Y(), cutEnd.Z()),
+            Geometry::Point3D(cutEnd.Z(), cutEnd.Y(), cutEnd.X()),
             params.feedRate);
         
         currentRadius = targetRadius;
@@ -548,7 +548,7 @@ std::unique_ptr<Toolpath> PartingOperation::generateUndercutParting(
     
     // Final retract
     gp_Pnt finalSafe(partingZ + params.safetyHeight, 0.0, outerRadius + params.clearanceDistance);
-    toolpath->addRapidMove(Geometry::Point3D(finalSafe.X(), finalSafe.Y(), finalSafe.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(finalSafe.Z(), finalSafe.Y(), finalSafe.X()));
     
     return toolpath;
 }
@@ -570,9 +570,9 @@ std::unique_ptr<Toolpath> PartingOperation::generateTrepanningParting(
         gp_Pnt grooveStart(z, 0.0, outerRadius);
         gp_Pnt grooveEnd(z, 0.0, outerRadius - params.depthOfCut);
         
-        toolpath->addRapidMove(Geometry::Point3D(grooveStart.X(), grooveStart.Y(), grooveStart.Z()));
+        toolpath->addRapidMove(Geometry::Point3D(grooveStart.Z(), grooveStart.Y(), grooveStart.X()));
         toolpath->addLinearMove(
-            Geometry::Point3D(grooveEnd.X(), grooveEnd.Y(), grooveEnd.Z()),
+            Geometry::Point3D(grooveEnd.Z(), grooveEnd.Y(), grooveEnd.X()),
             params.feedRate * 0.7);
     }
     
@@ -584,9 +584,9 @@ std::unique_ptr<Toolpath> PartingOperation::generateTrepanningParting(
         gp_Pnt cutStart(partingZ, 0.0, remainingRadius);
         gp_Pnt cutEnd(partingZ, 0.0, targetRadius);
         
-        toolpath->addRapidMove(Geometry::Point3D(cutStart.X(), cutStart.Y(), cutStart.Z()));
+        toolpath->addRapidMove(Geometry::Point3D(cutStart.Z(), cutStart.Y(), cutStart.X()));
         toolpath->addLinearMove(
-            Geometry::Point3D(cutEnd.X(), cutEnd.Y(), cutEnd.Z()),
+            Geometry::Point3D(cutEnd.Z(), cutEnd.Y(), cutEnd.X()),
             params.feedRate);
         
         remainingRadius = targetRadius;
@@ -610,9 +610,9 @@ std::unique_ptr<Toolpath> PartingOperation::generateFinishingPass(
     gp_Pnt finishStart(partingZ, 0.0, outerRadius - params.finishingAllowance);
     gp_Pnt finishEnd(partingZ, 0.0, innerRadius);
     
-    toolpath->addRapidMove(Geometry::Point3D(finishStart.X(), finishStart.Y(), finishStart.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(finishStart.Z(), finishStart.Y(), finishStart.X()));
     toolpath->addLinearMove(
-        Geometry::Point3D(finishEnd.X(), finishEnd.Y(), finishEnd.Z()),
+        Geometry::Point3D(finishEnd.Z(), finishEnd.Y(), finishEnd.X()),
         params.finishingFeedRate);
     
     return toolpath;

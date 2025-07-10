@@ -61,42 +61,42 @@ std::unique_ptr<Toolpath> RoughingOperation::generateToolpath(const Geometry::Pa
     // Get part bounding box for basic roughing
     auto bbox = part.getBoundingBox();
     
-    // Calculate roughing parameters using corrected lathe coordinates
-    // Point3D(axial_position, 0, radius) where axial is along spindle, Y=0 (constrained)
+    // Calculate roughing parameters using lathe coordinates
+    // Point3D(radius, 0, axial_position) where axial is along spindle, Y=0 (constrained)
     double currentRadius = params_.startDiameter / 2.0;
     double endRadius = params_.endDiameter / 2.0;
     double currentZ = params_.startZ;  // axial start position
     double endZ = params_.endZ;        // axial end position
     double safeZ = params_.startZ + 5.0; // 5mm clearance along axial direction
     
-    // Safety rapid to start position - Point3D(axial, 0, radius)
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, currentRadius), 
+    // Safety rapid to start position - Point3D(radius, 0, axial)
+    toolpath->addRapidMove(Geometry::Point3D(currentRadius, 0.0, safeZ),
                           OperationType::ExternalRoughing, "Rapid to start position");
     
     // Generate roughing passes - all moves with Y=0 (lathe constraint)
     while (currentRadius > endRadius + params_.stockAllowance) {
         // Rapid to cutting position - approach axially to cutting depth
-        toolpath->addRapidMove(Geometry::Point3D(currentZ + 1.0, 0.0, currentRadius),
+        toolpath->addRapidMove(Geometry::Point3D(currentRadius, 0.0, currentZ + 1.0),
                               OperationType::ExternalRoughing, "Rapid to cutting position");
         
         // Feed to cutting depth - maintain Y=0
-        toolpath->addLinearMove(Geometry::Point3D(currentZ, 0.0, currentRadius), 100.0,
+        toolpath->addLinearMove(Geometry::Point3D(currentRadius, 0.0, currentZ), 100.0,
                                OperationType::ExternalRoughing, "Feed to cutting depth");
         
         // Rough down to end Z - longitudinal cut (axial movement)
-        toolpath->addLinearMove(Geometry::Point3D(endZ, 0.0, currentRadius), 100.0,
+        toolpath->addLinearMove(Geometry::Point3D(currentRadius, 0.0, endZ), 100.0,
                                OperationType::ExternalRoughing, "Longitudinal roughing cut");
         
         // Retract axially - stay at same radius, move back along axial direction
-        toolpath->addRapidMove(Geometry::Point3D(endZ + 1.0, 0.0, currentRadius),
+        toolpath->addRapidMove(Geometry::Point3D(currentRadius, 0.0, endZ + 1.0),
                               OperationType::ExternalRoughing, "Axial retract");
         
         // Move to next radius (deeper cut) - reduce radius for next pass
         currentRadius -= params_.depthOfCut;
     }
     
-    // Return to safe position - Point3D(axial, 0, radius)
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, endRadius),
+    // Return to safe position - Point3D(radius, 0, axial)
+    toolpath->addRapidMove(Geometry::Point3D(endRadius, 0.0, safeZ),
                           OperationType::ExternalRoughing, "Return to safe position");
     
     return toolpath;

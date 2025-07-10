@@ -104,19 +104,19 @@ std::unique_ptr<Toolpath> ChamferingOperation::generateLinearChamfer() {
     }
     
     // Rapid to safe position
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, chamferStartR + 2.0));
+    toolpath->addRapidMove(Geometry::Point3D(chamferStartR + 2.0, 0.0, safeZ));
     
     // Position to start of chamfer
-    toolpath->addRapidMove(Geometry::Point3D(chamferStartZ + 1.0, 0.0, chamferStartR));
+    toolpath->addRapidMove(Geometry::Point3D(chamferStartR, 0.0, chamferStartZ + 1.0));
     
     // Feed to chamfer start
-    toolpath->addLinearMove(Geometry::Point3D(chamferStartZ, 0.0, chamferStartR), params_.feedRate);
+    toolpath->addLinearMove(Geometry::Point3D(chamferStartR, 0.0, chamferStartZ), params_.feedRate);
     
     // Cut chamfer
-    toolpath->addLinearMove(Geometry::Point3D(chamferEndZ, 0.0, chamferEndR), params_.feedRate);
+    toolpath->addLinearMove(Geometry::Point3D(chamferEndR, 0.0, chamferEndZ), params_.feedRate);
     
     // Retract to safe position
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, chamferEndR));
+    toolpath->addRapidMove(Geometry::Point3D(chamferEndR, 0.0, safeZ));
     
     return toolpath;
 }
@@ -132,7 +132,7 @@ std::unique_ptr<Toolpath> ChamferingOperation::generateRadiusChamfer() {
     double radius = params_.chamferSize;
     
     // Rapid to safe position
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, startRadius + 2.0));
+    toolpath->addRapidMove(Geometry::Point3D(startRadius + 2.0, 0.0, safeZ));
     
     // Generate arc segments
     for (int i = 0; i <= segments; i++) {
@@ -144,17 +144,17 @@ std::unique_ptr<Toolpath> ChamferingOperation::generateRadiusChamfer() {
         
         if (i == 0) {
             // Position to start
-            toolpath->addRapidMove(Geometry::Point3D(z + 1.0, 0.0, r));
-            toolpath->addLinearMove(Geometry::Point3D(z, 0.0, r), params_.feedRate);
+            toolpath->addRapidMove(Geometry::Point3D(r, 0.0, z + 1.0));
+            toolpath->addLinearMove(Geometry::Point3D(r, 0.0, z), params_.feedRate);
         } else {
             // Cut arc segment
-            toolpath->addLinearMove(Geometry::Point3D(z, 0.0, r), params_.feedRate);
+            toolpath->addLinearMove(Geometry::Point3D(r, 0.0, z), params_.feedRate);
         }
     }
     
     // Retract to safe position
     double finalR = startRadius - radius;
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, finalR));
+    toolpath->addRapidMove(Geometry::Point3D(finalR, 0.0, safeZ));
     
     return toolpath;
 }

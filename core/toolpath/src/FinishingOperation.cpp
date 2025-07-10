@@ -59,22 +59,22 @@ std::unique_ptr<Toolpath> FinishingOperation::generateToolpath(const Geometry::P
     double safeZ = params_.startZ + 5.0; // 5mm clearance
     
     // Safety rapid to start position
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, targetRadius));
+    toolpath->addRapidMove(Geometry::Point3D(targetRadius, 0.0, safeZ));
     
     // Rapid to cutting position
-    toolpath->addRapidMove(Geometry::Point3D(currentZ + 1.0, 0.0, targetRadius));
+    toolpath->addRapidMove(Geometry::Point3D(targetRadius, 0.0, currentZ + 1.0));
     
     // Feed to cutting depth
-    toolpath->addLinearMove(Geometry::Point3D(currentZ, 0.0, targetRadius), params_.feedRate * 60.0);
+    toolpath->addLinearMove(Geometry::Point3D(targetRadius, 0.0, currentZ), params_.feedRate * 60.0);
     
     // Finish down to end Z in single pass
-    toolpath->addLinearMove(Geometry::Point3D(endZ, 0.0, targetRadius), params_.feedRate * 60.0);
+    toolpath->addLinearMove(Geometry::Point3D(targetRadius, 0.0, endZ), params_.feedRate * 60.0);
     
     // Retract
-    toolpath->addRapidMove(Geometry::Point3D(endZ - 1.0, 0.0, targetRadius));
+    toolpath->addRapidMove(Geometry::Point3D(targetRadius, 0.0, endZ - 1.0));
     
     // Return to safe position
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, targetRadius));
+    toolpath->addRapidMove(Geometry::Point3D(targetRadius, 0.0, safeZ));
     
     return toolpath;
 }

@@ -212,37 +212,37 @@ std::unique_ptr<Toolpath> ContouringOperation::generateFacingPass(
     
     // Rapid to start position (safe height above face)
     gp_Pnt startPos(maxZ + params.safetyHeight, 0.0, currentRadius);
-    toolpath->addRapidMove(Geometry::Point3D(startPos.X(), startPos.Y(), startPos.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(startPos.Z(), startPos.Y(), startPos.X()));
     
     // Rapid down to clearance
     gp_Pnt clearancePos(maxZ + params.clearanceDistance, 0.0, currentRadius);
-    toolpath->addRapidMove(Geometry::Point3D(clearancePos.X(), clearancePos.Y(), clearancePos.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(clearancePos.Z(), clearancePos.Y(), clearancePos.X()));
     
     // Generate facing passes
     while (currentRadius > 0.1) { // Stop near center
         // Feed to face
         gp_Pnt faceStart(maxZ, 0.0, currentRadius);
         toolpath->addLinearMove(
-            Geometry::Point3D(faceStart.X(), faceStart.Y(), faceStart.Z()),
+            Geometry::Point3D(faceStart.Z(), faceStart.Y(), faceStart.X()),
             tool->getCuttingParameters().feedRate * 60.0); // Convert mm/rev to mm/min
         
         // Face across to center (or inner radius)
         double targetRadius = std::max(0.0, currentRadius - facingDepth);
         gp_Pnt faceEnd(maxZ, 0.0, targetRadius);
         toolpath->addLinearMove(
-            Geometry::Point3D(faceEnd.X(), faceEnd.Y(), faceEnd.Z()),
+            Geometry::Point3D(faceEnd.Z(), faceEnd.Y(), faceEnd.X()),
             tool->getCuttingParameters().feedRate * 60.0); // Convert mm/rev to mm/min
         
         // Rapid back to clearance
         gp_Pnt retractPos(maxZ + params.clearanceDistance, 0.0, targetRadius);
-        toolpath->addRapidMove(Geometry::Point3D(retractPos.X(), retractPos.Y(), retractPos.Z()));
+        toolpath->addRapidMove(Geometry::Point3D(retractPos.Z(), retractPos.Y(), retractPos.X()));
         
         currentRadius = targetRadius;
     }
     
     // Return to safe position
     gp_Pnt safePos(maxZ + params.safetyHeight, 0.0, 0.0);
-    toolpath->addRapidMove(Geometry::Point3D(safePos.X(), safePos.Y(), safePos.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(safePos.Z(), safePos.Y(), safePos.X()));
     
     return toolpath;
 }
@@ -276,7 +276,7 @@ std::unique_ptr<Toolpath> ContouringOperation::generateRoughingPass(
     
     // Start from safe position
     gp_Pnt startPos(maxZ + params.safetyHeight, 0.0, maxRadius + params.clearanceDistance);
-    toolpath->addRapidMove(Geometry::Point3D(startPos.X(), startPos.Y(), startPos.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(startPos.Z(), startPos.Y(), startPos.X()));
     
     // Generate roughing passes from outside radius inward
     double currentRadius = maxRadius;
@@ -284,12 +284,12 @@ std::unique_ptr<Toolpath> ContouringOperation::generateRoughingPass(
     while (currentRadius > stockAllowance) {
         // Rapid to start of pass
         gp_Pnt passStart(maxZ + params.clearanceDistance, 0.0, currentRadius);
-        toolpath->addRapidMove(Geometry::Point3D(passStart.X(), passStart.Y(), passStart.Z()));
+        toolpath->addRapidMove(Geometry::Point3D(passStart.Z(), passStart.Y(), passStart.X()));
         
         // Feed down to cutting depth
         gp_Pnt cutStart(maxZ, 0.0, currentRadius);
         toolpath->addLinearMove(
-            Geometry::Point3D(cutStart.X(), cutStart.Y(), cutStart.Z()),
+            Geometry::Point3D(cutStart.Z(), cutStart.Y(), cutStart.X()),
             tool->getCuttingParameters().feedRate * 60.0); // Convert mm/rev to mm/min
         
         // Follow profile with offset for stock allowance
@@ -298,7 +298,7 @@ std::unique_ptr<Toolpath> ContouringOperation::generateRoughingPass(
             if (offsetRadius <= currentRadius) {
                 gp_Pnt cutPoint(point.x, 0.0, offsetRadius);
                 toolpath->addLinearMove(
-                    Geometry::Point3D(cutPoint.X(), cutPoint.Y(), cutPoint.Z()),
+                    Geometry::Point3D(cutPoint.Z(), cutPoint.Y(), cutPoint.X()),
                     tool->getCuttingParameters().feedRate * 60.0); // Convert mm/rev to mm/min
             }
         }
@@ -309,7 +309,7 @@ std::unique_ptr<Toolpath> ContouringOperation::generateRoughingPass(
     
     // Return to safe position
     gp_Pnt endPos(maxZ + params.safetyHeight, 0.0, maxRadius + params.clearanceDistance);
-    toolpath->addRapidMove(Geometry::Point3D(endPos.X(), endPos.Y(), endPos.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(endPos.Z(), endPos.Y(), endPos.X()));
     
     return toolpath;
 }
@@ -336,18 +336,18 @@ std::unique_ptr<Toolpath> ContouringOperation::generateFinishingPass(
     
     // Start from safe position
     gp_Pnt startPos(maxZ + params.safetyHeight, 0.0, maxRadius + params.clearanceDistance);
-    toolpath->addRapidMove(Geometry::Point3D(startPos.X(), startPos.Y(), startPos.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(startPos.Z(), startPos.Y(), startPos.X()));
     
     // Rapid to start of finishing pass
     gp_Pnt finishStart(maxZ + params.clearanceDistance, 0.0, maxRadius);
-    toolpath->addRapidMove(Geometry::Point3D(finishStart.X(), finishStart.Y(), finishStart.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(finishStart.Z(), finishStart.Y(), finishStart.X()));
     
     // Feed to first profile point
     if (!profile.empty()) {
         const auto& firstPoint = profile.front();
         gp_Pnt firstCut(firstPoint.x, 0.0, firstPoint.z);
         toolpath->addLinearMove(
-            Geometry::Point3D(firstCut.X(), firstCut.Y(), firstCut.Z()),
+            Geometry::Point3D(firstCut.Z(), firstCut.Y(), firstCut.X()),
             params.finishingParams.feedRate);
         
         // Follow the exact profile for finishing
@@ -355,14 +355,14 @@ std::unique_ptr<Toolpath> ContouringOperation::generateFinishingPass(
             const auto& point = profile[i];
             gp_Pnt cutPoint(point.x, 0.0, point.z);
             toolpath->addLinearMove(
-                Geometry::Point3D(cutPoint.X(), cutPoint.Y(), cutPoint.Z()),
+                Geometry::Point3D(cutPoint.Z(), cutPoint.Y(), cutPoint.X()),
                 params.finishingParams.feedRate);
         }
     }
     
     // Return to safe position
     gp_Pnt endPos(maxZ + params.safetyHeight, 0.0, maxRadius + params.clearanceDistance);
-    toolpath->addRapidMove(Geometry::Point3D(endPos.X(), endPos.Y(), endPos.Z()));
+    toolpath->addRapidMove(Geometry::Point3D(endPos.Z(), endPos.Y(), endPos.X()));
     
     return toolpath;
 }

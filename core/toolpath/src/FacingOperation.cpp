@@ -93,7 +93,7 @@ std::unique_ptr<Toolpath> FacingOperation::generateMultiPassFacing() {
     int roughingPasses = static_cast<int>(std::floor((facingAllowance - params_.stockAllowance) / params_.depthOfCut));
     
     // Rapid to safe position
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, params_.startRadius + 5.0));
+    toolpath->addRapidMove(Geometry::Point3D(params_.startRadius + 5.0, 0.0, safeZ));
     
     // Roughing passes
     for (int i = 0; i < roughingPasses; i++) {
@@ -113,7 +113,7 @@ std::unique_ptr<Toolpath> FacingOperation::generateMultiPassFacing() {
     }
     
     // Return to safe position
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, params_.endRadius));
+    toolpath->addRapidMove(Geometry::Point3D(params_.endRadius, 0.0, safeZ));
     
     return toolpath;
 }
@@ -124,13 +124,13 @@ std::unique_ptr<Toolpath> FacingOperation::generateSinglePassFacing() {
     double safeZ = params_.startPosition + params_.safetyHeight;
     
     // Rapid to safe position
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, params_.startRadius + 5.0));
+    toolpath->addRapidMove(Geometry::Point3D(params_.startRadius + 5.0, 0.0, safeZ));
     
     // Single facing pass
     addFacingPass(toolpath.get(), params_.endPosition, params_.feedRate);
     
     // Return to safe position
-    toolpath->addRapidMove(Geometry::Point3D(safeZ, 0.0, params_.endRadius));
+    toolpath->addRapidMove(Geometry::Point3D(params_.endRadius, 0.0, safeZ));
     
     return toolpath;
 }
@@ -139,27 +139,27 @@ void FacingOperation::addFacingPass(Toolpath* toolpath, double zPosition, double
     double currentRadius = params_.startRadius;
     double endRadius = params_.endRadius;
     
-    // Face from outside to center - CORRECTED LATHE COORDINATE SYSTEM
-    // Point3D(axial_position, 0, radius) where axial is along spindle axis
+    // Face from outside to center using lathe coordinates
+    // Point3D(radius, 0, axial_position) where axial is along spindle axis
     while (currentRadius > endRadius) {
         // Rapid to cutting position - approach from safe distance above the work surface
-        toolpath->addRapidMove(Geometry::Point3D(zPosition + 1.0, 0.0, currentRadius), 
+        toolpath->addRapidMove(Geometry::Point3D(currentRadius, 0.0, zPosition + 1.0),
                               OperationType::Facing, "Rapid to facing position");
-        
+
         // Feed to face surface - maintain Y=0 for lathe constraint
-        toolpath->addLinearMove(Geometry::Point3D(zPosition, 0.0, currentRadius), feedRate, 
+        toolpath->addLinearMove(Geometry::Point3D(currentRadius, 0.0, zPosition), feedRate,
                                OperationType::Facing, "Feed to face surface");
         
         // Calculate next radius
         double nextRadius = std::max(endRadius, currentRadius - params_.stepover);
         
         // Face across to next radius - cutting move across face (reducing radius)
-        toolpath->addLinearMove(Geometry::Point3D(zPosition, 0.0, nextRadius), feedRate,
+        toolpath->addLinearMove(Geometry::Point3D(nextRadius, 0.0, zPosition), feedRate,
                                OperationType::Facing, "Face to radius " + std::to_string(nextRadius));
         
         // Retract slightly for next pass - stay in XZ plane
         if (nextRadius > endRadius) {
-            toolpath->addRapidMove(Geometry::Point3D(zPosition + 0.5, 0.0, nextRadius),
+            toolpath->addRapidMove(Geometry::Point3D(nextRadius, 0.0, zPosition + 0.5),
                                   OperationType::Facing, "Retract for next pass");
         }
         
