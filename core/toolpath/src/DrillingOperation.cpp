@@ -55,14 +55,10 @@ std::string DrillingOperation::validateParameters(const Parameters& params) {
 }
 
 std::unique_ptr<Toolpath> DrillingOperation::generateToolpath(const Geometry::Part& part) {
-    // Create drilling toolpath based on parameters
-    if (params_.usePeckDrilling && params_.holeDepth > params_.peckDepth * 2.0) {
-        return generatePeckDrilling();
-    } else if (params_.holeDepth > 50.0) {
-        return generateDeepHoleDrilling();
-    } else {
-        return generateSimpleDrilling();
-    }
+    // Return empty toolpath - Drilling operation not part of core focus
+    // Core focus: external roughing, external finishing, facing, and parting only
+    auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+    return toolpath;
 }
 
 std::unique_ptr<Toolpath> DrillingOperation::generateSimpleDrilling() {

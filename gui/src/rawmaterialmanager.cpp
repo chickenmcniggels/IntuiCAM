@@ -12,6 +12,7 @@
 #include <Graphic3d_NameOfMaterial.hxx>
 #include <Graphic3d_MaterialAspect.hxx>
 #include <Quantity_Color.hxx>
+#include <Prs3d_Drawer.hxx>
 #include <Bnd_Box.hxx>
 #include <BRepBndLib.hxx>
 #include <BRepTools.hxx>
@@ -221,12 +222,18 @@ void RawMaterialManager::setRawMaterialMaterial(Handle(AIS_Shape) rawMaterialAIS
     if (rawMaterialAIS.IsNull()) {
         return;
     }
-    
+
     // Set transparent material for raw material
     Graphic3d_MaterialAspect rawMaterial(Graphic3d_NOM_BRASS);
     rawMaterial.SetColor(Quantity_Color(0.8, 0.7, 0.3, Quantity_TOC_RGB));
     rawMaterial.SetTransparency(m_rawMaterialTransparency);
-    
+
+    // Ensure the raw material is displayed shaded without boundary edges
+    Handle(Prs3d_Drawer) drawer = rawMaterialAIS->Attributes();
+    if (!drawer.IsNull()) {
+        drawer->SetFaceBoundaryDraw(Standard_False);
+    }
+
     rawMaterialAIS->SetMaterial(rawMaterial);
     rawMaterialAIS->SetTransparency(m_rawMaterialTransparency);
 }

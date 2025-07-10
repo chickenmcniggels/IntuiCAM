@@ -19,6 +19,7 @@ OperationTileWidget::OperationTileWidget(const QString& operationName, bool enab
     , m_enabled(enabledByDefault)
     , m_expanded(false)
     , m_isHovered(false)
+    , m_selected(false)
     , m_subTileContainer(nullptr)
     , m_subTileLayout(nullptr)
     , m_mainLayout(nullptr)
@@ -31,45 +32,58 @@ OperationTileWidget::OperationTileWidget(const QString& operationName, bool enab
     , m_contextMenu(nullptr)
     , m_selectToolAction(nullptr)
     , m_toggleAction(nullptr)
+    , m_defaultIconSize(32)
+    , m_highlightedIconSize(40)
 {
     // Set up colors based on operation type
     if (operationName == "Facing") {
-        m_enabledColor = QColor("#4CAF50");  // Green
+        // Bright green matching toolpath color scheme
+        m_enabledColor = QColor("#00CC33");
         m_description = "Face the front of the part";
     } else if (operationName == "Internal Features") {
         m_enabledColor = QColor("#FF9800");  // Orange
         m_description = "Drilling, boring, and internal operations";
     } else if (operationName == "Roughing") {
-        m_enabledColor = QColor("#2196F3");  // Blue
+        // External roughing - red in toolpath display
+        m_enabledColor = QColor("#E61A1A");
         m_description = "Remove bulk material quickly";
     } else if (operationName == "Finishing") {
-        m_enabledColor = QColor("#9C27B0");  // Purple
+        // External finishing - blue in toolpath display
+        m_enabledColor = QColor("#0066E6");
         m_description = "Achieve final surface finish";
     } else if (operationName == "Grooving") {
-        m_enabledColor = QColor("#607D8B");  // Blue Grey
+        // External grooving - magenta in toolpath display
+        m_enabledColor = QColor("#E600E6");
         m_description = "Cut grooves and undercuts";
     } else if (operationName == "Threading") {
-        m_enabledColor = QColor("#E91E63");  // Pink
+        // Threading - purple-blue in toolpath display
+        m_enabledColor = QColor("#8000E6");
         m_description = "Cut internal and external threads";
     } else if (operationName == "Chamfering") {
-        m_enabledColor = QColor("#795548");  // Brown
+        // Chamfering - cyan in toolpath display
+        m_enabledColor = QColor("#00E6E6");
         m_description = "Add chamfers and bevels";
     } else if (operationName == "Parting") {
-        m_enabledColor = QColor("#FF5722");  // Deep Orange
+        // Parting - orange in toolpath display
+        m_enabledColor = QColor("#FF8000");
         m_description = "Cut off the finished part";
     } else {
         // Sub-operation colors
         if (operationName == "Drilling") {
-            m_enabledColor = QColor("#FFC107");  // Amber
+            // Drilling - yellow in toolpath display
+            m_enabledColor = QColor("#E6E600");
             m_description = "Drill holes";
         } else if (operationName == "Internal Roughing") {
-            m_enabledColor = QColor("#03A9F4");  // Light Blue
+            // Internal roughing - dark red in toolpath display
+            m_enabledColor = QColor("#B3004D");
             m_description = "Rough internal features";
         } else if (operationName == "Internal Finishing") {
-            m_enabledColor = QColor("#673AB7");  // Deep Purple
+            // Internal finishing - teal in toolpath display
+            m_enabledColor = QColor("#0099B3");
             m_description = "Finish internal surfaces";
         } else if (operationName == "Internal Grooving") {
-            m_enabledColor = QColor("#455A64");  // Blue Grey Dark
+            // Internal grooving - purple in toolpath display
+            m_enabledColor = QColor("#B300B3");
             m_description = "Cut internal grooves";
         } else {
             m_enabledColor = QColor("#757575");  // Grey
@@ -81,6 +95,7 @@ OperationTileWidget::OperationTileWidget(const QString& operationName, bool enab
     m_hoverColor = m_enabledColor.lighter(110);
     m_textColor = QColor("#212121");  // Dark grey
     m_borderColor = QColor("#BDBDBD");  // Medium grey
+    m_selectionBorderColor = QColor("#FFD700");  // Gold for selected highlight
     
     setupUI();
     updateColors();
@@ -131,13 +146,45 @@ void OperationTileWidget::setupUI()
     m_mainLayout->setContentsMargins(8, 8, 8, 8);
     m_mainLayout->setSpacing(4);
     
-    // Icon (placeholder for now)
+    // Icon corresponding to the operation
     m_iconLabel = new QLabel();
     m_iconLabel->setAlignment(Qt::AlignCenter);
-    m_iconLabel->setFixedSize(32, 32);
-    m_iconLabel->setStyleSheet("QLabel { border: 1px solid #ccc; border-radius: 16px; background-color: white; }");
-    m_iconLabel->setText("🔧");  // Placeholder emoji
+    m_iconLabel->setFixedSize(m_defaultIconSize, m_defaultIconSize);
+    m_iconLabel->setStyleSheet(QString("QLabel { border: 1px solid #ccc; border-radius: %1px; background-color: white; }")
+                                  .arg(m_defaultIconSize / 2));
+
+    QString iconText;
+    if (m_operationName == "Facing") {
+        iconText = "📐";
+    } else if (m_operationName == "Internal Features") {
+        iconText = "🕳";
+    } else if (m_operationName == "Roughing") {
+        iconText = "🪓";
+    } else if (m_operationName == "Finishing") {
+        iconText = "✨";
+    } else if (m_operationName == "Grooving") {
+        iconText = "🪛";
+    } else if (m_operationName == "Threading") {
+        iconText = "🔩";
+    } else if (m_operationName == "Chamfering") {
+        iconText = "◢";
+    } else if (m_operationName == "Parting") {
+        iconText = "✂";
+    } else if (m_operationName == "Drilling") {
+        iconText = "🛠";
+    } else if (m_operationName == "Internal Roughing") {
+        iconText = "⛏";
+    } else if (m_operationName == "Internal Finishing") {
+        iconText = "✨";
+    } else if (m_operationName == "Internal Grooving") {
+        iconText = "🪛";
+    } else {
+        iconText = "🔧";  // Fallback
+    }
+
+    m_iconLabel->setText(iconText);
     m_mainLayout->addWidget(m_iconLabel);
+    updateIconSize();
     
     // Operation name
     m_nameLabel = new QLabel(m_operationName);
@@ -194,12 +241,16 @@ void OperationTileWidget::setEnabled(bool enabled)
 void OperationTileWidget::setIcon(const QString& iconPath)
 {
     m_iconPath = iconPath;
-    if (m_iconLabel && !iconPath.isEmpty()) {
-        QPixmap pixmap(iconPath);
-        if (!pixmap.isNull()) {
-            m_iconLabel->setPixmap(pixmap.scaled(24, 24, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-            m_iconLabel->setText("");
-        }
+    if (!m_iconLabel || iconPath.isEmpty()) return;
+
+    QPixmap pixmap(iconPath);
+    if (!pixmap.isNull()) {
+        m_iconLabel->setPixmap(pixmap.scaled(24, 24, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        m_iconLabel->setText("");
+    } else {
+        // If pixmap fails to load, treat the string as emoji/text
+        m_iconLabel->setPixmap(QPixmap());
+        m_iconLabel->setText(iconPath);
     }
 }
 
@@ -264,6 +315,18 @@ void OperationTileWidget::setExpanded(bool expanded)
     emit expandedChanged(m_operationName, expanded);
 }
 
+void OperationTileWidget::setSelected(bool selected)
+{
+    if (m_selected == selected) return;
+
+    m_selected = selected;
+    updateColors();
+    updateIconSize();
+
+    // Simply repaint to reflect the new border color
+    update();
+}
+
 void OperationTileWidget::updateColors()
 {
     QColor targetColor = m_enabled ? m_enabledColor : m_disabledColor;
@@ -272,16 +335,14 @@ void OperationTileWidget::updateColors()
     }
     
     m_backgroundColor = targetColor;
-    
-    // Update text color based on background
-    qreal luminance = 0.299 * targetColor.redF() + 0.587 * targetColor.greenF() + 0.114 * targetColor.blueF();
-    QColor textColor = luminance > 0.6 ? QColor("#212121") : QColor("#FFFFFF");
-    
+
+    // Use a uniform text color for all tiles
     if (m_nameLabel) {
-        m_nameLabel->setStyleSheet(QString("color: %1;").arg(textColor.name()));
+        QString fontWeight = m_selected ? "bold" : "normal";
+        m_nameLabel->setStyleSheet(QString("color: %1; font-weight: %2;").arg(m_textColor.name(), fontWeight));
     }
     if (m_toolLabel) {
-        m_toolLabel->setStyleSheet(QString("color: %1;").arg(textColor.name()));
+        m_toolLabel->setStyleSheet(QString("color: %1;").arg(m_textColor.name()));
     }
     
     update();
@@ -311,6 +372,17 @@ void OperationTileWidget::setBackgroundColor(const QColor& color)
     update();
 }
 
+void OperationTileWidget::updateIconSize()
+{
+    if (!m_iconLabel)
+        return;
+
+    int size = (m_isHovered || m_selected) ? m_highlightedIconSize : m_defaultIconSize;
+    m_iconLabel->setFixedSize(size, size);
+    m_iconLabel->setStyleSheet(QString("QLabel { border: 1px solid #ccc; border-radius: %1px; background-color: white; }")
+                                  .arg(size / 2));
+}
+
 QSize OperationTileWidget::sizeHint() const
 {
     return QSize(140, 100);
@@ -329,12 +401,18 @@ void OperationTileWidget::paintEvent(QPaintEvent* event)
     // Draw background
     QRect rect = this->rect().adjusted(1, 1, -1, -1);
     painter.setBrush(QBrush(m_backgroundColor));
-    
+
     QColor borderColor = m_enabled ? m_enabledColor.darker(120) : m_borderColor;
+
+    // Selected tiles get a distinct border color
+    if (m_selected && m_enabled) {
+        borderColor = m_selectionBorderColor;
+    }
+
     painter.setPen(QPen(borderColor, 2));
     painter.drawRoundedRect(rect, 8, 8);
-    
-    // Draw selection indicator if enabled
+
+    // Draw simple enabled indicator
     if (m_enabled) {
         QRect indicator = QRect(rect.right() - 12, rect.top() + 4, 8, 8);
         painter.setBrush(QBrush(Qt::white));
@@ -370,6 +448,7 @@ void OperationTileWidget::enterEvent(QEnterEvent* event)
 {
     m_isHovered = true;
     updateColors();
+    updateIconSize();
     
     // Show description tooltip
     if (!m_description.isEmpty()) {
@@ -383,6 +462,7 @@ void OperationTileWidget::leaveEvent(QEvent* event)
 {
     m_isHovered = false;
     updateColors();
+    updateIconSize();
     QFrame::leaveEvent(event);
 }
 
@@ -411,6 +491,7 @@ OperationTileContainer::OperationTileContainer(QWidget* parent)
     , m_primaryRowLayout(nullptr)
     , m_secondaryRowLayout(nullptr)
     , m_internalFeaturesTile(nullptr)
+    , m_selectedOperation(QString())
 {
     setupUI();
 }
@@ -565,24 +646,36 @@ QString OperationTileContainer::getTileSelectedTool(const QString& operationName
     return tile ? tile->selectedTool() : QString();
 }
 
-void OperationTileContainer::arrangeInternalFeatures()
+void OperationTileContainer::setSelectedOperation(const QString& operationName)
 {
-    if (!m_internalFeaturesTile) return;
+    if (m_selectedOperation == operationName) return;
     
-    // When Internal Features is expanded, show sub-tiles in secondary row
-    connect(m_internalFeaturesTile, &OperationTileWidget::expandedChanged,
-            [this](const QString&, bool expanded) {
-                // Move sub-tiles to secondary row when expanded
-                for (OperationTileWidget* subTile : m_internalFeaturesTile->subTiles()) {
-                    if (expanded) {
-                        m_secondaryRowLayout->addWidget(subTile);
-                        subTile->show();
-                    } else {
-                        m_secondaryRowLayout->removeWidget(subTile);
-                        subTile->hide();
-                    }
-                }
-            });
+    // Clear previous selection
+    if (!m_selectedOperation.isEmpty()) {
+        OperationTileWidget* previousTile = getTile(m_selectedOperation);
+        if (previousTile) {
+            previousTile->setSelected(false);
+        }
+    }
+    
+    // Set new selection
+    m_selectedOperation = operationName;
+    if (!operationName.isEmpty()) {
+        OperationTileWidget* newTile = getTile(operationName);
+        if (newTile && newTile->isEnabled()) {
+            newTile->setSelected(true);
+        }
+    }
+}
+
+QString OperationTileContainer::getSelectedOperation() const
+{
+    return m_selectedOperation;
+}
+
+void OperationTileContainer::clearSelection()
+{
+    setSelectedOperation(QString());
 }
 
 void OperationTileContainer::onTileEnabledChanged(const QString& operationName, bool enabled)
@@ -603,6 +696,26 @@ void OperationTileContainer::onTileToolSelectionRequested(const QString& operati
 void OperationTileContainer::onTileExpandedChanged(const QString& operationName, bool expanded)
 {
     emit operationExpandedChanged(operationName, expanded);
+}
+
+void OperationTileContainer::arrangeInternalFeatures()
+{
+    if (!m_internalFeaturesTile) return;
+    
+    // When Internal Features is expanded, show sub-tiles in secondary row
+    connect(m_internalFeaturesTile, &OperationTileWidget::expandedChanged,
+            [this](const QString&, bool expanded) {
+                // Move sub-tiles to secondary row when expanded
+                for (OperationTileWidget* subTile : m_internalFeaturesTile->subTiles()) {
+                    if (expanded) {
+                        m_secondaryRowLayout->addWidget(subTile);
+                        subTile->show();
+                    } else {
+                        m_secondaryRowLayout->removeWidget(subTile);
+                        subTile->hide();
+                    }
+                }
+            });
 }
 
 } // namespace GUI

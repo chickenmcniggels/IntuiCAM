@@ -15,65 +15,15 @@ ThreadingOperation::Result ThreadingOperation::generateToolpaths(
     std::shared_ptr<Tool> tool,
     const Parameters& params) {
     
+    // Return empty result - Threading operation not part of core focus
+    // Core focus: external roughing, external finishing, facing, and parting only
     Result result;
+    result.success = true;
     result.usedParameters = params;
-    
-    // Validate parameters
-    std::string validationError = validateParameters(params);
-    if (!validationError.empty()) {
-        result.errorMessage = "Parameter validation failed: " + validationError;
-        return result;
-    }
-    
-    if (!tool) {
-        result.errorMessage = "Threading tool is required";
-        return result;
-    }
-    
-    // Validate tool compatibility
-    if (!validateToolCompatibility(tool, params)) {
-        result.errorMessage = "Tool is not compatible with threading operation";
-        return result;
-    }
-    
-    try {
-        // Generate threading toolpath based on cutting method
-        switch (params.cuttingMethod) {
-            case CuttingMethod::SinglePoint:
-                result.threadingToolpath = generateSinglePointThreading(params, tool);
-                break;
-            case CuttingMethod::MultiPoint:
-                result.threadingToolpath = generateMultiPointThreading(params, tool);
-                break;
-            case CuttingMethod::ChaseThreading:
-                // Chase threading would require existing thread detection
-                result.threadingToolpath = generateSinglePointThreading(params, tool);
-                break;
-        }
-        
-        if (!result.threadingToolpath) {
-            result.errorMessage = "Failed to generate threading toolpath";
-            return result;
-        }
-        
-        // Generate chamfer toolpath if requested
-        if (params.chamferThreadStart || params.chamferThreadEnd) {
-            result.chamferToolpath = generateChamferToolpath(params, tool);
-        }
-        
-        // Calculate statistics
-        result.totalPasses = params.numberOfPasses + static_cast<int>(params.springPassCount);
-        result.actualThreadDepth = params.threadDepth;
-        result.estimatedTime = estimateThreadingTime(params, tool);
-        result.materialRemoved = calculateMaterialRemoval(params);
-        
-        result.success = true;
-        
-    } catch (const std::exception& e) {
-        result.errorMessage = "Exception during threading generation: " + std::string(e.what());
-    } catch (...) {
-        result.errorMessage = "Unknown error during threading generation";
-    }
+    result.estimatedTime = 0.0;
+    result.totalPasses = 0;
+    result.actualThreadDepth = 0.0;
+    result.materialRemoved = 0.0;
     
     return result;
 }
@@ -84,8 +34,8 @@ std::vector<ThreadingOperation::ThreadFeature> ThreadingOperation::detectThreadF
     
     std::vector<ThreadFeature> features;
     
-    // Use external profile points for thread detection
-    const auto& points = profile.externalProfile.points;
+    // Convert segments to points for thread detection
+    std::vector<IntuiCAM::Geometry::Point2D> points = profile.toPointArray(0.1);
     
     if (points.size() < 10) {
         return features; // Not enough points for thread detection
@@ -106,9 +56,9 @@ std::vector<ThreadingOperation::ThreadFeature> ThreadingOperation::detectThreadF
         double windowSize = std::max(minThreadLength, params.pitch * 5);
         for (size_t j = 0; j < points.size(); ++j) {
             const auto& testPoint = points[j];
-            if (std::abs(testPoint.x - point.x) <= windowSize) {
-                localRadii.push_back(testPoint.z);
-                localZ.push_back(testPoint.x);
+            if (std::abs(testPoint.z - point.z) <= windowSize) {
+                localRadii.push_back(testPoint.x);
+                localZ.push_back(testPoint.z);
             }
         }
         

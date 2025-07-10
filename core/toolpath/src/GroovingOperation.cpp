@@ -9,14 +9,9 @@ GroovingOperation::GroovingOperation(const std::string& name, std::shared_ptr<To
 }
 
 std::unique_ptr<Toolpath> GroovingOperation::generateToolpath(const Geometry::Part& part) {
-    // Create a basic grooving toolpath
+    // Return empty toolpath - Grooving operation not part of core focus
+    // Core focus: external roughing, external finishing, facing, and parting only
     auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
-    
-    // Add basic grooving moves (placeholder)
-    toolpath->addRapidMove(Geometry::Point3D(0.0, 0.0, 10.0));
-    toolpath->addLinearMove(Geometry::Point3D(0.0, 0.0, 0.0), 100.0);
-    toolpath->addRapidMove(Geometry::Point3D(0.0, 0.0, 10.0));
-    
     return toolpath;
 }
 

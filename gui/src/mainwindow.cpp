@@ -369,6 +369,16 @@ void MainWindow::setupConnections()
                 this, &MainWindow::handleOperationTileToolSelectionRequested);
         connect(m_operationTileContainer, &IntuiCAM::GUI::OperationTileContainer::operationExpandedChanged,
                 this, &MainWindow::handleOperationTileExpandedChanged);
+        
+        // Initialize default operation selection - select "Facing" if it's enabled
+        QTimer::singleShot(100, this, [this]() {
+            if (m_operationTileContainer && m_setupConfigPanel) {
+                if (m_operationTileContainer->isTileEnabled("Facing")) {
+                    m_operationTileContainer->setSelectedOperation("Facing");
+                    m_setupConfigPanel->showOperationWidget("Facing");
+                }
+            }
+        });
     }
     
     // Tool management connections
@@ -659,6 +669,9 @@ void MainWindow::handleViewModeChanged(ViewMode mode)
             m_toggleViewModeAction->setText(tr("Switch to &Lathe View"));
             m_toggleViewModeAction->setStatusTip(tr("Switch to XZ plane (lathe) view"));
         }
+        if (m_viewModeOverlayButton) {
+            m_viewModeOverlayButton->setText("Lathe View");
+        }
         statusBar()->showMessage("Switched to 3D view mode", 2000);
         if (m_outputWindow) {
             m_outputWindow->append("View mode: 3D - Full rotation and zoom available");
@@ -667,6 +680,9 @@ void MainWindow::handleViewModeChanged(ViewMode mode)
         if (m_toggleViewModeAction) {
             m_toggleViewModeAction->setText(tr("Switch to &3D View"));
             m_toggleViewModeAction->setStatusTip(tr("Switch to full 3D view"));
+        }
+        if (m_viewModeOverlayButton) {
+            m_viewModeOverlayButton->setText("3D View");
         }
         statusBar()->showMessage("Switched to lathe XZ view mode", 2000);
         if (m_outputWindow) {
@@ -941,37 +957,22 @@ QWidget* MainWindow::createSetupTab()
     m_operationTileContainer->setMaximumHeight(150);
     rightLayout->addWidget(m_operationTileContainer);
     
+    // Set default selected operation (Facing is enabled by default)
+    m_operationTileContainer->setSelectedOperation("Facing");
+    if (m_setupConfigPanel) {
+        m_setupConfigPanel->showOperationWidget("Facing");
+    }
+    
     rightLayout->addWidget(operationFrame);
     
-    // Create toolpath legend widget
-    m_toolpathLegendWidget = new ToolpathLegendWidget();
-    m_toolpathLegendWidget->setMaximumWidth(250);
-    m_toolpathLegendWidget->setMinimumHeight(300);
-    
-    // Add to main splitter (left panel, viewer, legend)
+    // Add setup panel and viewer to main splitter
     m_mainSplitter->addWidget(m_setupConfigPanel);
     m_mainSplitter->addWidget(rightWidget);
-    m_mainSplitter->addWidget(m_toolpathLegendWidget);
-    
-    // Set splitter sizes (left panel 30%, viewport 60%, legend 10%)
-    m_mainSplitter->setSizes({350, 700, 250});
+
+    // Set splitter sizes (left panel 30%, viewport 70%)
+    m_mainSplitter->setSizes({350, 800});
     
     setupLayout->addWidget(m_mainSplitter);
-    
-    // Create legacy components for backward compatibility (initially hidden)
-    m_leftSplitter = new QSplitter(Qt::Vertical);
-    m_leftSplitter->hide(); // Hide initially
-    
-    m_projectTree = new QTreeWidget;
-    m_projectTree->setHeaderLabel("Project");
-    m_projectTree->hide();
-    
-    m_partLoadingPanel = new PartLoadingPanel();
-    m_partLoadingPanel->hide();
-    
-    m_propertiesPanel = new QTextEdit;
-    m_propertiesPanel->hide();
-    
     
     // Connect export button
     connect(exportButton, &QPushButton::clicked, [this]() {
@@ -988,404 +989,6 @@ QWidget* MainWindow::createSetupTab()
     connect(m_simulateButton, &QPushButton::clicked, this, &MainWindow::simulateToolpaths);
     
     return setupWidget;
-}
-
-QWidget* MainWindow::createSimulationTab()
-{
-    QWidget* simulationWidget = new QWidget;
-    QHBoxLayout* layout = new QHBoxLayout(simulationWidget);
-    layout->setContentsMargins(0, 0, 0, 0);
-    
-    // Left panel - simulation controls
-    m_simulationControls = new QWidget;
-    m_simulationControls->setMinimumWidth(300);
-    m_simulationControls->setMaximumWidth(400);
-    
-    QVBoxLayout* controlsLayout = new QVBoxLayout(m_simulationControls);
-    controlsLayout->setContentsMargins(15, 15, 15, 15);
-    controlsLayout->setSpacing(15);
-    
-    // Simulation controls title
-    QLabel* titleLabel = new QLabel("Simulation Controls");
-    QFont titleFont = titleLabel->font();
-    titleFont.setPointSize(14);
-    titleFont.setBold(true);
-    titleLabel->setFont(titleFont);
-    
-    // Playback controls
-    QGroupBox* playbackGroup = new QGroupBox("Playback");
-    QVBoxLayout* playbackLayout = new QVBoxLayout(playbackGroup);
-    
-    QPushButton* playBtn = new QPushButton("▶ Play");
-    QPushButton* pauseBtn = new QPushButton("⏸ Pause");
-    QPushButton* stopBtn = new QPushButton("⏹ Stop");
-    QPushButton* resetBtn = new QPushButton("⏮ Reset");
-    
-    playbackLayout->addWidget(playBtn);
-    playbackLayout->addWidget(pauseBtn);
-    playbackLayout->addWidget(stopBtn);
-    playbackLayout->addWidget(resetBtn);
-    
-    // Export controls
-    QGroupBox* exportGroup = new QGroupBox("Export & Upload");
-    QVBoxLayout* exportLayout = new QVBoxLayout(exportGroup);
-    
-    m_exportGCodeButton = new QPushButton("Export G-Code");
-    m_uploadToMachineButton = new QPushButton("Upload to Machine");
-    
-    // Use default button styling
-    QFont buttonFont = m_exportGCodeButton->font();
-    buttonFont.setWeight(QFont::Medium);
-    m_exportGCodeButton->setFont(buttonFont);
-    m_uploadToMachineButton->setFont(buttonFont);
-    
-    exportLayout->addWidget(m_exportGCodeButton);
-    exportLayout->addWidget(m_uploadToMachineButton);
-    
-    // Simulation info
-    QGroupBox* infoGroup = new QGroupBox("Simulation Info");
-    QVBoxLayout* infoLayout = new QVBoxLayout(infoGroup);
-    
-    QLabel* infoLabel = new QLabel(
-        "• Toolpath visualization\n"
-        "• Material removal simulation\n"
-        "• Collision detection\n"
-        "• Machining time estimation"
-    );
-    infoLayout->addWidget(infoLabel);
-    
-    // Layout controls
-    controlsLayout->addWidget(titleLabel);
-    controlsLayout->addWidget(playbackGroup);
-    controlsLayout->addWidget(exportGroup);
-    controlsLayout->addWidget(infoGroup);
-    controlsLayout->addStretch();
-    
-    // Right side - simulation viewport
-    m_simulationViewport = new QWidget;
-    
-    QVBoxLayout* viewportLayout = new QVBoxLayout(m_simulationViewport);
-    QLabel* placeholderLabel = new QLabel("Simulation Viewport\n\n[Toolpath visualization will be displayed here]");
-    placeholderLabel->setAlignment(Qt::AlignCenter);
-    QFont placeholderFont = placeholderLabel->font();
-    placeholderFont.setPointSize(12);
-    placeholderLabel->setFont(placeholderFont);
-    placeholderLabel->setFrameStyle(QFrame::Box | QFrame::Raised);
-    placeholderLabel->setMargin(40);
-    viewportLayout->addWidget(placeholderLabel);
-    
-    // Connect buttons (skeleton functionality)
-    connect(m_exportGCodeButton, &QPushButton::clicked, [this]() {
-        if (m_outputWindow) {
-            m_outputWindow->append("Exporting G-Code... (not yet implemented)");
-        }
-        statusBar()->showMessage("G-Code export functionality coming soon", 3000);
-    });
-    
-    connect(m_uploadToMachineButton, &QPushButton::clicked, [this]() {
-        if (m_outputWindow) {
-            m_outputWindow->append("Uploading to machine... (not yet implemented)");
-        }
-        statusBar()->showMessage("Machine upload functionality coming soon", 3000);
-        // Switch to Machine tab
-        m_tabWidget->setCurrentIndex(3);
-    });
-    
-    layout->addWidget(m_simulationControls);
-    layout->addWidget(m_simulationViewport, 1);
-    
-    return simulationWidget;
-}
-
-QWidget* MainWindow::createMachineTab()
-{
-    QWidget* machineWidget = new QWidget;
-    QHBoxLayout* controlTabLayout = new QHBoxLayout(machineWidget);
-    controlTabLayout->setContentsMargins(0, 0, 0, 0);
-    
-    // Left panel - machine controls
-    m_machineControlPanel = new QWidget;
-    m_machineControlPanel->setMinimumWidth(300);
-    m_machineControlPanel->setMaximumWidth(400);
-    
-    QVBoxLayout* controlLayout = new QVBoxLayout(m_machineControlPanel);
-    controlLayout->setContentsMargins(15, 15, 15, 15);
-    controlLayout->setSpacing(15);
-    
-    // Machine controls title
-    QLabel* titleLabel = new QLabel("Machine Control");
-    QFont titleFont = titleLabel->font();
-    titleFont.setPointSize(14);
-    titleFont.setBold(true);
-    titleLabel->setFont(titleFont);
-    
-    // Connection status
-    QGroupBox* connectionGroup = new QGroupBox("Connection Status");
-    QVBoxLayout* connectionLayout = new QVBoxLayout(connectionGroup);
-    
-    QLabel* statusLabel = new QLabel("Status: Disconnected");
-    QFont statusFont = statusLabel->font();
-    statusFont.setBold(true);
-    statusLabel->setFont(statusFont);
-    
-    QPushButton* connectBtn = new QPushButton("Connect to Machine");
-    
-    connectionLayout->addWidget(statusLabel);
-    connectionLayout->addWidget(connectBtn);
-    
-    // Machine control buttons
-    QGroupBox* controlGroup = new QGroupBox("Manual Control");
-    QVBoxLayout* manualLayout = new QVBoxLayout(controlGroup);
-    
-    QPushButton* homeBtn = new QPushButton("Home Machine");
-    QPushButton* jogBtn = new QPushButton("Jog Mode");
-    QPushButton* emergencyBtn = new QPushButton("Emergency Stop");
-    
-    // Make emergency button bold and red to indicate importance
-    QFont emergencyFont = emergencyBtn->font();
-    emergencyFont.setBold(true);
-    emergencyBtn->setFont(emergencyFont);
-    emergencyBtn->setStyleSheet(
-        "QPushButton {"
-        "  background-color: #dc3545;"
-        "  color: white;"
-        "  border: none;"
-        "  border-radius: 6px;"
-        "  font-weight: bold;"
-        "  padding: 8px 16px;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: #c82333;"
-        "}"
-        "QPushButton:pressed {"
-        "  background-color: #bd2130;"
-        "}"
-    );
-    
-    manualLayout->addWidget(homeBtn);
-    manualLayout->addWidget(jogBtn);
-    manualLayout->addWidget(emergencyBtn);
-    
-    // Machine info
-    QGroupBox* infoGroup = new QGroupBox("Machine Information");
-    QVBoxLayout* infoLayout = new QVBoxLayout(infoGroup);
-    
-    QLabel* infoLabel = new QLabel(
-        "Model: Not Connected\n"
-        "Position: X: 0.00  Z: 0.00\n"
-        "Spindle: Stopped\n"
-        "Feed Rate: 0 mm/min"
-    );
-    QFont monoFont("Courier", infoLabel->font().pointSize());
-    infoLabel->setFont(monoFont);
-    infoLayout->addWidget(infoLabel);
-    
-    // Layout controls
-    controlLayout->addWidget(titleLabel);
-    controlLayout->addWidget(connectionGroup);
-    controlLayout->addWidget(controlGroup);
-    controlLayout->addWidget(infoGroup);
-    controlLayout->addStretch();
-    
-    // Right side - machine feed/camera view
-    m_machineFeedWidget = new QWidget;
-    
-    QVBoxLayout* feedLayout = new QVBoxLayout(m_machineFeedWidget);
-    QLabel* feedLabel = new QLabel("Machine Camera Feed\n\n[Live feed from CNC machine will be displayed here]");
-    feedLabel->setAlignment(Qt::AlignCenter);
-    QFont feedFont = feedLabel->font();
-    feedFont.setPointSize(12);
-    feedLabel->setFont(feedFont);
-    feedLabel->setFrameStyle(QFrame::Box | QFrame::Raised);
-    feedLabel->setMargin(40);
-    feedLayout->addWidget(feedLabel);
-    
-    // Connect buttons (skeleton functionality)
-    connect(connectBtn, &QPushButton::clicked, [this, statusLabel]() {
-        if (m_outputWindow) {
-            m_outputWindow->append("Attempting to connect to machine... (not yet implemented)");
-        }
-        statusLabel->setText("Status: Connecting...");
-        statusBar()->showMessage("Machine connection functionality coming soon", 3000);
-    });
-    
-    controlTabLayout->addWidget(m_machineControlPanel);
-    controlTabLayout->addWidget(m_machineFeedWidget, 1);
-    
-    return machineWidget;
-}
-
-void MainWindow::createViewModeOverlayButton(QWidget *parent)
-{
-    // Create the buttons as regular widgets instead of overlays
-    m_viewModeOverlayButton = new QPushButton("Switch to Lathe View", parent);
-    m_viewModeOverlayButton->setMaximumWidth(150);
-    m_viewModeOverlayButton->setMaximumHeight(30);
-
-    // Create visibility tool button with menu
-    m_visibilityButton = new QToolButton(parent);
-    m_visibilityButton->setText("Visibility");
-    m_visibilityButton->setPopupMode(QToolButton::InstantPopup);
-    m_visibilityButton->setMaximumHeight(30);
-
-    m_visibilityMenu = new QMenu(m_visibilityButton);
-    m_showChuckAction = m_visibilityMenu->addAction("Show Chuck");
-    m_showChuckAction->setCheckable(true);
-    m_showChuckAction->setChecked(true);
-    m_showRawMaterialAction = m_visibilityMenu->addAction("Show Raw Material");
-    m_showRawMaterialAction->setCheckable(true);
-    m_showRawMaterialAction->setChecked(true);
-    m_showToolpathsAction = m_visibilityMenu->addAction("Show Toolpaths");
-    m_showToolpathsAction->setCheckable(true);
-    m_showToolpathsAction->setChecked(true);
-    m_showPartAction = m_visibilityMenu->addAction("Show Part");
-    m_showPartAction->setCheckable(true);
-    m_showPartAction->setChecked(true);
-    m_showProfilesAction = m_visibilityMenu->addAction("Show Profiles");  // Add profile visibility action
-    m_showProfilesAction->setCheckable(true);
-    m_showProfilesAction->setChecked(true);
-    m_visibilityButton->setMenu(m_visibilityMenu);
-
-    // Style the button to be semi-transparent and visually appealing
-    m_viewModeOverlayButton->setStyleSheet(
-        "QPushButton {"
-        "  background-color: rgba(240, 240, 240, 220);"
-        "  border: 2px solid #666666;"
-        "  border-radius: 6px;"
-        "  padding: 6px 12px;"
-        "  font-size: 11px;"
-        "  font-weight: bold;"
-        "  color: #333333;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: rgba(255, 255, 255, 240);"
-        "  border: 2px solid #444444;"
-        "  color: #222222;"
-        "}"
-        "QPushButton:pressed {"
-        "  background-color: rgba(200, 200, 200, 220);"
-        "  border: 2px solid #555555;"
-        "}"
-    );
-
-    // Style the visibility button similarly
-    m_visibilityButton->setStyleSheet(
-        "QToolButton {"
-        "  background-color: rgba(240, 240, 240, 220);"
-        "  border: 2px solid #666666;"
-        "  border-radius: 6px;"
-        "  padding: 4px 8px;"
-        "  font-size: 11px;"
-        "  font-weight: bold;"
-        "  color: #333333;"
-        "}"
-        "QToolButton:hover {"
-        "  background-color: rgba(255, 255, 255, 240);"
-        "  border: 2px solid #444444;"
-        "  color: #222222;"
-        "}"
-    );
-
-    // Connect the button to the toggle function
-    connect(m_viewModeOverlayButton, &QPushButton::clicked, this, &MainWindow::toggleViewMode);
-
-    // Connect visibility actions
-    connect(m_showChuckAction, &QAction::toggled, this, &MainWindow::handleShowChuckToggled);
-    connect(m_showRawMaterialAction, &QAction::toggled, this, &MainWindow::handleShowRawMaterialToggled);
-    connect(m_showToolpathsAction, &QAction::toggled, this, &MainWindow::handleShowToolpathsToggled);
-    connect(m_showPartAction, &QAction::toggled, this, &MainWindow::handleShowPartToggled);
-    connect(m_showProfilesAction, &QAction::toggled, this, &MainWindow::handleShowProfilesToggled);  // Connect profile visibility
-
-    // Connect to view mode changes to update button text
-    connect(m_3dViewer, &OpenGL3DWidget::viewModeChanged, this, &MainWindow::updateViewModeOverlayButton);
-
-    // These buttons are now part of the regular layout
-    qDebug() << "View mode controls created in MainWindow";
-}
-
-void MainWindow::updateViewModeOverlayButton()
-{
-    if (!m_viewModeOverlayButton || !m_3dViewer) {
-        return;
-    }
-    
-    // Update button text based on current view mode
-    ViewMode currentMode = m_3dViewer->getViewMode();
-    if (currentMode == ViewMode::Mode3D) {
-        m_viewModeOverlayButton->setText("Switch to Lathe View");
-    } else {
-        m_viewModeOverlayButton->setText("Switch to 3D View");
-    }
-    
-    // No further positioning needed when part of the layout
-}
-
-// New slot implementations for Setup Configuration Panel
-void MainWindow::handleStepFileSelected(const QString& filePath)
-{
-    if (filePath.isEmpty()) {
-        statusBar()->showMessage(tr("No file selected"), 2000);
-        return;
-    }
-    
-    statusBar()->showMessage(tr("Loading STEP file..."), 2000);
-    
-    if (m_outputWindow) {
-        m_outputWindow->append(QString("Loading STEP file: %1").arg(filePath));
-    }
-    
-    // Load the STEP file using workspace controller - same logic as original openStepFile()
-    if (m_stepLoader && m_workspaceController && m_workspaceController->isInitialized()) {
-        TopoDS_Shape shape = m_stepLoader->loadStepFile(filePath.toStdString());
-        
-        if (m_stepLoader->isValid() && !shape.IsNull()) {
-            // Clear previous workpieces (workspace controller handles this cleanly)
-            m_workspaceController->clearWorkpieces();
-            
-            // Add workpiece through workspace controller (handles full workflow)
-            bool success = m_workspaceController->addWorkpiece(shape);
-            
-            if (success) {
-                statusBar()->showMessage(tr("STEP file loaded and processed successfully"), 3000);
-                if (m_outputWindow) {
-                    m_outputWindow->append("STEP file loaded as workpiece and processed by workspace controller.");
-                }
-                
-                // Fit view to show all content
-                if (m_3dViewer) {
-                    m_3dViewer->fitAll();
-                }
-
-                // Immediately apply part and material setup parameters
-                if (m_setupConfigPanel) {
-                    double dist = m_setupConfigPanel->getDistanceToChuck();
-                    double rawDia = m_setupConfigPanel->getRawDiameter();
-                    bool flip = m_setupConfigPanel->isOrientationFlipped();
-                    m_workspaceController->applyPartLoadingSettings(dist, rawDia, flip);
-                }
-            } else {
-                QString errorMsg = "Failed to process workpiece through workspace controller";
-                statusBar()->showMessage(errorMsg, 5000);
-                if (m_outputWindow) {
-                    m_outputWindow->append(errorMsg);
-                }
-            }
-        } else {
-            QString errorMsg = QString("Failed to load STEP file: %1")
-                                     .arg(QString::fromStdString(m_stepLoader->getLastError()));
-            statusBar()->showMessage(errorMsg, 5000);
-            if (m_outputWindow) {
-                m_outputWindow->append(errorMsg);
-            }
-            QMessageBox::warning(this, tr("Error Loading STEP File"), errorMsg);
-        }
-    } else {
-        QString errorMsg = "Workspace controller not initialized";
-        statusBar()->showMessage(errorMsg, 5000);
-        if (m_outputWindow) {
-            m_outputWindow->append(errorMsg);
-        }
-    }
 }
 
 void MainWindow::handleSetupConfigurationChanged()
@@ -1699,16 +1302,6 @@ void MainWindow::handleGenerateToolpaths()
                 }
                 m_3dViewer->update();
                 
-                // Update legend widget with generated operation types
-                if (m_toolpathLegendWidget) {
-                    std::vector<IntuiCAM::Toolpath::OperationType> generatedOperations;
-                    for (const auto& toolpath : result.timeline) {
-                        if (toolpath) {
-                            generatedOperations.push_back(toolpath->getOperationType());
-                        }
-                    }
-                    m_toolpathLegendWidget->updateLegendForOperations(generatedOperations);
-                }
             }
         } else {
             statusBar()->showMessage(QString("Toolpath generation failed: %1").arg(QString::fromStdString(result.errorMessage)), 5000);
@@ -2253,9 +1846,15 @@ void MainWindow::handleOperationTileEnabledChanged(const QString& operationName,
         m_setupConfigPanel->setOperationEnabled(operationName, enabled);
     }
     
-    // Focus the operation tab if enabled
-    if (enabled && m_setupConfigPanel) {
-        m_setupConfigPanel->focusOperationTab(operationName);
+    // Select and show the operation widget if enabled
+    if (enabled && m_setupConfigPanel && m_operationTileContainer) {
+        // If no operation is currently selected, or if this is the first enabled operation,
+        // automatically select this one
+        QString currentSelection = m_operationTileContainer->getSelectedOperation();
+        if (currentSelection.isEmpty() || !m_operationTileContainer->isTileEnabled(currentSelection)) {
+            m_operationTileContainer->setSelectedOperation(operationName);
+            m_setupConfigPanel->showOperationWidget(operationName);
+        }
     }
     
     // Auto-select default tool for newly enabled operations
@@ -2275,16 +1874,21 @@ void MainWindow::handleOperationTileEnabledChanged(const QString& operationName,
 
 void MainWindow::handleOperationTileClicked(const QString& operationName)
 {
-    // Focus the operation tab in the setup configuration panel
+    // Set the selected operation in the tile container
+    if (m_operationTileContainer) {
+        m_operationTileContainer->setSelectedOperation(operationName);
+    }
+    
+    // Show the corresponding operation widget in the setup configuration panel
     if (m_setupConfigPanel) {
-        m_setupConfigPanel->focusOperationTab(operationName);
+        m_setupConfigPanel->showOperationWidget(operationName);
     }
     
     if (m_outputWindow) {
-        m_outputWindow->append(QString("Viewing parameters for %1 operation").arg(operationName));
+        m_outputWindow->append(QString("Selected %1 operation").arg(operationName));
     }
     
-    statusBar()->showMessage(QString("Viewing %1 parameters").arg(operationName), 2000);
+    statusBar()->showMessage(QString("Selected %1 operation").arg(operationName), 2000);
 }
 
 void MainWindow::handleOperationTileToolSelectionRequested(const QString& operationName)
@@ -2318,37 +1922,241 @@ void MainWindow::handleOperationTileExpandedChanged(const QString& operationName
 
 QString MainWindow::getDefaultToolForOperation(const QString& operationName) const
 {
-    if (!m_toolManager) return QString();
-    
-    // Get all available tools and find the first suitable one for each operation
-    QStringList allTools = m_toolManager->getAllToolIds();
-    
-    for (const QString& toolId : allTools) {
-        IntuiCAM::GUI::CuttingTool tool = m_toolManager->getTool(toolId);
-        
-        // Match operation to appropriate tool types
-        if (operationName == "Facing" && tool.type == IntuiCAM::GUI::ToolType::TurningInsert) {
-            return tool.name;
-        } else if (operationName == "Roughing" && tool.type == IntuiCAM::GUI::ToolType::TurningInsert) {
-            return tool.name;
-        } else if (operationName == "Finishing" && tool.type == IntuiCAM::GUI::ToolType::TurningInsert) {
-            return tool.name;
-        } else if (operationName == "Parting" && tool.type == IntuiCAM::GUI::ToolType::PartingTool) {
-            return tool.name;
-        } else if (operationName == "Threading" && tool.type == IntuiCAM::GUI::ToolType::ThreadingTool) {
-            return tool.name;
-        } else if (operationName == "Grooving" && tool.type == IntuiCAM::GUI::ToolType::FormTool) {
-            return tool.name;  // Use FormTool for grooving operations
-        } else if (operationName == "Drilling" && tool.type == IntuiCAM::GUI::ToolType::BoringBar) {
-            return tool.name;  // Use BoringBar for drilling operations
-        }
+    if (!m_toolManager || !m_setupConfigPanel)
+        return QString();
+
+    QString materialName = m_setupConfigPanel->getSelectedMaterialName();
+    if (materialName.isEmpty())
+        return QString();
+
+    const QMap<QString, QList<IntuiCAM::GUI::ToolType>> opToolTypes = {
+        {"Facing", {IntuiCAM::GUI::ToolType::TurningInsert, IntuiCAM::GUI::ToolType::FacingTool}},
+        {"Roughing", {IntuiCAM::GUI::ToolType::TurningInsert}},
+        {"Finishing", {IntuiCAM::GUI::ToolType::TurningInsert}},
+        {"LH Cleanup", {IntuiCAM::GUI::ToolType::TurningInsert}},
+        {"Neutral Cleanup", {IntuiCAM::GUI::ToolType::TurningInsert}},
+        {"Threading", {IntuiCAM::GUI::ToolType::ThreadingTool}},
+        {"Chamfering", {IntuiCAM::GUI::ToolType::FormTool, IntuiCAM::GUI::ToolType::TurningInsert}},
+        {"Parting", {IntuiCAM::GUI::ToolType::PartingTool}}
+    };
+
+    const QMap<QString, QStringList> opCapabilities = {
+        {"Facing", {"facing"}},
+        {"Roughing", {"roughing"}},
+        {"Finishing", {"finishing"}},
+        {"LH Cleanup", {"finishing"}},
+        {"Neutral Cleanup", {"finishing"}},
+        {"Threading", {"threading"}},
+        {"Chamfering", {"chamfering", "facing"}},
+        {"Parting", {"parting"}}
+    };
+
+    QList<IntuiCAM::GUI::ToolType> types = opToolTypes.value(operationName);
+    QStringList toolIds;
+    for (IntuiCAM::GUI::ToolType t : types) {
+        toolIds.append(m_toolManager->getToolsByType(t));
     }
-    
-    // Fallback to first available tool
-    if (!allTools.isEmpty()) {
-        IntuiCAM::GUI::CuttingTool tool = m_toolManager->getTool(allTools.first());
+
+    for (const QString& id : toolIds) {
+        IntuiCAM::GUI::CuttingTool tool = m_toolManager->getTool(id);
+        if (!tool.isActive)
+            continue;
+        if (!tool.capabilities.suitableMaterials.contains(materialName))
+            continue;
+
+        bool opMatch = false;
+        for (const QString& cap : opCapabilities.value(operationName)) {
+            if (tool.capabilities.supportedOperations.contains(cap)) {
+                opMatch = true;
+                break;
+            }
+        }
+        if (!opMatch)
+            continue;
+
         return tool.name;
     }
-    
+
     return QString();
+}
+
+void MainWindow::handleStepFileSelected(const QString& filePath)
+{
+    if (filePath.isEmpty()) {
+        statusBar()->showMessage(tr("No file selected"), 2000);
+        return;
+    }
+    
+    statusBar()->showMessage(tr("Loading STEP file..."), 2000);
+    
+    if (m_outputWindow) {
+        m_outputWindow->append(QString("Loading STEP file: %1").arg(filePath));
+    }
+    
+    // Load the STEP file using workspace controller - same logic as original openStepFile()
+    if (m_stepLoader && m_workspaceController && m_workspaceController->isInitialized()) {
+        TopoDS_Shape shape = m_stepLoader->loadStepFile(filePath.toStdString());
+        
+        if (m_stepLoader->isValid() && !shape.IsNull()) {
+            // Clear previous workpieces (workspace controller handles this cleanly)
+            m_workspaceController->clearWorkpieces();
+            
+            // Add workpiece through workspace controller (handles full workflow)
+            bool success = m_workspaceController->addWorkpiece(shape);
+            
+            if (success) {
+                statusBar()->showMessage(tr("STEP file loaded and processed successfully"), 3000);
+                if (m_outputWindow) {
+                    m_outputWindow->append("STEP file loaded as workpiece and processed by workspace controller.");
+                }
+                
+                // Fit view to show all content
+                if (m_3dViewer) {
+                    m_3dViewer->fitAll();
+                }
+
+                // Immediately apply part and material setup parameters
+                if (m_setupConfigPanel) {
+                    double dist = m_setupConfigPanel->getDistanceToChuck();
+                    double rawDia = m_setupConfigPanel->getRawDiameter();
+                    bool flip = m_setupConfigPanel->isOrientationFlipped();
+                    m_workspaceController->applyPartLoadingSettings(dist, rawDia, flip);
+                }
+            } else {
+                QString errorMsg = "Failed to process workpiece through workspace controller";
+                statusBar()->showMessage(errorMsg, 5000);
+                if (m_outputWindow) {
+                    m_outputWindow->append(errorMsg);
+                }
+            }
+        } else {
+            QString errorMsg = QString("Failed to load STEP file: %1")
+                                     .arg(QString::fromStdString(m_stepLoader->getLastError()));
+            statusBar()->showMessage(errorMsg, 5000);
+            if (m_outputWindow) {
+                m_outputWindow->append(errorMsg);
+            }
+            QMessageBox::warning(this, tr("Error Loading STEP File"), errorMsg);
+        }
+    } else {
+        QString errorMsg = "Workspace controller not initialized";
+        statusBar()->showMessage(errorMsg, 5000);
+        if (m_outputWindow) {
+            m_outputWindow->append(errorMsg);
+        }
+    }
+}
+
+// Stub implementations for missing methods
+QWidget* MainWindow::createSimulationTab()
+{
+    QWidget* simulationTab = new QWidget();
+    QVBoxLayout* layout = new QVBoxLayout(simulationTab);
+    
+    QLabel* placeholder = new QLabel("Simulation Tab - Coming Soon");
+    placeholder->setAlignment(Qt::AlignCenter);
+    placeholder->setStyleSheet("font-size: 24px; color: #666;");
+    
+    layout->addWidget(placeholder);
+    
+    return simulationTab;
+}
+
+QWidget* MainWindow::createMachineTab()
+{
+    QWidget* machineTab = new QWidget();
+    QVBoxLayout* layout = new QVBoxLayout(machineTab);
+    
+    QLabel* placeholder = new QLabel("Machine Tab - Coming Soon");
+    placeholder->setAlignment(Qt::AlignCenter);
+    placeholder->setStyleSheet("font-size: 24px; color: #666;");
+    
+    layout->addWidget(placeholder);
+    
+    return machineTab;
+}
+
+void MainWindow::createViewModeOverlayButton(QWidget* parent)
+{
+    // Create view mode toggle button
+    m_viewModeOverlayButton = new QPushButton("3D View", parent);
+    m_viewModeOverlayButton->setStyleSheet(
+        "QPushButton {"
+        "  background-color: rgba(0, 0, 0, 100);"
+        "  color: white;"
+        "  border: 1px solid #555;"
+        "  border-radius: 4px;"
+        "  padding: 4px 8px;"
+        "  font-weight: bold;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: rgba(0, 0, 0, 150);"
+        "}"
+    );
+    
+    // Connect to toggle view mode
+    connect(m_viewModeOverlayButton, &QPushButton::clicked, this, &MainWindow::toggleViewMode);
+    
+    // Create visibility button and menu
+    m_visibilityButton = new QToolButton(parent);
+    m_visibilityButton->setText("👁 Visibility");
+    m_visibilityButton->setPopupMode(QToolButton::InstantPopup);
+    m_visibilityButton->setStyleSheet(
+        "QToolButton {"
+        "  background-color: rgba(0, 0, 0, 100);"
+        "  color: white;"
+        "  border: 1px solid #555;"
+        "  border-radius: 4px;"
+        "  padding: 4px 8px;"
+        "  font-weight: bold;"
+        "}"
+        "QToolButton:hover {"
+        "  background-color: rgba(0, 0, 0, 150);"
+        "}"
+        "QToolButton::menu-indicator {"
+        "  subcontrol-origin: padding;"
+        "  subcontrol-position: center right;"
+        "}"
+    );
+    
+    // Create visibility menu
+    m_visibilityMenu = new QMenu(m_visibilityButton);
+    
+    // Create visibility actions
+    m_showChuckAction = new QAction("Show Chuck", this);
+    m_showChuckAction->setCheckable(true);
+    m_showChuckAction->setChecked(true);
+    connect(m_showChuckAction, &QAction::triggered, this, &MainWindow::handleShowChuckToggled);
+    
+    m_showRawMaterialAction = new QAction("Show Raw Material", this);
+    m_showRawMaterialAction->setCheckable(true);
+    m_showRawMaterialAction->setChecked(true);
+    connect(m_showRawMaterialAction, &QAction::triggered, this, &MainWindow::handleShowRawMaterialToggled);
+    
+    m_showToolpathsAction = new QAction("Show Toolpaths", this);
+    m_showToolpathsAction->setCheckable(true);
+    m_showToolpathsAction->setChecked(true);
+    connect(m_showToolpathsAction, &QAction::triggered, this, &MainWindow::handleShowToolpathsToggled);
+    
+    m_showPartAction = new QAction("Show Part", this);
+    m_showPartAction->setCheckable(true);
+    m_showPartAction->setChecked(true);
+    connect(m_showPartAction, &QAction::triggered, this, &MainWindow::handleShowPartToggled);
+    
+    m_showProfilesAction = new QAction("Show Profiles", this);
+    m_showProfilesAction->setCheckable(true);
+    m_showProfilesAction->setChecked(true);
+    connect(m_showProfilesAction, &QAction::triggered, this, &MainWindow::handleShowProfilesToggled);
+    
+    // Add actions to menu
+    m_visibilityMenu->addAction(m_showChuckAction);
+    m_visibilityMenu->addAction(m_showRawMaterialAction);
+    m_visibilityMenu->addSeparator();
+    m_visibilityMenu->addAction(m_showPartAction);
+    m_visibilityMenu->addAction(m_showProfilesAction);
+    m_visibilityMenu->addSeparator();
+    m_visibilityMenu->addAction(m_showToolpathsAction);
+    
+    // Set menu on button
+    m_visibilityButton->setMenu(m_visibilityMenu);
 }

@@ -20,6 +20,7 @@
 #include <TopoDS_Shape.hxx>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QStackedWidget>
 
 // Forward declarations
 class QListWidget;
@@ -163,6 +164,7 @@ public:
   void updateMaterialProperties();
   void updateToolRecommendations();
   void focusOperationTab(const QString &operationName);
+  void showOperationWidget(const QString &operationName);
 
   // Utility methods
   static QString materialTypeToString(MaterialType type);
@@ -218,7 +220,7 @@ private:
   // Main layout and tabs
   QVBoxLayout *m_mainLayout;
   QWidget *m_partTab;
-  QTabWidget *m_operationsTabWidget;
+  QStackedWidget *m_operationsStackedWidget;
   QWidget *m_facingTab;
   QWidget *m_roughingTab;
   QWidget *m_finishingTab;
@@ -227,6 +229,9 @@ private:
   QWidget *m_threadingTab;
   QWidget *m_chamferingTab;
   QWidget *m_partingTab;
+  
+  // Operation selection state
+  QString m_currentSelectedOperation;
 
   // Part Tab Components (Part Setup + Material Settings)
   QGroupBox *m_partSetupGroup;
@@ -255,9 +260,17 @@ private:
   QPushButton *m_autoRawDiameterButton;
   QLabel *m_rawLengthLabel; // Displays current raw material length
 
-  // Machining Tab Components (Machining Parameters + Operations + Quality)
-  QGroupBox *m_machiningParamsGroup;
-  QVBoxLayout *m_machiningParamsLayout;
+  // Machining Parameter panels per operation
+  QGroupBox *m_facingParamsGroup;
+  QVBoxLayout *m_facingParamsLayout;
+  QGroupBox *m_internalRoughingParamsGroup;
+  QVBoxLayout *m_internalRoughingParamsLayout;
+  QGroupBox *m_internalFinishingParamsGroup;
+  QVBoxLayout *m_internalFinishingParamsLayout;
+  QGroupBox *m_finishingParamsGroup;
+  QVBoxLayout *m_finishingParamsLayout;
+  QGroupBox *m_partingParamsGroup;
+  QVBoxLayout *m_partingParamsLayout;
   QHBoxLayout *m_facingAllowanceLayout;
   QLabel *m_facingAllowanceLabel;
   QDoubleSpinBox *m_facingAllowanceSpin;
