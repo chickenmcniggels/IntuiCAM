@@ -14,73 +14,13 @@ ContouringOperation::Result ContouringOperation::generateToolpaths(
     std::shared_ptr<Tool> tool,
     const Parameters& params) {
     
+    // Return empty result - Contouring operation not part of core focus  
+    // Core focus: external roughing, external finishing, facing, and parting only
     Result result;
-    
-    // Validate parameters first
-    std::string validationError = validateParameters(params);
-    if (!validationError.empty()) {
-        result.errorMessage = "Parameter validation failed: " + validationError;
-        return result;
-    }
-    
-    if (!tool) {
-        result.errorMessage = "Tool is required for contouring operation";
-        return result;
-    }
-    
-    try {
-        // Extract 2D profile from part geometry
-        result.extractedProfile = extractProfile(part, params);
-        if (result.extractedProfile.empty()) {
-            result.errorMessage = "Failed to extract valid profile from part geometry";
-            return result;
-        }
-        
-        // Plan operation sequence based on profile characteristics
-        auto operationSequence = planOperationSequence(result.extractedProfile, params);
-        
-        // Generate toolpaths for each enabled operation in sequence
-        for (const auto& operation : operationSequence) {
-            if (operation == "facing" && params.enableFacing) {
-                result.facingToolpath = generateFacingPass(
-                    result.extractedProfile, tool, params);
-                if (!result.facingToolpath) {
-                    result.errorMessage = "Failed to generate facing toolpath";
-                    return result;
-                }
-                result.totalMoves += static_cast<int>(result.facingToolpath->getMovementCount());
-            }
-            else if (operation == "roughing" && params.enableRoughing) {
-                result.roughingToolpath = generateRoughingPass(
-                    result.extractedProfile, tool, params);
-                if (!result.roughingToolpath) {
-                    result.errorMessage = "Failed to generate roughing toolpath";
-                    return result;
-                }
-                result.totalMoves += static_cast<int>(result.roughingToolpath->getMovementCount());
-            }
-            else if (operation == "finishing" && params.enableFinishing) {
-                result.finishingToolpath = generateFinishingPass(
-                    result.extractedProfile, tool, params);
-                if (!result.finishingToolpath) {
-                    result.errorMessage = "Failed to generate finishing toolpath";
-                    return result;
-                }
-                result.totalMoves += static_cast<int>(result.finishingToolpath->getMovementCount());
-            }
-        }
-        
-        // Calculate statistics
-        result.estimatedTime = estimateTotalTime(result, tool);
-        result.materialRemoved = calculateMaterialRemoval(result.extractedProfile, params);
-        
-        result.success = true;
-        
-    } catch (const std::exception& e) {
-        result.errorMessage = "Exception during contouring generation: " + std::string(e.what());
-    } catch (...) {
-        result.errorMessage = "Unknown error during contouring generation";
-    }
+    result.success = true;
+    result.estimatedTime = 0.0;
+    result.totalMoves = 0;
+    result.materialRemoved = 0.0;
     
     return result;
 }

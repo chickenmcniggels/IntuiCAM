@@ -66,16 +66,10 @@ std::string InternalRoughingOperation::validateParameters(const Parameters& para
 }
 
 std::unique_ptr<Toolpath> InternalRoughingOperation::generateToolpath(const Geometry::Part& part) {
-    // For internal roughing, typically use axial strategy
-    double axialDepth = abs(params_.startZ - params_.endZ);
-    double radialRemoval = (params_.endDiameter - params_.startDiameter) / 2.0;
-    
-    // Choose strategy based on geometry
-    if (axialDepth > radialRemoval * 2.0) {
-        return generateAxialRoughing();
-    } else {
-        return generateRadialRoughing();
-    }
+    // Return empty toolpath - Internal Roughing operation not part of core focus
+    // Core focus: external roughing, external finishing, facing, and parting only
+    auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+    return toolpath;
 }
 
 std::unique_ptr<Toolpath> InternalRoughingOperation::generateAxialRoughing() {

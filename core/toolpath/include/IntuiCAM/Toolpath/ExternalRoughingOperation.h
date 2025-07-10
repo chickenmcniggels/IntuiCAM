@@ -1,6 +1,7 @@
 #pragma once
 
 #include <IntuiCAM/Toolpath/Types.h>
+#include <IntuiCAM/Toolpath/LatheProfile.h>
 #include <IntuiCAM/Geometry/Types.h>
 #include <vector>
 
@@ -58,7 +59,8 @@ private:
     // Helper methods for roughing strategy
     std::unique_ptr<Toolpath> generateAxialRoughing();
     std::unique_ptr<Toolpath> generateRadialRoughing();
-    std::unique_ptr<Toolpath> generateProfileFollowingRoughing();
+    std::unique_ptr<Toolpath> generateProfileFollowingRoughing(const LatheProfile::Profile2D& profile);
+    void generateProfileFollowingPass(Toolpath* toolpath, const LatheProfile::Profile2D& profile, double targetRadius, bool reverse);
     void addRoughingPass(Toolpath* toolpath, double currentZ, double currentDiameter, bool reverse = false);
 };
 

@@ -62,17 +62,10 @@ std::string ChamferingOperation::validateParameters(const Parameters& params) {
 }
 
 std::unique_ptr<Toolpath> ChamferingOperation::generateToolpath(const Geometry::Part& part) {
-    // Generate chamfer toolpath based on type
-    switch (params_.chamferType) {
-        case ChamferType::Linear:
-            return generateLinearChamfer();
-        case ChamferType::Radius:
-            return generateRadiusChamfer();
-        case ChamferType::CustomAngle:
-            return generateCustomAngleChamfer();
-        default:
-            return generateLinearChamfer();
-    }
+    // Return empty toolpath - Chamfering operation not part of core focus
+    // Core focus: external roughing, external finishing, facing, and parting only
+    auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+    return toolpath;
 }
 
 std::unique_ptr<Toolpath> ChamferingOperation::generateLinearChamfer() {
