@@ -77,8 +77,14 @@ std::unique_ptr<Toolpath> ExternalRoughingOperation::generateToolpath(const Geom
     extractParams.sortSegments = true;                          // Ensure proper ordering
     
     // Get part shape for profile extraction
-    // Note: In real implementation, this would be extracted from Geometry::Part
-    TopoDS_Shape partShape; // This would come from part.getShape() or similar
+    // Extract part shape from Geometry::Part
+    const Geometry::OCCTPart* occtPart = dynamic_cast<const Geometry::OCCTPart*>(&part);
+    if (!occtPart) {
+        // Handle error: part is not an OCCTPart or is null
+        // For now, return an empty toolpath or throw an exception
+        return std::make_unique<Toolpath>(getName(), getTool(), OperationType::ExternalRoughing);
+    }
+    TopoDS_Shape partShape = occtPart->getOCCTShape();
     auto profile = ProfileExtractor::extractProfile(partShape, extractParams);
     
     // Choose strategy based on parameters and extracted profile
@@ -98,7 +104,7 @@ std::unique_ptr<Toolpath> ExternalRoughingOperation::generateToolpath(const Geom
 }
 
 std::unique_ptr<Toolpath> ExternalRoughingOperation::generateAxialRoughing() {
-    auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+    auto toolpath = std::make_unique<Toolpath>(getName(), getTool(), OperationType::ExternalRoughing);
     
     double safeZ = params_.startZ + params_.safetyHeight;
     double currentZ = params_.startZ;
@@ -132,7 +138,7 @@ std::unique_ptr<Toolpath> ExternalRoughingOperation::generateAxialRoughing() {
 }
 
 std::unique_ptr<Toolpath> ExternalRoughingOperation::generateRadialRoughing() {
-    auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+    auto toolpath = std::make_unique<Toolpath>(getName(), getTool(), OperationType::ExternalRoughing);
     
     double safeZ = params_.startZ + params_.safetyHeight;
     double currentDiameter = params_.startDiameter;
@@ -181,7 +187,7 @@ std::unique_ptr<Toolpath> ExternalRoughingOperation::generateRadialRoughing() {
 }
 
 std::unique_ptr<Toolpath> ExternalRoughingOperation::generateProfileFollowingRoughing(const LatheProfile::Profile2D& profile) {
-    auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+    auto toolpath = std::make_unique<Toolpath>(getName(), getTool(), OperationType::ExternalRoughing);
     
     if (profile.isEmpty()) {
         // Fallback to radial roughing if no profile available

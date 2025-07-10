@@ -145,7 +145,7 @@ public:
      * @param profile Profile to analyze
      * @return Detected features for machining
      */
-    std::vector<DetectedFeature> detectFeatures(const LatheProfile::Profile2D& profile);
+    std::vector<DetectedFeature> detectFeatures(const LatheProfile::Profile2D& profile, const TopoDS_Shape& partGeometry = TopoDS_Shape());
 
     // Cancel ongoing generation
     void cancelGeneration();
@@ -217,12 +217,18 @@ public:
         const gp_Trsf& workpieceTransform = gp_Trsf());
 
 private:
-    // Helper methods
-    void reportProgress(double progress, const std::string& status, const PipelineResult& result);
-
-    // State management
+    // Generation state
     std::atomic<bool> m_isGenerating{false};
     std::atomic<bool> m_cancelRequested{false};
+    
+    // IMPROVED: Store actual part geometry for operations
+    TopoDS_Shape m_currentPartGeometry;
+
+    // Helper methods
+    void reportProgress(double progress, const std::string& status, const PipelineResult& result);
+    
+    // IMPROVED: Create Part object from stored geometry
+    std::unique_ptr<IntuiCAM::Geometry::OCCTPart> createPartFromGeometry() const;
 };
 
 } // namespace Toolpath

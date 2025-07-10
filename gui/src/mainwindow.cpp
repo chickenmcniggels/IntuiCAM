@@ -453,6 +453,10 @@ void MainWindow::setupWorkspaceConnections()
             connect(m_workspaceController, &WorkspaceController::workpiecePositionChanged,
                     this, &MainWindow::handleWorkpiecePositionChanged);
             
+            // Connect operation state requests for dynamic toolpath generation
+            connect(m_workspaceController, &WorkspaceController::requestOperationStates,
+                    this, &MainWindow::handleOperationStatesRequest);
+            
             // Connect raw material creation for length updates
             if (m_workspaceController->getRawMaterialManager()) {
                 connect(m_workspaceController->getRawMaterialManager(), &RawMaterialManager::rawMaterialCreated,
@@ -1122,165 +1126,45 @@ void MainWindow::handleGenerateToolpaths()
         m_outputWindow->append("=== Toolpath Generation Started ===");
     }
     
-    // Step 1: Check if we have a part loaded
-    if (!m_workspaceController || !m_workspaceController->hasPartShape()) {
-        statusBar()->showMessage("Error: No part loaded. Please load a STEP file first.", 5000);
+    // Delegate to WorkspaceController for proper toolpath generation
+    if (!m_workspaceController || !m_workspaceController->isInitialized()) {
+        statusBar()->showMessage("Error: Workspace not initialized. Please load a STEP file first.", 5000);
         if (m_outputWindow) {
-            m_outputWindow->append("ERROR: No part shape loaded - please load a STEP file first");
+            m_outputWindow->append("ERROR: Workspace not initialized - please load a STEP file first");
         }
         return;
     }
     
     try {
-        // Step 2: Get part geometry and workspace data
-        TopoDS_Shape partGeometry = m_workspaceController->getPartShape();
-        
-        // Step 3: Get turning axis from work coordinate system (consistent with profile extraction)
-        gp_Ax1 turningAxis;
-        if (m_workspaceController->getCoordinateManager() && 
-            m_workspaceController->getCoordinateManager()->isInitialized()) {
-            // Use work coordinate system axis (should be Z-axis aligned)
-            const auto& workCS = m_workspaceController->getCoordinateManager()->getWorkCoordinateSystem();
-            gp_Pnt workOrigin(workCS.getToGlobalMatrix().data[12], 
-                            workCS.getToGlobalMatrix().data[13], 
-                            workCS.getToGlobalMatrix().data[14]);
-            gp_Dir workZAxis(workCS.getToGlobalMatrix().data[8], 
-                           workCS.getToGlobalMatrix().data[9], 
-                           workCS.getToGlobalMatrix().data[10]);
-            turningAxis = gp_Ax1(workOrigin, workZAxis);
-            
-            if (m_outputWindow) {
-                m_outputWindow->append("Using work coordinate system axis for toolpath generation");
-                m_outputWindow->append(QString("Work origin: (%1, %2, %3)")
-                                     .arg(workOrigin.X(), 0, 'f', 2)
-                                     .arg(workOrigin.Y(), 0, 'f', 2)
-                                     .arg(workOrigin.Z(), 0, 'f', 2));
-            }
-        } else if (m_workspaceController->hasChuckCenterline()) {
-            turningAxis = m_workspaceController->getChuckCenterlineAxis();
-            if (m_outputWindow) {
-                m_outputWindow->append("Using chuck centerline axis for toolpath generation");
-            }
-        } else {
-            // Default Z-axis if no chuck centerline or work coordinate system
-            turningAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
-            if (m_outputWindow) {
-                m_outputWindow->append("Using default Z-axis for toolpath generation");
-            }
+        // Get enabled operations from the UI
+        QStringList enabledOperations;
+        if (m_operationTileContainer) {
+            enabledOperations = m_operationTileContainer->getEnabledOperations();
         }
         
-        // Step 4: Create pipeline and extract inputs from part
-        IntuiCAM::Toolpath::ToolpathGenerationPipeline pipeline;
-        auto inputs = pipeline.extractInputsFromPart(partGeometry, turningAxis);
-        
-        // Step 5: Update pipeline inputs with GUI parameters
-        // Get settings from setup configuration panel
-        inputs.rawMaterialDiameter = 50.0; // Default value
-        inputs.rawMaterialLength = 100.0;
-        inputs.partLength = 80.0;
-        inputs.z0 = inputs.rawMaterialLength;
-        inputs.facingAllowance = 2.0;
-        inputs.largestDrillSize = 12.0;
-        inputs.internalFinishingPasses = 2;
-        inputs.externalFinishingPasses = 2;
-        inputs.partingAllowance = 0.0;
-        
-        // Enable operations based on UI state
-        inputs.facing = true;
-        inputs.externalRoughing = true;
-        inputs.externalFinishing = true;
-        inputs.parting = true;
-        inputs.drilling = false;
-        inputs.machineInternalFeatures = false;
-        inputs.internalRoughing = false;
-        inputs.internalFinishing = false;
-        inputs.internalGrooving = false;
-        inputs.externalGrooving = false;
-        inputs.chamfering = false;
-        inputs.threading = false;
-        
-        if (m_outputWindow) {
-            m_outputWindow->append(QString("Toolpath generation inputs:"));
-            m_outputWindow->append(QString("  - Raw material diameter: %1mm").arg(inputs.rawMaterialDiameter));
-            m_outputWindow->append(QString("  - Raw material length: %1mm").arg(inputs.rawMaterialLength));
-            m_outputWindow->append(QString("  - Facing: %1").arg(inputs.facing ? "enabled" : "disabled"));
-            m_outputWindow->append(QString("  - External roughing: %1").arg(inputs.externalRoughing ? "enabled" : "disabled"));
-            m_outputWindow->append(QString("  - External finishing: %1").arg(inputs.externalFinishing ? "enabled" : "disabled"));
-            m_outputWindow->append(QString("  - Parting: %1").arg(inputs.parting ? "enabled" : "disabled"));
+        if (enabledOperations.isEmpty()) {
+            statusBar()->showMessage("No operations enabled. Please enable at least one operation.", 3000);
+            if (m_outputWindow) {
+                m_outputWindow->append("WARNING: No operations enabled for toolpath generation");
+            }
+            return;
         }
         
-        // Step 6: Execute toolpath generation
-        auto result = pipeline.executePipeline(inputs);
+        // Update workspace controller with current operation states and generate toolpaths
+        m_workspaceController->updateOperationInputs(enabledOperations);
+        bool success = m_workspaceController->generateToolpaths();
         
-        if (result.success) {
-            statusBar()->showMessage(QString("Toolpath generation completed: %1 operations in %2ms")
-                                   .arg(result.timeline.size())
-                                   .arg(result.processingTime.count()), 5000);
+        if (success) {
+            statusBar()->showMessage("Toolpath generation completed successfully", 3000);
             if (m_outputWindow) {
-                m_outputWindow->append(QString("Toolpath generation completed successfully:"));
-                m_outputWindow->append(QString("  - Generated %1 toolpath operations")
-                                     .arg(result.timeline.size()));
-                m_outputWindow->append(QString("  - Processing time: %1ms")
-                                     .arg(result.processingTime.count()));
+                m_outputWindow->append("Toolpath generation completed successfully");
+                m_outputWindow->append(QString("Generated toolpaths for operations: %1").arg(enabledOperations.join(", ")));
                 m_outputWindow->append("=== Toolpath Generation Completed ===");
             }
-            
-            // TOOLPATH DISPLAY WITH WORK COORDINATE SYSTEM CONSISTENCY
-            // Use the same coordinate system logic as used in WorkspaceController
-            // to ensure toolpaths are positioned consistently with 2D profiles
-            
-            // Create toolpath display objects using simplified coordinate system (consistent with 2D profiles)
-            gp_Trsf identityTransform; // Use identity transform since we handle coordinates directly
-            auto transformedDisplayObjects = pipeline.createToolpathDisplayObjects(result.timeline, identityTransform);
-            
-            // Apply Work Coordinate System positioning if available
-            if (m_workspaceController->getCoordinateManager() && 
-                m_workspaceController->getCoordinateManager()->isInitialized()) {
-                
-                const auto& workCS = m_workspaceController->getCoordinateManager()->getWorkCoordinateSystem();
-                
-                // Extract work coordinate system origin (where toolpaths should be positioned)
-                gp_Pnt workOrigin(workCS.getToGlobalMatrix().data[12], 
-                                workCS.getToGlobalMatrix().data[13], 
-                                workCS.getToGlobalMatrix().data[14]);
-                
-                // Apply translation to position toolpaths at work coordinate system origin
-                gp_Trsf workPositionTransform;
-                gp_Vec workTranslation(gp_Pnt(0,0,0), workOrigin); // Move to work origin
-                workPositionTransform.SetTranslation(workTranslation);
-                
-                // Apply transformation to all toolpath display objects
-                for (const auto& displayObj : transformedDisplayObjects) {
-                    if (!displayObj.IsNull()) {
-                        displayObj->SetLocalTransformation(workPositionTransform);
-                    }
-                }
-                
-                if (m_outputWindow) {
-                    m_outputWindow->append(QString("Applied work coordinate positioning - Origin at (%1, %2, %3)")
-                                         .arg(workOrigin.X(), 0, 'f', 2)
-                                         .arg(workOrigin.Y(), 0, 'f', 2)
-                                         .arg(workOrigin.Z(), 0, 'f', 2));
-                }
-            }
-            
-            // Display toolpaths in 3D viewer
-            if (m_3dViewer) {
-                for (const auto& displayObj : transformedDisplayObjects) {
-                    if (!displayObj.IsNull()) {
-                        m_3dViewer->getContext()->Display(displayObj, Standard_False);
-                    }
-                }
-                m_3dViewer->update();
-                
-            }
         } else {
-            statusBar()->showMessage(QString("Toolpath generation failed: %1").arg(QString::fromStdString(result.errorMessage)), 5000);
+            statusBar()->showMessage("Toolpath generation failed", 5000);
             if (m_outputWindow) {
-                m_outputWindow->append(QString("ERROR: %1").arg(QString::fromStdString(result.errorMessage)));
-                for (const auto& warning : result.warnings) {
-                    m_outputWindow->append(QString("WARNING: %1").arg(QString::fromStdString(warning)));
-                }
+                m_outputWindow->append("ERROR: Toolpath generation failed");
                 m_outputWindow->append("=== Toolpath Generation Failed ===");
             }
         }
@@ -1477,10 +1361,21 @@ void MainWindow::handleShowRawMaterialToggled(bool checked)
 
 void MainWindow::handleShowToolpathsToggled(bool checked)
 {
-    Q_UNUSED(checked)
-    statusBar()->showMessage("Toolpaths feature not available", 2000);
-    if (m_outputWindow) {
-        m_outputWindow->append("Toolpaths feature not available");
+    qDebug() << "MainWindow: Show toolpaths toggled to:" << checked;
+    statusBar()->showMessage(QString("Toolpaths %1").arg(checked ? "shown" : "hidden"), 1000);
+    
+    // Control toolpath visibility through workspace controller
+    if (m_workspaceController) {
+        m_workspaceController->setToolpathsVisible(checked);
+        
+        if (m_outputWindow) {
+            m_outputWindow->append(QString("Toolpath visibility toggled: %1").arg(checked ? "Visible" : "Hidden"));
+        }
+    } else {
+        statusBar()->showMessage("Workspace controller not available", 2000);
+        if (m_outputWindow) {
+            m_outputWindow->append("Error: Workspace controller not available for toolpath visibility control");
+        }
     }
 }
 
@@ -1798,9 +1693,13 @@ void MainWindow::handleWorkpiecePositionChanged(double distance)
                 m_3dViewer->update();
             }
             
-            // Regenerate toolpaths if we have operations enabled
-            if (m_setupConfigPanel) {
-                handleGenerateToolpaths();
+            // Trigger toolpath regeneration through workspace controller if operations are enabled
+            if (m_workspaceController && m_operationTileContainer) {
+                QStringList enabledOperations = m_operationTileContainer->getEnabledOperations();
+                if (!enabledOperations.isEmpty()) {
+                    m_workspaceController->updateOperationInputs(enabledOperations);
+                    m_workspaceController->generateToolpaths();
+                }
             }
         });
     }
@@ -1888,6 +1787,23 @@ void MainWindow::handleOperationTileExpandedChanged(const QString& operationName
         }
         
         statusBar()->showMessage(QString("Internal Features %1").arg(expanded ? "expanded" : "collapsed"), 1000);
+    }
+}
+
+void MainWindow::handleOperationStatesRequest()
+{
+    // Get enabled operations from the operation tile container
+    if (m_operationTileContainer && m_workspaceController) {
+        QStringList enabledOperations = m_operationTileContainer->getEnabledOperations();
+        
+        // Update the workspace controller with current operation states
+        m_workspaceController->updateOperationInputs(enabledOperations);
+        
+        if (m_outputWindow) {
+            m_outputWindow->append(QString("Updated toolpath generation with %1 enabled operations: %2")
+                                 .arg(enabledOperations.size())
+                                 .arg(enabledOperations.join(", ")));
+        }
     }
 }
 

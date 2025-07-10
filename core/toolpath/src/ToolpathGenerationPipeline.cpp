@@ -10,6 +10,7 @@
 #include <sstream>
 #include <iomanip>
 #include <cmath>
+#include <iostream>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -20,6 +21,8 @@
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_Transform.hxx>
+#include <BRepBndLib.hxx>
+#include <Bnd_Box.hxx>
 #include <TopoDS_Wire.hxx>
 #include <TopoDS_Shape.hxx>
 #include <TopoDS.hxx>
@@ -27,6 +30,7 @@
 #include <TopoDS_Compound.hxx>
 #include <Quantity_Color.hxx>
 #include <Precision.hxx>
+#include <Prs3d_LineAspect.hxx>
 
 namespace IntuiCAM {
 namespace Toolpath {
@@ -70,6 +74,31 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
         if (inputs.facing) {
             reportProgress(0.1, "Generating facing toolpaths...", result);
             
+            // IMPROVED: Use actual profile bounds for facing positioning
+            double facingStartZ, facingEndZ, facingMaxRadius;
+            
+            if (!inputs.profile2D.isEmpty()) {
+                // Extract actual geometry from profile for accurate positioning
+                double profileMinZ, profileMaxZ, profileMinRadius, profileMaxRadius;
+                inputs.profile2D.getBounds(profileMinZ, profileMaxZ, profileMinRadius, profileMaxRadius);
+                
+                // Position facing at the front face of the part (maximum Z)
+                facingStartZ = profileMaxZ + 1.0;  // Start slightly ahead of part
+                facingEndZ = profileMaxZ - inputs.facingAllowance;  // End after removing allowance
+                facingMaxRadius = profileMaxRadius + 2.0;  // Start slightly outside part radius
+                
+                std::cout << "  - Using profile-based facing coordinates: Z=" << facingStartZ 
+                          << " to " << facingEndZ << ", radius=" << facingMaxRadius << std::endl;
+            } else {
+                // Fallback to input-based coordinates if no profile available
+                facingStartZ = inputs.z0;
+                facingEndZ = inputs.z0 - inputs.facingAllowance;
+                facingMaxRadius = inputs.rawMaterialDiameter / 2.0;
+                
+                std::cout << "  - Using fallback facing coordinates (no profile): Z=" << facingStartZ 
+                          << " to " << facingEndZ << ", radius=" << facingMaxRadius << std::endl;
+            }
+            
             double depthOfCut = 1.0; // mm - placeholder
             int passes = static_cast<int>(std::floor(inputs.facingAllowance / depthOfCut));
             
@@ -80,14 +109,12 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
                     return result;
                 }
                 
-                // LATHE COORDINATE SYSTEM: X=axial, Y=0 (constrained), Z=radius
-                IntuiCAM::Geometry::Point3D coordinates(
-                    inputs.z0 - i * depthOfCut,  // X = axial position (was Z coordinate)
-                    0.0,                         // Y = 0 (constrained to XZ plane)
-                    inputs.rawMaterialDiameter / 2.0 + 5  // Z = radius (was X coordinate)
-                );
-                IntuiCAM::Geometry::Point3D startPos(inputs.z0, 0.0, inputs.rawMaterialDiameter / 2.0 + 5);
-                IntuiCAM::Geometry::Point3D endPos(inputs.z0, 0.0, inputs.rawMaterialDiameter / 2.0 + 5);
+                // IMPROVED POSITIONING: Use profile-based coordinates for accurate positioning
+                double axialPosition = facingStartZ - i * depthOfCut;  // Start from profile front face
+                
+                IntuiCAM::Geometry::Point3D coordinates(axialPosition, 0.0, facingMaxRadius);
+                IntuiCAM::Geometry::Point3D startPos(axialPosition, 0.0, facingMaxRadius + 2.0);  // Start slightly outside
+                IntuiCAM::Geometry::Point3D endPos(axialPosition, 0.0, 0.0);                     // End at center
                 
                 auto facingPasses = facingToolpath(coordinates, startPos, endPos, inputs.facingTool);
                 for (auto& tp : facingPasses) {
@@ -96,10 +123,9 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
             }
             
             // One final facing pass to finish to dimension
-            IntuiCAM::Geometry::Point3D finalCoord(
-                inputs.z0 - inputs.facingAllowance, 0.0, inputs.rawMaterialDiameter / 2.0 + 5);
-            IntuiCAM::Geometry::Point3D startPos(inputs.z0, 0.0, inputs.rawMaterialDiameter / 2.0 + 5);
-            IntuiCAM::Geometry::Point3D endPos(inputs.z0, 0.0, inputs.rawMaterialDiameter / 2.0 + 5);
+            IntuiCAM::Geometry::Point3D finalCoord(facingEndZ, 0.0, facingMaxRadius);
+            IntuiCAM::Geometry::Point3D startPos(facingEndZ, 0.0, facingMaxRadius + 2.0);
+            IntuiCAM::Geometry::Point3D endPos(facingEndZ, 0.0, 0.0);
             auto finalFacing = facingToolpath(finalCoord, startPos, endPos, inputs.facingTool);
             for (auto& tp : finalFacing) {
                 result.timeline.push_back(std::move(tp));
@@ -197,7 +223,28 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
         if (inputs.externalRoughing) {
             reportProgress(0.6, "Generating external roughing toolpaths...", result);
             
-            IntuiCAM::Geometry::Point3D coordinates(inputs.z0, 0.0, inputs.rawMaterialDiameter / 2.0);
+            // IMPROVED: Use actual profile bounds for roughing positioning
+            IntuiCAM::Geometry::Point3D coordinates;
+            
+            if (!inputs.profile2D.isEmpty()) {
+                // Extract actual geometry from profile for accurate positioning
+                double profileMinZ, profileMaxZ, profileMinRadius, profileMaxRadius;
+                inputs.profile2D.getBounds(profileMinZ, profileMaxZ, profileMinRadius, profileMaxRadius);
+                
+                // Position roughing based on actual part profile bounds
+                // Start from the maximum Z and radius of the part
+                coordinates = IntuiCAM::Geometry::Point3D(profileMaxZ, 0.0, profileMaxRadius);
+                
+                std::cout << "  - Using profile-based roughing coordinates: Z=" << profileMaxZ 
+                          << ", radius=" << profileMaxRadius << std::endl;
+            } else {
+                // Fallback to input-based coordinates if no profile available
+                coordinates = IntuiCAM::Geometry::Point3D(inputs.z0, 0.0, inputs.rawMaterialDiameter / 2.0);
+                
+                std::cout << "  - Using fallback roughing coordinates (no profile): Z=" << inputs.z0 
+                          << ", radius=" << inputs.rawMaterialDiameter / 2.0 << std::endl;
+            }
+            
             auto roughingPaths = externalRoughingToolpath(
                 coordinates, inputs.externalRoughingTool, inputs.profile2D
             );
@@ -326,15 +373,87 @@ ToolpathGenerationPipeline::PipelineInputs
 ToolpathGenerationPipeline::extractInputsFromPart(const TopoDS_Shape& partGeometry, const gp_Ax1& turningAxis) {
     PipelineInputs inputs;
     
-    // Extract basic profile from geometry (placeholder implementation)
-    // In a real implementation, this would analyze the part geometry
-    inputs.rawMaterialDiameter = 25.0;
-    inputs.rawMaterialLength = 60.0;
-    inputs.z0 = 60.0;
-    inputs.partLength = 50.0;
+    // IMPROVED: Store the actual part geometry for use by operations
+    m_currentPartGeometry = partGeometry;
     
-    // Auto-detect features from geometry (placeholder)
-    auto features = detectFeatures(inputs.profile2D);
+    // IMPROVED: Extract 2D profile from part geometry first - this is critical for profile-based toolpaths
+    if (!partGeometry.IsNull()) {
+        // Extract the 2D profile using ProfileExtractor
+        ProfileExtractor::ExtractionParameters extractParams;
+        extractParams.tolerance = 0.01;                  // 0.01mm tolerance
+        extractParams.minSegmentLength = 0.001;          // Filter very small segments
+        extractParams.turningAxis = turningAxis;         // Use provided turning axis
+        extractParams.sortSegments = true;               // Ensure proper ordering
+        
+        std::cout << "ToolpathGenerationPipeline: Extracting 2D profile from part geometry..." << std::endl;
+        inputs.profile2D = ProfileExtractor::extractProfile(partGeometry, extractParams);
+        
+        if (!inputs.profile2D.isEmpty()) {
+            std::cout << "  - Profile extracted successfully with " << inputs.profile2D.getSegmentCount() 
+                      << " segments" << std::endl;
+        } else {
+            std::cout << "  - Warning: Profile extraction returned empty profile" << std::endl;
+        }
+    }
+    
+    // DYNAMIC EXTRACTION: Extract dimensions from actual part geometry
+    if (!partGeometry.IsNull()) {
+        // Calculate bounding box of the part to get actual dimensions
+        Bnd_Box partBox;
+        BRepBndLib::Add(partGeometry, partBox);
+        
+        if (!partBox.IsVoid()) {
+            Standard_Real xMin, yMin, zMin, xMax, yMax, zMax;
+            partBox.Get(xMin, yMin, zMin, xMax, yMax, zMax);
+            
+            // Extract dimensions from part geometry (convert to lathe coordinates)
+            double partLength = std::abs(zMax - zMin);
+            double maxRadius = std::max(std::abs(xMax), std::abs(xMin));
+            maxRadius = std::max(maxRadius, std::max(std::abs(yMax), std::abs(yMin)));
+            
+            // IMPROVED: Use profile bounds if available for more accurate dimensions
+            if (!inputs.profile2D.isEmpty()) {
+                double profileMinZ, profileMaxZ, profileMinRadius, profileMaxRadius;
+                inputs.profile2D.getBounds(profileMinZ, profileMaxZ, profileMinRadius, profileMaxRadius);
+                
+                // Use profile dimensions which are more accurate for lathe operations
+                partLength = std::abs(profileMaxZ - profileMinZ);
+                maxRadius = profileMaxRadius;
+                
+                std::cout << "  - Using profile bounds: length=" << partLength 
+                          << "mm, max radius=" << maxRadius << "mm" << std::endl;
+            }
+            
+            // Set dynamic values based on actual part
+            inputs.rawMaterialDiameter = maxRadius * 2.1; // 105% of part size for stock allowance
+            inputs.rawMaterialLength = partLength * 1.2;  // 120% of part length
+            inputs.z0 = inputs.rawMaterialLength;
+            inputs.partLength = partLength;
+            
+            std::cout << "ToolpathGenerationPipeline: Dynamic extraction from part geometry:" << std::endl;
+            std::cout << "  - Part length: " << partLength << "mm" << std::endl;
+            std::cout << "  - Max radius: " << maxRadius << "mm" << std::endl;
+            std::cout << "  - Raw material diameter: " << inputs.rawMaterialDiameter << "mm" << std::endl;
+            std::cout << "  - Raw material length: " << inputs.rawMaterialLength << "mm" << std::endl;
+        } else {
+            std::cerr << "ToolpathGenerationPipeline: Warning - Part geometry bounding box is void, using fallback values" << std::endl;
+            // Fallback values if geometry analysis fails
+            inputs.rawMaterialDiameter = 25.0;
+            inputs.rawMaterialLength = 60.0;
+            inputs.z0 = 60.0;
+            inputs.partLength = 50.0;
+        }
+    } else {
+        std::cerr << "ToolpathGenerationPipeline: Warning - No part geometry provided, using default values" << std::endl;
+        // Default values if no geometry provided
+        inputs.rawMaterialDiameter = 25.0;
+        inputs.rawMaterialLength = 60.0;
+        inputs.z0 = 60.0;
+        inputs.partLength = 50.0;
+    }
+    
+    // DYNAMIC FEATURE DETECTION: Extract features from actual part geometry  
+    auto features = detectFeatures(inputs.profile2D, partGeometry);
     for (const auto& feature : features) {
         if (feature.type == "hole") {
             inputs.featuresToBeDrilled.push_back(feature);
@@ -353,18 +472,52 @@ ToolpathGenerationPipeline::extractInputsFromPart(const TopoDS_Shape& partGeomet
 }
 
 std::vector<ToolpathGenerationPipeline::DetectedFeature> 
-ToolpathGenerationPipeline::detectFeatures(const LatheProfile::Profile2D& profile) {
+ToolpathGenerationPipeline::detectFeatures(const LatheProfile::Profile2D& profile, const TopoDS_Shape& partGeometry) {
     std::vector<DetectedFeature> features;
     
-    // Placeholder feature detection
-    // In a real implementation, this would analyze the 2D profile
-    DetectedFeature holeFeature;
-    holeFeature.type = "hole";
-    holeFeature.depth = 20.0;
-    holeFeature.diameter = 8.0;
-    holeFeature.coordinates = IntuiCAM::Geometry::Point3D(30.0, 0.0, 0.0);
-    holeFeature.tool = "drill_8mm";
-    features.push_back(holeFeature);
+    // DYNAMIC FEATURE DETECTION: Analyze actual part geometry instead of hardcoded features
+    if (!partGeometry.IsNull()) {
+        std::cout << "ToolpathGenerationPipeline: Analyzing part geometry for features..." << std::endl;
+        
+        // TODO: Implement actual feature detection algorithms:
+        // - Cylindrical hole detection using TopExp_Explorer for circular faces
+        // - Groove detection by analyzing profile segments  
+        // - Thread detection using surface analysis
+        // - Chamfer detection using edge analysis
+        
+        // For now, only detect features if profile contains specific patterns
+        if (!profile.segments.empty()) {
+            // Look for potential hole patterns in profile (concave features)
+            for (size_t i = 0; i < profile.segments.size(); ++i) {
+                const auto& segment = profile.segments[i];
+                
+                // Simple heuristic: if segment is short and potentially represents a hole feature
+                // In lathe coordinates, start.x is typically the radius, start.z is the axial position
+                double segmentRadius = std::abs(segment.start.x);
+                
+                if (segmentRadius > 0.0 && segmentRadius < 5.0 && segment.length > 0.5) {
+                    DetectedFeature holeFeature;
+                    holeFeature.type = "hole";
+                    holeFeature.depth = segment.length;
+                    holeFeature.diameter = segmentRadius * 2.0;
+                    holeFeature.coordinates = IntuiCAM::Geometry::Point3D(segment.start.z, 0.0, segment.start.x);
+                    std::ostringstream toolNameStream;
+                    toolNameStream << "drill_" << holeFeature.diameter << "mm";
+                    holeFeature.tool = toolNameStream.str();
+                    features.push_back(holeFeature);
+                    
+                    std::cout << "  - Detected hole feature: diameter = " << holeFeature.diameter 
+                             << "mm, depth = " << holeFeature.depth << "mm" << std::endl;
+                }
+            }
+        }
+        
+        if (features.empty()) {
+            std::cout << "  - No features detected in part geometry" << std::endl;
+        }
+    } else {
+        std::cout << "ToolpathGenerationPipeline: No part geometry provided for feature detection" << std::endl;
+    }
     
     return features;
 }
@@ -388,12 +541,19 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::facingToolpat
     // Create FacingOperation instance with name and tool
     FacingOperation facingOp("Facing Pass", tool);
     
-    // Set up operation parameters based on coordinates and default GUI parameters
+    // IMPROVED: Use actual coordinates from part geometry instead of hardcoded values
+    // Extract geometry bounds from the current profile if available
+    double startZ = coordinates.x;  // Lathe coordinate system: X=axial (Z in machine)
+    double endZ = endPos.x;
+    double maxRadius = coordinates.z;  // Z=radius in lathe coordinates (X in machine)
+    double minRadius = 0.0;  // Usually face to center
+    
+    // Set up operation parameters based on actual coordinates and realistic GUI parameters
     FacingOperation::Parameters params;
-    params.startZ = coordinates.x;  // Lathe coordinate system: X=axial
-    params.endZ = endPos.x;
-    params.maxRadius = coordinates.z;  // Z=radius in lathe coordinates
-    params.minRadius = 0.0;
+    params.startZ = startZ;
+    params.endZ = endZ;
+    params.maxRadius = maxRadius;
+    params.minRadius = minRadius;
     params.stockAllowance = 0.2;  // Default GUI parameter
     params.depthOfCut = 0.5;
     params.radialStepover = 0.8;
@@ -404,12 +564,22 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::facingToolpat
     
     facingOp.setParameters(params);
     
-    // Create an empty Part object for generateToolpath
-    auto emptyPart = createEmptyPart();
+    // IMPROVED: Pass actual part geometry instead of empty part
+    auto part = createPartFromGeometry();
     
     // Generate toolpath using the operation
-    auto toolpath = facingOp.generateToolpath(*emptyPart);
+    auto toolpath = facingOp.generateToolpath(*part);
     if (toolpath) {
+        // IMPROVED: Ensure operation type is properly set for coloring
+        toolpath->setOperationType(OperationType::Facing);
+        
+        // Override movements to ensure proper operation type setting
+        auto& movements = const_cast<std::vector<Movement>&>(toolpath->getMovements());
+        for (auto& movement : movements) {
+            movement.operationType = OperationType::Facing;
+            movement.operationName = "Facing Pass";
+        }
+        
         result.push_back(std::move(toolpath));
     }
     
@@ -525,28 +695,59 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::externalRough
     // Create ExternalRoughingOperation instance with name and tool
     ExternalRoughingOperation roughingOp("External Roughing", tool);
     
-    // Set up operation parameters based on coordinates and default GUI parameters
+    // IMPROVED: Use actual profile geometry instead of hardcoded values
+    double startDiameter, endDiameter, startZ, endZ;
+    
+    if (!profile.isEmpty()) {
+        // Extract actual geometry from profile
+        double minZ, maxZ, minRadius, maxRadius;
+        profile.getBounds(minZ, maxZ, minRadius, maxRadius);
+        
+        // Use actual profile bounds for roughing parameters
+        startDiameter = maxRadius * 2.0;  // Start from maximum radius
+        endDiameter = minRadius * 2.0 + 1.0;  // Leave some material for finishing
+        startZ = maxZ;  // Start from maximum Z (furthest from chuck)
+        endZ = minZ;    // End at minimum Z (closest to chuck)
+    } else {
+        // Fallback to coordinates if no profile available
+        startDiameter = coordinates.z * 2.0;  // Convert radius to diameter
+        endDiameter = coordinates.z * 2.0 - 4.0;  // Remove some material
+        startZ = coordinates.x;  // X=axial in lathe coordinates
+        endZ = coordinates.x - 20.0;  // Roughing length
+    }
+    
+    // Set up operation parameters based on actual profile geometry
     ExternalRoughingOperation::Parameters params;
-    params.startDiameter = coordinates.z * 2.0;  // Convert radius to diameter
-    params.endDiameter = coordinates.z * 2.0 - 4.0;  // Remove some material
-    params.startZ = coordinates.x;  // X=axial in lathe coordinates
-    params.endZ = coordinates.x - 20.0;  // Roughing length
+    params.startDiameter = startDiameter;
+    params.endDiameter = endDiameter;
+    params.startZ = startZ;
+    params.endZ = endZ;
     params.depthOfCut = 2.0;  // mm - Default GUI parameter
     params.stepover = 1.5;  // mm
     params.stockAllowance = 0.5;  // mm - Default GUI parameter
     params.feedRate = 150.0;  // mm/min - Default GUI parameter
     params.spindleSpeed = 1000.0;  // RPM - Default GUI parameter
-    params.useProfileFollowing = true;
+    params.useProfileFollowing = !profile.isEmpty();  // Use profile if available
     params.enableChipBreaking = true;
     
     roughingOp.setParameters(params);
     
-    // Create an empty Part object for generateToolpath
-    auto emptyPart = createEmptyPart();
+    // IMPROVED: Pass actual part geometry instead of empty part
+    auto part = createPartFromGeometry();
     
     // Generate toolpath using the operation
-    auto toolpath = roughingOp.generateToolpath(*emptyPart);
+    auto toolpath = roughingOp.generateToolpath(*part);
     if (toolpath) {
+        // IMPROVED: Ensure operation type is properly set for coloring
+        toolpath->setOperationType(OperationType::ExternalRoughing);
+        
+        // Override movements to ensure proper operation type setting
+        auto& movements = const_cast<std::vector<Movement>&>(toolpath->getMovements());
+        for (auto& movement : movements) {
+            movement.operationType = OperationType::ExternalRoughing;
+            movement.operationName = "External Roughing";
+        }
+        
         result.push_back(std::move(toolpath));
     }
     
@@ -587,10 +788,10 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::internalFinis
     finishingOp.setParameters(params);
     
     // Create an empty Part object for generateToolpath
-    auto emptyPart = createEmptyPart();
+    auto part = createPartFromGeometry();
     
     // Generate toolpath using the operation
-    auto toolpath = finishingOp.generateToolpath(*emptyPart);
+    auto toolpath = finishingOp.generateToolpath(*part);
     if (toolpath) {
         result.push_back(std::move(toolpath));
     }
@@ -632,10 +833,10 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::externalFinis
     finishingOp.setParameters(params);
     
     // Create an empty Part object for generateToolpath
-    auto emptyPart = createEmptyPart();
+    auto part = createPartFromGeometry();
     
     // Generate toolpath using the operation
-    auto toolpath = finishingOp.generateToolpath(*emptyPart);
+    auto toolpath = finishingOp.generateToolpath(*part);
     if (toolpath) {
         result.push_back(std::move(toolpath));
     }
@@ -1027,10 +1228,10 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::partingToolpa
     params.enableChipBreaking = true;
     
     // Create an empty Part object for generateToolpaths
-    auto emptyPart = createEmptyPart();
+    auto part = createPartFromGeometry();
     
     // Generate toolpaths using the operation (note: different interface)
-    auto partingResult = partingOp.generateToolpaths(*emptyPart, tool, params);
+    auto partingResult = partingOp.generateToolpaths(*part, tool, params);
     
     if (partingResult.success) {
         if (partingResult.grooveToolpath) {
@@ -1053,81 +1254,94 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
     
     std::vector<Handle(AIS_InteractiveObject)> displayObjects;
     
-    // TOOLPATH COORDINATE SYSTEM CONSISTENCY
-    // Use the same coordinate system logic as 2D profiles for consistency.
-    // Toolpaths should be positioned in the same coordinate system as the profile display.
-    // 
-    // In lathe coordinate system:
-    // - Movement position.x = axial position (along spindle axis) 
-    // - Movement position.z = radial position (distance from centerline)
-    // - Movement position.y = 0 (always on XZ plane)
-    //
-    // For 3D display:
-    // - X coordinate = radius (position.z)
-    // - Y coordinate = 0 (XZ plane constraint)
-    // - Z coordinate = axial (position.x)
-    
-    // Create display objects for each toolpath
+    // Create proper ToolpathDisplayObject instances for each toolpath
     for (const auto& toolpath : toolpaths) {
         if (!toolpath || toolpath->getMovements().empty()) {
             continue;
         }
         
         try {
-            // Create wire from toolpath movements using the same coordinate transformation as 2D profiles
-            BRepBuilderAPI_MakeWire wireBuilder;
-            const auto& movements = toolpath->getMovements();
+            // Create ToolpathDisplayObject with appropriate visualization settings
+            ToolpathDisplayObject::VisualizationSettings settings;
             
-            for (size_t i = 0; i < movements.size() - 1; ++i) {
-                const auto& currentMove = movements[i];
-                const auto& nextMove = movements[i + 1];
-
-                // Apply the same coordinate transformation as 2D profiles:
-                // Convert from lathe coordinates (X=axial, Z=radius) to display coordinates (X=radius, Z=axial)
-                gp_Pnt start(currentMove.position.z, 0.0, currentMove.position.x);  // (radius, 0, axial)
-                gp_Pnt end(nextMove.position.z, 0.0, nextMove.position.x);         // (radius, 0, axial)
-                
-                // Ensure Y=0 to constrain to XZ plane for lathe operations
-                start.SetY(0.0);
-                end.SetY(0.0);
-                
-                if (start.Distance(end) > Precision::Confusion()) {
-                    BRepBuilderAPI_MakeEdge edgeBuilder(start, end);
-                    if (edgeBuilder.IsDone()) {
-                        wireBuilder.Add(edgeBuilder.Edge());
-                    }
-                }
+            // Set color and visualization based on operation type
+            switch (toolpath->getOperationType()) {
+                case OperationType::Facing:
+                    settings.colorScheme = ToolpathDisplayObject::ColorScheme::OperationType;
+                    settings.lineWidth = 2.5;
+                    break;
+                case OperationType::ExternalRoughing:
+                    settings.colorScheme = ToolpathDisplayObject::ColorScheme::OperationType;
+                    settings.lineWidth = 2.0;
+                    break;
+                case OperationType::InternalRoughing:
+                    settings.colorScheme = ToolpathDisplayObject::ColorScheme::OperationType;
+                    settings.lineWidth = 2.0;
+                    break;
+                case OperationType::ExternalFinishing:
+                    settings.colorScheme = ToolpathDisplayObject::ColorScheme::DepthBased;
+                    settings.lineWidth = 1.5;
+                    break;
+                case OperationType::InternalFinishing:
+                    settings.colorScheme = ToolpathDisplayObject::ColorScheme::DepthBased;
+                    settings.lineWidth = 1.5;
+                    break;
+                case OperationType::Parting:
+                    settings.colorScheme = ToolpathDisplayObject::ColorScheme::OperationType;
+                    settings.lineWidth = 3.0;
+                    break;
+                case OperationType::ExternalGrooving:
+                case OperationType::InternalGrooving:
+                    settings.colorScheme = ToolpathDisplayObject::ColorScheme::OperationType;
+                    settings.lineWidth = 2.5;
+                    break;
+                case OperationType::Threading:
+                    settings.colorScheme = ToolpathDisplayObject::ColorScheme::Rainbow;
+                    settings.lineWidth = 2.0;
+                    break;
+                case OperationType::Chamfering:
+                    settings.colorScheme = ToolpathDisplayObject::ColorScheme::OperationType;
+                    settings.lineWidth = 1.5;
+                    break;
+                case OperationType::Drilling:
+                    settings.colorScheme = ToolpathDisplayObject::ColorScheme::OperationType;
+                    settings.lineWidth = 2.0;
+                    break;
+                default:
+                    settings.colorScheme = ToolpathDisplayObject::ColorScheme::Default;
+                    settings.lineWidth = 2.0;
+                    break;
             }
             
-            if (wireBuilder.IsDone()) {
-                TopoDS_Wire wire = wireBuilder.Wire();
+            // Create shared pointer to toolpath for the display object
+            std::shared_ptr<Toolpath> sharedToolpath;
+            
+            // Create a default tool for the display object (since ToolpathDisplayObject needs it)
+            auto defaultTool = std::make_shared<Tool>(Tool::Type::Turning, "Display Tool");
+            
+            // Create a new toolpath with the same operation type and movements
+            auto newToolpath = std::make_shared<Toolpath>("Display Toolpath", defaultTool, toolpath->getOperationType());
+            
+            // Copy movements from the original toolpath
+            const auto& movements = toolpath->getMovements();
+            for (const auto& movement : movements) {
+                newToolpath->addMovement(movement);
+            }
+            
+            sharedToolpath = newToolpath;
+            
+            // Create the ToolpathDisplayObject
+            Handle(ToolpathDisplayObject) displayObj = ToolpathDisplayObject::create(sharedToolpath, settings);
+            
+            if (!displayObj.IsNull()) {
+                // Apply coordinate transformation if needed
+                // The ToolpathDisplayObject should handle coordinate transformation internally
                 
-                Handle(AIS_Shape) aisShape = new AIS_Shape(wire);
+                // IMPROVED: Use color scheme instead of manual color override
+                displayObj->SetDisplayMode(AIS_WireFrame);
+                displayObj->SetTransparency(0.0);
                 
-                // Set color based on operation type
-                Quantity_Color color;
-                switch (toolpath->getOperationType()) {
-                    case OperationType::Facing:
-                        color = Quantity_Color(0.0, 1.0, 0.0, Quantity_TOC_RGB); // Green
-                        break;
-                    case OperationType::ExternalRoughing:
-                    case OperationType::InternalRoughing:
-                        color = Quantity_Color(1.0, 0.0, 0.0, Quantity_TOC_RGB); // Red
-                        break;
-                    case OperationType::ExternalFinishing:
-                    case OperationType::InternalFinishing:
-                        color = Quantity_Color(0.0, 0.0, 1.0, Quantity_TOC_RGB); // Blue
-                        break;
-                    case OperationType::Parting:
-                        color = Quantity_Color(1.0, 1.0, 0.0, Quantity_TOC_RGB); // Yellow
-                        break;
-                    default:
-                        color = Quantity_Color(0.5, 0.5, 0.5, Quantity_TOC_RGB); // Gray
-                        break;
-                }
-                
-                aisShape->SetColor(color);
-                displayObjects.push_back(aisShape);
+                displayObjects.push_back(displayObj);
             }
             
         } catch (const std::exception& e) {
@@ -1142,6 +1356,19 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
 void ToolpathGenerationPipeline::reportProgress(double progress, const std::string& status, const PipelineResult& result) {
     if (result.progressCallback) {
         result.progressCallback(progress, status);
+    }
+    
+    std::cout << "ToolpathGenerationPipeline: " << static_cast<int>(progress * 100) << "% - " << status << std::endl;
+}
+
+// IMPROVED: Create Part object from stored geometry
+std::unique_ptr<IntuiCAM::Geometry::OCCTPart> ToolpathGenerationPipeline::createPartFromGeometry() const {
+    if (!m_currentPartGeometry.IsNull()) {
+        // Create Part object from actual stored geometry
+        return std::make_unique<IntuiCAM::Geometry::OCCTPart>(&m_currentPartGeometry);
+    } else {
+        // Fallback to empty part if no geometry stored
+        return createEmptyPart();
     }
 }
 

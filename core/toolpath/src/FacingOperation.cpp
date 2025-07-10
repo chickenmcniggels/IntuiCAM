@@ -174,13 +174,19 @@ std::unique_ptr<Toolpath> FacingOperation::generateToolpath(const Geometry::Part
     extractParams.sortSegments = true;                     // Ensure proper ordering
     
     // Get part shape for profile extraction
-    // Note: In real implementation, this would be extracted from Geometry::Part
-    TopoDS_Shape partShape; // This would come from part.getShape() or similar
+    // Extract part shape from Geometry::Part
+    const Geometry::OCCTPart* occtPart = dynamic_cast<const Geometry::OCCTPart*>(&part);
+    if (!occtPart) {
+        // Handle error: part is not an OCCTPart or is null
+        // For now, return an empty toolpath or throw an exception
+        return std::make_unique<Toolpath>(getName(), getTool(), OperationType::Facing);
+    }
+    TopoDS_Shape partShape = occtPart->getOCCTShape();
     auto profile = ProfileExtractor::extractProfile(partShape, extractParams);
     
     if (profile.isEmpty()) {
         // Create basic facing based on parameters if no profile available
-        auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+        auto toolpath = std::make_unique<Toolpath>(getName(), getTool(), OperationType::Facing);
         
         // Create simple facing from maxRadius to minRadius
         LatheProfile::Profile2D basicProfile;
@@ -204,7 +210,7 @@ std::unique_ptr<Toolpath> FacingOperation::generateProfileBasedFacing(const Lath
     
     if (facingBoundary.empty()) {
         // Return empty toolpath if no valid boundary
-        auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+        auto toolpath = std::make_unique<Toolpath>(getName(), getTool(), OperationType::Facing);
         return toolpath;
     }
     
@@ -234,7 +240,7 @@ std::unique_ptr<Toolpath> FacingOperation::generateProfileBasedFacing(const Lath
 }
 
 std::unique_ptr<Toolpath> FacingOperation::generateInsideOutFacing(const LatheProfile::Profile2D& profile) {
-    auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+    auto toolpath = std::make_unique<Toolpath>(getName(), getTool(), OperationType::Facing);
     
     auto facingBoundary = extractFacingBoundary(profile);
     if (facingBoundary.empty()) {
@@ -289,7 +295,7 @@ std::unique_ptr<Toolpath> FacingOperation::generateInsideOutFacing(const LathePr
 }
 
 std::unique_ptr<Toolpath> FacingOperation::generateOutsideInFacing(const LatheProfile::Profile2D& profile) {
-    auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+    auto toolpath = std::make_unique<Toolpath>(getName(), getTool(), OperationType::Facing);
     
     auto facingBoundary = extractFacingBoundary(profile);
     if (facingBoundary.empty()) {
@@ -343,7 +349,7 @@ std::unique_ptr<Toolpath> FacingOperation::generateOutsideInFacing(const LathePr
 }
 
 std::unique_ptr<Toolpath> FacingOperation::generateSpiralFacing(const LatheProfile::Profile2D& profile) {
-    auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+    auto toolpath = std::make_unique<Toolpath>(getName(), getTool(), OperationType::Facing);
     
     double safeZ = params_.startZ + params_.safetyHeight;
     
@@ -379,7 +385,7 @@ std::unique_ptr<Toolpath> FacingOperation::generateSpiralFacing(const LatheProfi
 }
 
 std::unique_ptr<Toolpath> FacingOperation::generateAdaptiveFacing(const LatheProfile::Profile2D& profile) {
-    auto toolpath = std::make_unique<Toolpath>(getName(), getTool());
+    auto toolpath = std::make_unique<Toolpath>(getName(), getTool(), OperationType::Facing);
     
     double safeZ = params_.startZ + params_.safetyHeight;
     

@@ -130,6 +130,9 @@ private slots:
     void handleOperationTileToolSelectionRequested(const QString& operationName);
     void handleOperationTileExpandedChanged(const QString& operationName, bool expanded);
     
+    // Operation state requests for dynamic toolpath generation
+    void handleOperationStatesRequest();
+    
     // 3D viewer handlers
     void handleShapeSelected(const TopoDS_Shape& shape, const gp_Pnt& clickPoint);
     void handleViewModeChanged(ViewMode mode);

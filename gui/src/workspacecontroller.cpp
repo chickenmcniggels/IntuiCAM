@@ -8,6 +8,7 @@
 #include <IntuiCAM/Toolpath/ToolpathDisplayObject.h>
 
 #include <QDebug>
+#include <QApplication>
 #include <cmath>
 
 #ifndef M_PI
@@ -937,22 +938,53 @@ bool WorkspaceController::generateToolpaths()
         auto inputs = pipeline->extractInputsFromPart(partShape, turningAxis);
         
         // Set default parameters for workspace controller generated toolpaths
-        inputs.rawMaterialDiameter = getAutoRawMaterialDiameter();
-        inputs.rawMaterialLength = 100.0; // Default length
-        inputs.partLength = 80.0; // Default part length
-        inputs.z0 = inputs.rawMaterialLength;
+        // IMPROVED: Only override values if they weren't properly extracted from the part
+        double extractedDiameter = inputs.rawMaterialDiameter;
+        double extractedLength = inputs.rawMaterialLength;
+        double extractedZ0 = inputs.z0;
+        double extractedPartLength = inputs.partLength;
+        
+        // Use auto raw material diameter if available, but preserve profile-based values if they seem reasonable
+        double autoRawDiameter = getAutoRawMaterialDiameter();
+        if (autoRawDiameter > 0.0 && extractedDiameter > 0.0) {
+            // Use the larger of the two for safety (profile-based or auto-detected)
+            inputs.rawMaterialDiameter = std::max(extractedDiameter, autoRawDiameter);
+        } else if (autoRawDiameter > 0.0) {
+            inputs.rawMaterialDiameter = autoRawDiameter;
+        }
+        // else keep the extracted value
+        
+        // Only set default length values if extraction failed (returned very small or zero values)
+        if (inputs.rawMaterialLength < 1.0) {
+            inputs.rawMaterialLength = 100.0; // Default length
+        }
+        if (inputs.partLength < 1.0) {
+            inputs.partLength = 80.0; // Default part length  
+        }
+        if (inputs.z0 < 1.0) {
+            inputs.z0 = inputs.rawMaterialLength;
+        }
+        
+        // Set operation-specific defaults
         inputs.facingAllowance = 2.0;
         inputs.largestDrillSize = 12.0;
         inputs.internalFinishingPasses = 2;
         inputs.externalFinishingPasses = 2;
         inputs.partingAllowance = 0.0;
         
-        // Enable basic operations
-        inputs.facing = true;
-        inputs.externalRoughing = true;
-        inputs.externalFinishing = true;
-        inputs.parting = true;
-        inputs.drilling = false; // Disabled by default in workspace controller
+        qDebug() << "WorkspaceController: Using extracted dimensions:";
+        qDebug() << "  - Raw material diameter:" << inputs.rawMaterialDiameter << "mm";
+        qDebug() << "  - Raw material length:" << inputs.rawMaterialLength << "mm";
+        qDebug() << "  - Part length:" << inputs.partLength << "mm";
+        qDebug() << "  - Z0 position:" << inputs.z0 << "mm";
+        
+        // DYNAMIC TOOLPATH GENERATION BASED ON ENABLED OPERATIONS
+        // Get enabled operations from the UI instead of using hardcoded values
+        inputs.facing = false;
+        inputs.externalRoughing = false;
+        inputs.externalFinishing = false;
+        inputs.parting = false;
+        inputs.drilling = false;
         inputs.machineInternalFeatures = false;
         inputs.internalRoughing = false;
         inputs.internalFinishing = false;
@@ -960,6 +992,41 @@ bool WorkspaceController::generateToolpaths()
         inputs.externalGrooving = false;
         inputs.chamfering = false;
         inputs.threading = false;
+        
+        // Get enabled operations from the main window's operation tile container SYNCHRONOUSLY
+        // Request operation states and process them immediately
+        emit requestOperationStates();
+        
+        // Wait a moment for the signal to be processed synchronously
+        QApplication::processEvents();
+        
+        // Use the current operation inputs if they have been set
+        bool hasEnabledOperations = (m_currentOperationInputs.facing || 
+                                    m_currentOperationInputs.externalRoughing || 
+                                    m_currentOperationInputs.externalFinishing || 
+                                    m_currentOperationInputs.parting ||
+                                    m_currentOperationInputs.drilling ||
+                                    m_currentOperationInputs.internalRoughing ||
+                                    m_currentOperationInputs.internalFinishing);
+        
+        if (hasEnabledOperations) {
+            inputs = m_currentOperationInputs;
+            qDebug() << "WorkspaceController: Using operation inputs from UI tiles";
+        } else {
+            // Fallback: Enable basic operations if no UI state is available
+            qDebug() << "WorkspaceController: No operations enabled via UI, using default set";
+            inputs.facing = true;
+            inputs.externalRoughing = true;
+            inputs.externalFinishing = true;
+            inputs.parting = true;
+        }
+        
+        qDebug() << "WorkspaceController: Final operation inputs:";
+        qDebug() << "  - Facing:" << inputs.facing;
+        qDebug() << "  - External Roughing:" << inputs.externalRoughing;
+        qDebug() << "  - External Finishing:" << inputs.externalFinishing;
+        qDebug() << "  - Parting:" << inputs.parting;
+        qDebug() << "  - Drilling:" << inputs.drilling;
         
         qDebug() << "WorkspaceController: Executing toolpath generation pipeline";
         auto result = pipeline->executePipeline(inputs);
@@ -980,45 +1047,48 @@ bool WorkspaceController::generateToolpaths()
         // Toolpaths need to be positioned at the same location as the extracted profile
         // and use the work coordinate system for proper synchronization.
         
-        // Create toolpath display objects using simplified coordinate system (consistent with 2D profiles)
-        // The workpieceTransform parameter is not used anymore since we use direct coordinate mapping
-        gp_Trsf identityTransform; // Use identity transform since we handle coordinates directly
-        auto toolpathDisplayObjects = pipeline->createToolpathDisplayObjects(result.timeline, identityTransform);
-        
-        // Apply Work Coordinate System transformation if initialized
+        // Create toolpath display objects using the same coordinate system as profile extraction
+        // Apply work coordinate system transformation to position toolpaths correctly relative to workpiece
+        gp_Trsf workCoordinateTransform;
         if (m_coordinateManager && m_coordinateManager->isInitialized()) {
-            qDebug() << "WorkspaceController: Applying work coordinate system positioning to toolpaths";
-            
-            // Get work coordinate system transformation
+            // Get work coordinate system transformation matrix
             const auto& workCS = m_coordinateManager->getWorkCoordinateSystem();
+            const auto& matrix = workCS.getFromGlobalMatrix(); // Transform from global to work coordinates
             
-            // Extract work coordinate system origin (where toolpaths should be positioned)
-            gp_Pnt workOrigin(workCS.getToGlobalMatrix().data[12], 
-                            workCS.getToGlobalMatrix().data[13], 
-                            workCS.getToGlobalMatrix().data[14]);
-            
-            // Apply translation to position toolpaths at work coordinate system origin
-            // This ensures toolpaths start at the end of the raw material (work origin)
-            gp_Trsf workPositionTransform;
-            gp_Vec workTranslation(0.0, 0.0, 0.0); // Origin offset if needed
-            workTranslation.Add(gp_Vec(gp_Pnt(0,0,0), workOrigin)); // Move to work origin
-            workPositionTransform.SetTranslation(workTranslation);
-            
-            // Apply transformation to all toolpath display objects
-            for (const auto& displayObj : toolpathDisplayObjects) {
-                if (!displayObj.IsNull()) {
-                    displayObj->SetLocalTransformation(workPositionTransform);
-                }
-            }
-            
-            qDebug() << "WorkspaceController: Applied work coordinate positioning - Origin at (" 
-                     << workOrigin.X() << "," << workOrigin.Y() << "," << workOrigin.Z() << ")";
+            // Create OpenCASCADE transformation matrix from work coordinate system
+            workCoordinateTransform.SetValues(
+                matrix.data[0], matrix.data[1], matrix.data[2], matrix.data[3],
+                matrix.data[4], matrix.data[5], matrix.data[6], matrix.data[7],
+                matrix.data[8], matrix.data[9], matrix.data[10], matrix.data[11]
+            );
+            qDebug() << "WorkspaceController: Using work coordinate system transformation for toolpath positioning";
+        } else {
+            // Fallback to identity if work coordinate system not available
+            // In modern OpenCASCADE, default constructor creates identity transform
+            workCoordinateTransform = gp_Trsf();
+            qDebug() << "WorkspaceController: Using identity transform (work coordinate system not available)";
         }
         
+        auto toolpathDisplayObjects = pipeline->createToolpathDisplayObjects(result.timeline, workCoordinateTransform);
+        
+        // Toolpaths are now positioned using the same coordinate system as the profile extraction
+        // This ensures they appear at exactly the same location as the workpiece profile
+        qDebug() << "WorkspaceController: Toolpaths positioned using work coordinate system transformation";
+        
         // Display the generated toolpaths in the 3D viewer
+        // Clear any existing toolpaths first
+        clearToolpathsFromDisplay();
+        
+        // Store toolpath display objects for visibility control
+        m_toolpathDisplayObjects.clear();
+        
         for (size_t i = 0; i < toolpathDisplayObjects.size(); ++i) {
             const auto& displayObj = toolpathDisplayObjects[i];
             if (!displayObj.IsNull()) {
+                // Add to our tracking list for visibility control
+                m_toolpathDisplayObjects.push_back(displayObj);
+                
+                // Display with visibility state controlled by UI
                 m_context->Display(displayObj, Standard_False);
                 qDebug() << "  - Displayed toolpath" << i;
             }
@@ -1110,6 +1180,58 @@ const IntuiCAM::Geometry::Matrix4x4& WorkspaceCoordinateManager::getWorkToGlobal
 
 const IntuiCAM::Geometry::Matrix4x4& WorkspaceCoordinateManager::getGlobalToWorkMatrix() const {
     return workCoordinateSystem_.getFromGlobalMatrix();
+}
+
+void WorkspaceController::updateOperationInputs(const QStringList& enabledOperations) {
+    // Reset all operation inputs
+    m_currentOperationInputs.facing = false;
+    m_currentOperationInputs.externalRoughing = false;
+    m_currentOperationInputs.externalFinishing = false;
+    m_currentOperationInputs.parting = false;
+    m_currentOperationInputs.drilling = false;
+    m_currentOperationInputs.machineInternalFeatures = false;
+    m_currentOperationInputs.internalRoughing = false;
+    m_currentOperationInputs.internalFinishing = false;
+    m_currentOperationInputs.internalGrooving = false;
+    m_currentOperationInputs.externalGrooving = false;
+    m_currentOperationInputs.chamfering = false;
+    m_currentOperationInputs.threading = false;
+    
+    // Map operation names to input flags
+    for (const QString& operation : enabledOperations) {
+        if (operation == "Facing") {
+            m_currentOperationInputs.facing = true;
+        } else if (operation == "Roughing") {
+            m_currentOperationInputs.externalRoughing = true;
+        } else if (operation == "Finishing") {
+            m_currentOperationInputs.externalFinishing = true;
+        } else if (operation == "Parting") {
+            m_currentOperationInputs.parting = true;
+        } else if (operation == "Drilling") {
+            m_currentOperationInputs.drilling = true;
+        } else if (operation == "Internal Features") {
+            m_currentOperationInputs.machineInternalFeatures = true;
+        } else if (operation == "Internal Roughing") {
+            m_currentOperationInputs.internalRoughing = true;
+        } else if (operation == "Internal Finishing") {
+            m_currentOperationInputs.internalFinishing = true;
+        } else if (operation == "Internal Grooving") {
+            m_currentOperationInputs.internalGrooving = true;
+        } else if (operation == "Grooving") {
+            m_currentOperationInputs.externalGrooving = true;
+        } else if (operation == "Chamfering") {
+            m_currentOperationInputs.chamfering = true;
+        } else if (operation == "Threading") {
+            m_currentOperationInputs.threading = true;
+        }
+    }
+    
+    qDebug() << "WorkspaceController: Updated operation inputs from UI:";
+    qDebug() << "  - Facing:" << m_currentOperationInputs.facing;
+    qDebug() << "  - External Roughing:" << m_currentOperationInputs.externalRoughing;
+    qDebug() << "  - External Finishing:" << m_currentOperationInputs.externalFinishing;
+    qDebug() << "  - Parting:" << m_currentOperationInputs.parting;
+    qDebug() << "  - Drilling:" << m_currentOperationInputs.drilling;
 }
 
 void WorkspaceController::initializeWorkCoordinateSystem(const gp_Ax1& axis) {
@@ -1448,6 +1570,51 @@ void WorkspaceController::clearProfileDisplay()
         m_profileDisplayObject.Nullify();
         qDebug() << "WorkspaceController: Profile display cleared";
     }
+}
+
+void WorkspaceController::setToolpathsVisible(bool visible)
+{
+    if (m_context.IsNull()) {
+        return;
+    }
+    
+    // Control visibility of all stored toolpath display objects
+    for (const auto& toolpathObj : m_toolpathDisplayObjects) {
+        if (!toolpathObj.IsNull()) {
+            if (visible) {
+                if (!m_context->IsDisplayed(toolpathObj)) {
+                    m_context->Display(toolpathObj, Standard_False);
+                }
+            } else {
+                if (m_context->IsDisplayed(toolpathObj)) {
+                    m_context->Remove(toolpathObj, Standard_False);
+                }
+            }
+        }
+    }
+    
+    m_context->UpdateCurrentViewer();
+    qDebug() << "WorkspaceController: Toolpaths visibility set to" << visible;
+}
+
+void WorkspaceController::clearToolpathsFromDisplay()
+{
+    if (m_context.IsNull()) {
+        return;
+    }
+    
+    // Remove all existing toolpath display objects
+    for (const auto& toolpathObj : m_toolpathDisplayObjects) {
+        if (!toolpathObj.IsNull() && m_context->IsDisplayed(toolpathObj)) {
+            m_context->Remove(toolpathObj, Standard_False);
+        }
+    }
+    
+    // Clear the tracking list
+    m_toolpathDisplayObjects.clear();
+    
+    m_context->UpdateCurrentViewer();
+    qDebug() << "WorkspaceController: Cleared all toolpaths from display";
 }
 
  

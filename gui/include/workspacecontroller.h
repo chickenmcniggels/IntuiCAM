@@ -231,10 +231,27 @@ public:
     bool isProfileVisible() const;
 
     /**
+     * @brief Update toolpath visibility in the 3D viewer
+     * @param visible True to show toolpaths, false to hide
+     */
+    void setToolpathsVisible(bool visible);
+
+    /**
+     * @brief Clear all toolpaths from display
+     */
+    void clearToolpathsFromDisplay();
+
+    /**
      * @brief Get the extracted profile data
      * @return The extracted profile, or empty profile if not available
      */
     IntuiCAM::Toolpath::LatheProfile::Profile2D getExtractedProfile() const;
+
+    /**
+     * @brief Update toolpath generation inputs based on current UI operation states
+     * @param operationStates Map of operation names to their enabled states
+     */
+    void updateOperationInputs(const QStringList& enabledOperations);
 
 signals:
     /**
@@ -292,6 +309,12 @@ signals:
      * @param distance New distance from chuck
      */
     void workpiecePositionChanged(double distance);
+
+    /**
+     * @brief Emitted to request the current operation states from the UI
+     * This signal should be connected to update the toolpath generation inputs
+     */
+    void requestOperationStates();
 
 private slots:
     /**
@@ -354,6 +377,12 @@ private:
 
     // Timer for debouncing raw material/profile updates when position changes
     QTimer* m_materialUpdateTimer { nullptr };
+    
+    // Current operation inputs for toolpath generation
+    IntuiCAM::Toolpath::ToolpathGenerationPipeline::PipelineInputs m_currentOperationInputs;
+    
+    // Toolpath display objects for visibility control
+    std::vector<Handle(AIS_InteractiveObject)> m_toolpathDisplayObjects;
     
     /**
      * @brief Set up signal connections between managers
