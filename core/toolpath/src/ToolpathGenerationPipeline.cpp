@@ -1053,6 +1053,34 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
     
     std::vector<Handle(AIS_InteractiveObject)> displayObjects;
     
+    // Derive lathe coordinate system from the provided workpiece transform.
+    // The transform aligns the workpiece Z-axis with the machine Z-axis and
+    // positions the part in world coordinates.  We reconstruct the origin,
+    // radial direction and axial direction from this transform so that the
+    // toolpath points can be converted in the same way as the 2D profile.
+    gp_Pnt origin(0.0, 0.0, 0.0);
+    origin.Transform(workpieceTransform);
+
+    gp_Pnt xPoint(1.0, 0.0, 0.0);
+    xPoint.Transform(workpieceTransform);
+
+    gp_Pnt zPoint(0.0, 0.0, 1.0);
+    zPoint.Transform(workpieceTransform);
+
+    gp_Vec axialVec(origin, zPoint);   // Direction of increasing axial coordinate
+    if (axialVec.Magnitude() < Precision::Confusion()) {
+        axialVec = gp_Vec(0.0, 0.0, 1.0);
+    }
+    axialVec.Normalize();
+
+    gp_Vec radialVec(origin, xPoint);  // Radial direction in the XZ-plane
+    if (radialVec.Magnitude() < Precision::Confusion()) {
+        radialVec = gp_Vec(1.0, 0.0, 0.0);
+    }
+    radialVec.Normalize();
+
+    gp_Vec normalVec = axialVec.Crossed(radialVec); // Completes right-handed CS
+
     // Create display objects for each toolpath
     for (const auto& toolpath : toolpaths) {
         if (!toolpath || toolpath->getMovements().empty()) {
@@ -1067,13 +1095,20 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
             for (size_t i = 0; i < movements.size() - 1; ++i) {
                 const auto& currentMove = movements[i];
                 const auto& nextMove = movements[i + 1];
-                
-                // Movements are stored with axial position in the X component
-                // and radial position in the Z component.  Convert them to the
-                // standard lathe viewer coordinates where X is radius and Z is
-                // axial.
-                gp_Pnt start(currentMove.position.z, currentMove.position.y, currentMove.position.x);
-                gp_Pnt end(nextMove.position.z, nextMove.position.y, nextMove.position.x);
+
+                // Movements use lathe coordinates: X=axial, Z=radius. Convert
+                // to global coordinates using the derived axial and radial
+                // vectors so that the toolpath aligns exactly with the
+                // transformed workpiece.
+                gp_Pnt start = origin;
+                start.Translate(axialVec * currentMove.position.x);
+                start.Translate(radialVec * currentMove.position.z);
+                start.Translate(normalVec * currentMove.position.y);
+
+                gp_Pnt end = origin;
+                end.Translate(axialVec * nextMove.position.x);
+                end.Translate(radialVec * nextMove.position.z);
+                end.Translate(normalVec * nextMove.position.y);
                 
                 if (start.Distance(end) > Precision::Confusion()) {
                     BRepBuilderAPI_MakeEdge edgeBuilder(start, end);
@@ -1085,14 +1120,6 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
             
             if (wireBuilder.IsDone()) {
                 TopoDS_Wire wire = wireBuilder.Wire();
-                
-                // Apply workpiece transform if provided
-                if (workpieceTransform.Form() != gp_Identity) {
-                    BRepBuilderAPI_Transform transformer(wire, workpieceTransform);
-                    if (transformer.IsDone()) {
-                        wire = TopoDS::Wire(transformer.Shape());
-                    }
-                }
                 
                 Handle(AIS_Shape) aisShape = new AIS_Shape(wire);
                 
