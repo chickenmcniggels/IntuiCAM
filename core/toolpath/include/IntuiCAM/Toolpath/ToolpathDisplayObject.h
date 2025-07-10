@@ -11,7 +11,6 @@
 #include <Quantity_Color.hxx>
 #include <TopoDS_Shape.hxx>
 #include <gp_Pnt.hxx>
-#include <gp_Trsf.hxx>
 
 #include <memory>
 #include <vector>
@@ -121,10 +120,6 @@ public:
     void clearHighlights();
     std::vector<size_t> getSelectedMoves() const { return selectedMoves_; }
 
-    // Transformation handling
-    void setTransformation(const gp_Trsf& trsf) { transformation_ = trsf; }
-    const gp_Trsf& getTransformation() const { return transformation_; }
-
 private:
     // Core data
     std::shared_ptr<Toolpath> toolpath_;
@@ -140,7 +135,6 @@ private:
     std::vector<Handle(AIS_InteractiveObject)> moveObjects_;
     Handle(AIS_InteractiveObject) startPointMarker_;
     Handle(AIS_InteractiveObject) endPointMarker_;
-    gp_Trsf transformation_;
     
     // Internal methods
     void computeWireframePresentation(const Handle(Prs3d_Presentation)& presentation);
@@ -213,10 +207,6 @@ public:
     void highlightFeature(size_t featureIndex, bool highlight = true);
     void clearFeatureHighlights();
 
-    // Transformation handling
-    void setTransformation(const gp_Trsf& trsf) { transformation_ = trsf; }
-    const gp_Trsf& getTransformation() const { return transformation_; }
-
     // Utility methods
     static Handle(ProfileDisplayObject) create(const LatheProfile::Profile2D& profile,
                                                const ProfileVisualizationSettings& settings = ProfileVisualizationSettings{});
@@ -225,7 +215,6 @@ private:
     LatheProfile::Profile2D profile_;
     ProfileVisualizationSettings settings_;
     std::vector<size_t> highlightedFeatures_;
-    gp_Trsf transformation_;
     
     void computePointsPresentation(const Handle(Prs3d_Presentation)& presentation);
     void computeLinesPresentation(const Handle(Prs3d_Presentation)& presentation);
