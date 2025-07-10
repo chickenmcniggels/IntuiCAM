@@ -1054,32 +1054,34 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
     std::vector<Handle(AIS_InteractiveObject)> displayObjects;
     
     // Derive lathe coordinate system from the provided workpiece transform.
-    // The transform aligns the workpiece Z-axis with the machine Z-axis and
-    // positions the part in world coordinates.  We reconstruct the origin,
-    // radial direction and axial direction from this transform so that the
-    // toolpath points can be converted in the same way as the 2D profile.
+    // Reconstruct origin and spindle axis so the toolpaths align with the
+    // displayed 2D profile.
     gp_Pnt origin(0.0, 0.0, 0.0);
     origin.Transform(workpieceTransform);
 
-    gp_Pnt xPoint(1.0, 0.0, 0.0);
-    xPoint.Transform(workpieceTransform);
-
-    gp_Pnt zPoint(0.0, 0.0, 1.0);
-    zPoint.Transform(workpieceTransform);
-
-    gp_Vec axialVec(origin, zPoint);   // Direction of increasing axial coordinate
+    gp_Vec axialVec = gp_Vec(0.0, 0.0, 1.0);
+    axialVec.Transform(workpieceTransform);
     if (axialVec.Magnitude() < Precision::Confusion()) {
         axialVec = gp_Vec(0.0, 0.0, 1.0);
     }
     axialVec.Normalize();
 
-    gp_Vec radialVec(origin, xPoint);  // Radial direction in the XZ-plane
-    if (radialVec.Magnitude() < Precision::Confusion()) {
+    gp_Vec radialVec;
+    if (axialVec.IsParallel(gp_Vec(0.0, 0.0, 1.0), Precision::Angular())) {
         radialVec = gp_Vec(1.0, 0.0, 0.0);
+    } else {
+        gp_Vec perp(axialVec.Y(), -axialVec.X(), 0.0);
+        if (perp.Magnitude() < Precision::Confusion()) {
+            perp = gp_Vec(1.0, 0.0, 0.0);
+        }
+        perp.Normalize();
+        radialVec = perp;
     }
-    radialVec.Normalize();
 
-    gp_Vec normalVec = axialVec.Crossed(radialVec); // Completes right-handed CS
+    gp_Vec normalVec = axialVec.Crossed(radialVec);
+    normalVec.Normalize();
+    radialVec = normalVec.Crossed(axialVec);
+    radialVec.Normalize();
 
     // Create display objects for each toolpath
     for (const auto& toolpath : toolpaths) {
