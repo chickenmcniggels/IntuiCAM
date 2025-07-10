@@ -1053,34 +1053,20 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
     
     std::vector<Handle(AIS_InteractiveObject)> displayObjects;
     
-    // Derive lathe coordinate system from the provided workpiece transform.
-    // The transform aligns the workpiece Z-axis with the machine Z-axis and
-    // positions the part in world coordinates.  We reconstruct the origin,
-    // radial direction and axial direction from this transform so that the
-    // toolpath points can be converted in the same way as the 2D profile.
-    gp_Pnt origin(0.0, 0.0, 0.0);
-    origin.Transform(workpieceTransform);
-
-    gp_Pnt xPoint(1.0, 0.0, 0.0);
-    xPoint.Transform(workpieceTransform);
-
-    gp_Pnt zPoint(0.0, 0.0, 1.0);
-    zPoint.Transform(workpieceTransform);
-
-    gp_Vec axialVec(origin, zPoint);   // Direction of increasing axial coordinate
-    if (axialVec.Magnitude() < Precision::Confusion()) {
-        axialVec = gp_Vec(0.0, 0.0, 1.0);
-    }
-    axialVec.Normalize();
-
-    gp_Vec radialVec(origin, xPoint);  // Radial direction in the XZ-plane
-    if (radialVec.Magnitude() < Precision::Confusion()) {
-        radialVec = gp_Vec(1.0, 0.0, 0.0);
-    }
-    radialVec.Normalize();
-
-    gp_Vec normalVec = axialVec.Crossed(radialVec); // Completes right-handed CS
-
+    // TOOLPATH COORDINATE SYSTEM CONSISTENCY
+    // Use the same coordinate system logic as 2D profiles for consistency.
+    // Toolpaths should be positioned in the same coordinate system as the profile display.
+    // 
+    // In lathe coordinate system:
+    // - Movement position.x = axial position (along spindle axis) 
+    // - Movement position.z = radial position (distance from centerline)
+    // - Movement position.y = 0 (always on XZ plane)
+    //
+    // For 3D display:
+    // - X coordinate = radius (position.z)
+    // - Y coordinate = 0 (XZ plane constraint)
+    // - Z coordinate = axial (position.x)
+    
     // Create display objects for each toolpath
     for (const auto& toolpath : toolpaths) {
         if (!toolpath || toolpath->getMovements().empty()) {
@@ -1088,7 +1074,7 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
         }
         
         try {
-            // Create wire from toolpath movements
+            // Create wire from toolpath movements using the same coordinate transformation as 2D profiles
             BRepBuilderAPI_MakeWire wireBuilder;
             const auto& movements = toolpath->getMovements();
             
@@ -1096,19 +1082,14 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
                 const auto& currentMove = movements[i];
                 const auto& nextMove = movements[i + 1];
 
-                // Movements use lathe coordinates: X=axial, Z=radius. Convert
-                // to global coordinates using the derived axial and radial
-                // vectors so that the toolpath aligns exactly with the
-                // transformed workpiece.
-                gp_Pnt start = origin;
-                start.Translate(axialVec * currentMove.position.x);
-                start.Translate(radialVec * currentMove.position.z);
-                start.Translate(normalVec * currentMove.position.y);
-
-                gp_Pnt end = origin;
-                end.Translate(axialVec * nextMove.position.x);
-                end.Translate(radialVec * nextMove.position.z);
-                end.Translate(normalVec * nextMove.position.y);
+                // Apply the same coordinate transformation as 2D profiles:
+                // Convert from lathe coordinates (X=axial, Z=radius) to display coordinates (X=radius, Z=axial)
+                gp_Pnt start(currentMove.position.z, 0.0, currentMove.position.x);  // (radius, 0, axial)
+                gp_Pnt end(nextMove.position.z, 0.0, nextMove.position.x);         // (radius, 0, axial)
+                
+                // Ensure Y=0 to constrain to XZ plane for lathe operations
+                start.SetY(0.0);
+                end.SetY(0.0);
                 
                 if (start.Distance(end) > Precision::Confusion()) {
                     BRepBuilderAPI_MakeEdge edgeBuilder(start, end);

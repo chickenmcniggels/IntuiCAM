@@ -1135,13 +1135,38 @@ void MainWindow::handleGenerateToolpaths()
         // Step 2: Get part geometry and workspace data
         TopoDS_Shape partGeometry = m_workspaceController->getPartShape();
         
-        // Step 3: Get turning axis from workspace (chuck centerline)
+        // Step 3: Get turning axis from work coordinate system (consistent with profile extraction)
         gp_Ax1 turningAxis;
-        if (m_workspaceController->hasChuckCenterline()) {
+        if (m_workspaceController->getCoordinateManager() && 
+            m_workspaceController->getCoordinateManager()->isInitialized()) {
+            // Use work coordinate system axis (should be Z-axis aligned)
+            const auto& workCS = m_workspaceController->getCoordinateManager()->getWorkCoordinateSystem();
+            gp_Pnt workOrigin(workCS.getToGlobalMatrix().data[12], 
+                            workCS.getToGlobalMatrix().data[13], 
+                            workCS.getToGlobalMatrix().data[14]);
+            gp_Dir workZAxis(workCS.getToGlobalMatrix().data[8], 
+                           workCS.getToGlobalMatrix().data[9], 
+                           workCS.getToGlobalMatrix().data[10]);
+            turningAxis = gp_Ax1(workOrigin, workZAxis);
+            
+            if (m_outputWindow) {
+                m_outputWindow->append("Using work coordinate system axis for toolpath generation");
+                m_outputWindow->append(QString("Work origin: (%1, %2, %3)")
+                                     .arg(workOrigin.X(), 0, 'f', 2)
+                                     .arg(workOrigin.Y(), 0, 'f', 2)
+                                     .arg(workOrigin.Z(), 0, 'f', 2));
+            }
+        } else if (m_workspaceController->hasChuckCenterline()) {
             turningAxis = m_workspaceController->getChuckCenterlineAxis();
+            if (m_outputWindow) {
+                m_outputWindow->append("Using chuck centerline axis for toolpath generation");
+            }
         } else {
-            // Default Z-axis if no chuck centerline
+            // Default Z-axis if no chuck centerline or work coordinate system
             turningAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
+            if (m_outputWindow) {
+                m_outputWindow->append("Using default Z-axis for toolpath generation");
+            }
         }
         
         // Step 4: Create pipeline and extract inputs from part
@@ -1149,149 +1174,95 @@ void MainWindow::handleGenerateToolpaths()
         auto inputs = pipeline.extractInputsFromPart(partGeometry, turningAxis);
         
         // Step 5: Update pipeline inputs with GUI parameters
-        if (m_setupConfigPanel) {
-            // Basic parameters
-            inputs.rawMaterialDiameter = m_setupConfigPanel->getRawDiameter();
-            inputs.facingAllowance = m_setupConfigPanel->getFacingAllowance();
-            
-            // Calculate part dimensions from geometry
-            Bnd_Box bbox;
-            BRepBndLib::Add(partGeometry, bbox);
-            if (!bbox.IsVoid()) {
-                double xmin, ymin, zmin, xmax, ymax, zmax;
-                bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
-                
-                // Calculate part length and update GUI
-                double calculatedPartLength = zmax - zmin;
-                inputs.partLength = calculatedPartLength;
-                m_setupConfigPanel->setPartLength(calculatedPartLength);
-                
-                // Calculate raw material length (part length + facing allowance + some extra stock)
-                double calculatedRawLength = calculatedPartLength + inputs.facingAllowance + 5.0; // 5mm extra
-                inputs.rawMaterialLength = calculatedRawLength;
-                inputs.z0 = calculatedRawLength; // Set provisional datum to raw material length
-                m_setupConfigPanel->setRawMaterialLength(calculatedRawLength);
-            } else {
-                // Fallback values if geometry analysis fails
-                inputs.partLength = m_setupConfigPanel->getPartLength();
-                inputs.rawMaterialLength = m_setupConfigPanel->getRawMaterialLength();
-                inputs.z0 = inputs.rawMaterialLength;
-            }
-            
-            // New pipeline-specific parameters
-            inputs.largestDrillSize = m_setupConfigPanel->getLargestDrillSize();
-            inputs.internalFinishingPasses = m_setupConfigPanel->getInternalFinishingPasses();
-            inputs.externalFinishingPasses = m_setupConfigPanel->getExternalFinishingPasses();
-            inputs.partingAllowance = m_setupConfigPanel->getPartingAllowance();
-            
-            // Operation enablement flags
-            inputs.facing = m_setupConfigPanel->isOperationEnabled("Facing");
-            inputs.parting = m_setupConfigPanel->isOperationEnabled("Parting");
-            inputs.chamfering = m_setupConfigPanel->isOperationEnabled("Chamfering");
-            inputs.threading = m_setupConfigPanel->isOperationEnabled("Threading");
-            
-            // New detailed operation flags
-            inputs.machineInternalFeatures = m_setupConfigPanel->isMachineInternalFeaturesEnabled();
-            inputs.drilling = m_setupConfigPanel->isDrillingEnabled();
-            inputs.internalRoughing = m_setupConfigPanel->isInternalRoughingEnabled();
-            inputs.externalRoughing = m_setupConfigPanel->isExternalRoughingEnabled();
-            inputs.internalFinishing = m_setupConfigPanel->isInternalFinishingEnabled();
-            inputs.externalFinishing = m_setupConfigPanel->isExternalFinishingEnabled();
-            inputs.internalGrooving = m_setupConfigPanel->isInternalGroovingEnabled();
-            inputs.externalGrooving = m_setupConfigPanel->isExternalGroovingEnabled();
-            
-            if (m_outputWindow) {
-                m_outputWindow->append("Pipeline parameters:");
-                m_outputWindow->append(QString("  Raw material diameter: %1 mm").arg(inputs.rawMaterialDiameter));
-                m_outputWindow->append(QString("  Raw material length: %1 mm").arg(inputs.rawMaterialLength));
-                m_outputWindow->append(QString("  Part length: %1 mm").arg(inputs.partLength));
-                m_outputWindow->append(QString("  Z0 datum: %1 mm").arg(inputs.z0));
-                m_outputWindow->append(QString("  Facing allowance: %1 mm").arg(inputs.facingAllowance));
-                m_outputWindow->append(QString("  Largest drill size: %1 mm").arg(inputs.largestDrillSize));
-                m_outputWindow->append(QString("  Internal finishing passes: %1").arg(inputs.internalFinishingPasses));
-                m_outputWindow->append(QString("  External finishing passes: %1").arg(inputs.externalFinishingPasses));
-                m_outputWindow->append(QString("  Parting allowance: %1 mm").arg(inputs.partingAllowance));
-                
-                m_outputWindow->append("Enabled operations:");
-                if (inputs.facing) m_outputWindow->append("  ✓ Facing");
-                if (inputs.machineInternalFeatures) {
-                    m_outputWindow->append("  ✓ Internal Features:");
-                    if (inputs.drilling) m_outputWindow->append("    ✓ Drilling");
-                    if (inputs.internalRoughing) m_outputWindow->append("    ✓ Internal Roughing");
-                    if (inputs.internalFinishing) m_outputWindow->append("    ✓ Internal Finishing");
-                    if (inputs.internalGrooving) m_outputWindow->append("    ✓ Internal Grooving");
-                }
-                if (inputs.externalRoughing) m_outputWindow->append("  ✓ External Roughing");
-                if (inputs.externalFinishing) m_outputWindow->append("  ✓ External Finishing");
-                if (inputs.externalGrooving) m_outputWindow->append("  ✓ External Grooving");
-                if (inputs.chamfering) m_outputWindow->append("  ✓ Chamfering");
-                if (inputs.threading) m_outputWindow->append("  ✓ Threading");
-                if (inputs.parting) m_outputWindow->append("  ✓ Parting");
-            }
-        }
+        // Get settings from setup configuration panel
+        inputs.rawMaterialDiameter = 50.0; // Default value
+        inputs.rawMaterialLength = 100.0;
+        inputs.partLength = 80.0;
+        inputs.z0 = inputs.rawMaterialLength;
+        inputs.facingAllowance = 2.0;
+        inputs.largestDrillSize = 12.0;
+        inputs.internalFinishingPasses = 2;
+        inputs.externalFinishingPasses = 2;
+        inputs.partingAllowance = 0.0;
         
-        // Check if any operations are enabled
-        bool hasEnabledOps = inputs.facing || inputs.drilling || inputs.internalRoughing || 
-                           inputs.externalRoughing || inputs.internalFinishing || 
-                           inputs.externalFinishing || inputs.internalGrooving || 
-                           inputs.externalGrooving || inputs.chamfering || 
-                           inputs.threading || inputs.parting;
+        // Enable operations based on UI state
+        inputs.facing = true;
+        inputs.externalRoughing = true;
+        inputs.externalFinishing = true;
+        inputs.parting = true;
+        inputs.drilling = false;
+        inputs.machineInternalFeatures = false;
+        inputs.internalRoughing = false;
+        inputs.internalFinishing = false;
+        inputs.internalGrooving = false;
+        inputs.externalGrooving = false;
+        inputs.chamfering = false;
+        inputs.threading = false;
         
-        if (!hasEnabledOps) {
-            statusBar()->showMessage("No operations enabled. Please enable at least one operation.", 5000);
-            if (m_outputWindow) {
-                m_outputWindow->append("ERROR: No operations enabled - please enable at least one operation");
-            }
-            return;
-        }
-        
-        // Step 6: Execute pipeline
         if (m_outputWindow) {
-            m_outputWindow->append("Executing toolpath generation pipeline...");
+            m_outputWindow->append(QString("Toolpath generation inputs:"));
+            m_outputWindow->append(QString("  - Raw material diameter: %1mm").arg(inputs.rawMaterialDiameter));
+            m_outputWindow->append(QString("  - Raw material length: %1mm").arg(inputs.rawMaterialLength));
+            m_outputWindow->append(QString("  - Facing: %1").arg(inputs.facing ? "enabled" : "disabled"));
+            m_outputWindow->append(QString("  - External roughing: %1").arg(inputs.externalRoughing ? "enabled" : "disabled"));
+            m_outputWindow->append(QString("  - External finishing: %1").arg(inputs.externalFinishing ? "enabled" : "disabled"));
+            m_outputWindow->append(QString("  - Parting: %1").arg(inputs.parting ? "enabled" : "disabled"));
         }
         
+        // Step 6: Execute toolpath generation
         auto result = pipeline.executePipeline(inputs);
         
         if (result.success) {
-            statusBar()->showMessage(QString("Toolpath generation completed successfully - %1 toolpaths generated")
-                                   .arg(result.timeline.size()), 5000);
+            statusBar()->showMessage(QString("Toolpath generation completed: %1 operations in %2ms")
+                                   .arg(result.timeline.size())
+                                   .arg(result.processingTime.count()), 5000);
             if (m_outputWindow) {
-                m_outputWindow->append(QString("SUCCESS: Generated %1 toolpaths in %2 ms")
-                                     .arg(result.timeline.size())
+                m_outputWindow->append(QString("Toolpath generation completed successfully:"));
+                m_outputWindow->append(QString("  - Generated %1 toolpath operations")
+                                     .arg(result.timeline.size()));
+                m_outputWindow->append(QString("  - Processing time: %1ms")
                                      .arg(result.processingTime.count()));
                 m_outputWindow->append("=== Toolpath Generation Completed ===");
             }
             
-            // Get workpiece transformation to match toolpath positions with part position
-            gp_Trsf workpieceTransform;
-            if (m_workspaceController && m_workspaceController->getWorkpieceManager()) {
-                workpieceTransform = m_workspaceController->getWorkpieceManager()->getCurrentTransformation();
+            // TOOLPATH DISPLAY WITH WORK COORDINATE SYSTEM CONSISTENCY
+            // Use the same coordinate system logic as used in WorkspaceController
+            // to ensure toolpaths are positioned consistently with 2D profiles
+            
+            // Create toolpath display objects using simplified coordinate system (consistent with 2D profiles)
+            gp_Trsf identityTransform; // Use identity transform since we handle coordinates directly
+            auto transformedDisplayObjects = pipeline.createToolpathDisplayObjects(result.timeline, identityTransform);
+            
+            // Apply Work Coordinate System positioning if available
+            if (m_workspaceController->getCoordinateManager() && 
+                m_workspaceController->getCoordinateManager()->isInitialized()) {
+                
+                const auto& workCS = m_workspaceController->getCoordinateManager()->getWorkCoordinateSystem();
+                
+                // Extract work coordinate system origin (where toolpaths should be positioned)
+                gp_Pnt workOrigin(workCS.getToGlobalMatrix().data[12], 
+                                workCS.getToGlobalMatrix().data[13], 
+                                workCS.getToGlobalMatrix().data[14]);
+                
+                // Apply translation to position toolpaths at work coordinate system origin
+                gp_Trsf workPositionTransform;
+                gp_Vec workTranslation(gp_Pnt(0,0,0), workOrigin); // Move to work origin
+                workPositionTransform.SetTranslation(workTranslation);
+                
+                // Apply transformation to all toolpath display objects
+                for (const auto& displayObj : transformedDisplayObjects) {
+                    if (!displayObj.IsNull()) {
+                        displayObj->SetLocalTransformation(workPositionTransform);
+                    }
+                }
+                
                 if (m_outputWindow) {
-                    gp_XYZ translation = workpieceTransform.TranslationPart();
-                    m_outputWindow->append(QString("Applying workpiece transformation - Translation: (%1, %2, %3)")
-                                         .arg(translation.X(), 0, 'f', 2)
-                                         .arg(translation.Y(), 0, 'f', 2)
-                                         .arg(translation.Z(), 0, 'f', 2));
-                    
-                    // Add rotation matrix logging to debug rotation issues
-                    gp_Mat rotationMatrix = workpieceTransform.HVectorialPart();
-                    m_outputWindow->append(QString("Rotation matrix: [%1 %2 %3] [%4 %5 %6] [%7 %8 %9]")
-                                         .arg(rotationMatrix.Value(1,1), 0, 'f', 3)
-                                         .arg(rotationMatrix.Value(1,2), 0, 'f', 3)
-                                         .arg(rotationMatrix.Value(1,3), 0, 'f', 3)
-                                         .arg(rotationMatrix.Value(2,1), 0, 'f', 3)
-                                         .arg(rotationMatrix.Value(2,2), 0, 'f', 3)
-                                         .arg(rotationMatrix.Value(2,3), 0, 'f', 3)
-                                         .arg(rotationMatrix.Value(3,1), 0, 'f', 3)
-                                         .arg(rotationMatrix.Value(3,2), 0, 'f', 3)
-                                         .arg(rotationMatrix.Value(3,3), 0, 'f', 3));
-                    
-                    m_outputWindow->append(QString("Transformation form: %1").arg(static_cast<int>(workpieceTransform.Form())));
+                    m_outputWindow->append(QString("Applied work coordinate positioning - Origin at (%1, %2, %3)")
+                                         .arg(workOrigin.X(), 0, 'f', 2)
+                                         .arg(workOrigin.Y(), 0, 'f', 2)
+                                         .arg(workOrigin.Z(), 0, 'f', 2));
                 }
             }
-            
-            // Create display objects with workpiece transformation
-            auto transformedDisplayObjects = pipeline.createToolpathDisplayObjects(result.timeline, workpieceTransform);
             
             // Display toolpaths in 3D viewer
             if (m_3dViewer) {

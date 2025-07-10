@@ -912,15 +912,28 @@ bool WorkspaceController::generateToolpaths()
         // Create the toolpath generation pipeline
         auto pipeline = std::make_unique<IntuiCAM::Toolpath::ToolpathGenerationPipeline>();
         
-        // Get turning axis from workspace (chuck centerline) or default
+        // Get turning axis from work coordinate system if available, otherwise use chuck centerline
         gp_Ax1 turningAxis;
-        if (hasChuckCenterline()) {
+        if (m_coordinateManager && m_coordinateManager->isInitialized()) {
+            // Use work coordinate system axis (should be Z-axis aligned)
+            const auto& workCS = m_coordinateManager->getWorkCoordinateSystem();
+            gp_Pnt workOrigin(workCS.getToGlobalMatrix().data[12], 
+                            workCS.getToGlobalMatrix().data[13], 
+                            workCS.getToGlobalMatrix().data[14]);
+            gp_Dir workZAxis(workCS.getToGlobalMatrix().data[8], 
+                           workCS.getToGlobalMatrix().data[9], 
+                           workCS.getToGlobalMatrix().data[10]);
+            turningAxis = gp_Ax1(workOrigin, workZAxis);
+            qDebug() << "WorkspaceController: Using work coordinate system axis for toolpath generation";
+        } else if (hasChuckCenterline()) {
             turningAxis = getChuckCenterlineAxis();
+            qDebug() << "WorkspaceController: Using chuck centerline for toolpath generation";
         } else {
             turningAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1)); // Default Z-axis
+            qDebug() << "WorkspaceController: Using default Z-axis for toolpath generation";
         }
         
-        // Extract inputs from part using the new pipeline interface
+        // Extract inputs from part using the same axis as used for profile extraction
         auto inputs = pipeline->extractInputsFromPart(partShape, turningAxis);
         
         // Set default parameters for workspace controller generated toolpaths
@@ -962,43 +975,56 @@ bool WorkspaceController::generateToolpaths()
         qDebug() << "  - Generated" << result.timeline.size() << "toolpaths";
         qDebug() << "  - Processing time:" << result.processingTime.count() << "ms";
         
-        // Apply work coordinate system transformations if initialized
+        // TOOLPATH POSITIONING AND TRANSFORMATION
+        // Apply the same positioning logic as used for 2D profiles to ensure consistency.
+        // Toolpaths need to be positioned at the same location as the extracted profile
+        // and use the work coordinate system for proper synchronization.
+        
+        // Create toolpath display objects using simplified coordinate system (consistent with 2D profiles)
+        // The workpieceTransform parameter is not used anymore since we use direct coordinate mapping
+        gp_Trsf identityTransform; // Use identity transform since we handle coordinates directly
+        auto toolpathDisplayObjects = pipeline->createToolpathDisplayObjects(result.timeline, identityTransform);
+        
+        // Apply Work Coordinate System transformation if initialized
         if (m_coordinateManager && m_coordinateManager->isInitialized()) {
-            qDebug() << "WorkspaceController: Applying work coordinate transformations to toolpaths";
+            qDebug() << "WorkspaceController: Applying work coordinate system positioning to toolpaths";
             
-            // Transform toolpath display objects from work coordinates to global coordinates
-            for (size_t i = 0; i < result.toolpathDisplayObjects.size(); ++i) {
-                const auto& displayObj = result.toolpathDisplayObjects[i];
+            // Get work coordinate system transformation
+            const auto& workCS = m_coordinateManager->getWorkCoordinateSystem();
+            
+            // Extract work coordinate system origin (where toolpaths should be positioned)
+            gp_Pnt workOrigin(workCS.getToGlobalMatrix().data[12], 
+                            workCS.getToGlobalMatrix().data[13], 
+                            workCS.getToGlobalMatrix().data[14]);
+            
+            // Apply translation to position toolpaths at work coordinate system origin
+            // This ensures toolpaths start at the end of the raw material (work origin)
+            gp_Trsf workPositionTransform;
+            gp_Vec workTranslation(0.0, 0.0, 0.0); // Origin offset if needed
+            workTranslation.Add(gp_Vec(gp_Pnt(0,0,0), workOrigin)); // Move to work origin
+            workPositionTransform.SetTranslation(workTranslation);
+            
+            // Apply transformation to all toolpath display objects
+            for (const auto& displayObj : toolpathDisplayObjects) {
                 if (!displayObj.IsNull()) {
-                    // Get work-to-global transformation matrix
-                    const auto& transform = m_coordinateManager->getWorkToGlobalMatrix();
-                    
-                    // Convert to OpenCASCADE transformation
-                    gp_Trsf occTransform;
-                    gp_Mat rotation(transform.data[0], transform.data[4], transform.data[8],
-                                   transform.data[1], transform.data[5], transform.data[9],
-                                   transform.data[2], transform.data[6], transform.data[10]);
-                    gp_Vec translation(transform.data[12], transform.data[13], transform.data[14]);
-                    
-                    occTransform.SetValues(rotation(1,1), rotation(1,2), rotation(1,3), translation.X(),
-                                          rotation(2,1), rotation(2,2), rotation(2,3), translation.Y(),
-                                          rotation(3,1), rotation(3,2), rotation(3,3), translation.Z());
-                    
-                    displayObj->SetLocalTransformation(occTransform);
+                    displayObj->SetLocalTransformation(workPositionTransform);
                 }
             }
+            
+            qDebug() << "WorkspaceController: Applied work coordinate positioning - Origin at (" 
+                     << workOrigin.X() << "," << workOrigin.Y() << "," << workOrigin.Z() << ")";
         }
         
         // Display the generated toolpaths in the 3D viewer
-        for (size_t i = 0; i < result.toolpathDisplayObjects.size(); ++i) {
-            const auto& displayObj = result.toolpathDisplayObjects[i];
+        for (size_t i = 0; i < toolpathDisplayObjects.size(); ++i) {
+            const auto& displayObj = toolpathDisplayObjects[i];
             if (!displayObj.IsNull()) {
                 m_context->Display(displayObj, Standard_False);
                 qDebug() << "  - Displayed toolpath" << i;
             }
         }
         
-        // Display the 2D profile if available
+        // Display the 2D profile if available (this should be already positioned correctly)
         if (!result.profileDisplayObject.IsNull()) {
             m_context->Display(result.profileDisplayObject, Standard_False);
             qDebug() << "  - Displayed 2D profile";
