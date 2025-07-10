@@ -786,13 +786,21 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::internalFinis
     params.maxSpindleSpeed = 1500.0;  // RPM - Default GUI parameter
     
     finishingOp.setParameters(params);
-    
+
     // Create an empty Part object for generateToolpath
     auto part = createPartFromGeometry();
-    
+
     // Generate toolpath using the operation
     auto toolpath = finishingOp.generateToolpath(*part);
     if (toolpath) {
+        toolpath->setOperationType(OperationType::InternalFinishing);
+
+        auto& movements = const_cast<std::vector<Movement>&>(toolpath->getMovements());
+        for (auto& movement : movements) {
+            movement.operationType = OperationType::InternalFinishing;
+            movement.operationName = "Internal Finishing";
+        }
+
         result.push_back(std::move(toolpath));
     }
     
@@ -834,10 +842,18 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::externalFinis
     
     // Create an empty Part object for generateToolpath
     auto part = createPartFromGeometry();
-    
+
     // Generate toolpath using the operation
     auto toolpath = finishingOp.generateToolpath(*part);
     if (toolpath) {
+        toolpath->setOperationType(OperationType::ExternalFinishing);
+
+        auto& movements = const_cast<std::vector<Movement>&>(toolpath->getMovements());
+        for (auto& movement : movements) {
+            movement.operationType = OperationType::ExternalFinishing;
+            movement.operationName = "External Finishing";
+        }
+
         result.push_back(std::move(toolpath));
     }
     
@@ -1229,18 +1245,36 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::partingToolpa
     
     // Create an empty Part object for generateToolpaths
     auto part = createPartFromGeometry();
-    
+
     // Generate toolpaths using the operation (note: different interface)
     auto partingResult = partingOp.generateToolpaths(*part, tool, params);
-    
+
     if (partingResult.success) {
         if (partingResult.grooveToolpath) {
+            partingResult.grooveToolpath->setOperationType(OperationType::Parting);
+            auto& mv = const_cast<std::vector<Movement>&>(partingResult.grooveToolpath->getMovements());
+            for (auto& m : mv) {
+                m.operationType = OperationType::Parting;
+                m.operationName = "Parting";
+            }
             result.push_back(std::move(partingResult.grooveToolpath));
         }
         if (partingResult.partingToolpath) {
+            partingResult.partingToolpath->setOperationType(OperationType::Parting);
+            auto& mv = const_cast<std::vector<Movement>&>(partingResult.partingToolpath->getMovements());
+            for (auto& m : mv) {
+                m.operationType = OperationType::Parting;
+                m.operationName = "Parting";
+            }
             result.push_back(std::move(partingResult.partingToolpath));
         }
         if (partingResult.finishingToolpath) {
+            partingResult.finishingToolpath->setOperationType(OperationType::Parting);
+            auto& mv = const_cast<std::vector<Movement>&>(partingResult.finishingToolpath->getMovements());
+            for (auto& m : mv) {
+                m.operationType = OperationType::Parting;
+                m.operationName = "Parting";
+            }
             result.push_back(std::move(partingResult.finishingToolpath));
         }
     }

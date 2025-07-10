@@ -107,9 +107,13 @@ std::unique_ptr<Toolpath> FinishingOperation::generateToolpath(const Geometry::P
     extractParams.turningAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1)); // Standard lathe Z-axis
     extractParams.sortSegments = true;                         // Ensure proper ordering
     
-    // Get part shape for profile extraction
-    // Note: In real implementation, this would be extracted from Geometry::Part
-    TopoDS_Shape partShape; // This would come from part.getShape() or similar
+    // Get part shape for profile extraction from the provided Geometry::Part
+    TopoDS_Shape partShape;
+    const Geometry::OCCTPart* occtPart = dynamic_cast<const Geometry::OCCTPart*>(&part);
+    if (occtPart) {
+        partShape = occtPart->getOCCTShape();
+    }
+
     auto profile = ProfileExtractor::extractProfile(partShape, extractParams);
     
     if (profile.isEmpty()) {

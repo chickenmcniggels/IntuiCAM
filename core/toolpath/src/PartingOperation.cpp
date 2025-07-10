@@ -43,7 +43,12 @@ PartingOperation::Result PartingOperation::generateToolpaths(
         extractParams.turningAxis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1));
         extractParams.sortSegments = true;                          // Ensure proper ordering
         
-        TopoDS_Shape partShape; // This would come from the Part object
+        // Use the actual part geometry for profile extraction
+        TopoDS_Shape partShape;
+        const Geometry::OCCTPart* occtPart = dynamic_cast<const Geometry::OCCTPart*>(&part);
+        if (occtPart) {
+            partShape = occtPart->getOCCTShape();
+        }
         auto profile = ProfileExtractor::extractProfile(partShape, extractParams);
         
         // Detect potential parting positions if not explicitly specified
