@@ -1068,8 +1068,12 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
                 const auto& currentMove = movements[i];
                 const auto& nextMove = movements[i + 1];
                 
-                gp_Pnt start(currentMove.position.x, currentMove.position.y, currentMove.position.z);
-                gp_Pnt end(nextMove.position.x, nextMove.position.y, nextMove.position.z);
+                // Movements are stored with axial position in the X component
+                // and radial position in the Z component.  Convert them to the
+                // standard lathe viewer coordinates where X is radius and Z is
+                // axial.
+                gp_Pnt start(currentMove.position.z, currentMove.position.y, currentMove.position.x);
+                gp_Pnt end(nextMove.position.z, nextMove.position.y, nextMove.position.x);
                 
                 if (start.Distance(end) > Precision::Confusion()) {
                     BRepBuilderAPI_MakeEdge edgeBuilder(start, end);
