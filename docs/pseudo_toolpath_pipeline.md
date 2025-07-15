@@ -221,7 +221,24 @@ END IF
 
 
 # ---------------------------------------------------------------------------
-# 3.5  CHAMFERING
+# 3.5  EXTERNAL GROOVING
+# ---------------------------------------------------------------------------
+IF externalGrooving IS TRUE AND externalFeaturesToBeGrooved IS NOT EMPTY THEN
+    FOR EACH groove IN externalFeaturesToBeGrooved DO
+        timeline.APPEND(
+            ExternalGroovingToolpath(
+                groove.coordinates,
+                groove.geometry,
+                groove.tool,
+                chamfer_edges = groove.chamfer_edges OR FALSE
+            )
+        )
+    END FOR
+END IF
+
+
+# ---------------------------------------------------------------------------
+# 3.6  CHAMFERING
 # ---------------------------------------------------------------------------
 IF chamfering IS TRUE AND featuresToBeChamfered IS NOT EMPTY THEN
     FOR EACH chamfer IN featuresToBeChamfered DO
@@ -237,7 +254,7 @@ END IF
 
 
 # ---------------------------------------------------------------------------
-# 3.6  THREADING
+# 3.7  THREADING
 # ---------------------------------------------------------------------------
 IF threading IS TRUE AND featuresToBeTreaded IS NOT EMPTY THEN
     FOR EACH thread IN featuresToBeTreaded DO
@@ -253,7 +270,7 @@ END IF
 
 
 # ---------------------------------------------------------------------------
-# 3.7  PARTING – always the LAST operation
+# 3.8  PARTING – always the LAST operation
 # ---------------------------------------------------------------------------
 IF parting IS TRUE THEN
     parting_tool ← "parting tool"

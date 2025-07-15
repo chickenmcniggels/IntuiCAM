@@ -33,9 +33,10 @@ class Toolpath;
  * 2. Internal features (drilling, boring, roughing, finishing, grooving)
  * 3. External roughing
  * 4. External finishing
- * 5. Chamfering
- * 6. Threading
- * 7. Parting (always last)
+ * 5. External grooving
+ * 6. Chamfering
+ * 7. Threading
+ * 8. Parting (always last)
  */
 class ToolpathGenerationPipeline {
 public:

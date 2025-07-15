@@ -3,8 +3,13 @@
 #include <IntuiCAM/Toolpath/ToolpathDisplayObject.h>
 #include <IntuiCAM/Toolpath/FacingOperation.h>
 #include <IntuiCAM/Toolpath/ExternalRoughingOperation.h>
+#include <IntuiCAM/Toolpath/InternalRoughingOperation.h>
 #include <IntuiCAM/Toolpath/FinishingOperation.h>
 #include <IntuiCAM/Toolpath/PartingOperation.h>
+#include <IntuiCAM/Toolpath/DrillingOperation.h>
+#include <IntuiCAM/Toolpath/ChamferingOperation.h>
+#include <IntuiCAM/Toolpath/GroovingOperation.h>
+#include <IntuiCAM/Toolpath/ThreadingOperation.h>
 #include <IntuiCAM/Geometry/Types.h>
 #include <chrono>
 #include <sstream>
@@ -133,8 +138,10 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
         }
 
         // -----------------------------------------------------------------------
-        // 3.2  Drilling and Boring (Internal Features)
+        // 3.2  Internal Features (if machineInternalFeatures is TRUE)
         // -----------------------------------------------------------------------
+        
+        // 3.2.1 Drilling (pre-bores)
         if (inputs.drilling && inputs.machineInternalFeatures) {
             reportProgress(0.2, "Generating drilling toolpaths...", result);
             
@@ -160,9 +167,7 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
             }
         }
 
-        // -----------------------------------------------------------------------
-        // 3.3  Internal Roughing
-        // -----------------------------------------------------------------------
+        // 3.2.2 Internal Roughing (if needed for boring)
         if (inputs.internalRoughing && inputs.machineInternalFeatures) {
             reportProgress(0.3, "Generating internal roughing toolpaths...", result);
             
@@ -174,9 +179,7 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
             }
         }
 
-        // -----------------------------------------------------------------------
-        // 3.4  Internal Finishing
-        // -----------------------------------------------------------------------
+        // 3.2.3 Internal Finishing
         if (inputs.internalFinishing && inputs.machineInternalFeatures) {
             reportProgress(0.4, "Generating internal finishing toolpaths...", result);
             
@@ -196,9 +199,7 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
             }
         }
 
-        // -----------------------------------------------------------------------
-        // 3.5  Internal Grooving
-        // -----------------------------------------------------------------------
+        // 3.2.4 Internal Grooving
         if (inputs.internalGrooving && inputs.machineInternalFeatures) {
             reportProgress(0.5, "Generating internal grooving toolpaths...", result);
             
@@ -218,7 +219,7 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
         }
 
         // -----------------------------------------------------------------------
-        // 3.6  External Roughing
+        // 3.3  External Roughing
         // -----------------------------------------------------------------------
         if (inputs.externalRoughing) {
             reportProgress(0.6, "Generating external roughing toolpaths...", result);
@@ -254,7 +255,7 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
         }
 
         // -----------------------------------------------------------------------
-        // 3.7  External Finishing
+        // 3.4  External Finishing
         // -----------------------------------------------------------------------
         if (inputs.externalFinishing) {
             reportProgress(0.7, "Generating external finishing toolpaths...", result);
@@ -277,7 +278,7 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
         }
 
         // -----------------------------------------------------------------------
-        // 3.8  External Grooving
+        // 3.5  External Grooving (added to match inputs definition)
         // -----------------------------------------------------------------------
         if (inputs.externalGrooving) {
             reportProgress(0.75, "Generating external grooving toolpaths...", result);
@@ -298,7 +299,7 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
         }
 
         // -----------------------------------------------------------------------
-        // 3.9  Chamfering
+        // 3.6  Chamfering
         // -----------------------------------------------------------------------
         if (inputs.chamfering) {
             reportProgress(0.8, "Generating chamfering toolpaths...", result);
@@ -319,10 +320,10 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
         }
 
         // -----------------------------------------------------------------------
-        // 3.10 Threading
+        // 3.7  Threading
         // -----------------------------------------------------------------------
         if (inputs.threading) {
-            reportProgress(0.8, "Generating threading toolpaths...", result);
+            reportProgress(0.85, "Generating threading toolpaths...", result);
             for (const auto& thread : inputs.featuresToBeThreaded) {
                 if (m_cancelRequested) {
                     result.errorMessage = "Generation cancelled by user";
@@ -340,7 +341,7 @@ ToolpathGenerationPipeline::executePipeline(const PipelineInputs& inputs) {
         }
 
         // -----------------------------------------------------------------------
-        // 3.11 Parting – always LAST
+        // 3.8  Parting – always LAST
         // -----------------------------------------------------------------------
         if (inputs.parting) {
             reportProgress(0.9, "Generating parting toolpaths...", result);
@@ -592,43 +593,47 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::drillingToolp
     
     std::vector<std::unique_ptr<Toolpath>> result;
     
+    // Create tool from tool data
     auto tool = std::make_shared<Tool>(Tool::Type::Turning, toolData);
-    auto toolpath = std::make_unique<Toolpath>("Center Drilling", tool, OperationType::Drilling);
     
-    // Realistic drilling cycle with peck drilling
-    double clearanceZ = 5.0;  // mm above workpiece
-    double peckDepth = std::min(2.0, depth / 3.0);  // Peck depth
-    double feedRate = 80.0;  // mm/min
-    double rapidFeedRate = 500.0;  // mm/min
+    // Create DrillingOperation instance with name and tool
+    DrillingOperation drillingOp("Center Drilling", tool);
     
-    IntuiCAM::Geometry::Point3D startPos(0.0, 0.0, clearanceZ);
-    IntuiCAM::Geometry::Point3D centerPos(0.0, 0.0, 0.0);  // Workpiece surface
+    // Set up operation parameters based on depth and default drilling parameters
+    DrillingOperation::Parameters params;
+    params.holeDiameter = 6.0;  // mm - default center drill diameter
+    params.holeDepth = depth;
+    params.peckDepth = std::min(2.0, depth / 3.0);  // Peck depth
+    params.feedRate = 80.0;  // mm/min
+    params.spindleSpeed = 1200.0;  // RPM - higher for drilling
+    params.safetyHeight = 5.0;  // mm above workpiece
+    params.retractHeight = 1.0;  // mm for chip breaking
+    params.dwellTime = 0.2;  // seconds
+    params.startZ = 0.0;  // mm - start at workpiece surface
+    params.usePeckDrilling = true;
+    params.useChipBreaking = true;
     
-    // Rapid to clearance height
-    toolpath->addRapidMove(startPos);
+    drillingOp.setParameters(params);
     
-    // Peck drilling cycle
-    double currentDepth = 0.0;
-    while (currentDepth < depth) {
-        double nextDepth = std::min(currentDepth + peckDepth, depth);
+    // Pass actual part geometry instead of empty part
+    auto part = createPartFromGeometry();
+    
+    // Generate toolpath using the operation
+    auto toolpath = drillingOp.generateToolpath(*part);
+    if (toolpath) {
+        // Ensure operation type is properly set for coloring
+        toolpath->setOperationType(OperationType::Drilling);
         
-        // Drill to next depth
-        IntuiCAM::Geometry::Point3D drillPos(nextDepth, 0.0, 0.0);
-        toolpath->addLinearMove(drillPos, feedRate);
-        
-        // Retract partially for chip breaking (except on final depth)
-        if (nextDepth < depth) {
-            IntuiCAM::Geometry::Point3D retractPos(currentDepth + 0.5, 0.0, 0.0);
-            toolpath->addRapidMove(retractPos);
+        // Override movements to ensure proper operation type setting
+        auto& movements = const_cast<std::vector<Movement>&>(toolpath->getMovements());
+        for (auto& movement : movements) {
+            movement.operationType = OperationType::Drilling;
+            movement.operationName = "Center Drilling";
         }
         
-        currentDepth = nextDepth;
+        result.push_back(std::move(toolpath));
     }
     
-    // Final retract to clearance
-    toolpath->addRapidMove(startPos);
-    
-    result.push_back(std::move(toolpath));
     return result;
 }
 
@@ -639,46 +644,48 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::internalRough
     
     std::vector<std::unique_ptr<Toolpath>> result;
     
+    // Create tool from tool data
     auto tool = std::make_shared<Tool>(Tool::Type::Turning, toolData);
-    auto toolpath = std::make_unique<Toolpath>("Internal Roughing", tool, OperationType::InternalRoughing);
     
-    // Realistic internal roughing with multiple passes
-    double startDiameter = std::max(2.0, coordinates.z * 0.5);  // Start with small internal diameter
-    double finalDiameter = coordinates.z * 1.8;  // Target diameter (90% of coordinates radius)
-    double depthOfCut = 1.0;  // mm per pass
-    double feedRate = 120.0;  // mm/min
-    double clearanceZ = 2.0;  // mm clearance
-    double lengthZ = 15.0;  // mm internal length
+    // Create InternalRoughingOperation instance with name and tool
+    InternalRoughingOperation roughingOp("Internal Roughing", tool);
     
-    // Calculate number of passes
-    int numPasses = static_cast<int>(std::ceil((finalDiameter - startDiameter) / depthOfCut));
+    // Set up operation parameters based on coordinates and profile
+    InternalRoughingOperation::Parameters params;
+    params.startDiameter = std::max(2.0, coordinates.z * 0.5);  // Start with small internal diameter
+    params.endDiameter = coordinates.z * 1.8;  // Target diameter
+    params.startZ = coordinates.x;  // X=axial in lathe coordinates
+    params.endZ = coordinates.x - 15.0;  // Internal roughing length
+    params.depthOfCut = 1.0;  // mm per pass
+    params.stepover = 0.8;  // mm
+    params.stockAllowance = 0.3;  // mm - material left for finishing
+    params.feedRate = 120.0;  // mm/min
+    params.spindleSpeed = 1000.0;  // RPM
+    params.safetyHeight = 2.0;  // mm
+    params.enableChipBreaking = true;
+    params.chipBreakDistance = 0.3;  // mm
     
-    for (int pass = 0; pass < numPasses; ++pass) {
-        double currentDiameter = startDiameter + (pass * depthOfCut);
-        double currentRadius = currentDiameter / 2.0;
+    roughingOp.setParameters(params);
+    
+    // Pass actual part geometry instead of empty part
+    auto part = createPartFromGeometry();
+    
+    // Generate toolpath using the operation
+    auto toolpath = roughingOp.generateToolpath(*part);
+    if (toolpath) {
+        // Ensure operation type is properly set for coloring
+        toolpath->setOperationType(OperationType::InternalRoughing);
         
-        // Entry point (rapid to start)
-        IntuiCAM::Geometry::Point3D entryPos(coordinates.x + clearanceZ, 0.0, currentRadius);
-        toolpath->addRapidMove(entryPos);
+        // Override movements to ensure proper operation type setting
+        auto& movements = const_cast<std::vector<Movement>&>(toolpath->getMovements());
+        for (auto& movement : movements) {
+            movement.operationType = OperationType::InternalRoughing;
+            movement.operationName = "Internal Roughing";
+        }
         
-        // Feed to cutting position
-        IntuiCAM::Geometry::Point3D startCut(coordinates.x, 0.0, currentRadius);
-        toolpath->addLinearMove(startCut, feedRate);
-        
-        // Internal roughing pass (cutting along Z-axis)
-        IntuiCAM::Geometry::Point3D endCut(coordinates.x - lengthZ, 0.0, currentRadius);
-        toolpath->addLinearMove(endCut, feedRate);
-        
-        // Retract axially
-        IntuiCAM::Geometry::Point3D retractPos(coordinates.x + clearanceZ, 0.0, currentRadius);
-        toolpath->addRapidMove(retractPos);
+        result.push_back(std::move(toolpath));
     }
     
-    // Final rapid to safe position
-    IntuiCAM::Geometry::Point3D safePos(coordinates.x + clearanceZ, 0.0, coordinates.z + 5.0);
-    toolpath->addRapidMove(safePos);
-    
-    result.push_back(std::move(toolpath));
     return result;
 }
 
@@ -868,73 +875,46 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::externalGroov
     
     std::vector<std::unique_ptr<Toolpath>> result;
     
+    // Create tool from tool data
     auto tool = std::make_shared<Tool>(Tool::Type::Grooving, toolData);
-    auto toolpath = std::make_unique<Toolpath>("External Grooving", tool, OperationType::ExternalGrooving);
+    
+    // Create GroovingOperation instance with name and tool
+    GroovingOperation groovingOp("External Grooving", tool);
     
     // Extract groove parameters from geometry map or use defaults
     double grooveWidth = grooveGeometry.count("width") ? grooveGeometry.at("width") : 3.0;  // mm
     double grooveDepth = grooveGeometry.count("depth") ? grooveGeometry.at("depth") : 2.0;  // mm
     double toolWidth = grooveGeometry.count("tool_width") ? grooveGeometry.at("tool_width") : 2.5;  // mm
     
-    double feedRate = 40.0;  // mm/min (slow for grooving)
-    double clearanceDistance = 2.0;  // mm
-    double safeRadius = coordinates.z + 5.0;  // Safe approach radius
+    // Set up operation parameters based on coordinates and geometry
+    GroovingOperation::Parameters params;
+    params.grooveDiameter = coordinates.z * 2.0;  // Convert radius to diameter
+    params.grooveWidth = grooveWidth;
+    params.grooveDepth = grooveDepth;
+    params.grooveZ = coordinates.x;  // Z position for groove
+    params.feedRate = 0.02;  // mm/rev (default for grooving)
     
-    // Calculate groove positions
-    double grooveStartZ = coordinates.x - grooveWidth / 2.0;
-    double grooveEndZ = coordinates.x + grooveWidth / 2.0;
-    double finalRadius = coordinates.z - grooveDepth;
+    groovingOp.setParameters(params);
     
-    // Rapid to approach position
-    IntuiCAM::Geometry::Point3D approachPos(grooveStartZ, 0.0, safeRadius);
-    toolpath->addRapidMove(approachPos);
+    // Pass actual part geometry instead of empty part
+    auto part = createPartFromGeometry();
     
-    // Rapid to cutting start position
-    IntuiCAM::Geometry::Point3D startPos(grooveStartZ, 0.0, coordinates.z + clearanceDistance);
-    toolpath->addRapidMove(startPos);
-    
-    // Multiple passes if groove is wider than tool
-    int numPasses = static_cast<int>(std::ceil(grooveWidth / toolWidth));
-    double passStep = grooveWidth / numPasses;
-    
-    for (int pass = 0; pass < numPasses; ++pass) {
-        double currentZ = grooveStartZ + (pass * passStep);
+    // Generate toolpath using the operation
+    auto toolpath = groovingOp.generateToolpath(*part);
+    if (toolpath) {
+        // Ensure operation type is properly set for coloring
+        toolpath->setOperationType(OperationType::ExternalGrooving);
         
-        // Position at current Z location
-        IntuiCAM::Geometry::Point3D currentStart(currentZ, 0.0, coordinates.z + clearanceDistance);
-        toolpath->addLinearMove(currentStart, feedRate);
+        // Override movements to ensure proper operation type setting
+        auto& movements = const_cast<std::vector<Movement>&>(toolpath->getMovements());
+        for (auto& movement : movements) {
+            movement.operationType = OperationType::ExternalGrooving;
+            movement.operationName = "External Grooving";
+        }
         
-        // Plunge to full depth
-        IntuiCAM::Geometry::Point3D bottomPos(currentZ, 0.0, finalRadius);
-        toolpath->addLinearMove(bottomPos, feedRate * 0.5);  // Slower plunge feed
-        
-        // Retract to clearance
-        IntuiCAM::Geometry::Point3D retractPos(currentZ, 0.0, coordinates.z + clearanceDistance);
-        toolpath->addLinearMove(retractPos, feedRate);
+        result.push_back(std::move(toolpath));
     }
     
-    // Add chamfers if requested
-    if (chamferEdges) {
-        double chamferSize = 0.5;  // mm
-        
-        // Left chamfer
-        IntuiCAM::Geometry::Point3D leftChamferStart(grooveStartZ, 0.0, coordinates.z);
-        IntuiCAM::Geometry::Point3D leftChamferEnd(grooveStartZ - chamferSize, 0.0, coordinates.z - chamferSize);
-        toolpath->addLinearMove(leftChamferStart, feedRate);
-        toolpath->addLinearMove(leftChamferEnd, feedRate);
-        
-        // Right chamfer
-        IntuiCAM::Geometry::Point3D rightChamferStart(grooveEndZ, 0.0, coordinates.z);
-        IntuiCAM::Geometry::Point3D rightChamferEnd(grooveEndZ + chamferSize, 0.0, coordinates.z - chamferSize);
-        toolpath->addLinearMove(rightChamferStart, feedRate);
-        toolpath->addLinearMove(rightChamferEnd, feedRate);
-    }
-    
-    // Final retract to safe position
-    IntuiCAM::Geometry::Point3D safePos(coordinates.x, 0.0, safeRadius);
-    toolpath->addRapidMove(safePos);
-    
-    result.push_back(std::move(toolpath));
     return result;
 }
 
@@ -946,8 +926,11 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::internalGroov
     
     std::vector<std::unique_ptr<Toolpath>> result;
     
+    // Create tool from tool data
     auto tool = std::make_shared<Tool>(Tool::Type::Grooving, toolData);
-    auto toolpath = std::make_unique<Toolpath>("Internal Grooving", tool, OperationType::InternalGrooving);
+    
+    // Create GroovingOperation instance with name and tool
+    GroovingOperation groovingOp("Internal Grooving", tool);
     
     // Extract groove parameters from geometry map or use defaults
     double grooveWidth = grooveGeometry.count("width") ? grooveGeometry.at("width") : 3.0;  // mm
@@ -955,65 +938,35 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::internalGroov
     double toolWidth = grooveGeometry.count("tool_width") ? grooveGeometry.at("tool_width") : 2.5;  // mm
     double boreDiameter = grooveGeometry.count("bore_diameter") ? grooveGeometry.at("bore_diameter") : coordinates.z * 1.6;  // mm
     
-    double feedRate = 35.0;  // mm/min (slower for internal grooving)
-    double clearanceDistance = 1.0;  // mm
-    double startRadius = boreDiameter / 2.0 - clearanceDistance;  // Start inside bore
+    // Set up operation parameters based on coordinates and geometry
+    GroovingOperation::Parameters params;
+    params.grooveDiameter = boreDiameter;  // Use bore diameter for internal grooving
+    params.grooveWidth = grooveWidth;
+    params.grooveDepth = grooveDepth;
+    params.grooveZ = coordinates.x;  // Z position for groove
+    params.feedRate = 0.015;  // mm/rev (slower for internal grooving)
     
-    // Calculate groove positions
-    double grooveStartZ = coordinates.x - grooveWidth / 2.0;
-    double grooveEndZ = coordinates.x + grooveWidth / 2.0;
-    double finalRadius = startRadius + grooveDepth;  // Internal grooving expands outward
+    groovingOp.setParameters(params);
     
-    // Rapid to approach position (inside the bore)
-    IntuiCAM::Geometry::Point3D approachPos(grooveStartZ, 0.0, 0.0);  // Approach from center
-    toolpath->addRapidMove(approachPos);
+    // Pass actual part geometry instead of empty part
+    auto part = createPartFromGeometry();
     
-    // Move to cutting start position inside bore
-    IntuiCAM::Geometry::Point3D startPos(grooveStartZ, 0.0, startRadius);
-    toolpath->addRapidMove(startPos);
-    
-    // Multiple passes if groove is wider than tool
-    int numPasses = static_cast<int>(std::ceil(grooveWidth / toolWidth));
-    double passStep = grooveWidth / numPasses;
-    
-    for (int pass = 0; pass < numPasses; ++pass) {
-        double currentZ = grooveStartZ + (pass * passStep);
+    // Generate toolpath using the operation
+    auto toolpath = groovingOp.generateToolpath(*part);
+    if (toolpath) {
+        // Ensure operation type is properly set for coloring
+        toolpath->setOperationType(OperationType::InternalGrooving);
         
-        // Position at current Z location
-        IntuiCAM::Geometry::Point3D currentStart(currentZ, 0.0, startRadius);
-        toolpath->addLinearMove(currentStart, feedRate);
+        // Override movements to ensure proper operation type setting
+        auto& movements = const_cast<std::vector<Movement>&>(toolpath->getMovements());
+        for (auto& movement : movements) {
+            movement.operationType = OperationType::InternalGrooving;
+            movement.operationName = "Internal Grooving";
+        }
         
-        // Plunge outward to full depth (internal grooving expands radius)
-        IntuiCAM::Geometry::Point3D bottomPos(currentZ, 0.0, finalRadius);
-        toolpath->addLinearMove(bottomPos, feedRate * 0.5);  // Slower plunge feed
-        
-        // Retract to start radius
-        IntuiCAM::Geometry::Point3D retractPos(currentZ, 0.0, startRadius);
-        toolpath->addLinearMove(retractPos, feedRate);
+        result.push_back(std::move(toolpath));
     }
     
-    // Add chamfers if requested (internal chamfering)
-    if (chamferEdges) {
-        double chamferSize = 0.3;  // mm (smaller for internal)
-        
-        // Left chamfer
-        IntuiCAM::Geometry::Point3D leftChamferStart(grooveStartZ, 0.0, finalRadius);
-        IntuiCAM::Geometry::Point3D leftChamferEnd(grooveStartZ - chamferSize, 0.0, finalRadius - chamferSize);
-        toolpath->addLinearMove(leftChamferStart, feedRate);
-        toolpath->addLinearMove(leftChamferEnd, feedRate);
-        
-        // Right chamfer
-        IntuiCAM::Geometry::Point3D rightChamferStart(grooveEndZ, 0.0, finalRadius);
-        IntuiCAM::Geometry::Point3D rightChamferEnd(grooveEndZ + chamferSize, 0.0, finalRadius - chamferSize);
-        toolpath->addLinearMove(rightChamferStart, feedRate);
-        toolpath->addLinearMove(rightChamferEnd, feedRate);
-    }
-    
-    // Final retract to center for safe exit
-    IntuiCAM::Geometry::Point3D safePos(coordinates.x, 0.0, 0.0);
-    toolpath->addRapidMove(safePos);
-    
-    result.push_back(std::move(toolpath));
     return result;
 }
 
@@ -1024,8 +977,11 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::chamferingToo
     
     std::vector<std::unique_ptr<Toolpath>> result;
     
+    // Create tool from tool data
     auto tool = std::make_shared<Tool>(Tool::Type::Turning, toolData);
-    auto toolpath = std::make_unique<Toolpath>("Chamfering", tool, OperationType::Chamfering);
+    
+    // Create ChamferingOperation instance with name and tool
+    ChamferingOperation chamferingOp("Chamfering", tool);
     
     // Extract chamfer parameters from geometry map or use defaults
     double chamferSize = chamferGeometry.count("size") ? chamferGeometry.at("size") : 1.0;  // mm
@@ -1033,74 +989,39 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::chamferingToo
     bool isInternal = chamferGeometry.count("internal") ? (chamferGeometry.at("internal") > 0.5) : false;
     bool isFrontFace = chamferGeometry.count("front_face") ? (chamferGeometry.at("front_face") > 0.5) : true;
     
-    double feedRate = 80.0;  // mm/min
-    double clearanceDistance = 2.0;  // mm
-    double safeDistance = 5.0;  // mm
+    // Set up operation parameters based on coordinates and geometry
+    ChamferingOperation::Parameters params;
+    params.chamferSize = chamferSize;
+    params.chamferAngle = chamferAngle;
+    params.feedRate = 80.0;  // mm/min
+    params.spindleSpeed = 1000.0;  // RPM
+    params.safetyHeight = 5.0;  // mm
+    params.startZ = coordinates.x;  // Z position for chamfer
+    params.startDiameter = coordinates.z * 2.0;  // Convert radius to diameter
+    params.endDiameter = (coordinates.z - chamferSize) * 2.0;  // After chamfer
+    params.isExternal = !isInternal;  // true for external, false for internal
     
-    // Calculate chamfer geometry based on angle
-    double angleRad = chamferAngle * M_PI / 180.0;
-    double radialComponent = chamferSize * cos(angleRad);
-    double axialComponent = chamferSize * sin(angleRad);
+    chamferingOp.setParameters(params);
     
-    if (isInternal) {
-        // Internal chamfer (inside a bore)
-        double boreRadius = coordinates.z * 0.8;  // Assume 80% of coordinate radius is bore
+    // Pass actual part geometry instead of empty part
+    auto part = createPartFromGeometry();
+    
+    // Generate toolpath using the operation
+    auto toolpath = chamferingOp.generateToolpath(*part);
+    if (toolpath) {
+        // Ensure operation type is properly set for coloring
+        toolpath->setOperationType(OperationType::Chamfering);
         
-        // Approach from center
-        IntuiCAM::Geometry::Point3D approachPos(coordinates.x + clearanceDistance, 0.0, 0.0);
-        toolpath->addRapidMove(approachPos);
-        
-        // Move to chamfer start position
-        IntuiCAM::Geometry::Point3D startPos(coordinates.x, 0.0, boreRadius - radialComponent);
-        toolpath->addLinearMove(startPos, feedRate);
-        
-        // Execute chamfer move
-        IntuiCAM::Geometry::Point3D endPos;
-        if (isFrontFace) {
-            endPos = IntuiCAM::Geometry::Point3D(coordinates.x + axialComponent, 0.0, boreRadius);
-        } else {
-            endPos = IntuiCAM::Geometry::Point3D(coordinates.x - axialComponent, 0.0, boreRadius);
-        }
-        toolpath->addLinearMove(endPos, feedRate);
-        
-        // Retract to center
-        IntuiCAM::Geometry::Point3D retractPos(coordinates.x + clearanceDistance, 0.0, 0.0);
-        toolpath->addRapidMove(retractPos);
-        
-    } else {
-        // External chamfer
-        double safeRadius = coordinates.z + safeDistance;
-        
-        // Rapid to approach position
-        IntuiCAM::Geometry::Point3D approachPos(coordinates.x + clearanceDistance, 0.0, safeRadius);
-        toolpath->addRapidMove(approachPos);
-        
-        // Move to chamfer start position
-        IntuiCAM::Geometry::Point3D startPos;
-        IntuiCAM::Geometry::Point3D endPos;
-        
-        if (isFrontFace) {
-            // Front face chamfer (face to OD)
-            startPos = IntuiCAM::Geometry::Point3D(coordinates.x, 0.0, coordinates.z - radialComponent);
-            endPos = IntuiCAM::Geometry::Point3D(coordinates.x + axialComponent, 0.0, coordinates.z);
-        } else {
-            // Back face chamfer (OD to face)
-            startPos = IntuiCAM::Geometry::Point3D(coordinates.x - axialComponent, 0.0, coordinates.z);
-            endPos = IntuiCAM::Geometry::Point3D(coordinates.x, 0.0, coordinates.z - radialComponent);
+        // Override movements to ensure proper operation type setting
+        auto& movements = const_cast<std::vector<Movement>&>(toolpath->getMovements());
+        for (auto& movement : movements) {
+            movement.operationType = OperationType::Chamfering;
+            movement.operationName = "Chamfering";
         }
         
-        // Rapid to start position
-        toolpath->addLinearMove(startPos, feedRate);
-        
-        // Execute chamfer move
-        toolpath->addLinearMove(endPos, feedRate);
-        
-        // Retract to safe position
-        IntuiCAM::Geometry::Point3D retractPos(coordinates.x + clearanceDistance, 0.0, safeRadius);
-        toolpath->addRapidMove(retractPos);
+        result.push_back(std::move(toolpath));
     }
     
-    result.push_back(std::move(toolpath));
     return result;
 }
 
@@ -1111,8 +1032,11 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::threadingTool
     
     std::vector<std::unique_ptr<Toolpath>> result;
     
+    // Create tool from tool data
     auto tool = std::make_shared<Tool>(Tool::Type::Threading, toolData);
-    auto toolpath = std::make_unique<Toolpath>("Threading", tool, OperationType::Threading);
+    
+    // Create ThreadingOperation instance with name and tool
+    ThreadingOperation threadingOp("Threading", tool);
     
     // Extract thread parameters from geometry map or use defaults
     double pitch = threadGeometry.count("pitch") ? threadGeometry.at("pitch") : 1.5;  // mm (M10 thread)
@@ -1122,90 +1046,54 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::threadingTool
     bool isInternal = threadGeometry.count("internal") ? (threadGeometry.at("internal") > 0.5) : false;
     int numPasses = threadGeometry.count("passes") ? static_cast<int>(threadGeometry.at("passes")) : 3;
     
-    double feedRate = 60.0;  // mm/min (slower for threading)
-    double clearanceDistance = 3.0;  // mm
-    double safeDistance = 5.0;  // mm
+    // Set up operation parameters based on coordinates and geometry
+    ThreadingOperation::Parameters params;
+    params.threadType = isInternal ? ThreadingOperation::ThreadType::Internal : ThreadingOperation::ThreadType::External;
+    params.threadForm = ThreadingOperation::ThreadForm::Metric; // Assume metric
+    params.pitch = pitch;
+    params.majorDiameter = majorDiameter;
+    params.threadDepth = threadDepth;
+    params.threadLength = threadLength;
+    params.startZ = coordinates.x;
+    params.endZ = coordinates.x - threadLength;
+    params.numberOfPasses = numPasses;
+    params.cuttingMethod = ThreadingOperation::CuttingMethod::SinglePoint;
+    params.constantDepthPasses = false;  // Use variable depth
+    params.variableDepthPasses = true;
+    params.degression = 0.8;  // Decreasing pass depth
+    params.feedRate = 60.0;  // mm/min (slower for threading)
+    params.spindleSpeed = 300.0;  // RPM (much slower for threading)
+    params.leadInDistance = 5.0;  // mm
+    params.leadOutDistance = 5.0;  // mm
+    params.safetyHeight = 5.0;  // mm
+    params.clearanceDistance = 3.0;  // mm
+    params.retractDistance = 2.0;  // mm
+    params.threadTolerance = 0.02;  // mm
+    params.chamferThreadStart = true;
+    params.chamferThreadEnd = true;
+    params.chamferLength = 0.5;  // mm
     
-    // Calculate thread parameters
-    double threadStartZ = coordinates.x;
-    double threadEndZ = coordinates.x - threadLength;
-    double minorDiameter = majorDiameter - (2.0 * threadDepth);
+    threadingOp.setParameters(params);
     
-    if (isInternal) {
-        // Internal threading
-        double boreRadius = majorDiameter / 2.0;  // Start at major diameter
-        double threadRadius = minorDiameter / 2.0;  // End at minor diameter
+    // Pass actual part geometry instead of empty part
+    auto part = createPartFromGeometry();
+    
+    // Generate toolpath using the standard interface
+    auto toolpath = threadingOp.generateToolpath(*part);
+    if (toolpath) {
+        // Ensure operation type is properly set for coloring
+        toolpath->setOperationType(OperationType::Threading);
         
-        // Approach from center
-        IntuiCAM::Geometry::Point3D approachPos(threadStartZ + clearanceDistance, 0.0, 0.0);
-        toolpath->addRapidMove(approachPos);
-        
-        // Multiple threading passes with increasing depth
-        for (int pass = 0; pass < numPasses; ++pass) {
-            double passDepth = threadDepth * (pass + 1) / numPasses;
-            double currentRadius = boreRadius - passDepth;
-            
-            // Position at thread start
-            IntuiCAM::Geometry::Point3D startPos(threadStartZ, 0.0, currentRadius);
-            toolpath->addLinearMove(startPos, feedRate);
-            
-            // Threading pass with synchronized motion (simplified as linear move)
-            IntuiCAM::Geometry::Point3D endPos(threadEndZ, 0.0, currentRadius);
-            toolpath->addLinearMove(endPos, feedRate);
-            
-            // Retract axially
-            IntuiCAM::Geometry::Point3D retractPos(threadEndZ - clearanceDistance, 0.0, currentRadius);
-            toolpath->addRapidMove(retractPos);
-            
-            // Return to start position for next pass
-            if (pass < numPasses - 1) {
-                toolpath->addRapidMove(IntuiCAM::Geometry::Point3D(threadStartZ + clearanceDistance, 0.0, 0.0));
-            }
+        // Override movements to ensure proper operation type setting
+        auto& movements = const_cast<std::vector<Movement>&>(toolpath->getMovements());
+        for (auto& movement : movements) {
+            movement.operationType = OperationType::Threading;
+            movement.operationName = "Threading";
         }
         
-        // Final retract to center
-        IntuiCAM::Geometry::Point3D finalRetract(threadStartZ + clearanceDistance, 0.0, 0.0);
-        toolpath->addRapidMove(finalRetract);
-        
-    } else {
-        // External threading
-        double majorRadius = majorDiameter / 2.0;
-        double minorRadius = minorDiameter / 2.0;
-        double safeRadius = majorRadius + safeDistance;
-        
-        // Rapid to approach position
-        IntuiCAM::Geometry::Point3D approachPos(threadStartZ + clearanceDistance, 0.0, safeRadius);
-        toolpath->addRapidMove(approachPos);
-        
-        // Multiple threading passes with increasing depth
-        for (int pass = 0; pass < numPasses; ++pass) {
-            double passDepth = threadDepth * (pass + 1) / numPasses;
-            double currentRadius = majorRadius - passDepth;
-            
-            // Position at thread start
-            IntuiCAM::Geometry::Point3D startPos(threadStartZ, 0.0, currentRadius);
-            toolpath->addLinearMove(startPos, feedRate);
-            
-            // Threading pass with synchronized motion (simplified as linear move)
-            IntuiCAM::Geometry::Point3D endPos(threadEndZ, 0.0, currentRadius);
-            toolpath->addLinearMove(endPos, feedRate);
-            
-            // Retract radially and axially
-            IntuiCAM::Geometry::Point3D retractPos(threadEndZ - clearanceDistance, 0.0, safeRadius);
-            toolpath->addRapidMove(retractPos);
-            
-            // Return to start position for next pass
-            if (pass < numPasses - 1) {
-                toolpath->addRapidMove(IntuiCAM::Geometry::Point3D(threadStartZ + clearanceDistance, 0.0, safeRadius));
-            }
-        }
-        
-        // Final retract to safe position
-        IntuiCAM::Geometry::Point3D finalRetract(threadStartZ + clearanceDistance, 0.0, safeRadius);
-        toolpath->addRapidMove(finalRetract);
+        result.push_back(std::move(toolpath));
     }
     
-    result.push_back(std::move(toolpath));
     return result;
 }
 
@@ -1219,8 +1107,8 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::partingToolpa
     // Create tool from tool data
     auto tool = std::make_shared<Tool>(Tool::Type::Parting, toolData);
     
-    // Create PartingOperation instance
-    PartingOperation partingOp;
+    // Create PartingOperation instance with name and tool
+    PartingOperation partingOp("Parting", tool);
     
     // Set up operation parameters based on coordinates and default GUI parameters
     PartingOperation::Parameters params;
@@ -1243,40 +1131,25 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::partingToolpa
     params.enableCoolant = true;
     params.enableChipBreaking = true;
     
-    // Create an empty Part object for generateToolpaths
+    partingOp.setParameters(params);
+
+    // Create an empty Part object for generateToolpath
     auto part = createPartFromGeometry();
 
-    // Generate toolpaths using the operation (note: different interface)
-    auto partingResult = partingOp.generateToolpaths(*part, tool, params);
-
-    if (partingResult.success) {
-        if (partingResult.grooveToolpath) {
-            partingResult.grooveToolpath->setOperationType(OperationType::Parting);
-            auto& mv = const_cast<std::vector<Movement>&>(partingResult.grooveToolpath->getMovements());
-            for (auto& m : mv) {
-                m.operationType = OperationType::Parting;
-                m.operationName = "Parting";
-            }
-            result.push_back(std::move(partingResult.grooveToolpath));
+    // Generate toolpath using the standard interface
+    auto toolpath = partingOp.generateToolpath(*part);
+    if (toolpath) {
+        // Ensure operation type is properly set for coloring
+        toolpath->setOperationType(OperationType::Parting);
+        
+        // Override movements to ensure proper operation type setting
+        auto& movements = const_cast<std::vector<Movement>&>(toolpath->getMovements());
+        for (auto& movement : movements) {
+            movement.operationType = OperationType::Parting;
+            movement.operationName = "Parting";
         }
-        if (partingResult.partingToolpath) {
-            partingResult.partingToolpath->setOperationType(OperationType::Parting);
-            auto& mv = const_cast<std::vector<Movement>&>(partingResult.partingToolpath->getMovements());
-            for (auto& m : mv) {
-                m.operationType = OperationType::Parting;
-                m.operationName = "Parting";
-            }
-            result.push_back(std::move(partingResult.partingToolpath));
-        }
-        if (partingResult.finishingToolpath) {
-            partingResult.finishingToolpath->setOperationType(OperationType::Parting);
-            auto& mv = const_cast<std::vector<Movement>&>(partingResult.finishingToolpath->getMovements());
-            for (auto& m : mv) {
-                m.operationType = OperationType::Parting;
-                m.operationName = "Parting";
-            }
-            result.push_back(std::move(partingResult.finishingToolpath));
-        }
+        
+        result.push_back(std::move(toolpath));
     }
     
     return result;

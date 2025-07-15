@@ -7,23 +7,67 @@
 #include <cmath>
 #include <regex>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 namespace IntuiCAM {
 namespace Toolpath {
+
+ThreadingOperation::ThreadingOperation(const std::string& name, std::shared_ptr<Tool> tool) 
+    : Operation(Operation::Type::Threading, name, tool) {
+    // Initialize with default parameters
+    params_ = Parameters();
+}
+
+std::unique_ptr<Toolpath> ThreadingOperation::generateToolpath(const Geometry::Part& part) {
+    // Use the advanced interface with stored parameters and tool
+    auto result = generateToolpaths(part, getTool(), params_);
+    
+    // Return the main threading toolpath (standard interface expects single toolpath)
+    if (result.success && result.threadingToolpath) {
+        return std::move(result.threadingToolpath);
+    }
+    
+    return nullptr;
+}
+
+bool ThreadingOperation::validate() const {
+    // Validate that we have a tool and parameters are reasonable
+    if (!getTool()) {
+        return false;
+    }
+    
+    // Validate parameters using static method
+    std::string validationError = validateParameters(params_);
+    return validationError.empty();
+}
 
 ThreadingOperation::Result ThreadingOperation::generateToolpaths(
     const IntuiCAM::Geometry::Part& part,
     std::shared_ptr<Tool> tool,
     const Parameters& params) {
     
-    // Return empty result - Threading operation not part of core focus
-    // Core focus: external roughing, external finishing, facing, and parting only
+    // Return placeholder result - Threading operation implementation placeholder
     Result result;
     result.success = true;
     result.usedParameters = params;
     result.estimatedTime = 0.0;
-    result.totalPasses = 0;
-    result.actualThreadDepth = 0.0;
+    result.totalPasses = params.numberOfPasses;
+    result.actualThreadDepth = params.threadDepth;
     result.materialRemoved = 0.0;
+    
+    // Create simple threading toolpath
+    auto toolpath = std::make_unique<Toolpath>("Threading", tool, OperationType::Threading);
+    
+    // Add basic threading movements
+    IntuiCAM::Geometry::Point3D startPos(params.startZ, 0.0, params.majorDiameter / 2.0);
+    IntuiCAM::Geometry::Point3D endPos(params.endZ, 0.0, params.majorDiameter / 2.0 - params.threadDepth);
+    
+    toolpath->addRapidMove(startPos);
+    toolpath->addLinearMove(endPos, params.feedRate);
+    
+    result.threadingToolpath = std::move(toolpath);
     
     return result;
 }
@@ -41,138 +85,87 @@ std::vector<ThreadingOperation::ThreadFeature> ThreadingOperation::detectThreadF
         return features; // Not enough points for thread detection
     }
     
-    // Analyze profile for thread-like patterns
+    // Analyze profile for thread-like patterns - placeholder implementation
     const double minThreadLength = params.pitch * 3; // Minimum 3 pitches
     const double radiusTolerance = 0.1; // mm
     
     for (size_t i = 0; i < points.size() - 1; ++i) {
         const auto& point = points[i];
         
-        // Look for periodic variations that might indicate threads
-        std::vector<double> localRadii;
-        std::vector<double> localZ;
-        
-        // Collect points in a window around current point
-        double windowSize = std::max(minThreadLength, params.pitch * 5);
-        for (size_t j = 0; j < points.size(); ++j) {
-            const auto& testPoint = points[j];
-            if (std::abs(testPoint.z - point.z) <= windowSize) {
-                localRadii.push_back(testPoint.x);
-                localZ.push_back(testPoint.z);
-            }
-        }
-        
-        if (localRadii.size() < 6) continue; // Need enough points
-        
-        // Analyze for periodic pattern
-        bool hasPeriodicPattern = false;
-        double detectedPitch = 0.0;
-        double amplitude = 0.0;
-        
-        // Simple peak detection for thread pattern
-        std::vector<size_t> peaks, valleys;
-        for (size_t k = 1; k < localRadii.size() - 1; ++k) {
-            if (localRadii[k] > localRadii[k-1] && localRadii[k] > localRadii[k+1]) {
-                peaks.push_back(k);
-            }
-            if (localRadii[k] < localRadii[k-1] && localRadii[k] < localRadii[k+1]) {
-                valleys.push_back(k);
-            }
-        }
-        
-        if (peaks.size() >= 3 && valleys.size() >= 3) {
-            // Calculate average peak-to-peak distance
-            double avgPeakDistance = 0.0;
-            for (size_t p = 1; p < peaks.size(); ++p) {
-                avgPeakDistance += std::abs(localZ[peaks[p]] - localZ[peaks[p-1]]);
-            }
-            avgPeakDistance /= (peaks.size() - 1);
+        // Look for cylindrical sections that could be threads
+        if (point.x > 0.1 && i + 10 < points.size()) { // Valid radius and enough points ahead
+            bool potentialThread = true;
+            double avgRadius = point.x;
             
-            // Check if this matches expected thread pitch
-            if (std::abs(avgPeakDistance - params.pitch) < params.pitch * 0.3) {
-                hasPeriodicPattern = true;
-                detectedPitch = avgPeakDistance;
+            // Check next several points for consistent radius
+            for (size_t j = i + 1; j < std::min(i + 10, points.size()); ++j) {
+                if (std::abs(points[j].x - avgRadius) > radiusTolerance) {
+                    potentialThread = false;
+                    break;
+                }
+            }
+            
+            if (potentialThread) {
+                ThreadFeature feature;
+                feature.position = gp_Pnt(point.z, 0.0, point.x);
+                feature.type = (point.x < 5.0) ? ThreadType::Internal : ThreadType::External;
+                feature.diameter = point.x * 2.0;
+                feature.pitch = params.pitch; // Use provided pitch as guess
+                feature.length = minThreadLength;
+                feature.isMetric = (params.threadForm == ThreadForm::Metric);
+                feature.designation = "Detected Thread";
+                feature.confidence = 0.7;
                 
-                // Calculate amplitude (thread depth indication)
-                double maxRadius = *std::max_element(localRadii.begin(), localRadii.end());
-                double minRadius = *std::min_element(localRadii.begin(), localRadii.end());
-                amplitude = maxRadius - minRadius;
+                features.push_back(feature);
+                i += 10; // Skip ahead to avoid duplicate detections
             }
-        }
-        
-        if (hasPeriodicPattern && amplitude > 0.1) {
-            ThreadFeature feature;
-            feature.startZ = localZ.front();
-            feature.endZ = localZ.back();
-            feature.nominalDiameter = (localRadii.front() + localRadii.back()) / 2.0 * 2.0; // Diameter
-            feature.estimatedPitch = detectedPitch;
-            feature.type = (amplitude > 0) ? ThreadType::External : ThreadType::Internal;
-            feature.isComplete = (feature.endZ - feature.startZ) >= minThreadLength;
-            feature.confidence = std::min(1.0, amplitude / (params.threadDepth * 0.8));
-            
-            features.push_back(feature);
         }
     }
     
     return features;
 }
 
-ThreadingOperation::Parameters ThreadingOperation::calculateThreadParameters(
-    const std::string& threadDesignation) {
-    
+ThreadingOperation::Parameters ThreadingOperation::calculateThreadParameters(const std::string& threadDesignation) {
     Parameters params;
     
     // Parse common thread designations
-    std::regex metricRegex(R"(M(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?))");
+    std::regex metricRegex(R"(M(\d+(?:\.\d+)?)(?:x(\d+(?:\.\d+)?))?)");
     std::regex uncRegex(R"((\d+(?:\.\d+)?)-(\d+))");
-    std::regex imperialRegex(R"((\d+)/(\d+)-(\d+))");
     
-    std::smatch matches;
+    std::smatch match;
     
-    if (std::regex_match(threadDesignation, matches, metricRegex)) {
-        // Metric thread (e.g., "M20x1.5")
+    if (std::regex_match(threadDesignation, match, metricRegex)) {
+        // Metric thread (e.g., "M20x1.5" or "M20")
         params.threadForm = ThreadForm::Metric;
-        params.majorDiameter = std::stod(matches[1].str());
-        params.pitch = std::stod(matches[2].str());
+        params.majorDiameter = std::stod(match[1].str());
         
-        // Calculate thread depth for metric threads (ISO standard)
-        params.threadDepth = 0.866025 * params.pitch;
-        params.minorDiameter = params.majorDiameter - 2 * params.threadDepth;
-        params.pitchDiameter = params.majorDiameter - (3.0/4.0) * params.threadDepth;
-        params.threadAngle = 60.0;
+        if (match[2].matched) {
+            params.pitch = std::stod(match[2].str());
+        } else {
+            // Standard metric pitch based on diameter
+            if (params.majorDiameter <= 6.0) params.pitch = 1.0;
+            else if (params.majorDiameter <= 12.0) params.pitch = 1.25;
+            else if (params.majorDiameter <= 20.0) params.pitch = 1.5;
+            else params.pitch = 2.0;
+        }
         
-    } else if (std::regex_match(threadDesignation, matches, uncRegex)) {
-        // UNC/UNF thread (e.g., "1/4-20")
+        params.threadDepth = 0.613 * params.pitch; // Standard metric thread depth
+        
+    } else if (std::regex_match(threadDesignation, match, uncRegex)) {
+        // UNC thread (e.g., "1/4-20")
         params.threadForm = ThreadForm::UNC;
-        params.majorDiameter = std::stod(matches[1].str()) * 25.4; // Convert inches to mm
-        double tpi = std::stod(matches[2].str()); // Threads per inch
-        params.pitch = 25.4 / tpi; // Convert to mm
+        params.majorDiameter = std::stod(match[1].str()) * 25.4; // Convert inches to mm
+        double tpi = std::stod(match[2].str());
+        params.pitch = 25.4 / tpi; // Convert TPI to mm
+        params.threadDepth = 0.613 * params.pitch;
         
-        // Calculate unified thread parameters
-        params.threadDepth = 0.866025 * params.pitch;
-        params.minorDiameter = params.majorDiameter - 2 * params.threadDepth;
-        params.pitchDiameter = params.majorDiameter - (3.0/4.0) * params.threadDepth;
-        params.threadAngle = 60.0;
-        
-    } else if (std::regex_match(threadDesignation, matches, imperialRegex)) {
-        // Imperial fractional thread (e.g., "1/4-20")
-        params.threadForm = ThreadForm::UNC;
-        double numerator = std::stod(matches[1].str());
-        double denominator = std::stod(matches[2].str());
-        params.majorDiameter = (numerator / denominator) * 25.4; // Convert to mm
-        double tpi = std::stod(matches[3].str());
-        params.pitch = 25.4 / tpi;
-        
-        params.threadDepth = 0.866025 * params.pitch;
-        params.minorDiameter = params.majorDiameter - 2 * params.threadDepth;
-        params.pitchDiameter = params.majorDiameter - (3.0/4.0) * params.threadDepth;
-        params.threadAngle = 60.0;
+    } else {
+        // Default to M20x1.5
+        params.threadForm = ThreadForm::Metric;
+        params.majorDiameter = 20.0;
+        params.pitch = 1.5;
+        params.threadDepth = 0.613 * params.pitch;
     }
-    
-    // Set reasonable defaults for cutting parameters
-    auto materialProps = OperationParameterManager::getMaterialProperties("steel");
-    params.feedRate = materialProps.recommendedFeedRate * 0.5; // Slower for threading
-    params.spindleSpeed = materialProps.recommendedSpindleSpeed * 0.7; // Lower speed
     
     return params;
 }
@@ -186,28 +179,16 @@ std::string ThreadingOperation::validateParameters(const Parameters& params) {
         return "Thread pitch must be positive";
     }
     
-    if (params.threadLength <= 0.0) {
-        return "Thread length must be positive";
-    }
-    
     if (params.threadDepth <= 0.0) {
         return "Thread depth must be positive";
     }
     
+    if (params.threadLength <= 0.0) {
+        return "Thread length must be positive";
+    }
+    
     if (params.numberOfPasses < 1) {
         return "Number of passes must be at least 1";
-    }
-    
-    if (params.firstPassDepth <= 0.0) {
-        return "First pass depth must be positive";
-    }
-    
-    if (params.finalPassDepth <= 0.0) {
-        return "Final pass depth must be positive";
-    }
-    
-    if (params.threadAngle <= 0.0 || params.threadAngle > 180.0) {
-        return "Thread angle must be between 0 and 180 degrees";
     }
     
     if (params.feedRate <= 0.0) {
@@ -216,11 +197,6 @@ std::string ThreadingOperation::validateParameters(const Parameters& params) {
     
     if (params.spindleSpeed <= 0.0) {
         return "Spindle speed must be positive";
-    }
-    
-    // Check that minor diameter is reasonable
-    if (params.minorDiameter >= params.majorDiameter) {
-        return "Minor diameter must be less than major diameter";
     }
     
     return ""; // Valid
@@ -235,50 +211,36 @@ ThreadingOperation::Parameters ThreadingOperation::getDefaultParameters(
     params.threadForm = threadForm;
     params.majorDiameter = diameter;
     
-    // Set thread form specific parameters
+    // Set pitch based on thread form and diameter
     switch (threadForm) {
         case ThreadForm::Metric:
-            // Common metric pitches
             if (diameter <= 6.0) params.pitch = 1.0;
             else if (diameter <= 12.0) params.pitch = 1.25;
             else if (diameter <= 20.0) params.pitch = 1.5;
-            else if (diameter <= 30.0) params.pitch = 2.0;
-            else params.pitch = 2.5;
-            
-            params.threadAngle = 60.0;
-            params.threadDepth = 0.866025 * params.pitch;
+            else params.pitch = 2.0;
+            params.threadDepth = 0.613 * params.pitch;
             break;
             
         case ThreadForm::UNC:
-        case ThreadForm::UNF: {
-            // Convert mm to inches for standard calculations
-            double inchDiameter = diameter / 25.4;
-            if (inchDiameter <= 0.25) params.pitch = 25.4 / 20.0; // 20 TPI
-            else if (inchDiameter <= 0.5) params.pitch = 25.4 / 13.0; // 13 TPI
-            else params.pitch = 25.4 / 10.0; // 10 TPI
-            
-            params.threadAngle = 60.0;
-            params.threadDepth = 0.866025 * params.pitch;
+        case ThreadForm::UNF:
+            // Unified threads - pitch based on diameter
+            params.pitch = std::max(0.5, diameter * 0.1);
+            params.threadDepth = 0.613 * params.pitch;
             break;
-        }
             
         case ThreadForm::ACME:
-            params.pitch = std::max(2.0, diameter * 0.1); // Rule of thumb
-            params.threadAngle = 29.0;
+            params.pitch = std::max(1.5, diameter * 0.15);
             params.threadDepth = params.pitch / 2.0;
             break;
             
         case ThreadForm::Trapezoidal:
             params.pitch = std::max(1.5, diameter * 0.08);
-            params.threadAngle = 30.0;
             params.threadDepth = params.pitch / 2.0;
             break;
             
         case ThreadForm::BSW:
-            // Whitworth threads
-            params.threadAngle = 55.0;
             params.pitch = std::max(1.0, diameter * 0.075);
-            params.threadDepth = 0.96 * params.pitch; // Whitworth specific
+            params.threadDepth = 0.96 * params.pitch;
             break;
             
         case ThreadForm::Custom:
@@ -286,341 +248,167 @@ ThreadingOperation::Parameters ThreadingOperation::getDefaultParameters(
             break;
     }
     
-    // Calculate derived parameters
-    params.minorDiameter = params.majorDiameter - 2 * params.threadDepth;
-    params.pitchDiameter = params.majorDiameter - (3.0/4.0) * params.threadDepth;
-    
     // Material-specific cutting parameters
-    auto materialProps = OperationParameterManager::getMaterialProperties(materialType);
-    params.feedRate = materialProps.recommendedFeedRate * 0.4; // Conservative for threading
-    params.spindleSpeed = materialProps.recommendedSpindleSpeed * 0.6;
-    
     if (materialType == "aluminum") {
-        params.spindleSpeed *= 1.5;
-        params.feedRate *= 1.2;
+        params.feedRate = 80.0;
+        params.spindleSpeed = 500.0;
     } else if (materialType == "stainless_steel") {
-        params.spindleSpeed *= 0.7;
-        params.feedRate *= 0.8;
+        params.feedRate = 40.0;
+        params.spindleSpeed = 200.0;
+    } else { // steel
+        params.feedRate = 60.0;
+        params.spindleSpeed = 300.0;
     }
     
     return params;
 }
 
-std::unique_ptr<Toolpath> ThreadingOperation::generateSinglePointThreading(
-    const Parameters& params,
-    std::shared_ptr<Tool> tool) {
+std::vector<std::unique_ptr<Toolpath>> ThreadingOperation::generateThreadingPasses(
+    const IntuiCAM::Geometry::Part& part,
+    std::shared_ptr<Tool> tool,
+    const Parameters& params) {
     
-    auto toolpath = std::make_unique<Toolpath>("Single_Point_Threading", tool);
+    std::vector<std::unique_ptr<Toolpath>> passes;
     
-    // Calculate pass depths
-    auto passDepths = calculatePassDepths(params);
-    
-    // Threading direction (external threads cut from right to left typically)
-    double startZ = params.startZ;
-    double endZ = params.endZ;
-    double threadDirection = (endZ < startZ) ? -1.0 : 1.0;
-    
-    // Start from safe position
-    double safeRadius = params.majorDiameter / 2.0 + params.clearanceDistance;
-    gp_Pnt safeStart(startZ + params.safetyHeight * threadDirection, 0.0, safeRadius);
-    toolpath->addRapidMove(Geometry::Point3D(safeStart.X(), safeStart.Y(), safeStart.Z()));
-    
-    // Perform threading passes
-    for (size_t pass = 0; pass < passDepths.size(); ++pass) {
-        double currentDepth = passDepths[pass];
-        double currentRadius = (params.majorDiameter / 2.0) - currentDepth;
+    // Create simple threading passes - placeholder implementation
+    for (int pass = 0; pass < params.numberOfPasses; ++pass) {
+        auto toolpath = std::make_unique<Toolpath>("Threading Pass " + std::to_string(pass + 1), tool, OperationType::Threading);
         
-        if (params.threadType == ThreadType::Internal) {
-            currentRadius = (params.minorDiameter / 2.0) + currentDepth;
-        }
+        double depth = params.threadDepth * (pass + 1) / params.numberOfPasses;
+        double radius = (params.majorDiameter / 2.0) - depth;
         
-        // Rapid to lead-in position
-        gp_Pnt leadInStart(startZ + params.leadInDistance * threadDirection, 0.0, currentRadius);
-        toolpath->addRapidMove(Geometry::Point3D(leadInStart.X(), leadInStart.Y(), leadInStart.Z()));
+        IntuiCAM::Geometry::Point3D startPos(params.startZ, 0.0, radius);
+        IntuiCAM::Geometry::Point3D endPos(params.endZ, 0.0, radius);
         
-        // Start threading move at programmed feed rate
-        gp_Pnt threadStart(startZ, 0.0, currentRadius);
-        toolpath->addLinearMove(
-            Geometry::Point3D(threadStart.X(), threadStart.Y(), threadStart.Z()),
-            params.feedRate);
+        toolpath->addRapidMove(startPos);
+        toolpath->addLinearMove(endPos, params.feedRate);
         
-        // Threading move with synchronized spindle
-        gp_Pnt threadEnd(endZ, 0.0, currentRadius);
-        toolpath->addThreadingMove(
-            Geometry::Point3D(threadEnd.X(), threadEnd.Y(), threadEnd.Z()),
-            params.feedRate,
-            params.pitch);
-        
-        // Lead-out move
-        gp_Pnt leadOut(endZ + params.leadOutDistance * threadDirection, 0.0, currentRadius);
-        toolpath->addLinearMove(
-            Geometry::Point3D(leadOut.X(), leadOut.Y(), leadOut.Z()),
-            params.feedRate);
-        
-        // Retract to safe radius for next pass
-        gp_Pnt retract(leadOut.X(), leadOut.Y(), safeRadius);
-        toolpath->addRapidMove(Geometry::Point3D(retract.X(), retract.Y(), retract.Z()));
-        
-        // Return to start for next pass if not the last pass
-        if (pass < passDepths.size() - 1) {
-            gp_Pnt returnStart(safeStart.X(), safeStart.Y(), safeRadius);
-            toolpath->addRapidMove(Geometry::Point3D(returnStart.X(), returnStart.Y(), returnStart.Z()));
-        }
+        passes.push_back(std::move(toolpath));
     }
     
-    // Spring passes at final depth
-    if (params.springPassCount > 0) {
-        double finalRadius = (params.majorDiameter / 2.0) - params.threadDepth;
-        if (params.threadType == ThreadType::Internal) {
-            finalRadius = (params.minorDiameter / 2.0) + params.threadDepth;
-        }
-        
-        for (int spring = 0; spring < params.springPassCount; ++spring) {
-            // Same threading sequence as final pass
-            gp_Pnt leadInStart(startZ + params.leadInDistance * threadDirection, 0.0, finalRadius);
-            toolpath->addRapidMove(Geometry::Point3D(leadInStart.X(), leadInStart.Y(), leadInStart.Z()));
-            
-            gp_Pnt threadStart(startZ, 0.0, finalRadius);
-            toolpath->addLinearMove(
-                Geometry::Point3D(threadStart.X(), threadStart.Y(), threadStart.Z()),
-                params.feedRate);
-            
-            gp_Pnt threadEnd(endZ, 0.0, finalRadius);
-            toolpath->addThreadingMove(
-                Geometry::Point3D(threadEnd.X(), threadEnd.Y(), threadEnd.Z()),
-                params.feedRate,
-                params.pitch);
-            
-            gp_Pnt leadOut(endZ + params.leadOutDistance * threadDirection, 0.0, finalRadius);
-            toolpath->addLinearMove(
-                Geometry::Point3D(leadOut.X(), leadOut.Y(), leadOut.Z()),
-                params.feedRate);
-            
-            if (spring < params.springPassCount - 1) {
-                gp_Pnt retract(leadOut.X(), leadOut.Y(), safeRadius);
-                toolpath->addRapidMove(Geometry::Point3D(retract.X(), retract.Y(), retract.Z()));
-                
-                gp_Pnt returnStart(safeStart.X(), safeStart.Y(), safeRadius);
-                toolpath->addRapidMove(Geometry::Point3D(returnStart.X(), returnStart.Y(), returnStart.Z()));
-            }
-        }
-    }
-    
-    // Final retract to safe position
-    gp_Pnt finalSafe(safeStart.X(), safeStart.Y(), safeRadius);
-    toolpath->addRapidMove(Geometry::Point3D(finalSafe.X(), finalSafe.Y(), finalSafe.Z()));
-    
-    return toolpath;
+    return passes;
 }
 
-std::unique_ptr<Toolpath> ThreadingOperation::generateMultiPointThreading(
+std::unique_ptr<Toolpath> ThreadingOperation::generateThreadChamfer(
     const Parameters& params,
-    std::shared_ptr<Tool> tool) {
+    std::shared_ptr<Tool> tool,
+    bool isStart) {
     
-    // Multi-point threading uses fewer passes but requires special multi-point tool
-    // Implementation would be similar to single-point but with adjusted pass depths
-    // For now, fall back to single-point threading
-    return generateSinglePointThreading(params, tool);
-}
-
-std::unique_ptr<Toolpath> ThreadingOperation::generateChamferToolpath(
-    const Parameters& params,
-    std::shared_ptr<Tool> tool) {
-    
-    if (!params.chamferThreadStart && !params.chamferThreadEnd) {
+    if ((!params.chamferThreadStart && isStart) || (!params.chamferThreadEnd && !isStart)) {
         return nullptr;
     }
     
-    auto toolpath = std::make_unique<Toolpath>("Thread_Chamfer", tool);
+    auto toolpath = std::make_unique<Toolpath>("Thread Chamfer", tool, OperationType::Threading);
     
-    double chamferRadius = params.majorDiameter / 2.0;
-    double chamferDepth = params.chamferLength;
+    double chamferZ = isStart ? params.startZ : params.endZ;
+    double radius = params.majorDiameter / 2.0;
     
-    // Start chamfer at thread start
-    if (params.chamferThreadStart) {
-        // 45-degree chamfer
-        gp_Pnt chamferStart(params.startZ, 0.0, chamferRadius);
-        gp_Pnt chamferEnd(params.startZ + chamferDepth, 0.0, chamferRadius - chamferDepth);
-        
-        toolpath->addRapidMove(Geometry::Point3D(chamferStart.X(), chamferStart.Y(), chamferStart.Z()));
-        toolpath->addLinearMove(
-            Geometry::Point3D(chamferEnd.X(), chamferEnd.Y(), chamferEnd.Z()),
-            params.feedRate * 0.8); // Slower for chamfer
-    }
-    
-    // End chamfer at thread end
-    if (params.chamferThreadEnd) {
-        gp_Pnt chamferStart(params.endZ - chamferDepth, 0.0, chamferRadius - chamferDepth);
-        gp_Pnt chamferEnd(params.endZ, 0.0, chamferRadius);
-        
-        toolpath->addRapidMove(Geometry::Point3D(chamferStart.X(), chamferStart.Y(), chamferStart.Z()));
-        toolpath->addLinearMove(
-            Geometry::Point3D(chamferEnd.X(), chamferEnd.Y(), chamferEnd.Z()),
-            params.feedRate * 0.8);
-    }
+    IntuiCAM::Geometry::Point3D chamferPos(chamferZ, 0.0, radius);
+    toolpath->addRapidMove(chamferPos);
+    toolpath->addLinearMove(chamferPos, params.feedRate * 0.8);
     
     return toolpath;
 }
 
-std::vector<double> ThreadingOperation::calculatePassDepths(const Parameters& params) {
+std::vector<double> ThreadingOperation::calculateDepthProgression(const Parameters& params) {
     std::vector<double> depths;
     
     if (params.constantDepthPasses) {
         // Constant depth per pass
         double depthPerPass = params.threadDepth / params.numberOfPasses;
         for (int i = 1; i <= params.numberOfPasses; ++i) {
-            depths.push_back(depthPerPass * i);
+            depths.push_back(i * depthPerPass);
         }
     } else {
-        // Variable depth passes (decreasing depth)
-        double totalDepth = params.threadDepth;
+        // Variable depth with degression
+        double remainingDepth = params.threadDepth;
         double currentDepth = 0.0;
         
-        for (int i = 1; i <= params.numberOfPasses; ++i) {
-            if (i == 1) {
-                currentDepth = params.firstPassDepth;
-            } else if (i == params.numberOfPasses) {
-                currentDepth = totalDepth;
+        for (int i = 0; i < params.numberOfPasses; ++i) {
+            if (i == params.numberOfPasses - 1) {
+                currentDepth = params.threadDepth;
             } else {
-                // Calculate progressive depth using degression
-                double remainingDepth = totalDepth - depths.back();
-                double remainingPasses = params.numberOfPasses - i + 1;
-                double nextIncrement = remainingDepth * params.degression / remainingPasses;
-                currentDepth = depths.back() + nextIncrement;
+                double passDepth = remainingDepth * (1.0 - params.degression);
+                currentDepth += passDepth;
+                remainingDepth -= passDepth;
             }
-            depths.push_back(std::min(currentDepth, totalDepth));
+            depths.push_back(currentDepth);
         }
     }
     
     return depths;
 }
 
-std::vector<gp_Pnt> ThreadingOperation::calculateThreadProfile(const Parameters& params) {
-    std::vector<gp_Pnt> profile;
+std::unique_ptr<Toolpath> ThreadingOperation::generateSinglePass(
+    const Parameters& params,
+    std::shared_ptr<Tool> tool,
+    double depth,
+    int passNumber) {
     
-    // Calculate thread profile based on thread form
-    double halfAngle = params.threadAngle / 2.0 * M_PI / 180.0; // Convert to radians
-    double majorRadius = params.majorDiameter / 2.0;
-    double minorRadius = params.minorDiameter / 2.0;
-    double threadDepth = params.threadDepth;
+    auto toolpath = std::make_unique<Toolpath>("Threading Pass " + std::to_string(passNumber), tool, OperationType::Threading);
     
-    // Number of points to define the thread profile
-    int profilePoints = 20;
-    double profileStep = params.pitch / profilePoints;
+    double radius = (params.majorDiameter / 2.0) - depth;
+    IntuiCAM::Geometry::Point3D startPos(params.startZ, 0.0, radius);
+    IntuiCAM::Geometry::Point3D endPos(params.endZ, 0.0, radius);
     
-    for (int i = 0; i <= profilePoints; ++i) {
-        double z = i * profileStep;
-        double radius = majorRadius;
-        
-        // Calculate radius based on thread form
-        switch (params.threadForm) {
-            case ThreadForm::Metric:
-            case ThreadForm::UNC:
-            case ThreadForm::UNF:
-                // V-thread profile
-                if (i < profilePoints / 4) {
-                    // Leading flank
-                    radius = majorRadius - (threadDepth * i) / (profilePoints / 4);
-                } else if (i < 3 * profilePoints / 4) {
-                    // Bottom of thread
-                    radius = minorRadius;
-                } else {
-                    // Trailing flank
-                    radius = minorRadius + (threadDepth * (i - 3 * profilePoints / 4)) / (profilePoints / 4);
-                }
-                break;
-                
-            case ThreadForm::ACME:
-            case ThreadForm::Trapezoidal:
-                // Trapezoidal profile with flat bottom
-                if (i < profilePoints / 6) {
-                    radius = majorRadius - (threadDepth * i) / (profilePoints / 6);
-                } else if (i < 5 * profilePoints / 6) {
-                    radius = minorRadius;
-                } else {
-                    radius = minorRadius + (threadDepth * (i - 5 * profilePoints / 6)) / (profilePoints / 6);
-                }
-                break;
-                
-            default:
-                // Default to V-thread
-                radius = majorRadius - threadDepth * std::sin(2 * M_PI * i / profilePoints);
-                break;
-        }
-        
-        profile.emplace_back(z, 0.0, radius);
-    }
+    toolpath->addRapidMove(startPos);
+    toolpath->addLinearMove(endPos, params.feedRate);
     
-    return profile;
+    return toolpath;
 }
 
-double ThreadingOperation::estimateThreadingTime(const Parameters& params, std::shared_ptr<Tool> tool) {
-    double totalTime = 0.0;
+void ThreadingOperation::calculateThreadGeometry(const Parameters& params,
+                                               double& minorDiameter,
+                                               double& pitchDiameter,
+                                               double& threadAngle) {
     
-    // Time for threading passes
-    double threadingLength = std::abs(params.endZ - params.startZ);
-    double leadLength = params.leadInDistance + params.leadOutDistance;
-    double totalPassLength = threadingLength + leadLength;
-    
-    int totalPasses = params.numberOfPasses + static_cast<int>(params.springPassCount);
-    
-    // Threading time (feed rate is per minute)
-    double threadingTime = (totalPassLength * totalPasses) / params.feedRate;
-    
-    // Rapid moves between passes (estimate)
-    double rapidTime = totalPasses * 0.1; // 0.1 minutes per pass for positioning
-    
-    // Setup and approach time
-    double setupTime = 0.5; // 30 seconds
-    
-    totalTime = threadingTime + rapidTime + setupTime;
-    
-    return totalTime;
-}
-
-double ThreadingOperation::calculateMaterialRemoval(const Parameters& params) {
-    // Calculate volume of material removed for threading
-    double threadLength = std::abs(params.endZ - params.startZ);
-    double majorRadius = params.majorDiameter / 2.0;
-    double minorRadius = params.minorDiameter / 2.0;
-    
-    // Approximate thread volume as the difference between major and minor cylinders
-    // adjusted for thread form factor
-    double formFactor = 0.5; // Typical for V-threads
+    // Basic thread geometry calculations
+    minorDiameter = params.majorDiameter - 2.0 * params.threadDepth;
+    pitchDiameter = params.majorDiameter - params.threadDepth;
     
     switch (params.threadForm) {
-        case ThreadForm::ACME:
-        case ThreadForm::Trapezoidal:
-            formFactor = 0.7; // More material removed
+        case ThreadForm::Metric:
+        case ThreadForm::UNC:
+        case ThreadForm::UNF:
+            threadAngle = 60.0;
             break;
         case ThreadForm::BSW:
-            formFactor = 0.6;
+            threadAngle = 55.0;
             break;
-        default:
-            formFactor = 0.5;
+        case ThreadForm::ACME:
+            threadAngle = 29.0;
+            break;
+        case ThreadForm::Trapezoidal:
+            threadAngle = 30.0;
+            break;
+        case ThreadForm::Custom:
+            threadAngle = 60.0; // Default
             break;
     }
-    
-    double volume = M_PI * threadLength * (majorRadius * majorRadius - minorRadius * minorRadius) * formFactor;
-    
-    return volume;
 }
 
-bool ThreadingOperation::validateToolCompatibility(std::shared_ptr<Tool> tool, const Parameters& params) {
+std::string ThreadingOperation::validateManufacturingConstraints(const Parameters& params,
+                                                                std::shared_ptr<Tool> tool) {
+    
     if (!tool) {
-        return false;
+        return "Threading tool is required";
     }
     
-    // Check if tool is suitable for threading
-    // This would check tool type, insert geometry, etc.
-    // For now, return true if tool exists
+    // Check tool compatibility
+    if (tool->getType() != Tool::Type::Threading && tool->getType() != Tool::Type::Turning) {
+        return "Tool must be threading or turning type";
+    }
     
-    // Future implementations could check:
-    // - Tool insert angle compatibility with thread angle
-    // - Tool radius vs thread pitch compatibility
-    // - Tool material vs workpiece material compatibility
+    // Check geometric constraints
+    if (params.threadDepth > params.majorDiameter / 4.0) {
+        return "Thread depth is too large for diameter";
+    }
     
-    return true;
+    if (params.pitch > params.majorDiameter / 3.0) {
+        return "Thread pitch is too large for diameter";
+    }
+    
+    return ""; // Valid
 }
 
 } // namespace Toolpath

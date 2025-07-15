@@ -23,7 +23,7 @@ class Toolpath;
  * multi-pass threading with variable depth, and thread feature detection
  * from 2D profiles.
  */
-class ThreadingOperation {
+class ThreadingOperation : public Operation {
 public:
     /**
      * @brief Thread form types
@@ -66,101 +66,96 @@ public:
         
         double majorDiameter;           ///< Major diameter (mm)
         double pitch;                   ///< Thread pitch (mm)
+        double threadDepth;             ///< Thread depth (mm)
         double threadLength;            ///< Length of threaded section (mm)
-        double startZ;                  ///< Start position along Z-axis (mm)
-        double endZ;                    ///< End position along Z-axis (mm)
-        
-        // Thread profile parameters
-        double threadAngle;             ///< Thread angle (degrees, typically 60)
-        double threadDepth;             ///< Full thread depth (mm)
-        double minorDiameter;           ///< Minor diameter (mm)
-        double pitchDiameter;           ///< Pitch diameter (mm)
-        
-        // Cutting parameters
-        int numberOfPasses;             ///< Number of threading passes
-        double firstPassDepth;          ///< Depth of first pass (mm)
-        double finalPassDepth;          ///< Depth of final pass (mm)
-        double springPassCount;         ///< Number of spring passes at full depth
+        double startZ;                  ///< Z position to start threading (mm)
+        double endZ;                    ///< Z position to end threading (mm)
         
         // Threading strategy
+        int numberOfPasses;             ///< Number of threading passes
         bool constantDepthPasses;       ///< Use constant depth per pass
-        bool variableDepthPasses;       ///< Use decreasing depth per pass
+        bool variableDepthPasses;       ///< Use variable depth (spring cuts)
         double degression;              ///< Degression factor for variable depth
         
-        // Feed and speed
-        double feedRate;                ///< Feed rate (mm/min)
+        // Cutting parameters
+        double feedRate;                ///< Threading feed rate (mm/min)
         double spindleSpeed;            ///< Spindle speed (RPM)
         double leadInDistance;          ///< Lead-in distance (mm)
         double leadOutDistance;         ///< Lead-out distance (mm)
+        double safetyHeight;            ///< Safe height above part (mm)
+        double clearanceDistance;       ///< Clearance from part (mm)
+        double retractDistance;         ///< Retract distance for passes (mm)
         
-        // Safety and clearance
-        double safetyHeight;            ///< Safe height for rapid moves (mm)
-        double clearanceDistance;       ///< Clearance from thread surface (mm)
-        double retractDistance;         ///< Retract distance between passes (mm)
-        
-        // Quality settings
-        double threadTolerance;         ///< Threading tolerance (mm)
-        bool chamferThreadStart;        ///< Add chamfer at thread start
-        bool chamferThreadEnd;          ///< Add chamfer at thread end
+        // Quality and finishing
+        double threadTolerance;         ///< Thread tolerance (mm)
+        bool chamferThreadStart;        ///< Chamfer thread start
+        bool chamferThreadEnd;          ///< Chamfer thread end
         double chamferLength;           ///< Chamfer length (mm)
         
-        // Default constructor with metric M20x1.5 thread
-        Parameters() :
+        // Advanced options
+        bool useConstantSurfaceSpeed;   ///< Use constant surface speed
+        double maxSpindleSpeed;         ///< Maximum spindle speed limit (RPM)
+        bool enableCoolant;             ///< Enable coolant during threading
+        bool enableChipBreaking;        ///< Enable chip breaking
+        double chipBreakDistance;       ///< Chip break retract distance (mm)
+        
+        Parameters() : 
             threadForm(ThreadForm::Metric),
             threadType(ThreadType::External),
             cuttingMethod(CuttingMethod::SinglePoint),
-            majorDiameter(20.0),
+            majorDiameter(10.0),
             pitch(1.5),
-            threadLength(30.0),
+            threadDepth(0.9),
+            threadLength(15.0),
             startZ(0.0),
-            endZ(-30.0),
-            threadAngle(60.0),
-            threadDepth(1.299), // For M20x1.5
-            minorDiameter(18.376),
-            pitchDiameter(19.188),
-            numberOfPasses(6),
-            firstPassDepth(0.4),
-            finalPassDepth(0.1),
-            springPassCount(2),
+            endZ(-15.0),
+            numberOfPasses(3),
             constantDepthPasses(false),
             variableDepthPasses(true),
             degression(0.8),
-            feedRate(150.0),
+            feedRate(60.0),
             spindleSpeed(300.0),
             leadInDistance(5.0),
             leadOutDistance(5.0),
             safetyHeight(5.0),
-            clearanceDistance(1.0),
+            clearanceDistance(3.0),
             retractDistance(2.0),
             threadTolerance(0.02),
             chamferThreadStart(true),
             chamferThreadEnd(true),
-            chamferLength(0.5) {}
+            chamferLength(0.5),
+            useConstantSurfaceSpeed(false),
+            maxSpindleSpeed(1500.0),
+            enableCoolant(true),
+            enableChipBreaking(false),
+            chipBreakDistance(1.0) {}
     };
     
     /**
-     * @brief Thread feature detected in profile
+     * @brief Thread feature detected from profile
      */
     struct ThreadFeature {
-        double startZ;              ///< Start position of thread
-        double endZ;                ///< End position of thread
-        double nominalDiameter;     ///< Detected diameter
-        double estimatedPitch;      ///< Estimated pitch from profile
-        ThreadType type;            ///< External or internal
-        bool isComplete;            ///< Whether thread feature is complete
-        double confidence;          ///< Detection confidence (0-1)
+        gp_Pnt position;                ///< Thread position
+        ThreadType type;                ///< Thread type
+        double diameter;                ///< Thread diameter
+        double pitch;                   ///< Detected pitch
+        double length;                  ///< Thread length
+        bool isMetric;                  ///< Is metric thread
+        std::string designation;        ///< Standard designation (e.g., "M20x1.5")
+        double confidence;              ///< Detection confidence (0-1)
     };
-    
+
     /**
-     * @brief Result of threading operation generation
+     * @brief Threading operation result
      */
     struct Result {
-        bool success;
-        std::string errorMessage;
+        bool success;                   ///< Operation successful
+        std::string errorMessage;       ///< Error message if failed
+        std::vector<std::string> warnings; ///< Warning messages
         
         // Generated toolpaths
-        std::unique_ptr<Toolpath> threadingToolpath;
-        std::unique_ptr<Toolpath> chamferToolpath;  ///< Optional chamfer toolpath
+        std::unique_ptr<Toolpath> threadingToolpath;    ///< Main threading toolpath
+        std::unique_ptr<Toolpath> chamferToolpath;      ///< Thread chamfer toolpath
         
         // Threading information
         Parameters usedParameters;      ///< Final parameters used
@@ -176,10 +171,16 @@ public:
                   actualThreadDepth(0.0), materialRemoved(0.0) {}
     };
 
+private:
+    Parameters params_;
+
+public:
     /**
-     * @brief Constructor
+     * @brief Constructor - inherits from Operation base class
+     * @param name Operation name
+     * @param tool Threading tool to use
      */
-    ThreadingOperation() = default;
+    ThreadingOperation(const std::string& name, std::shared_ptr<Tool> tool);
     
     /**
      * @brief Virtual destructor
@@ -187,7 +188,32 @@ public:
     virtual ~ThreadingOperation() = default;
 
     /**
-     * @brief Generate threading toolpaths
+     * @brief Set threading parameters
+     * @param params Threading parameters
+     */
+    void setParameters(const Parameters& params) { params_ = params; }
+    
+    /**
+     * @brief Get threading parameters
+     * @return Current parameters
+     */
+    const Parameters& getParameters() const { return params_; }
+
+    /**
+     * @brief Standard Operation interface - generates main threading toolpath
+     * @param part The part geometry to thread
+     * @return Generated threading toolpath
+     */
+    std::unique_ptr<Toolpath> generateToolpath(const Geometry::Part& part) override;
+    
+    /**
+     * @brief Validate operation parameters and tool
+     * @return True if valid
+     */
+    bool validate() const override;
+
+    /**
+     * @brief Advanced interface - Generate threading toolpaths with detailed control
      * @param part The part geometry to thread
      * @param tool The threading tool to use
      * @param params Threading parameters
@@ -228,53 +254,54 @@ public:
      * @param materialType Material being threaded
      * @return Recommended default parameters
      */
-    static Parameters getDefaultParameters(ThreadForm threadForm = ThreadForm::Metric,
-                                         double diameter = 20.0,
+    static Parameters getDefaultParameters(ThreadForm threadForm,
+                                         double diameter,
                                          const std::string& materialType = "steel");
 
 private:
     /**
-     * @brief Generate single-point threading toolpath
+     * @brief Generate threading passes for the specified parameters
      */
-    std::unique_ptr<Toolpath> generateSinglePointThreading(const Parameters& params,
-                                                          std::shared_ptr<Tool> tool);
+    std::vector<std::unique_ptr<Toolpath>> generateThreadingPasses(
+        const IntuiCAM::Geometry::Part& part,
+        std::shared_ptr<Tool> tool,
+        const Parameters& params);
 
     /**
-     * @brief Generate multi-point threading toolpath
+     * @brief Generate chamfer toolpaths for thread start/end
      */
-    std::unique_ptr<Toolpath> generateMultiPointThreading(const Parameters& params,
-                                                         std::shared_ptr<Tool> tool);
+    std::unique_ptr<Toolpath> generateThreadChamfer(
+        const Parameters& params,
+        std::shared_ptr<Tool> tool,
+        bool isStart);
 
     /**
-     * @brief Generate chamfer toolpath for thread ends
+     * @brief Calculate threading depth progression for multiple passes
      */
-    std::unique_ptr<Toolpath> generateChamferToolpath(const Parameters& params,
-                                                     std::shared_ptr<Tool> tool);
+    std::vector<double> calculateDepthProgression(const Parameters& params);
 
     /**
-     * @brief Calculate threading pass depths
+     * @brief Generate single threading pass
      */
-    std::vector<double> calculatePassDepths(const Parameters& params);
+    std::unique_ptr<Toolpath> generateSinglePass(
+        const Parameters& params,
+        std::shared_ptr<Tool> tool,
+        double depth,
+        int passNumber);
 
     /**
-     * @brief Calculate thread profile coordinates
+     * @brief Calculate thread geometry from parameters
      */
-    std::vector<gp_Pnt> calculateThreadProfile(const Parameters& params);
+    void calculateThreadGeometry(const Parameters& params,
+                               double& minorDiameter,
+                               double& pitchDiameter,
+                               double& threadAngle);
 
     /**
-     * @brief Estimate threading time based on parameters
+     * @brief Validate thread parameters for manufacturing constraints
      */
-    double estimateThreadingTime(const Parameters& params, std::shared_ptr<Tool> tool);
-
-    /**
-     * @brief Calculate material removal for threading
-     */
-    double calculateMaterialRemoval(const Parameters& params);
-
-    /**
-     * @brief Validate tool compatibility with threading operation
-     */
-    bool validateToolCompatibility(std::shared_ptr<Tool> tool, const Parameters& params);
+    std::string validateManufacturingConstraints(const Parameters& params,
+                                                std::shared_ptr<Tool> tool);
 };
 
 } // namespace Toolpath
