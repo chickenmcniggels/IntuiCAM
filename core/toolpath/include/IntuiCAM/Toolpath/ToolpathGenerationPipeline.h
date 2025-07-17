@@ -12,6 +12,7 @@
 #include <TopoDS_Shape.hxx>
 #include <gp_Ax1.hxx>
 #include <AIS_InteractiveObject.hxx>
+#include <gp_Trsf.hxx>
 
 // IntuiCAM includes
 #include <IntuiCAM/Toolpath/Types.h>
@@ -212,7 +213,12 @@ private:
         bool chamferEdges);
 
 public:
-    // Public helper methods for toolpath display 
+    // Public helper methods for toolpath display
+    /**
+     * @brief Convert toolpaths to display objects using the provided transform.
+     * @param toolpaths Toolpaths expressed in work coordinates.
+     * @param workpieceTransform Transform from work coordinates to global space.
+     */
     std::vector<Handle(AIS_InteractiveObject)> createToolpathDisplayObjects(
         const std::vector<std::unique_ptr<Toolpath>>& toolpaths,
         const gp_Trsf& workpieceTransform = gp_Trsf());
