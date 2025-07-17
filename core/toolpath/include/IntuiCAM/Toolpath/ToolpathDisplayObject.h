@@ -11,7 +11,6 @@
 #include <Quantity_Color.hxx>
 #include <TopoDS_Shape.hxx>
 #include <gp_Pnt.hxx>
-#include <gp_Trsf.hxx>
 
 #include <memory>
 #include <vector>
@@ -91,10 +90,6 @@ public:
     void setProgress(double progress); // 0.0 to 1.0 for animation
     double getProgress() const { return progress_; }
 
-    // Coordinate transformation
-    void setTransform(const gp_Trsf& trsf) { transform_ = trsf; }
-    const gp_Trsf& getTransform() const { return transform_; }
-
     // Color management
     void setColorScheme(ColorScheme scheme);
     void setCustomColor(const Quantity_Color& color);
@@ -135,9 +130,6 @@ private:
     // Display state
     std::vector<size_t> selectedMoves_;
     bool needsUpdate_;
-
-    // Optional transformation from work coordinates to global viewer coordinates
-    gp_Trsf transform_;
     
     // Computed geometry
     std::vector<Handle(AIS_InteractiveObject)> moveObjects_;
