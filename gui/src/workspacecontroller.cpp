@@ -1053,11 +1053,11 @@ bool WorkspaceController::generateToolpaths()
         // Apply work coordinate system transformation to position toolpaths correctly relative to workpiece
         gp_Trsf workCoordinateTransform;
         if (m_coordinateManager && m_coordinateManager->isInitialized()) {
-            // Get work coordinate system transformation matrix
+            // Get transformation from work coordinates to global coordinates
             const auto& workCS = m_coordinateManager->getWorkCoordinateSystem();
-            const auto& matrix = workCS.getFromGlobalMatrix(); // Transform from global to work coordinates
+            const auto& matrix = workCS.getToGlobalMatrix();
             
-            // Create OpenCASCADE transformation matrix from work coordinate system
+            // Create OpenCASCADE transformation matrix (work -> global)
             workCoordinateTransform.SetValues(
                 matrix.data[0], matrix.data[1], matrix.data[2], matrix.data[3],
                 matrix.data[4], matrix.data[5], matrix.data[6], matrix.data[7],
