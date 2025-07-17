@@ -1157,7 +1157,7 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::partingToolpa
 
 std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToolpathDisplayObjects(
     const std::vector<std::unique_ptr<Toolpath>>& toolpaths,
-    const gp_Trsf& workpieceTransform) {
+    const IntuiCAM::Geometry::WorkCoordinateSystem& workCS) {
     
     std::vector<Handle(AIS_InteractiveObject)> displayObjects;
     
@@ -1234,7 +1234,10 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
             for (const auto& movement : movements) {
                 newToolpath->addMovement(movement);
             }
-            
+
+            // Transform to global coordinates using the work coordinate system
+            newToolpath->applyWorkCoordinateSystem(workCS);
+
             sharedToolpath = newToolpath;
             
             // Create the ToolpathDisplayObject
