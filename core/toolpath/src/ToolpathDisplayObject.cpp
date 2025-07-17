@@ -43,7 +43,8 @@ ToolpathDisplayObject::ToolpathDisplayObject(std::shared_ptr<Toolpath> toolpath,
     , settings_(settings)
     , isVisible_(true)
     , progress_(1.0)
-    , needsUpdate_(true) {
+    , needsUpdate_(true)
+    , transform_(gp_Trsf()) {
     
     SetDisplayMode(static_cast<Standard_Integer>(DisplayMode::AllMoves));
     SetHilightMode(static_cast<Standard_Integer>(DisplayMode::AllMoves));
@@ -98,6 +99,9 @@ void ToolpathDisplayObject::ComputeSelection(const Handle(SelectMgr_Selection)& 
         // Convert to viewer coordinates (X = radius, Z = axial).
         gp_Pnt startPnt(move.startPoint.z, 0.0, move.startPoint.x);  // (radius, 0, axial)
         gp_Pnt endPnt(move.endPoint.z, 0.0, move.endPoint.x);        // (radius, 0, axial)
+
+        startPnt.Transform(transform_);
+        endPnt.Transform(transform_);
         
         // Ensure Y=0 to constrain to XZ plane for lathe operations
         startPnt.SetY(0.0);
@@ -200,11 +204,13 @@ ToolpathDisplayObject::DisplayStatistics ToolpathDisplayObject::calculateStatist
         }
         
         // Calculate lengths using the same coordinate transformation as visualization
-        // Movements store axial position in `x` and radial position in `z`.
-        // Convert to viewer coordinates (X = radius, Z = axial).
-        gp_Pnt start(move.position.z, 0.0, move.position.x);  // (radius, 0, axial)
+        gp_Pnt start(move.position.z, 0.0, move.position.x);  // (radius,0,axial)
         gp_Pnt end = (moveIndex + 1 < moves.size()) ?
             gp_Pnt(moves[moveIndex + 1].position.z, 0.0, moves[moveIndex + 1].position.x) : start;
+
+        start.Transform(transform_);
+        end.Transform(transform_);
+
         double length = start.Distance(end);
         
         stats.totalLength += length;
@@ -214,10 +220,11 @@ ToolpathDisplayObject::DisplayStatistics ToolpathDisplayObject::calculateStatist
         
         // Update bounding box using transformed coordinates
         auto updateBoundingBox = [&](const Geometry::Point3D& point) {
-            // Apply the same coordinate transformation: (radius, 0, axial)
-            double transformedX = point.z;  // radius
-            double transformedY = 0.0;      // constrained to XZ plane
-            double transformedZ = point.x;  // axial
+            gp_Pnt p(point.z, 0.0, point.x);
+            p.Transform(transform_);
+            double transformedX = p.X();
+            double transformedY = p.Y();
+            double transformedZ = p.Z();
             
             if (transformedX < stats.boundingBoxMin.X()) stats.boundingBoxMin.SetX(transformedX);
             if (transformedY < stats.boundingBoxMin.Y()) stats.boundingBoxMin.SetY(transformedY);
@@ -291,6 +298,10 @@ void ToolpathDisplayObject::computeWireframePresentation(const Handle(Prs3d_Pres
         // Movements store axial position in `x` and radial position in `z`.
         gp_Pnt startPnt(prevMove.position.z, 0.0, prevMove.position.x);      // (radius, 0, axial)
         gp_Pnt endPnt(currentMove.position.z, 0.0, currentMove.position.x);  // (radius, 0, axial)
+
+        // Apply work-to-global transformation
+        startPnt.Transform(transform_);
+        endPnt.Transform(transform_);
         
         // Ensure Y=0 to constrain to XZ plane for lathe operations
         startPnt.SetY(0.0);
