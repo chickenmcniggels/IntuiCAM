@@ -228,18 +228,6 @@ void Toolpath::applyTransform(const Geometry::Matrix4x4& mat) {
     }
 }
 
-void Toolpath::applyWorkCoordinateSystem(const Geometry::WorkCoordinateSystem& wcs) {
-    for (auto& movement : movements_) {
-        Geometry::Point2D lathePos(movement.position.z, movement.position.x);
-        Geometry::Point2D latheStart(movement.startPoint.z, movement.startPoint.x);
-        Geometry::Point2D latheEnd(movement.endPoint.z, movement.endPoint.x);
-
-        movement.position = wcs.latheToGlobal(lathePos);
-        movement.startPoint = wcs.latheToGlobal(latheStart);
-        movement.endPoint = wcs.latheToGlobal(latheEnd);
-    }
-}
-
 // Operation Implementation
 Operation::Operation(Type type, const std::string& name, std::shared_ptr<Tool> tool)
     : type_(type), name_(name), tool_(tool) {}
