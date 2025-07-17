@@ -1158,30 +1158,7 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::partingToolpa
 std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToolpathDisplayObjects(
     const std::vector<std::unique_ptr<Toolpath>>& toolpaths,
     const gp_Trsf& workpieceTransform) {
-
-    auto trsfToMatrix = [](const gp_Trsf& trsf) {
-        IntuiCAM::Geometry::Matrix4x4 mat;
-        mat.data[0] = trsf.Value(1, 1);
-        mat.data[1] = trsf.Value(1, 2);
-        mat.data[2] = trsf.Value(1, 3);
-        mat.data[3] = 0.0;
-        mat.data[4] = trsf.Value(2, 1);
-        mat.data[5] = trsf.Value(2, 2);
-        mat.data[6] = trsf.Value(2, 3);
-        mat.data[7] = 0.0;
-        mat.data[8] = trsf.Value(3, 1);
-        mat.data[9] = trsf.Value(3, 2);
-        mat.data[10] = trsf.Value(3, 3);
-        mat.data[11] = 0.0;
-        mat.data[12] = trsf.Value(1, 4);
-        mat.data[13] = trsf.Value(2, 4);
-        mat.data[14] = trsf.Value(3, 4);
-        mat.data[15] = 1.0;
-        return mat;
-    };
-
-    IntuiCAM::Geometry::Matrix4x4 transformMatrix = trsfToMatrix(workpieceTransform);
-
+    
     std::vector<Handle(AIS_InteractiveObject)> displayObjects;
     
     // Create proper ToolpathDisplayObject instances for each toolpath
@@ -1257,10 +1234,7 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
             for (const auto& movement : movements) {
                 newToolpath->addMovement(movement);
             }
-
-            // Apply positioning transform
-            newToolpath->applyTransform(transformMatrix);
-
+            
             sharedToolpath = newToolpath;
             
             // Create the ToolpathDisplayObject

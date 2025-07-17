@@ -1055,14 +1055,13 @@ bool WorkspaceController::generateToolpaths()
         if (m_coordinateManager && m_coordinateManager->isInitialized()) {
             // Get work coordinate system transformation matrix
             const auto& workCS = m_coordinateManager->getWorkCoordinateSystem();
-            // Use work to global matrix so toolpaths align with raw material
-            const auto& matrix = workCS.getToGlobalMatrix();
+            const auto& matrix = workCS.getFromGlobalMatrix(); // Transform from global to work coordinates
             
             // Create OpenCASCADE transformation matrix from work coordinate system
             workCoordinateTransform.SetValues(
-                matrix.data[0], matrix.data[1], matrix.data[2], matrix.data[12],
-                matrix.data[4], matrix.data[5], matrix.data[6], matrix.data[13],
-                matrix.data[8], matrix.data[9], matrix.data[10], matrix.data[14]
+                matrix.data[0], matrix.data[1], matrix.data[2], matrix.data[3],
+                matrix.data[4], matrix.data[5], matrix.data[6], matrix.data[7],
+                matrix.data[8], matrix.data[9], matrix.data[10], matrix.data[11]
             );
             qDebug() << "WorkspaceController: Using work coordinate system transformation for toolpath positioning";
         } else {
