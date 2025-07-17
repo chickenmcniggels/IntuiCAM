@@ -215,7 +215,7 @@ public:
     // Public helper methods for toolpath display 
     std::vector<Handle(AIS_InteractiveObject)> createToolpathDisplayObjects(
         const std::vector<std::unique_ptr<Toolpath>>& toolpaths,
-        const gp_Trsf& workpieceTransform = gp_Trsf());
+        const IntuiCAM::Geometry::WorkCoordinateSystem& workCS);
 
 private:
     // Generation state
