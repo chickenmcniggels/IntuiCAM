@@ -182,18 +182,6 @@ public:
     
     // Apply a 4x4 transform to every movement (e.g., part positioning in world space)
     void applyTransform(const Geometry::Matrix4x4& mat);
-
-    /**
-     * @brief Transform toolpath movements from lathe work coordinates to global
-     *        coordinates using a work coordinate system.
-     *
-     * Movements in generated toolpaths use a lathe-friendly convention where
-     * `x` stores the axial position (Z in machine coordinates) and `z` stores
-     * the radial position. This helper converts all stored points through the
-     * provided work coordinate system so the toolpath aligns with the current
-     * raw material position.
-     */
-    void applyWorkCoordinateSystem(const Geometry::WorkCoordinateSystem& wcs);
 };
 
 // Base class for machining operations

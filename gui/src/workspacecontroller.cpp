@@ -1074,22 +1074,27 @@ bool WorkspaceController::generateToolpaths()
         
         // Create toolpath display objects using the same coordinate system as profile extraction
         // Apply work coordinate system transformation to position toolpaths correctly relative to workpiece
-        const IntuiCAM::Geometry::WorkCoordinateSystem* workCSPtr = nullptr;
+        gp_Trsf workCoordinateTransform;
         if (m_coordinateManager && m_coordinateManager->isInitialized()) {
-            workCSPtr = &m_coordinateManager->getWorkCoordinateSystem();
-            qDebug() << "WorkspaceController: Using work coordinate system for toolpath positioning";
+            // Get work coordinate system transformation matrix
+            const auto& workCS = m_coordinateManager->getWorkCoordinateSystem();
+            const auto& matrix = workCS.getFromGlobalMatrix(); // Transform from global to work coordinates
+            
+            // Create OpenCASCADE transformation matrix from work coordinate system
+            workCoordinateTransform.SetValues(
+                matrix.data[0], matrix.data[1], matrix.data[2], matrix.data[3],
+                matrix.data[4], matrix.data[5], matrix.data[6], matrix.data[7],
+                matrix.data[8], matrix.data[9], matrix.data[10], matrix.data[11]
+            );
+            qDebug() << "WorkspaceController: Using work coordinate system transformation for toolpath positioning";
         } else {
-            qDebug() << "WorkspaceController: Work coordinate system not available";
+            // Fallback to identity if work coordinate system not available
+            // In modern OpenCASCADE, default constructor creates identity transform
+            workCoordinateTransform = gp_Trsf();
+            qDebug() << "WorkspaceController: Using identity transform (work coordinate system not available)";
         }
-
-        std::vector<Handle(AIS_InteractiveObject)> toolpathDisplayObjects;
-        if (workCSPtr) {
-            toolpathDisplayObjects = pipeline->createToolpathDisplayObjects(result.timeline, *workCSPtr);
-        } else {
-            // Use an identity work coordinate system as fallback
-            IntuiCAM::Geometry::WorkCoordinateSystem identityCS;
-            toolpathDisplayObjects = pipeline->createToolpathDisplayObjects(result.timeline, identityCS);
-        }
+        
+        auto toolpathDisplayObjects = pipeline->createToolpathDisplayObjects(result.timeline, workCoordinateTransform);
         
         // Toolpaths are now positioned using the same coordinate system as the profile extraction
         // This ensures they appear at exactly the same location as the workpiece profile
