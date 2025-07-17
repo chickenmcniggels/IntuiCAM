@@ -1,13 +1,16 @@
 #include "setupconfigurationpanel.h"
 #include "materialmanager.h"
 #include "toolmanager.h"
+
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDebug>
 #include <QDir>
 #include <QDoubleSpinBox>
 #include <QFileDialog>
 #include <QFormLayout>
+#include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -15,17 +18,24 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QListWidgetItem>
-#include <QMessageBox>
-#include <QProgressBar>
 #include <QPushButton>
-#include <QScrollArea>
-#include <QSignalBlocker>
 #include <QSlider>
 #include <QSpinBox>
-#include <QSplitter>
-#include <QTabWidget>
+#include <QStandardPaths>
 #include <QTableWidget>
+#include <QTableWidgetItem>
+#include <QTextEdit>
 #include <QVBoxLayout>
+#include <TopoDS_Shape.hxx>
+#include <QSignalBlocker>
+#include <QScrollArea>
+
+#define _USE_MATH_DEFINES
+#include <cmath>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 namespace IntuiCAM {
 namespace GUI {
@@ -2256,6 +2266,734 @@ void SetupConfigurationPanel::showOperationWidget(const QString &operationName) 
   if (m_operationsStackedWidget) {
     m_operationsStackedWidget->setCurrentIndex(index);
   }
+}
+
+// Workpiece geometry integration implementations
+WorkpieceGeometry SetupConfigurationPanel::getWorkpieceGeometry() const
+{
+    WorkpieceGeometry geometry = m_workpieceGeometry;
+    
+    // Update with current UI values
+    geometry.rawMaterialDiameter = getRawDiameter();
+    geometry.rawMaterialLength = getRawMaterialLength();
+    geometry.distanceToChuck = getDistanceToChuck();
+    geometry.orientationFlipped = isOrientationFlipped();
+    geometry.facingAllowanceStock = getFacingAllowance();
+    
+    // Calculate derived values
+    geometry.chuckFaceZ = 0.0;  // Chuck face is always at Z=0
+    geometry.rawMaterialStartZ = geometry.chuckFaceZ - geometry.chuckExtension;  // Usually Z=-50
+    geometry.rawMaterialEndZ = geometry.rawMaterialStartZ + geometry.rawMaterialLength;
+    geometry.workOriginZ = geometry.rawMaterialEndZ;  // Work origin at end of raw material
+    
+    // Part positioning calculations
+    geometry.partStartZ = geometry.chuckFaceZ + geometry.distanceToChuck;
+    geometry.partEndZ = geometry.partStartZ + geometry.partLength;
+    
+    return geometry;
+}
+
+void SetupConfigurationPanel::setWorkpieceGeometry(const WorkpieceGeometry& geometry)
+{
+    m_workpieceGeometry = geometry;
+    
+    // Update UI controls with geometry information
+    setRawDiameter(geometry.rawMaterialDiameter);
+    setRawMaterialLength(geometry.rawMaterialLength);
+    setDistanceToChuck(geometry.distanceToChuck);
+    setOrientationFlipped(geometry.orientationFlipped);
+    setFacingAllowance(geometry.facingAllowanceStock);
+    setPartLength(geometry.partLength);
+}
+
+void SetupConfigurationPanel::updateOperationParametersWithGeometry(const WorkpieceGeometry& geometry)
+{
+    qDebug() << "SetupConfigurationPanel: Updating operation parameters with workpiece geometry";
+    qDebug() << "  Raw material: " << geometry.rawMaterialDiameter << "mm diameter x " << geometry.rawMaterialLength << "mm length";
+    qDebug() << "  Part geometry: " << geometry.partMaxDiameter << "mm max diameter, " << geometry.partLength << "mm length";
+    qDebug() << "  Coordinate system: Chuck face at Z=" << geometry.chuckFaceZ << "mm, Work origin at Z=" << geometry.workOriginZ << "mm";
+    
+    // Update stored geometry
+    m_workpieceGeometry = geometry;
+    
+    // Calculate parameters for each operation based on geometry
+    calculateFacingParametersFromGeometry(geometry);
+    calculateRoughingParametersFromGeometry(geometry);
+    calculateFinishingParametersFromGeometry(geometry);
+    calculatePartingParametersFromGeometry(geometry);
+    calculateThreadingParametersFromGeometry(geometry);
+    calculateChamferingParametersFromGeometry(geometry);
+    calculateGroovingParametersFromGeometry(geometry);
+    calculateDrillingParametersFromGeometry(geometry);
+    
+    qDebug() << "SetupConfigurationPanel: Operation parameters updated successfully";
+}
+
+void SetupConfigurationPanel::calculateFacingParametersFromGeometry(const WorkpieceGeometry& geometry)
+{
+    // Calculate facing operation bounds from raw material and part geometry
+    m_facingParams.startZ = geometry.workOriginZ;  // Start at work origin (end of raw material)
+    m_facingParams.endZ = geometry.partStartZ;     // Face down to part start position
+    m_facingParams.maxRadius = geometry.rawMaterialDiameter / 2.0;  // Face from center to raw material edge
+    m_facingParams.minRadius = geometry.partMinDiameter / 2.0;      // Minimum radius (center hole or solid)
+    
+    // Stock allowances based on geometry
+    m_facingParams.stockAllowance = geometry.facingAllowanceStock;  // Stock left for roughing
+    m_facingParams.finalStockAllowance = 0.02;  // Final allowance for spring pass
+    
+    // Geometry validation
+    if (m_facingParams.startZ <= m_facingParams.endZ) {
+        qWarning() << "SetupConfigurationPanel: Invalid facing geometry - start Z must be greater than end Z";
+        // Adjust to ensure valid facing operation
+        m_facingParams.endZ = m_facingParams.startZ - 2.0;  // Minimum 2mm facing length
+    }
+    
+    qDebug() << "SetupConfigurationPanel: Facing parameters calculated from geometry:";
+    qDebug() << "  Z range: " << m_facingParams.startZ << " to " << m_facingParams.endZ << " mm";
+    qDebug() << "  Radius range: " << m_facingParams.minRadius << " to " << m_facingParams.maxRadius << " mm";
+}
+
+void SetupConfigurationPanel::calculateRoughingParametersFromGeometry(const WorkpieceGeometry& geometry)
+{
+    // Calculate roughing bounds from raw material and part geometry
+    m_roughingParams.startDiameter = geometry.rawMaterialDiameter;
+    m_roughingParams.endDiameter = geometry.partMaxDiameter;
+    m_roughingParams.startZ = geometry.partStartZ;
+    m_roughingParams.endZ = geometry.partEndZ;
+    
+    // Ensure we have valid roughing operation (raw material larger than part)
+    if (m_roughingParams.startDiameter <= m_roughingParams.endDiameter) {
+        qWarning() << "SetupConfigurationPanel: Invalid roughing geometry - raw material must be larger than part";
+        // Adjust for minimal roughing operation
+        m_roughingParams.startDiameter = m_roughingParams.endDiameter + 4.0;  // Add 4mm minimum stock
+    }
+    
+    // Calculate appropriate depths based on material removal
+    double materialRemoval = (m_roughingParams.startDiameter - m_roughingParams.endDiameter) / 2.0;
+    if (materialRemoval > 10.0) {
+        m_roughingParams.depthOfCut = 2.0;  // Conservative for heavy roughing
+        m_roughingParams.stepover = 1.5;
+    } else if (materialRemoval > 5.0) {
+        m_roughingParams.depthOfCut = 1.5;  // Moderate roughing
+        m_roughingParams.stepover = 1.0;
+    } else {
+        m_roughingParams.depthOfCut = 1.0;  // Light roughing
+        m_roughingParams.stepover = 0.8;
+    }
+    
+    qDebug() << "SetupConfigurationPanel: Roughing parameters calculated from geometry:";
+    qDebug() << "  Diameter: " << m_roughingParams.startDiameter << " to " << m_roughingParams.endDiameter << " mm";
+    qDebug() << "  Z range: " << m_roughingParams.startZ << " to " << m_roughingParams.endZ << " mm";
+    qDebug() << "  Material removal: " << materialRemoval << " mm per side";
+}
+
+void SetupConfigurationPanel::calculateFinishingParametersFromGeometry(const WorkpieceGeometry& geometry)
+{
+    // Calculate finishing bounds - same as part geometry with stock allowance
+    m_finishingParams.startZ = geometry.partStartZ;
+    m_finishingParams.endZ = geometry.partEndZ;
+    m_finishingParams.stockAllowance = getRoughingAllowance();  // Material left by roughing
+    m_finishingParams.finalStockAllowance = 0.0;  // Finish to final size
+    
+    // Set finishing strategy based on part complexity
+    double partLength = geometry.partEndZ - geometry.partStartZ;
+    if (partLength > 100.0) {
+        m_finishingParams.finishingStrategy = 2;  // Profile following for long parts
+        m_finishingParams.numberOfPasses = 3;
+    } else if (partLength > 50.0) {
+        m_finishingParams.finishingStrategy = 1;  // Multi-pass for medium parts
+        m_finishingParams.numberOfPasses = 2;
+    } else {
+        m_finishingParams.finishingStrategy = 0;  // Single pass for short parts
+        m_finishingParams.numberOfPasses = 1;
+    }
+    
+    qDebug() << "SetupConfigurationPanel: Finishing parameters calculated from geometry:";
+    qDebug() << "  Z range: " << m_finishingParams.startZ << " to " << m_finishingParams.endZ << " mm";
+    qDebug() << "  Strategy: " << m_finishingParams.finishingStrategy << ", Passes: " << m_finishingParams.numberOfPasses;
+}
+
+void SetupConfigurationPanel::calculatePartingParametersFromGeometry(const WorkpieceGeometry& geometry)
+{
+    // Calculate parting position - typically near the end of the part
+    m_partingParams.partingZ = geometry.partEndZ - 2.0;  // 2mm from part end
+    m_partingParams.partingDiameter = geometry.partMaxDiameter;
+    m_partingParams.centerHoleDiameter = geometry.partMinDiameter;
+    
+    // Ensure parting position is within valid range
+    if (m_partingParams.partingZ <= geometry.partStartZ) {
+        m_partingParams.partingZ = geometry.partStartZ + (geometry.partLength * 0.8);  // 80% along part length
+    }
+    
+    // Set parting width based on diameter
+    if (m_partingParams.partingDiameter > 50.0) {
+        m_partingParams.partingWidth = 4.0;  // Wider for large diameters
+    } else if (m_partingParams.partingDiameter > 20.0) {
+        m_partingParams.partingWidth = 3.0;  // Standard width
+    } else {
+        m_partingParams.partingWidth = 2.0;  // Narrow for small diameters
+    }
+    
+    qDebug() << "SetupConfigurationPanel: Parting parameters calculated from geometry:";
+    qDebug() << "  Position: Z=" << m_partingParams.partingZ << " mm, Diameter=" << m_partingParams.partingDiameter << " mm";
+    qDebug() << "  Width: " << m_partingParams.partingWidth << " mm";
+}
+
+void SetupConfigurationPanel::calculateThreadingParametersFromGeometry(const WorkpieceGeometry& geometry)
+{
+    // Set threading parameters based on part geometry
+    m_threadingParams.majorDiameter = geometry.partMaxDiameter;
+    m_threadingParams.threadLength = std::min(15.0, geometry.partLength * 0.4);  // Max 15mm or 40% of part length
+    m_threadingParams.startZ = geometry.partStartZ;
+    m_threadingParams.endZ = m_threadingParams.startZ + m_threadingParams.threadLength;
+    
+    // Ensure threading doesn't extend beyond part
+    if (m_threadingParams.endZ > geometry.partEndZ) {
+        m_threadingParams.endZ = geometry.partEndZ;
+        m_threadingParams.threadLength = m_threadingParams.endZ - m_threadingParams.startZ;
+    }
+    
+    // Set appropriate pitch based on diameter
+    if (m_threadingParams.majorDiameter >= 20.0) {
+        m_threadingParams.pitch = 2.5;  // Coarse for large diameters
+    } else if (m_threadingParams.majorDiameter >= 12.0) {
+        m_threadingParams.pitch = 1.75;  // Medium pitch
+    } else if (m_threadingParams.majorDiameter >= 6.0) {
+        m_threadingParams.pitch = 1.0;   // Fine pitch
+    } else {
+        m_threadingParams.pitch = 0.75;  // Very fine for small diameters
+    }
+    
+    // Calculate thread depth (60% of pitch for metric threads)
+    m_threadingParams.threadDepth = m_threadingParams.pitch * 0.6134;  // Metric thread depth formula
+    
+    qDebug() << "SetupConfigurationPanel: Threading parameters calculated from geometry:";
+    qDebug() << "  Diameter: " << m_threadingParams.majorDiameter << " mm, Pitch: " << m_threadingParams.pitch << " mm";
+    qDebug() << "  Length: " << m_threadingParams.threadLength << " mm, Depth: " << m_threadingParams.threadDepth << " mm";
+}
+
+void SetupConfigurationPanel::calculateChamferingParametersFromGeometry(const WorkpieceGeometry& geometry)
+{
+    // Set chamfer parameters based on part geometry
+    m_chamferingParams.targetDiameter = geometry.partMaxDiameter;
+    m_chamferingParams.chamferLength = std::min(2.0, geometry.partMaxDiameter * 0.05);  // 5% of diameter or 2mm max
+    m_chamferingParams.chamferAngle = 45.0;  // Standard 45-degree chamfer
+    
+    // Position chamfers at part ends
+    m_chamferingParams.startZ = geometry.partStartZ;
+    m_chamferingParams.endZ = geometry.partEndZ;
+    
+    qDebug() << "SetupConfigurationPanel: Chamfering parameters calculated from geometry:";
+    qDebug() << "  Diameter: " << m_chamferingParams.targetDiameter << " mm, Length: " << m_chamferingParams.chamferLength << " mm";
+    qDebug() << "  Angle: " << m_chamferingParams.chamferAngle << " degrees";
+}
+
+void SetupConfigurationPanel::calculateGroovingParametersFromGeometry(const WorkpieceGeometry& geometry)
+{
+    // Set grooving parameters based on part geometry
+    m_groovingParams.grooveDiameter = geometry.partMaxDiameter * 0.8;  // 80% of part diameter
+    m_groovingParams.grooveWidth = std::min(3.0, geometry.partMaxDiameter * 0.1);  // 10% of diameter or 3mm max
+    m_groovingParams.grooveDepth = std::min(2.0, geometry.partMaxDiameter * 0.05);  // 5% of diameter or 2mm max
+    
+    // Position groove in middle of part
+    m_groovingParams.grooveZ = geometry.partStartZ + (geometry.partLength / 2.0);
+    
+    qDebug() << "SetupConfigurationPanel: Grooving parameters calculated from geometry:";
+    qDebug() << "  Position: Z=" << m_groovingParams.grooveZ << " mm, Diameter=" << m_groovingParams.grooveDiameter << " mm";
+    qDebug() << "  Width: " << m_groovingParams.grooveWidth << " mm, Depth: " << m_groovingParams.grooveDepth << " mm";
+}
+
+void SetupConfigurationPanel::calculateDrillingParametersFromGeometry(const WorkpieceGeometry& geometry)
+{
+    // Set drilling parameters based on part geometry
+    if (geometry.partMinDiameter > 0.0) {
+        // Part has existing center hole
+        m_drillingParams.drillDiameter = geometry.partMinDiameter;
+        m_drillingParams.drillDepth = geometry.partLength;  // Through hole
+        m_drillingParams.hasCenterHole = true;
+    } else {
+        // Solid part - calculate pilot hole
+        m_drillingParams.drillDiameter = std::min(6.0, geometry.partMaxDiameter * 0.2);  // 20% of diameter or 6mm max
+        m_drillingParams.drillDepth = geometry.partLength * 0.7;  // 70% of part length
+        m_drillingParams.hasCenterHole = false;
+    }
+    
+    // Drilling starts from work origin
+    m_drillingParams.startZ = geometry.workOriginZ;
+    m_drillingParams.endZ = geometry.workOriginZ - m_drillingParams.drillDepth;
+    
+    qDebug() << "SetupConfigurationPanel: Drilling parameters calculated from geometry:";
+    qDebug() << "  Diameter: " << m_drillingParams.drillDiameter << " mm, Depth: " << m_drillingParams.drillDepth << " mm";
+    qDebug() << "  Z range: " << m_drillingParams.startZ << " to " << m_drillingParams.endZ << " mm";
+}
+
+// UI-based parameter collection methods (read actual UI values)
+SetupConfigurationPanel::FacingParameters SetupConfigurationPanel::collectFacingParametersFromUI() const
+{
+    FacingParameters params = m_facingParams;  // Start with geometry-calculated base
+    
+    // Get current workpiece geometry for boundary calculations
+    WorkpieceGeometry geometry = getWorkpieceGeometry();
+    
+    // Read values from UI controls (override defaults with user settings)
+    if (m_facingAllowanceSpin) {
+        params.stockAllowance = m_facingAllowanceSpin->value();
+        params.finalStockAllowance = std::min(0.05, params.stockAllowance / 5.0);  // 20% of stock or 0.05mm max
+    }
+    
+    // Advanced cutting parameters from UI
+    if (m_facingDepthSpin) {
+        params.depthOfCut = m_facingDepthSpin->value();
+    }
+    if (m_facingFeedSpin) {
+        params.feedRate = m_facingFeedSpin->value();
+        params.finishingFeedRate = params.feedRate * 0.6;  // 60% for finishing
+        params.roughingFeedRate = params.feedRate * 1.3;   // 130% for roughing
+    }
+    if (m_facingSpeedSpin) {
+        params.maxSpindleSpeed = m_facingSpeedSpin->value();
+        params.minSpindleSpeed = std::max(200.0, params.maxSpindleSpeed * 0.3);  // Min 30% of max
+    }
+    if (m_facingCssCheck) {
+        params.constantSurfaceSpeed = m_facingCssCheck->isChecked();
+        
+        // Calculate surface speed if CSS is enabled
+        if (params.constantSurfaceSpeed && geometry.rawMaterialDiameter > 0.0) {
+            params.surfaceSpeed = (M_PI * geometry.rawMaterialDiameter * params.maxSpindleSpeed) / 1000.0;
+        }
+    }
+    
+    // Quality parameters from UI
+    if (m_surfaceFinishCombo) {
+        params.surfaceQuality = m_surfaceFinishCombo->currentIndex();  // 0=Rough, 1=Medium, 2=Fine, 3=Mirror
+    }
+    if (m_toleranceSpin) {
+        params.toleranceZ = m_toleranceSpin->value();
+        params.toleranceX = m_toleranceSpin->value();
+    }
+    
+    // Calculate geometry bounds from workpiece (relative to work origin - raw material end face)
+    // Work origin is at the raw material end face and moves with the part
+    params.startZ = geometry.workOriginZ;                                 // Start at work origin (raw material end face)
+    params.endZ = geometry.workOriginZ - geometry.facingAllowanceStock;    // Face toward chuck by allowance amount
+    params.maxRadius = geometry.rawMaterialDiameter / 2.0;               // Face full raw material radius
+    params.minRadius = geometry.partMinDiameter / 2.0;                   // Center hole or 0 for solid
+    
+    // Safety parameters
+    params.safetyHeight = std::max(2.0, geometry.rawMaterialDiameter * 0.1);  // 10% of diameter or 2mm min
+    params.rapidClearance = std::max(1.0, params.safetyHeight / 2.0);
+    
+    qDebug() << "SetupConfigurationPanel: Collected facing parameters from UI:";
+    qDebug() << "  Z range: " << params.startZ << " to " << params.endZ << " mm";
+    qDebug() << "  Radius range: " << params.minRadius << " to " << params.maxRadius << " mm";
+    qDebug() << "  Feed rate: " << params.feedRate << " mm/rev, Spindle: " << params.maxSpindleSpeed << " RPM";
+    
+    return params;
+}
+
+SetupConfigurationPanel::RoughingParameters SetupConfigurationPanel::collectRoughingParametersFromUI() const
+{
+    RoughingParameters params = m_roughingParams;  // Start with geometry-calculated base
+    
+    // Get current workpiece geometry
+    WorkpieceGeometry geometry = getWorkpieceGeometry();
+    
+    // Read values from UI controls
+    if (m_roughingAllowanceSpin) {
+        params.stockAllowance = m_roughingAllowanceSpin->value();
+    }
+    
+    // Advanced cutting parameters from UI
+    if (m_roughingDepthSpin) {
+        params.depthOfCut = m_roughingDepthSpin->value();
+    }
+    if (m_roughingFeedSpin) {
+        params.feedRate = m_roughingFeedSpin->value();
+    }
+    if (m_roughingSpeedSpin) {
+        params.maxSpindleSpeed = m_roughingSpeedSpin->value();
+        params.minSpindleSpeed = std::max(200.0, params.maxSpindleSpeed * 0.4);  // Min 40% of max
+    }
+    if (m_roughingCssCheck) {
+        params.constantSurfaceSpeed = m_roughingCssCheck->isChecked();
+        
+        // Calculate surface speed for roughing
+        if (params.constantSurfaceSpeed && geometry.rawMaterialDiameter > 0.0) {
+            params.surfaceSpeed = (M_PI * geometry.rawMaterialDiameter * params.maxSpindleSpeed) / 1000.0;
+        }
+    }
+    
+    // Calculate stepover from current tool or default
+    if (m_selectedToolsPerOperation.contains("roughing") && m_toolManager) {
+        QString toolId = m_selectedToolsPerOperation.value("roughing");
+        CuttingTool tool = m_toolManager->getTool(toolId);
+        if (!tool.name.isEmpty()) {
+            params.stepover = tool.geometry.cornerRadius * 1.5;  // 150% of tool corner radius
+        }
+    }
+    
+    // Quality parameters
+    if (m_toleranceSpin) {
+        params.toleranceZ = m_toleranceSpin->value() * 2.0;  // Rougher tolerance for roughing
+        params.toleranceX = m_toleranceSpin->value() * 2.0;
+    }
+    
+    // Calculate geometry bounds (relative to work origin - raw material end face)
+    params.startDiameter = geometry.rawMaterialDiameter;
+    params.endDiameter = geometry.partMaxDiameter + (2.0 * params.stockAllowance);  // Leave stock for finishing
+    
+    // Roughing Z coordinates relative to work origin
+    // Start from work origin and rough toward chuck until part end + allowance
+    params.startZ = geometry.workOriginZ;                                 // Start at work origin (raw material end)
+    params.endZ = geometry.partEndZ - params.stockAllowance;             // Stop before part end, leaving stock
+    
+    // Ensure minimum roughing length
+    if (params.startZ <= params.endZ) {
+        params.endZ = params.startZ - 10.0;  // Minimum 10mm roughing length
+    }
+    
+    // Determine if internal or external based on part geometry
+    params.isInternal = (geometry.partMinDiameter > 0.0);  // Internal if center hole exists
+    
+    qDebug() << "SetupConfigurationPanel: Collected roughing parameters from UI:";
+    qDebug() << "  Diameter range: " << params.endDiameter << " to " << params.startDiameter << " mm";
+    qDebug() << "  Z range: " << params.startZ << " to " << params.endZ << " mm";
+    qDebug() << "  Stock allowance: " << params.stockAllowance << " mm, Internal: " << params.isInternal;
+    
+    return params;
+}
+
+SetupConfigurationPanel::FinishingParameters SetupConfigurationPanel::collectFinishingParametersFromUI() const
+{
+    FinishingParameters params = m_finishingParams;  // Start with geometry-calculated base
+    
+    // Get current workpiece geometry
+    WorkpieceGeometry geometry = getWorkpieceGeometry();
+    
+    // Read values from UI controls
+    if (m_finishingAllowanceSpin) {
+        params.stockAllowance = m_finishingAllowanceSpin->value();  // Material left by roughing
+        params.finalStockAllowance = 0.0;  // No material left after finishing
+    }
+    
+    // Advanced cutting parameters from UI
+    if (m_finishingDepthSpin) {
+        params.depthOfCut = m_finishingDepthSpin->value();
+    }
+    if (m_finishingFeedSpin) {
+        params.feedRate = m_finishingFeedSpin->value();
+        params.finishingFeedRate = params.feedRate * 0.7;  // Slower for final pass
+    }
+    if (m_finishingSpeedSpin) {
+        params.maxSpindleSpeed = m_finishingSpeedSpin->value();
+        params.minSpindleSpeed = std::max(300.0, params.maxSpindleSpeed * 0.5);  // Higher min for finishing
+    }
+    if (m_finishingCssCheck) {
+        params.constantSurfaceSpeed = m_finishingCssCheck->isChecked();
+        
+        // Calculate surface speed for finishing (typically higher)
+        if (params.constantSurfaceSpeed && geometry.partMaxDiameter > 0.0) {
+            params.surfaceSpeed = (M_PI * geometry.partMaxDiameter * params.maxSpindleSpeed) / 1000.0;
+        }
+    }
+    
+    // Surface finish from UI
+    if (m_surfaceFinishCombo) {
+        params.targetQuality = m_surfaceFinishCombo->currentIndex();
+        
+        // Set target surface finish based on quality level
+        switch (params.targetQuality) {
+            case 0: params.surfaceFinishTarget = 3.2; break;  // Rough
+            case 1: params.surfaceFinishTarget = 1.6; break;  // Medium  
+            case 2: params.surfaceFinishTarget = 0.8; break;  // Fine
+            case 3: params.surfaceFinishTarget = 0.4; break;  // Smooth
+            case 4: params.surfaceFinishTarget = 0.2; break;  // Polish
+            case 5: params.surfaceFinishTarget = 0.1; break;  // Mirror
+            default: params.surfaceFinishTarget = 1.6; break;
+        }
+    }
+    
+    // Finishing passes from UI
+    if (m_externalFinishingPassesSpin) {
+        params.numberOfPasses = m_externalFinishingPassesSpin->value();
+    }
+    
+    // Quality parameters
+    if (m_toleranceSpin) {
+        params.toleranceZ = m_toleranceSpin->value();
+        params.toleranceX = m_toleranceSpin->value();
+    }
+    
+    // Calculate geometry bounds (relative to actual part position within raw material)
+    // Finishing works on the actual part geometry after roughing
+    params.startZ = geometry.partStartZ;                                  // Start at actual part beginning
+    params.endZ = geometry.partEndZ;                                      // Finish to actual part end
+    
+    qDebug() << "SetupConfigurationPanel: Collected finishing parameters from UI:";
+    qDebug() << "  Z range: " << params.startZ << " to " << params.endZ << " mm";
+    qDebug() << "  Target finish: " << params.surfaceFinishTarget << " μm Ra, Passes: " << params.numberOfPasses;
+    qDebug() << "  Stock allowance: " << params.stockAllowance << " mm";
+    
+    return params;
+}
+
+SetupConfigurationPanel::PartingParameters SetupConfigurationPanel::collectPartingParametersFromUI() const
+{
+    PartingParameters params = m_partingParams;  // Start with geometry-calculated base
+    
+    // Get current workpiece geometry
+    WorkpieceGeometry geometry = getWorkpieceGeometry();
+    
+    // Read values from UI controls
+    if (m_partingWidthSpin) {
+        params.partingWidth = m_partingWidthSpin->value();
+    }
+    if (m_partingAllowanceSpin) {
+        // Note: partingAllowance might be extra length to cut beyond part
+        double partingAllowance = m_partingAllowanceSpin->value();
+        params.partingZ = geometry.partEndZ + partingAllowance;  // Adjust parting position
+    }
+    
+    // Advanced cutting parameters from UI
+    if (m_partingDepthSpin) {
+        // Use peck depth for controlled cutting
+        params.peckDepth = m_partingDepthSpin->value();
+    }
+    if (m_partingFeedSpin) {
+        params.feedRate = m_partingFeedSpin->value();
+        params.finishingFeedRate = params.feedRate * 0.5;  // Slower for finishing pass
+    }
+    if (m_partingSpeedSpin) {
+        params.spindleSpeed = m_partingSpeedSpin->value();
+    }
+    
+    // Calculate parting geometry from workpiece (no hardcoded defaults)
+    params.partingDiameter = geometry.partMaxDiameter;
+    params.centerHoleDiameter = geometry.partMinDiameter;
+    
+    // Default parting position at end of part if not specified
+    if (params.partingZ == 0.0) {
+        params.partingZ = geometry.partEndZ;
+    }
+    
+    // Safety parameters
+    params.safetyDistance = std::max(1.0, geometry.partMaxDiameter * 0.05);  // 5% of diameter or 1mm min
+    
+    qDebug() << "SetupConfigurationPanel: Collected parting parameters from UI:";
+    qDebug() << "  Parting diameter: " << params.partingDiameter << " mm at Z=" << params.partingZ << " mm";
+    qDebug() << "  Width: " << params.partingWidth << " mm, Center hole: " << params.centerHoleDiameter << " mm";
+    qDebug() << "  Feed rate: " << params.feedRate << " mm/min";
+    
+    return params;
+}
+
+SetupConfigurationPanel::ThreadingParameters SetupConfigurationPanel::collectThreadingParametersFromUI() const
+{
+    ThreadingParameters params = m_threadingParams;  // Start with geometry-calculated base
+    
+    // Get current workpiece geometry
+    WorkpieceGeometry geometry = getWorkpieceGeometry();
+    
+    // Read threading configurations from table
+    if (m_threadFacesTable && m_threadFacesTable->rowCount() > 0) {
+        // Use first thread configuration (could be extended for multiple threads)
+        if (!m_threadFaces.isEmpty()) {
+            const ThreadFaceConfig& config = m_threadFaces.first();
+            params.pitch = config.pitch;
+            params.threadDepth = config.depth;
+            
+            // Parse thread preset if available
+            if (config.preset.contains("M") && config.preset.contains("x")) {
+                // Metric thread like "M20x1.5"
+                params.threadForm = 0;  // Metric
+                QStringList parts = config.preset.split("x");
+                if (parts.size() >= 2) {
+                    params.majorDiameter = parts[0].mid(1).toDouble();  // Remove 'M' and convert
+                    params.pitch = parts[1].toDouble();
+                }
+            }
+        }
+    }
+    
+    // Calculate threading geometry from workpiece (no hardcoded defaults)
+    if (params.majorDiameter <= 0.0) {
+        params.majorDiameter = geometry.partMaxDiameter;  // Default to part diameter
+    }
+    
+    // Threading length - could be full part or specific length
+    params.threadLength = std::min(geometry.partLength, params.majorDiameter * 2.0);  // Max 2x diameter
+    params.startZ = geometry.partStartZ;
+    params.endZ = params.startZ + params.threadLength;
+    
+    // Thread depth calculation based on pitch and type
+    if (params.threadDepth <= 0.0) {
+        params.threadDepth = params.pitch * 0.613;  // Standard metric thread depth
+    }
+    
+    // Threading feed rate equals pitch
+    params.feedRate = params.pitch;
+    
+    // Conservative spindle speed for threading
+    if (params.spindleSpeed <= 0.0) {
+        params.spindleSpeed = std::min(800.0, 20000.0 / params.majorDiameter);  // Inverse relationship with diameter
+    }
+    
+    qDebug() << "SetupConfigurationPanel: Collected threading parameters from UI:";
+    qDebug() << "  Thread: " << params.majorDiameter << "mm x " << params.pitch << "mm pitch";
+    qDebug() << "  Length: " << params.threadLength << " mm, Depth: " << params.threadDepth << " mm";
+    qDebug() << "  Feed rate: " << params.feedRate << " mm/rev, Speed: " << params.spindleSpeed << " RPM";
+    
+    return params;
+}
+
+SetupConfigurationPanel::ChamferingParameters SetupConfigurationPanel::collectChamferingParametersFromUI() const
+{
+    ChamferingParameters params = m_chamferingParams;  // Start with geometry-calculated base
+    
+    // Get current workpiece geometry
+    WorkpieceGeometry geometry = getWorkpieceGeometry();
+    
+    // Read chamfering configurations from table
+    if (m_chamferFacesTable && m_chamferFacesTable->rowCount() > 0) {
+        if (!m_chamferFaces.isEmpty()) {
+            const ChamferFaceConfig& config = m_chamferFaces.first();
+            params.chamferLength = config.valueA;
+            if (!config.symmetric) {
+                // Could handle asymmetric chamfers with valueB
+            }
+        }
+    }
+    
+    // Calculate chamfering geometry from workpiece (no hardcoded defaults)
+    params.targetDiameter = geometry.partMaxDiameter;
+    params.startZ = geometry.partStartZ;
+    params.endZ = geometry.partEndZ;
+    
+    // Default chamfer size if not specified
+    if (params.chamferLength <= 0.0) {
+        params.chamferLength = std::min(1.0, geometry.partMaxDiameter * 0.03);  // 3% of diameter or 1mm max
+    }
+    
+    // Conservative cutting parameters for chamfering
+    params.feedRate = 0.1;  // Slow feed for good finish
+    params.surfaceSpeed = 150.0;  // Moderate surface speed
+    params.spindleSpeed = (params.surfaceSpeed * 1000.0) / (M_PI * params.targetDiameter);
+    
+    qDebug() << "SetupConfigurationPanel: Collected chamfering parameters from UI:";
+    qDebug() << "  Target diameter: " << params.targetDiameter << " mm, Length: " << params.chamferLength << " mm";
+    qDebug() << "  Angle: " << params.chamferAngle << " degrees";
+    
+    return params;
+}
+
+SetupConfigurationPanel::GroovingParameters SetupConfigurationPanel::collectGroovingParametersFromUI() const
+{
+    GroovingParameters params = m_groovingParams;  // Start with geometry-calculated base
+    
+    // Get current workpiece geometry
+    WorkpieceGeometry geometry = getWorkpieceGeometry();
+    
+    // Calculate grooving geometry from workpiece (no hardcoded defaults)
+    params.grooveDiameter = geometry.partMaxDiameter * 0.8;  // 80% of part diameter
+    params.grooveZ = geometry.partStartZ + (geometry.partLength / 2.0);  // Middle of part
+    
+    // Grooving tool size constraints
+    params.grooveWidth = std::min(3.0, geometry.partMaxDiameter * 0.1);  // 10% of diameter or 3mm max
+    params.grooveDepth = std::min(2.0, geometry.partMaxDiameter * 0.05);  // 5% of diameter or 2mm max
+    
+    // Conservative cutting parameters for grooving
+    params.feedRate = 0.05;  // Very slow feed for groove quality
+    params.surfaceSpeed = 120.0;  // Lower surface speed for grooving
+    params.spindleSpeed = (params.surfaceSpeed * 1000.0) / (M_PI * params.grooveDiameter);
+    
+    qDebug() << "SetupConfigurationPanel: Collected grooving parameters from UI:";
+    qDebug() << "  Position: Z=" << params.grooveZ << " mm, Diameter=" << params.grooveDiameter << " mm";
+    qDebug() << "  Width: " << params.grooveWidth << " mm, Depth: " << params.grooveDepth << " mm";
+    
+    return params;
+}
+
+SetupConfigurationPanel::DrillingParameters SetupConfigurationPanel::collectDrillingParametersFromUI() const
+{
+    DrillingParameters params = m_drillingParams;  // Start with geometry-calculated base
+    
+    // Get current workpiece geometry
+    WorkpieceGeometry geometry = getWorkpieceGeometry();
+    
+    // Read drilling parameters from UI
+    if (m_largestDrillSizeSpin) {
+        params.drillDiameter = m_largestDrillSizeSpin->value();
+    }
+    
+    // Calculate drilling geometry from workpiece (no hardcoded defaults)
+    if (geometry.partMinDiameter > 0.0) {
+        // Part has existing center hole
+        params.drillDiameter = std::max(params.drillDiameter, geometry.partMinDiameter);
+        params.hasCenterHole = true;
+    } else {
+        // Solid part - pilot hole sizing
+        if (params.drillDiameter <= 0.0) {
+            params.drillDiameter = std::min(6.0, geometry.partMaxDiameter * 0.2);  // 20% of diameter or 6mm max
+        }
+        params.hasCenterHole = false;
+    }
+    
+    // Drilling depth based on part geometry
+    params.drillDepth = geometry.partLength * 0.8;  // 80% of part length for safety
+    params.startZ = geometry.partStartZ;
+    params.endZ = params.startZ + params.drillDepth;
+    
+    // Drilling cutting parameters
+    params.feedRate = 0.15;  // Standard drilling feed
+    params.spindleSpeed = std::min(1200.0, 25000.0 / params.drillDiameter);  // Inverse with diameter
+    params.surfaceSpeed = (M_PI * params.drillDiameter * params.spindleSpeed) / 1000.0;
+    
+    qDebug() << "SetupConfigurationPanel: Collected drilling parameters from UI:";
+    qDebug() << "  Diameter: " << params.drillDiameter << " mm, Depth: " << params.drillDepth << " mm";
+    qDebug() << "  Has center hole: " << params.hasCenterHole;
+    
+    return params;
+}
+
+// Public parameter getter methods (called by external code)
+SetupConfigurationPanel::FacingParameters SetupConfigurationPanel::getFacingParameters() const
+{
+    return collectFacingParametersFromUI();
+}
+
+SetupConfigurationPanel::RoughingParameters SetupConfigurationPanel::getRoughingParameters() const
+{
+    return collectRoughingParametersFromUI();
+}
+
+SetupConfigurationPanel::FinishingParameters SetupConfigurationPanel::getFinishingParameters() const
+{
+    return collectFinishingParametersFromUI();
+}
+
+SetupConfigurationPanel::PartingParameters SetupConfigurationPanel::getPartingParameters() const
+{
+    return collectPartingParametersFromUI();
+}
+
+SetupConfigurationPanel::ThreadingParameters SetupConfigurationPanel::getThreadingParameters() const
+{
+    return collectThreadingParametersFromUI();
+}
+
+SetupConfigurationPanel::ChamferingParameters SetupConfigurationPanel::getChamferingParameters() const
+{
+    return collectChamferingParametersFromUI();
+}
+
+SetupConfigurationPanel::GroovingParameters SetupConfigurationPanel::getGroovingParameters() const
+{
+    return collectGroovingParametersFromUI();
+}
+
+SetupConfigurationPanel::DrillingParameters SetupConfigurationPanel::getDrillingParameters() const
+{
+    return collectDrillingParametersFromUI();
 }
 
 } // namespace GUI

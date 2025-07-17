@@ -44,6 +44,7 @@
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QToolButton>
+#include <algorithm>  // For std::max
 
 // OpenCASCADE includes for geometry handling
 #include <gp_Ax1.hxx>
@@ -1521,6 +1522,17 @@ void MainWindow::handleRawMaterialCreated(double diameter, double length)
     if (m_setupConfigPanel) {
         m_setupConfigPanel->setRawDiameter(diameter);
         m_setupConfigPanel->setRawMaterialLength(length);
+        
+        // Gather complete workpiece geometry information and update operation parameters
+        IntuiCAM::GUI::WorkpieceGeometry geometry = gatherWorkpieceGeometry();
+        geometry.rawMaterialDiameter = diameter;
+        geometry.rawMaterialLength = length;
+        geometry.hasValidRawMaterial = true;
+        
+        // Update operation parameters with complete geometry information
+        m_setupConfigPanel->updateOperationParametersWithGeometry(geometry);
+        
+        qDebug() << "MainWindow: Operation parameters updated with raw material geometry";
     }
     
     statusBar()->showMessage(QString("Raw material created: %1mm diameter x %2mm length")
@@ -1531,6 +1543,7 @@ void MainWindow::handleRawMaterialCreated(double diameter, double length)
         m_outputWindow->append(QString("Raw material dimensions: %1mm diameter x %2mm length")
                              .arg(diameter, 0, 'f', 1)
                              .arg(length, 0, 'f', 1));
+        m_outputWindow->append("Operation parameters automatically updated with geometry");
     }
 }
 
@@ -1560,6 +1573,105 @@ void MainWindow::handleWorkpieceWorkflowCompleted(double detectedDiameter, doubl
         m_outputWindow->append(QString("Workpiece workflow completed:")
                              .append(QString("\n  Detected diameter: %1mm").arg(detectedDiameter, 0, 'f', 1))
                              .append(QString("\n  Raw material diameter: %1mm").arg(rawMaterialDiameter, 0, 'f', 1)));
+    }
+    
+    // Update setup panel and calculate operation parameters with complete geometry
+    if (m_setupConfigPanel && m_workspaceController) {
+        // Gather complete geometry information
+        IntuiCAM::GUI::WorkpieceGeometry geometry = gatherWorkpieceGeometry();
+        geometry.rawMaterialDiameter = rawMaterialDiameter;
+        geometry.partMaxDiameter = detectedDiameter;
+        geometry.hasValidWorkpiece = true;
+        geometry.hasValidRawMaterial = true;
+        geometry.hasValidCoordinateSystem = true;
+        
+        // Update operation parameters with complete workpiece geometry
+        m_setupConfigPanel->updateOperationParametersWithGeometry(geometry);
+        
+        if (m_outputWindow) {
+            m_outputWindow->append("Operation parameters automatically calculated from workpiece geometry");
+        }
+        
+        qDebug() << "MainWindow: Workpiece workflow completed, operation parameters updated with complete geometry";
+    }
+}
+
+// Helper method to gather complete workpiece geometry information
+IntuiCAM::GUI::WorkpieceGeometry MainWindow::gatherWorkpieceGeometry() const
+{
+    IntuiCAM::GUI::WorkpieceGeometry geometry;
+    
+    if (!m_workspaceController || !m_setupConfigPanel) {
+        qWarning() << "MainWindow: Cannot gather workpiece geometry - missing controllers";
+        return geometry;
+    }
+    
+    try {
+        // Get raw material information
+        RawMaterialManager* rm = m_workspaceController->getRawMaterialManager();
+        if (rm && rm->isRawMaterialDisplayed()) {
+            geometry.rawMaterialDiameter = rm->getCurrentDiameter();
+            geometry.facingAllowanceStock = rm->getFacingAllowance();
+            geometry.hasValidRawMaterial = true;
+        }
+        
+        // Get workpiece information
+        WorkpieceManager* wm = m_workspaceController->getWorkpieceManager();
+        if (wm) {
+            geometry.partMaxDiameter = wm->getDetectedDiameter();
+            
+            // Calculate part length from bounding box or use reasonable default
+            // Note: getWorkpieceLength() doesn't exist, so we'll use the setup panel value or calculate
+            geometry.partLength = m_setupConfigPanel->getPartLength();
+            if (geometry.partLength <= 0.0) {
+                // Fallback: estimate from raw material length minus allowances
+                geometry.partLength = std::max(20.0, geometry.rawMaterialLength - geometry.chuckExtension - geometry.facingAllowanceStock);
+            }
+            
+            geometry.hasValidWorkpiece = true;
+            
+            // For minimum diameter (center hole), use 0.0 as default (solid part)
+            // Note: getMinimumDiameter() doesn't exist, so we assume solid part
+            geometry.partMinDiameter = 0.0;  // Assume solid part unless we have specific detection
+        }
+        
+        // Get UI parameters
+        geometry.distanceToChuck = m_setupConfigPanel->getDistanceToChuck();
+        geometry.orientationFlipped = m_setupConfigPanel->isOrientationFlipped();
+        geometry.rawMaterialLength = m_setupConfigPanel->getRawMaterialLength();
+        geometry.partLength = m_setupConfigPanel->getPartLength();
+        
+        // Calculate coordinate system information
+        geometry.chuckFaceZ = 0.0;  // Chuck face always at Z=0
+        geometry.chuckExtension = 50.0;  // Standard chuck extension
+        
+        // Part positioning (user-configurable)
+        geometry.partStartZ = geometry.chuckFaceZ + geometry.distanceToChuck;
+        geometry.partEndZ = geometry.partStartZ + geometry.partLength;
+        
+        // Raw material positioning - positioned relative to part with facing allowance
+        // Work origin is at the end face of raw material (where facing operation will create the part start)
+        geometry.workOriginZ = geometry.partStartZ + geometry.facingAllowanceStock;
+        geometry.rawMaterialEndZ = geometry.workOriginZ;  // Raw material end at work origin
+        geometry.rawMaterialStartZ = geometry.rawMaterialEndZ - geometry.rawMaterialLength;
+        
+        // Coordinate system validation
+        if (m_workspaceController->isInitialized()) {
+            geometry.hasValidCoordinateSystem = true;
+        }
+        
+        qDebug() << "MainWindow: Gathered workpiece geometry:";
+        qDebug() << "  Raw material: " << geometry.rawMaterialDiameter << "mm x " << geometry.rawMaterialLength << "mm";
+        qDebug() << "  Part: " << geometry.partMaxDiameter << "mm diameter, " << geometry.partLength << "mm length";
+        qDebug() << "  Distance to chuck: " << geometry.distanceToChuck << "mm, Facing allowance: " << geometry.facingAllowanceStock << "mm";
+        qDebug() << "  Coordinate system: Chuck at Z=" << geometry.chuckFaceZ << ", Part start at Z=" << geometry.partStartZ << ", Work origin at Z=" << geometry.workOriginZ;
+        qDebug() << "  Raw material: Start Z=" << geometry.rawMaterialStartZ << ", End Z=" << geometry.rawMaterialEndZ;
+        
+        return geometry;
+        
+    } catch (const std::exception& e) {
+        qWarning() << "MainWindow: Error gathering workpiece geometry:" << e.what();
+        return geometry;
     }
 }
 

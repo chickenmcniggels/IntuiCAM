@@ -41,12 +41,13 @@ class ToolManagementDialog;
 // Forward declarations for namespaced types
 namespace IntuiCAM {
 namespace GUI {
+    enum class MaterialType;
     class SetupConfigurationPanel;
     class MaterialManager;
     class ToolManager;
-    class OperationParameterDialog;
-    enum class MaterialType;
-    enum class SurfaceFinish;
+    class ToolManagementTab;
+    class ToolManagementDialog;
+    struct WorkpieceGeometry;
 }
 }
 
@@ -160,6 +161,9 @@ private:
     void setupPartLoadingConnections();
     void setupUiConnections();
     void logToOutput(const QString& message);
+    
+    // Workpiece geometry integration
+    IntuiCAM::GUI::WorkpieceGeometry gatherWorkpieceGeometry() const;
     
     // Tab creation methods
     QWidget* createHomeTab();

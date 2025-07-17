@@ -37,6 +37,10 @@ IntuiCAM::GUI::OperationParameterDialog::OperationParameterDialog(OperationType 
         case OperationType::Roughing: title = "Roughing Operation Parameters"; break;
         case OperationType::Finishing: title = "Finishing Operation Parameters"; break;
         case OperationType::Parting: title = "Parting Operation Parameters"; break;
+        case OperationType::Threading: title = "Threading Operation Parameters"; break;
+        case OperationType::Chamfering: title = "Chamfering Operation Parameters"; break;
+        case OperationType::Grooving: title = "Grooving Operation Parameters"; break;
+        case OperationType::Drilling: title = "Drilling Operation Parameters"; break;
     }
     setWindowTitle(title);
     
@@ -73,6 +77,10 @@ void IntuiCAM::GUI::OperationParameterDialog::setupUI()
         case OperationType::Roughing: setupRoughingUI(); break;
         case OperationType::Finishing: setupFinishingUI(); break;
         case OperationType::Parting: setupPartingUI(); break;
+        case OperationType::Threading: setupThreadingUI(); break;
+        case OperationType::Chamfering: setupChamferingUI(); break;
+        case OperationType::Grooving: setupGroovingUI(); break;
+        case OperationType::Drilling: setupDrillingUI(); break;
     }
     
     setupCommonUI();
@@ -380,6 +388,22 @@ void IntuiCAM::GUI::OperationParameterDialog::onResetToDefaults()
             m_partingParams = PartingParameters();
             setPartingParameters(m_partingParams);
             break;
+        case OperationType::Threading:
+            m_threadingParams = ThreadingParameters();
+            setThreadingParameters(m_threadingParams);
+            break;
+        case OperationType::Chamfering:
+            m_chamferingParams = ChamferingParameters();
+            setChamferingParameters(m_chamferingParams);
+            break;
+        case OperationType::Grooving:
+            m_groovingParams = GroovingParameters();
+            setGroovingParameters(m_groovingParams);
+            break;
+        case OperationType::Drilling:
+            m_drillingParams = DrillingParameters();
+            setDrillingParameters(m_drillingParams);
+            break;
     }
     updateCalculatedValues();
 }
@@ -479,6 +503,27 @@ IntuiCAM::GUI::OperationParameterDialog::PartingParameters IntuiCAM::GUI::Operat
     return m_partingParams;
 }
 
+// New parameter getters
+IntuiCAM::GUI::OperationParameterDialog::ThreadingParameters IntuiCAM::GUI::OperationParameterDialog::getThreadingParameters() const
+{
+    return m_threadingParams;
+}
+
+IntuiCAM::GUI::OperationParameterDialog::ChamferingParameters IntuiCAM::GUI::OperationParameterDialog::getChamferingParameters() const
+{
+    return m_chamferingParams;
+}
+
+IntuiCAM::GUI::OperationParameterDialog::GroovingParameters IntuiCAM::GUI::OperationParameterDialog::getGroovingParameters() const
+{
+    return m_groovingParams;
+}
+
+IntuiCAM::GUI::OperationParameterDialog::DrillingParameters IntuiCAM::GUI::OperationParameterDialog::getDrillingParameters() const
+{
+    return m_drillingParams;
+}
+
 // Parameter setters
 void IntuiCAM::GUI::OperationParameterDialog::setFacingParameters(const FacingParameters& params)
 {
@@ -551,6 +596,107 @@ void IntuiCAM::GUI::OperationParameterDialog::setPartingParameters(const Parting
     }
     
     updateCalculatedValues();
+}
+
+void IntuiCAM::GUI::OperationParameterDialog::setThreadingParameters(const ThreadingParameters& params)
+{
+    m_threadingParams = params;
+    
+    // Update UI if initialized (UI widgets will be added when setupThreadingUI is implemented)
+    // TODO: Update UI controls when threading UI is implemented
+    
+    updateCalculatedValues();
+}
+
+void IntuiCAM::GUI::OperationParameterDialog::setChamferingParameters(const ChamferingParameters& params)
+{
+    m_chamferingParams = params;
+    
+    // Update UI if initialized (UI widgets will be added when setupChamferingUI is implemented)
+    // TODO: Update UI controls when chamfering UI is implemented
+    
+    updateCalculatedValues();
+}
+
+void IntuiCAM::GUI::OperationParameterDialog::setGroovingParameters(const GroovingParameters& params)
+{
+    m_groovingParams = params;
+    
+    // Update UI if initialized (UI widgets will be added when setupGroovingUI is implemented)
+    // TODO: Update UI controls when grooving UI is implemented
+    
+    updateCalculatedValues();
+}
+
+void IntuiCAM::GUI::OperationParameterDialog::setDrillingParameters(const DrillingParameters& params)
+{
+    m_drillingParams = params;
+    
+    // Update UI if initialized (UI widgets will be added when setupDrillingUI is implemented)
+    // TODO: Update UI controls when drilling UI is implemented
+    
+    updateCalculatedValues();
+}
+
+// Placeholder implementations for new setup UI methods (to be fully implemented)
+void IntuiCAM::GUI::OperationParameterDialog::setupThreadingUI()
+{
+    QVBoxLayout* tabLayout = new QVBoxLayout(m_parametersTab);
+    
+    // Basic threading parameters placeholder
+    QGroupBox* threadingGroup = new QGroupBox("Threading Parameters");
+    QFormLayout* formLayout = new QFormLayout(threadingGroup);
+    
+    QLabel* placeholderLabel = new QLabel("Threading parameter UI implementation in progress...");
+    formLayout->addRow(placeholderLabel);
+    
+    tabLayout->addWidget(threadingGroup);
+    tabLayout->addStretch();
+}
+
+void IntuiCAM::GUI::OperationParameterDialog::setupChamferingUI()
+{
+    QVBoxLayout* tabLayout = new QVBoxLayout(m_parametersTab);
+    
+    // Basic chamfering parameters placeholder
+    QGroupBox* chamferingGroup = new QGroupBox("Chamfering Parameters");
+    QFormLayout* formLayout = new QFormLayout(chamferingGroup);
+    
+    QLabel* placeholderLabel = new QLabel("Chamfering parameter UI implementation in progress...");
+    formLayout->addRow(placeholderLabel);
+    
+    tabLayout->addWidget(chamferingGroup);
+    tabLayout->addStretch();
+}
+
+void IntuiCAM::GUI::OperationParameterDialog::setupGroovingUI()
+{
+    QVBoxLayout* tabLayout = new QVBoxLayout(m_parametersTab);
+    
+    // Basic grooving parameters placeholder
+    QGroupBox* groovingGroup = new QGroupBox("Grooving Parameters");
+    QFormLayout* formLayout = new QFormLayout(groovingGroup);
+    
+    QLabel* placeholderLabel = new QLabel("Grooving parameter UI implementation in progress...");
+    formLayout->addRow(placeholderLabel);
+    
+    tabLayout->addWidget(groovingGroup);
+    tabLayout->addStretch();
+}
+
+void IntuiCAM::GUI::OperationParameterDialog::setupDrillingUI()
+{
+    QVBoxLayout* tabLayout = new QVBoxLayout(m_parametersTab);
+    
+    // Basic drilling parameters placeholder
+    QGroupBox* drillingGroup = new QGroupBox("Drilling Parameters");
+    QFormLayout* formLayout = new QFormLayout(drillingGroup);
+    
+    QLabel* placeholderLabel = new QLabel("Drilling parameter UI implementation in progress...");
+    formLayout->addRow(placeholderLabel);
+    
+    tabLayout->addWidget(drillingGroup);
+    tabLayout->addStretch();
 }
 
 void IntuiCAM::GUI::OperationParameterDialog::setMaterialType(IntuiCAM::GUI::MaterialType material)
