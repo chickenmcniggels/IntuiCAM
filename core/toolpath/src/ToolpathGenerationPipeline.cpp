@@ -1158,8 +1158,27 @@ std::vector<std::unique_ptr<Toolpath>> ToolpathGenerationPipeline::partingToolpa
 std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToolpathDisplayObjects(
     const std::vector<std::unique_ptr<Toolpath>>& toolpaths,
     const gp_Trsf& workpieceTransform) {
-    
+
     std::vector<Handle(AIS_InteractiveObject)> displayObjects;
+
+    // Convert gp_Trsf to internal Matrix4x4 for toolpath transformation
+    IntuiCAM::Geometry::Matrix4x4 transformMat;
+    transformMat.data[0] = workpieceTransform.Value(1, 1);
+    transformMat.data[1] = workpieceTransform.Value(1, 2);
+    transformMat.data[2] = workpieceTransform.Value(1, 3);
+    transformMat.data[3] = 0.0;
+    transformMat.data[4] = workpieceTransform.Value(2, 1);
+    transformMat.data[5] = workpieceTransform.Value(2, 2);
+    transformMat.data[6] = workpieceTransform.Value(2, 3);
+    transformMat.data[7] = 0.0;
+    transformMat.data[8] = workpieceTransform.Value(3, 1);
+    transformMat.data[9] = workpieceTransform.Value(3, 2);
+    transformMat.data[10] = workpieceTransform.Value(3, 3);
+    transformMat.data[11] = 0.0;
+    transformMat.data[12] = workpieceTransform.Value(1, 4);
+    transformMat.data[13] = workpieceTransform.Value(2, 4);
+    transformMat.data[14] = workpieceTransform.Value(3, 4);
+    transformMat.data[15] = 1.0;
     
     // Create proper ToolpathDisplayObject instances for each toolpath
     for (const auto& toolpath : toolpaths) {
@@ -1234,17 +1253,17 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
             for (const auto& movement : movements) {
                 newToolpath->addMovement(movement);
             }
-            
+
+            // Apply the workpiece transformation so toolpaths align with the displayed workpiece
+            newToolpath->applyTransform(transformMat);
+
             sharedToolpath = newToolpath;
             
             // Create the ToolpathDisplayObject
             Handle(ToolpathDisplayObject) displayObj = ToolpathDisplayObject::create(sharedToolpath, settings);
             
             if (!displayObj.IsNull()) {
-                // Apply coordinate transformation if needed
-                // The ToolpathDisplayObject should handle coordinate transformation internally
-                
-                // IMPROVED: Use color scheme instead of manual color override
+                // Display in wireframe mode with the applied transformation
                 displayObj->SetDisplayMode(AIS_WireFrame);
                 displayObj->SetTransparency(0.0);
                 
