@@ -62,6 +62,13 @@ To switch between coordinate systems:
 
 The view will automatically adjust the projection and camera orientation to match the selected mode.
 
+### Work Origin Synchronization
+
+The work coordinate system places its origin at the end face of the raw material.
+All generated toolpaths now derive their `Z0` datum from this point to ensure
+that operations remain aligned with the displayed stock regardless of the
+part's distance from the chuck.
+
 ## Benefits
 
 This implementation provides several benefits for lathe operations:
