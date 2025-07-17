@@ -1076,20 +1076,16 @@ bool WorkspaceController::generateToolpaths()
         // Apply work coordinate system transformation to position toolpaths correctly relative to workpiece
         gp_Trsf workCoordinateTransform;
         if (m_coordinateManager && m_coordinateManager->isInitialized()) {
-            // Build transformation from lathe/work coordinates to global coordinates
+            // Get work coordinate system transformation matrix
             const auto& workCS = m_coordinateManager->getWorkCoordinateSystem();
-
-            auto origin = workCS.getOrigin();
-            auto xAxis  = workCS.getXAxis();
-            auto yAxis  = workCS.getYAxis();
-            auto zAxis  = workCS.getZAxis();
-
+            const auto& matrix = workCS.getFromGlobalMatrix(); // Transform from global to work coordinates
+            
+            // Create OpenCASCADE transformation matrix from work coordinate system
             workCoordinateTransform.SetValues(
-                xAxis.x, yAxis.x, zAxis.x, origin.x,
-                xAxis.y, yAxis.y, zAxis.y, origin.y,
-                xAxis.z, yAxis.z, zAxis.z, origin.z
+                matrix.data[0], matrix.data[1], matrix.data[2], matrix.data[3],
+                matrix.data[4], matrix.data[5], matrix.data[6], matrix.data[7],
+                matrix.data[8], matrix.data[9], matrix.data[10], matrix.data[11]
             );
-
             qDebug() << "WorkspaceController: Using work coordinate system transformation for toolpath positioning";
         } else {
             // Fallback to identity if work coordinate system not available
