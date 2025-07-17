@@ -1239,15 +1239,16 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
             
             // Create the ToolpathDisplayObject
             Handle(ToolpathDisplayObject) displayObj = ToolpathDisplayObject::create(sharedToolpath, settings);
-            
+
             if (!displayObj.IsNull()) {
-                // Apply coordinate transformation if needed
-                // The ToolpathDisplayObject should handle coordinate transformation internally
-                
-                // IMPROVED: Use color scheme instead of manual color override
+                // Apply coordinate transformation so toolpaths align with the workpiece
+                if (workpieceTransform.Form() != gp_Identity) {
+                    displayObj->SetLocalTransformation(workpieceTransform);
+                }
+
                 displayObj->SetDisplayMode(AIS_WireFrame);
                 displayObj->SetTransparency(0.0);
-                
+
                 displayObjects.push_back(displayObj);
             }
             
