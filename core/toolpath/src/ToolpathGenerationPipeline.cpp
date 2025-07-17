@@ -28,7 +28,6 @@
 #include <BRepBuilderAPI_Transform.hxx>
 #include <BRepBndLib.hxx>
 #include <Bnd_Box.hxx>
-#include <gp_Trsf.hxx>
 #include <TopoDS_Wire.hxx>
 #include <TopoDS_Shape.hxx>
 #include <TopoDS.hxx>
@@ -1161,30 +1160,6 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
     const gp_Trsf& workpieceTransform) {
     
     std::vector<Handle(AIS_InteractiveObject)> displayObjects;
-
-    // Helper to convert gp_Trsf to Geometry::Matrix4x4
-    auto trsfToMatrix = [](const gp_Trsf& trsf) {
-        Geometry::Matrix4x4 mat;
-        mat.data[0] = trsf.Value(1, 1);
-        mat.data[1] = trsf.Value(1, 2);
-        mat.data[2] = trsf.Value(1, 3);
-        mat.data[3] = 0.0;
-        mat.data[4] = trsf.Value(2, 1);
-        mat.data[5] = trsf.Value(2, 2);
-        mat.data[6] = trsf.Value(2, 3);
-        mat.data[7] = 0.0;
-        mat.data[8] = trsf.Value(3, 1);
-        mat.data[9] = trsf.Value(3, 2);
-        mat.data[10] = trsf.Value(3, 3);
-        mat.data[11] = 0.0;
-        mat.data[12] = trsf.TranslationPart().X();
-        mat.data[13] = trsf.TranslationPart().Y();
-        mat.data[14] = trsf.TranslationPart().Z();
-        mat.data[15] = 1.0;
-        return mat;
-    };
-
-    Geometry::Matrix4x4 transformMatrix = trsfToMatrix(workpieceTransform);
     
     // Create proper ToolpathDisplayObject instances for each toolpath
     for (const auto& toolpath : toolpaths) {
@@ -1259,9 +1234,6 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
             for (const auto& movement : movements) {
                 newToolpath->addMovement(movement);
             }
-
-            // Apply workpiece transformation so toolpaths align with raw material
-            newToolpath->applyTransform(transformMatrix);
             
             sharedToolpath = newToolpath;
             
