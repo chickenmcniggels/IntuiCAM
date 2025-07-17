@@ -1055,7 +1055,7 @@ bool WorkspaceController::generateToolpaths()
         if (m_coordinateManager && m_coordinateManager->isInitialized()) {
             // Get work coordinate system transformation matrix
             const auto& workCS = m_coordinateManager->getWorkCoordinateSystem();
-            const auto& matrix = workCS.getFromGlobalMatrix(); // Transform from global to work coordinates
+            const auto& matrix = workCS.getToGlobalMatrix(); // Transform from work to global coordinates
             
             // Create OpenCASCADE transformation matrix from work coordinate system
             workCoordinateTransform.SetValues(
