@@ -961,10 +961,33 @@ bool WorkspaceController::generateToolpaths()
             inputs.rawMaterialLength = 100.0; // Default length
         }
         if (inputs.partLength < 1.0) {
-            inputs.partLength = 80.0; // Default part length  
+            inputs.partLength = 80.0; // Default part length
         }
         if (inputs.z0 < 1.0) {
             inputs.z0 = inputs.rawMaterialLength;
+        }
+
+        // ------------------------------------------------------------------
+        // Synchronize Z0 with the work coordinate system
+        // ------------------------------------------------------------------
+        if (m_coordinateManager && m_coordinateManager->isInitialized()) {
+            const auto& workCS = m_coordinateManager->getWorkCoordinateSystem();
+
+            // Work origin corresponds to the end face of the raw material
+            gp_Pnt workOrigin(workCS.getToGlobalMatrix().data[12],
+                             workCS.getToGlobalMatrix().data[13],
+                             workCS.getToGlobalMatrix().data[14]);
+
+            // Reference location of the turning axis
+            gp_Pnt axisLoc = turningAxis.Location();
+            gp_Dir axisDir = turningAxis.Direction();
+
+            // Project work origin onto the turning axis to get the Z0 distance
+            gp_Vec originVec(axisLoc, workOrigin);
+            double originDist = originVec.Dot(axisDir);
+
+            inputs.z0 = originDist;
+            qDebug() << "WorkspaceController: Updated Z0 from work origin:" << inputs.z0;
         }
         
         // Set operation-specific defaults
