@@ -1235,24 +1235,6 @@ std::vector<Handle(AIS_InteractiveObject)> ToolpathGenerationPipeline::createToo
                 newToolpath->addMovement(movement);
             }
             
-            // Apply transformation from work coordinates to global viewer coordinates
-            if (!workpieceTransform.IsIdentity()) {
-                double a11, a12, a13, a14,
-                       a21, a22, a23, a24,
-                       a31, a32, a33, a34;
-                workpieceTransform.GetValues(a11, a12, a13, a14,
-                                             a21, a22, a23, a24,
-                                             a31, a32, a33, a34);
-
-                IntuiCAM::Geometry::Matrix4x4 mat;
-                mat.data[0]  = a11; mat.data[1]  = a12; mat.data[2]  = a13; mat.data[3]  = a14;
-                mat.data[4]  = a21; mat.data[5]  = a22; mat.data[6]  = a23; mat.data[7]  = a24;
-                mat.data[8]  = a31; mat.data[9]  = a32; mat.data[10] = a33; mat.data[11] = a34;
-                mat.data[12] = 0.0; mat.data[13] = 0.0; mat.data[14] = 0.0; mat.data[15] = 1.0;
-
-                newToolpath->applyTransform(mat);
-            }
-
             sharedToolpath = newToolpath;
             
             // Create the ToolpathDisplayObject

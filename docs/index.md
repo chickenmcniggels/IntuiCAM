@@ -17,10 +17,8 @@ Whether you’re a user looking to generate your first turning job or a develope
 - [Updated Toolpath Workflow](toolpath_workflow.md)
   Overview of the simplified operation sequence and timeline interface.
 
-- [Chuck Management User Guide](user_guide_chuck.md)
+- [Chuck Management User Guide](user_guide_chuck.md)  
   Complete guide to using the 3-jaw chuck management and workpiece alignment features.
-- [Coordinate System Overview](dev/coordinate_system.md)
-  Explanation of global, work and machine coordinates used for toolpath placement.
 
 - [Architecture Overview](architecture.md)  
   High-level description of IntuiCAM’s modular design, outlining how the core engine, GUI, and plugins interact.
